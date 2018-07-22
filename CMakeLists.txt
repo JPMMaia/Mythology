@@ -5,12 +5,13 @@ add_executable(MythologyUWP)
 add_executable(Mythology::UWP ALIAS MythologyUWP)
 
 target_sources(MythologyUWP 
-
     PRIVATE
-
-		Source/App.cpp
-
+		"Source/App.cpp"
+		"Source/D3D12_renderer.h"
+		"Source/D3D12_renderer.cpp"
 )
+
+target_include_directories(MythologyUWP PRIVATE "Source")
 
 target_compile_features(MythologyUWP PRIVATE cxx_std_17)
 
