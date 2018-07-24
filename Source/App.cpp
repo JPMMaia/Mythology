@@ -5,6 +5,8 @@
 #include "winrt/Windows.UI.Composition.h"
 #include "winrt/Windows.UI.Input.h"
 
+#include <D3D12_renderer.h>
+
 using namespace winrt;
 
 using namespace Windows;
@@ -20,6 +22,7 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
     VisualCollection m_visuals{ nullptr };
     Visual m_selected{ nullptr };
     float2 m_offset{};
+	Mythology::D3D12_renderer m_renderer{};
 
     IFrameworkView CreateView()
     {
