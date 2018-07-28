@@ -6,7 +6,7 @@
 #include <winrt/base.h>
 
 #include <dxgi1_6.h>
-#include <d3d12.h>
+#include <d3d12_1.h>
 
 namespace Mythology
 {

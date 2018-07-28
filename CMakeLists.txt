@@ -19,6 +19,8 @@ if (MSVC)
 	target_compile_options(MythologyUWP PRIVATE "/permissive-")
 endif ()
 
+list (APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/..")
+
 find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 
 add_subdirectory("${MAIA_GAME_ENGINE_ROOT}" "${CMAKE_CURRENT_SOURCE_DIR}/Binaries/Maia/GameEngine")
