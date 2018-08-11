@@ -2,9 +2,9 @@
 
 #include <Eigen/Eigen>
 
-#include <Maia/Renderer/D3D12/Utilities/D3D12_utilities.h>
+#include <Maia/Renderer/D3D12/Utilities/D3D12_utilities.hpp>
 
-#include <D3D12_renderer.h>
+#include <D3D12_renderer.hpp>
 
 using namespace Maia::Renderer::D3D12;
 
