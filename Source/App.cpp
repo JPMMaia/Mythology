@@ -5,7 +5,7 @@
 #include "winrt/Windows.UI.Composition.h"
 #include "winrt/Windows.UI.Input.h"
 
-#include <D3D12_renderer.hpp>
+#include <Maia/Renderer/D3D12/D3D12_renderer.hpp>
 
 using namespace winrt;
 

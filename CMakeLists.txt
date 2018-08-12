@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.12)
 
+set (CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>")
+set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>")
+
 
 include (FetchContent)
 
