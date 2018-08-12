@@ -22,6 +22,7 @@ target_include_directories (MaiaMythology
 
 target_link_libraries (MaiaMythology
 	PRIVATE
+		Maia::GameEngine
 		Maia::Renderer
 		Maia::Utilities
 )
@@ -29,6 +30,4 @@ target_link_libraries (MaiaMythology
 target_sources (MaiaMythology 
 	PRIVATE
 		"App.cpp"
-		"D3D12_renderer.hpp"
-		"D3D12_renderer.cpp"
 )
