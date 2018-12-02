@@ -30,4 +30,6 @@ target_link_libraries (MaiaMythology
 target_sources (MaiaMythology 
 	PRIVATE
 		"App.cpp"
+		"Renderer/D3D12/Renderer.hpp"
+		"Renderer/D3D12/Renderer.cpp"
 )

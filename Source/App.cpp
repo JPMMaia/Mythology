@@ -1,11 +1,12 @@
 #include <array>
 
-#include "winrt/Windows.ApplicationModel.Core.h"
-#include "winrt/Windows.UI.Core.h"
-#include "winrt/Windows.UI.Composition.h"
-#include "winrt/Windows.UI.Input.h"
+//#include <windows.h>
+#include <winrt/Windows.ApplicationModel.Core.h>
+#include <winrt/Windows.UI.Core.h>
+#include <winrt/Windows.UI.Composition.h>
+#include <winrt/Windows.UI.Input.h>
 
-#include <Maia/Renderer/D3D12/D3D12_renderer.hpp>
+#include "Renderer/D3D12/Renderer.hpp"
 
 using namespace winrt;
 
@@ -18,7 +19,8 @@ using namespace Windows::UI::Composition;
 
 struct App : implements<App, IFrameworkViewSource, IFrameworkView>
 {
-	Mythology::D3D12_renderer m_renderer{};
+	std::unique_ptr<Mythology::D3D12::Renderer> m_renderer{};
+	winrt::agile_ref<CoreWindow> m_window{};
 
     IFrameworkView CreateView()
     {
@@ -31,6 +33,8 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
 
     void Load(hstring const&)
     {
+		IUnknown& window = *static_cast<::IUnknown*>(winrt::get_abi(m_window.get()));
+		m_renderer = std::make_unique<Mythology::D3D12::Renderer>(window);
     }
 
     void Uninitialize()
@@ -42,11 +46,17 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
         CoreWindow window = CoreWindow::GetForCurrentThread();
         window.Activate();
 
-        CoreDispatcher dispatcher = window.Dispatcher();
-        dispatcher.ProcessEvents(CoreProcessEventsOption::ProcessUntilQuit);
+		while (true)
+		{
+			CoreDispatcher dispatcher = window.Dispatcher();
+			dispatcher.ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
+
+			m_renderer->render();
+			m_renderer->present();
+		}
     }
 
-    void SetWindow(CoreWindow const & window)
+    void SetWindow(CoreWindow window)
     {
         window.PointerPressed({ this, &App::OnPointerPressed });
         window.PointerMoved({ this, &App::OnPointerMoved });
@@ -55,7 +65,7 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
         {
         });
 
-		m_renderer.window(*winrt::get_unknown(window));
+		m_window = window;
     }
 
     void OnPointerPressed(IInspectable const &, PointerEventArgs const & args)
@@ -69,7 +79,7 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
 
 int main()
 {
-    CoreApplication::Run(App());
+	CoreApplication::Run(App{});
 
 	return 0;
 }
