@@ -301,6 +301,41 @@ namespace Mythology::D3D12
 		}
 	}*/
 
+	namespace
+	{
+		void create_swap_chain_rtvs(ID3D12Device& device, IDXGISwapChain& swap_chain, DXGI_FORMAT format, D3D12_CPU_DESCRIPTOR_HANDLE destination_descriptor, UINT buffer_count)
+		{
+			D3D12_RENDER_TARGET_VIEW_DESC description;
+			description.Format = format;
+			description.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+			description.Texture2D.MipSlice = 0;
+			description.Texture2D.PlaneSlice = 0;
+
+			UINT const descriptor_handle_increment_size = device.GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
+			for (UINT buffer_index = 0; buffer_index < buffer_count; ++buffer_index)
+			{
+				winrt::com_ptr<ID3D12Resource> buffer;
+				winrt::check_hresult(
+					swap_chain.GetBuffer(buffer_index, __uuidof(buffer), buffer.put_void()));
+
+				device.CreateRenderTargetView(buffer.get(), &description, destination_descriptor);
+
+				destination_descriptor.ptr += descriptor_handle_increment_size;
+			}
+		}
+
+		winrt::com_ptr<IDXGISwapChain4> create_rtv_swap_chain(IDXGIFactory6& factory, IUnknown& direct_command_queue, IUnknown& window, UINT buffer_count, ID3D12Device& device, D3D12_CPU_DESCRIPTOR_HANDLE destination_descriptor)
+		{
+			winrt::com_ptr<IDXGISwapChain4> swap_chain =
+				create_swap_chain(factory, direct_command_queue, window, DXGI_FORMAT_R8G8B8A8_UNORM, buffer_count);
+
+			create_swap_chain_rtvs(device, *swap_chain, DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, destination_descriptor, buffer_count);
+
+			return swap_chain;
+		}
+	}
+
 	Renderer::Renderer(IUnknown& window) :
 		m_pipeline_length{ 3 },
 		m_factory{ create_factory({}) },
@@ -313,8 +348,9 @@ namespace Mythology::D3D12
 		m_fence_value{ 0 },
 		m_fence{ create_fence(*m_device, m_fence_value, D3D12_FENCE_FLAG_NONE) },
 		m_fence_event{ ::CreateEvent(nullptr, false, false, nullptr) },
-		m_swap_chain{ create_swap_chain(*m_factory, *m_direct_command_queue, window, DXGI_FORMAT_R8G8B8A8_UNORM, static_cast<UINT>(m_pipeline_length)) }
+		m_swap_chain{ create_rtv_swap_chain(*m_factory, *m_direct_command_queue, window, static_cast<UINT>(m_pipeline_length), *m_device, m_rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart()) }
 	{
+		
 	}
 
 	void Renderer::render()
