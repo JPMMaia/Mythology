@@ -205,10 +205,10 @@ namespace Mythology::D3D12
 			auto const uav_barrier = CD3DX12_RESOURCE_BARRIER::UAV(result_buffer.get());
 			command_list.ResourceBarrier(1, &uav_barrier);
 
-			return 
-			{ 
-				std::move(scratch_buffer), 
-				std::move(result_buffer) 
+			return
+			{
+				std::move(scratch_buffer),
+				std::move(result_buffer)
 			};
 		}
 
@@ -292,11 +292,11 @@ namespace Mythology::D3D12
 			auto const uav_barrier = CD3DX12_RESOURCE_BARRIER::UAV(result_buffer.get());
 			command_list.ResourceBarrier(1, &uav_barrier);
 
-			return 
-			{ 
-				std::move(scratch_buffer), 
-				std::move(result_buffer), 
-				std::move(instance_description_buffer) 
+			return
+			{
+				std::move(scratch_buffer),
+				std::move(result_buffer),
+				std::move(instance_description_buffer)
 			};
 		}
 	}*/
@@ -342,21 +342,106 @@ namespace Mythology::D3D12
 		m_adapter{ select_adapter(*m_factory, true) },
 		m_device{ create_device(*m_adapter, D3D_FEATURE_LEVEL_11_0) },
 		m_direct_command_queue{ create_command_queue(*m_device, D3D12_COMMAND_LIST_TYPE_DIRECT, 0, D3D12_COMMAND_QUEUE_FLAG_NONE, 0) },
-		m_command_allocator{ create_command_allocator(*m_device, D3D12_COMMAND_LIST_TYPE_DIRECT) },
-		m_command_list{ create_closed_graphics_command_list(*m_device, 0, D3D12_COMMAND_LIST_TYPE_DIRECT, *m_command_allocator, nullptr) },
+		m_command_allocators{ create_command_allocators(*m_device, D3D12_COMMAND_LIST_TYPE_DIRECT, m_pipeline_length) },
+		m_command_list{ create_closed_graphics_command_list(*m_device, 0, D3D12_COMMAND_LIST_TYPE_DIRECT, *m_command_allocators[0], nullptr) },
 		m_rtv_descriptor_heap{ create_descriptor_heap(*m_device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, static_cast<UINT>(m_pipeline_length), D3D12_DESCRIPTOR_HEAP_FLAG_NONE, 0) },
 		m_fence_value{ 0 },
 		m_fence{ create_fence(*m_device, m_fence_value, D3D12_FENCE_FLAG_NONE) },
 		m_fence_event{ ::CreateEvent(nullptr, false, false, nullptr) },
-		m_swap_chain{ create_rtv_swap_chain(*m_factory, *m_direct_command_queue, window, static_cast<UINT>(m_pipeline_length), *m_device, m_rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart()) }
+		m_swap_chain{ create_rtv_swap_chain(*m_factory, *m_direct_command_queue, window, static_cast<UINT>(m_pipeline_length), *m_device, m_rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart()) },
+		m_submitted_frames { m_pipeline_length }
 	{
-		
 	}
 
 	void Renderer::render()
 	{
+		{
+			UINT64 const event_value_to_wait_for = m_submitted_frames - m_pipeline_length;
+			if (m_fence->GetCompletedValue() < event_value_to_wait_for)
+			{
+				winrt::check_hresult(
+					m_fence->SetEventOnCompletion(event_value_to_wait_for, m_fence_event.get()));
+				
+				winrt::check_win32(
+					WaitForSingleObject(m_fence_event.get(), INFINITE));
+
+				// TODO return to do other cpu work instead of waiting
+			}
+		}
+
+		{
+			UINT const back_buffer_index = m_swap_chain->GetCurrentBackBufferIndex();
+
+			winrt::com_ptr<ID3D12Resource> back_buffer;
+			winrt::check_hresult(
+				m_swap_chain->GetBuffer(back_buffer_index, __uuidof(back_buffer), back_buffer.put_void()));
+
+			std::uint8_t current_frame_index { m_submitted_frames % m_pipeline_length };
+			ID3D12CommandAllocator& command_allocator = *m_command_allocators[current_frame_index];
+			ID3D12GraphicsCommandList& command_list = *m_command_list;
+
+			winrt::check_hresult(
+				command_allocator.Reset());
+
+			winrt::check_hresult(
+				command_list.Reset(&command_allocator, nullptr));
+
+			{
+				D3D12_RESOURCE_BARRIER resource_barrier;
+				resource_barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+				resource_barrier.Transition.pResource = back_buffer.get();
+				resource_barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+				resource_barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+				resource_barrier.Transition.Subresource = 0;
+				resource_barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+				command_list.ResourceBarrier(1, &resource_barrier);
+			}
+
+			{
+				UINT const descriptor_handle_increment_size =
+					m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
+				D3D12_CPU_DESCRIPTOR_HANDLE const render_target_descriptor
+				{
+					m_rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart().ptr
+						+ descriptor_handle_increment_size * back_buffer_index
+				};
+
+				std::array<FLOAT, 4> clear_color{ 0.0f, 0.0f, 1.0f, 1.0f };
+				command_list.ClearRenderTargetView(render_target_descriptor, clear_color.data(), 0, nullptr);
+			}
+
+			{
+				D3D12_RESOURCE_BARRIER resource_barrier;
+				resource_barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+				resource_barrier.Transition.pResource = back_buffer.get();
+				resource_barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+				resource_barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+				resource_barrier.Transition.Subresource = 0;
+				resource_barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+				command_list.ResourceBarrier(1, &resource_barrier);
+			}
+
+			winrt::check_hresult(
+				command_list.Close());
+
+			std::array<ID3D12CommandList*, 1> command_lists_to_execute
+			{
+				&command_list
+			};
+
+			m_direct_command_queue->ExecuteCommandLists(
+				static_cast<UINT>(command_lists_to_execute.size()), command_lists_to_execute.data()
+			);
+		}
+
+		{
+			UINT64 const frame_finished_value = static_cast<UINT64>(m_submitted_frames);
+			m_direct_command_queue->Signal(m_fence.get(), frame_finished_value);
+			++m_submitted_frames;
+		}
 	}
-	
+
 	void Renderer::present()
 	{
 		winrt::check_hresult(
