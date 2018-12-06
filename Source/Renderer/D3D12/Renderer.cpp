@@ -1,4 +1,5 @@
 #include <array>
+#include <iostream>
 
 //#include <d3dx12.h>
 #include <Eigen/Eigen>
@@ -334,6 +335,102 @@ namespace Mythology::D3D12
 
 			return swap_chain;
 		}
+
+		winrt::com_ptr<ID3D12RootSignature> create_root_signature(ID3D12Device5& device)
+		{
+			D3D12_VERSIONED_ROOT_SIGNATURE_DESC versioned_description;
+			versioned_description.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
+			versioned_description.Desc_1_1 = []() -> D3D12_ROOT_SIGNATURE_DESC1
+			{
+				D3D12_ROOT_SIGNATURE_DESC1 description{};
+				description.NumParameters = 0;
+				description.pParameters = nullptr;
+				description.NumStaticSamplers = 0;
+				description.pStaticSamplers = nullptr;
+				description.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+				return description;
+			}();
+			
+			winrt::com_ptr<ID3DBlob> root_signature_blob;
+			winrt::com_ptr<ID3DBlob> error_blob;
+			{
+				HRESULT const result = D3D12SerializeVersionedRootSignature(&versioned_description, root_signature_blob.put(), error_blob.put());
+
+				if (FAILED(result))
+				{
+					if (error_blob)
+					{
+						std::wstring_view error_messages
+						{
+							reinterpret_cast<wchar_t*>(error_blob->GetBufferPointer()),
+							static_cast<std::size_t>(error_blob->GetBufferSize())
+						};
+
+						std::cerr << error_messages.data();
+					}
+
+					winrt::check_hresult(result);
+				}
+			}
+
+			winrt::com_ptr<ID3D12RootSignature> root_signature;
+			winrt::check_hresult(
+				device.CreateRootSignature(
+					0,
+					root_signature_blob->GetBufferPointer(), root_signature_blob->GetBufferSize(),
+					__uuidof(root_signature), root_signature.put_void()
+				)
+			);
+
+			return root_signature;
+		}
+
+		winrt::com_ptr<ID3D12PipelineState> create_color_pass_pipeline_state(ID3D12Device5& device, ID3D12RootSignature& root_signature, D3D12_SHADER_BYTECODE vertex_shader, D3D12_SHADER_BYTECODE pixel_shader)
+		{
+			D3D12_GRAPHICS_PIPELINE_STATE_DESC description{};
+			description.pRootSignature = &root_signature;
+			description.VS = vertex_shader;
+			description.PS = pixel_shader;
+			description.DS;
+			description.HS;
+			description.GS;
+			description.StreamOutput;
+			description.BlendState;
+			description.SampleMask = 0;
+			description.RasterizerState = []() -> D3D12_RASTERIZER_DESC
+			{
+				D3D12_RASTERIZER_DESC rasterizer_state{};
+				rasterizer_state.FillMode = D3D12_FILL_MODE_SOLID;
+				rasterizer_state.CullMode = D3D12_CULL_MODE_BACK;
+				rasterizer_state.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+				return rasterizer_state;
+			}();
+			description.DepthStencilState;
+			
+			std::array<D3D12_INPUT_ELEMENT_DESC, 2> input_layout_elements
+			{
+				D3D12_INPUT_ELEMENT_DESC
+				{ "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+			};
+			description.InputLayout = { input_layout_elements.data(), static_cast<UINT>(input_layout_elements.size()) };
+
+			description.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
+			description.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+			description.NumRenderTargets = 1;
+			description.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+			description.DSVFormat;
+			description.SampleDesc.Count = 1;
+			description.SampleDesc.Quality = 0;
+			description.NodeMask;
+			description.CachedPSO;
+			description.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+			
+			winrt::com_ptr<ID3D12PipelineState> pipeline_state;
+			winrt::check_hresult(
+				device.CreateGraphicsPipelineState(&description, __uuidof(pipeline_state), pipeline_state.put_void()));
+			return pipeline_state;
+		}
 	}
 
 	Renderer::Renderer(IUnknown& window) :
@@ -349,7 +446,11 @@ namespace Mythology::D3D12
 		m_fence{ create_fence(*m_device, m_fence_value, D3D12_FENCE_FLAG_NONE) },
 		m_fence_event{ ::CreateEvent(nullptr, false, false, nullptr) },
 		m_swap_chain{ create_rtv_swap_chain(*m_factory, *m_direct_command_queue, window, static_cast<UINT>(m_pipeline_length), *m_device, m_rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart()) },
-		m_submitted_frames { m_pipeline_length }
+		m_submitted_frames { m_pipeline_length },
+		m_root_signature{ create_root_signature(*m_device) },
+		m_color_vertex_shader { "Resources/Shaders/Color_vertex_shader.csv" },
+		m_color_pixel_shader { "Resources/Shaders/Color_pixel_shader.csv" },
+		m_color_pass_pipeline_state{ create_color_pass_pipeline_state(*m_device, *m_root_signature, m_color_vertex_shader.bytecode(), m_color_pixel_shader.bytecode()) }
 	{
 	}
 

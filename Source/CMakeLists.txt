@@ -32,4 +32,24 @@ target_sources (MaiaMythology
 		"App.cpp"
 		"Renderer/D3D12/Renderer.hpp"
 		"Renderer/D3D12/Renderer.cpp"
+
+		"Renderer/Shaders/Color_vertex_shader.hlsl"
+		"Renderer/Shaders/Color_pixel_shader.hlsl"
+)
+
+include ("${maiarenderer_SOURCE_DIR}/CMake/Scripts/target_add_hlsl_shader.cmake")
+
+target_add_hlsl_shader (
+	MaiaMythology
+		"Shaders"
+		"${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/Color_vertex_shader.hlsl"
+		"${CMAKE_BINARY_DIR}/${CMAKE_CFG_INTDIR}/AppX/Resources/Shaders/Color_vertex_shader.csv"
+		"main" "vs_5_1" true ""
+)
+target_add_hlsl_shader (
+	MaiaMythology
+		"Shaders"
+		"${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/Color_pixel_shader.hlsl"
+		"${CMAKE_BINARY_DIR}/${CMAKE_CFG_INTDIR}/AppX/Resources/Shaders/Color_pixel_shader.csv"
+		"main" "ps_5_1" true ""
 )
