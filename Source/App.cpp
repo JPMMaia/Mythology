@@ -34,7 +34,8 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
     void Load(hstring const&)
     {
 		IUnknown& window = *static_cast<::IUnknown*>(winrt::get_abi(m_window.get()));
-		m_renderer = std::make_unique<Mythology::D3D12::Renderer>(window);
+		winrt::Windows::Foundation::Rect const bounds = m_window.get().Bounds();
+		m_renderer = std::make_unique<Mythology::D3D12::Renderer>(window, Eigen::Vector2f{ bounds.Width, bounds.Height });
     }
 
     void Uninitialize()

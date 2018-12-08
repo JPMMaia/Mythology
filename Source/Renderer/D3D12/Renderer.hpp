@@ -3,6 +3,7 @@
 
 #include <cstddef>
 
+#include <Eigen/Eigen>
 #include <winrt/base.h>
 
 #include <dxgi1_6.h>
@@ -12,11 +13,17 @@
 
 namespace Mythology::D3D12
 {
+	struct Triangle
+	{
+		winrt::com_ptr<ID3D12Resource> vertex_buffer;
+		winrt::com_ptr<ID3D12Resource> index_buffer;
+	};
+
 	class Renderer
 	{
 	public:
 
-		explicit Renderer(IUnknown& window);
+		Renderer(IUnknown& window, Eigen::Vector2f window_dimensions);
 
 		void render();
 		void present();
@@ -35,11 +42,18 @@ namespace Mythology::D3D12
 		winrt::com_ptr<ID3D12Fence> m_fence;
 		winrt::handle m_fence_event;
 		winrt::com_ptr<IDXGISwapChain4> m_swap_chain;
+		D3D12_VIEWPORT m_viewport;
+		D3D12_RECT m_scissor_rect;
 		std::size_t m_submitted_frames;
 		winrt::com_ptr<ID3D12RootSignature> m_root_signature;
 		Maia::Renderer::D3D12::Shader m_color_vertex_shader;
 		Maia::Renderer::D3D12::Shader m_color_pixel_shader;
 		winrt::com_ptr<ID3D12PipelineState> m_color_pass_pipeline_state;
+
+		winrt::com_ptr<ID3D12Heap> m_upload_heap;
+		winrt::com_ptr<ID3D12Resource> m_upload_buffer;
+		winrt::com_ptr<ID3D12Heap> m_buffers_heap;
+		Triangle m_triangle;
 
 	};
 }
