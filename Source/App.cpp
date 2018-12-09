@@ -35,7 +35,10 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
     {
 		IUnknown& window = *static_cast<::IUnknown*>(winrt::get_abi(m_window.get()));
 		winrt::Windows::Foundation::Rect const bounds = m_window.get().Bounds();
-		m_renderer = std::make_unique<Mythology::D3D12::Renderer>(window, Eigen::Vector2f{ bounds.Width, bounds.Height });
+		m_renderer = std::make_unique<Mythology::D3D12::Renderer>(
+			window, 
+			Eigen::Vector2i{ static_cast<int>(bounds.Width), static_cast<int>(bounds.Height) }
+		);
     }
 
     void Uninitialize()
@@ -65,6 +68,14 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
         window.PointerReleased([&](auto && ...)
         {
         });
+
+		window.SizeChanged(
+			[&](CoreWindow window, WindowSizeChangedEventArgs const& event_args) 
+		{ 
+			winrt::Windows::Foundation::Size const size = event_args.Size();
+			m_renderer->resize_window({ static_cast<int>(size.Width), static_cast<int>(size.Height) });
+		}
+		);
 
 		m_window = window;
     }

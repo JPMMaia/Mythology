@@ -23,14 +23,17 @@ namespace Mythology::D3D12
 	{
 	public:
 
-		Renderer(IUnknown& window, Eigen::Vector2f window_dimensions);
+		Renderer(IUnknown& window, Eigen::Vector2i window_dimensions);
+
+		void resize_window(Eigen::Vector2i window_dimensions);
 
 		void render();
 		void present();
 
 	private:
 
-		std::uint8_t const m_pipeline_length;
+		static constexpr std::uint8_t m_pipeline_length{ 3 };
+		static constexpr std::uint8_t m_swap_chain_buffer_count{ 3 };
 		winrt::com_ptr<IDXGIFactory6> m_factory;
 		winrt::com_ptr<IDXGIAdapter> m_adapter;
 		winrt::com_ptr<ID3D12Device5> m_device;

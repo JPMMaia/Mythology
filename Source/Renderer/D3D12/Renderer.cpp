@@ -640,8 +640,7 @@ namespace Mythology::D3D12
 		}
 	}
 
-	Renderer::Renderer(IUnknown& window, Eigen::Vector2f window_dimensions) :
-		m_pipeline_length{ 3 },
+	Renderer::Renderer(IUnknown& window, Eigen::Vector2i window_dimensions) :
 		m_factory{ create_factory({}) },
 		m_adapter{ select_adapter(*m_factory, false) },
 		m_device{ create_device(*m_adapter, D3D_FEATURE_LEVEL_11_0) },
@@ -652,9 +651,9 @@ namespace Mythology::D3D12
 		m_fence_value{ 0 },
 		m_fence{ create_fence(*m_device, m_fence_value, D3D12_FENCE_FLAG_NONE) },
 		m_fence_event{ ::CreateEvent(nullptr, false, false, nullptr) },
-		m_swap_chain{ create_rtv_swap_chain(*m_factory, *m_direct_command_queue, window, static_cast<UINT>(m_pipeline_length), *m_device, m_rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart()) },
-		m_viewport{ 0.0f, 0.0f, window_dimensions(0), window_dimensions(1), D3D12_MIN_DEPTH, D3D12_MAX_DEPTH },
-		m_scissor_rect{ 0, 0, static_cast<LONG>(window_dimensions(0)), static_cast<LONG>(window_dimensions(1)) },
+		m_swap_chain{ create_rtv_swap_chain(*m_factory, *m_direct_command_queue, window, m_swap_chain_buffer_count, *m_device, m_rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart()) },
+		m_viewport{ 0.0f, 0.0f, static_cast<FLOAT>(window_dimensions(0)), static_cast<FLOAT>(window_dimensions(1)), D3D12_MIN_DEPTH, D3D12_MAX_DEPTH },
+		m_scissor_rect{ 0, 0, window_dimensions(0), window_dimensions(1) },
 		m_submitted_frames{ m_pipeline_length },
 		m_root_signature{ create_root_signature(*m_device) },
 		m_color_vertex_shader{ "Resources/Shaders/Color_vertex_shader.csv" },
@@ -696,6 +695,54 @@ namespace Mythology::D3D12
 		}
 	}
 
+	void Renderer::resize_window(Eigen::Vector2i window_dimensions)
+	{
+		// TODO refactor
+		{
+			UINT64 const event_value_to_wait_for = m_submitted_frames + m_pipeline_length;
+
+			winrt::check_hresult(
+				m_direct_command_queue->Signal(m_fence.get(), event_value_to_wait_for));
+
+			winrt::check_hresult(
+				m_fence->SetEventOnCompletion(event_value_to_wait_for, m_fence_event.get()));
+
+			winrt::check_win32(
+				WaitForSingleObject(m_fence_event.get(), INFINITE));
+		}
+
+		std::array<UINT, m_swap_chain_buffer_count> create_node_masks;
+		std::fill(create_node_masks.begin(), create_node_masks.end(), 1);
+
+		std::array<IUnknown*, m_swap_chain_buffer_count> command_queues;
+		std::fill(command_queues.begin(), command_queues.end(), m_direct_command_queue.get());
+
+		winrt::check_hresult(
+			m_swap_chain->ResizeBuffers1(
+				0,
+				window_dimensions(0), window_dimensions(1),
+				DXGI_FORMAT_R8G8B8A8_UNORM,
+				{},
+				create_node_masks.data(),
+				command_queues.data()
+			)
+		);
+
+		create_swap_chain_rtvs(
+			*m_device, 
+			*m_swap_chain, 
+			DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, 
+			m_rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart(), 
+			m_swap_chain_buffer_count
+		);
+
+		m_viewport.Width = static_cast<FLOAT>(window_dimensions(0));
+		m_viewport.Height = static_cast<FLOAT>(window_dimensions(1));
+		m_scissor_rect.right = window_dimensions(0);
+		m_scissor_rect.bottom = window_dimensions(1);
+		
+	}
+
 	void Renderer::render()
 	{
 		{
@@ -729,25 +776,8 @@ namespace Mythology::D3D12
 			winrt::check_hresult(
 				command_list.Reset(&command_allocator, m_color_pass_pipeline_state.get()));
 
-			{
-				D3D12_VIEWPORT viewport;
-				viewport.TopLeftX = 0.0f;
-				viewport.TopLeftY = 0.0f;
-				viewport.Width = 800.0f;
-				viewport.Height = 600.0f;
-				viewport.MinDepth = D3D12_MIN_DEPTH;
-				viewport.MaxDepth = D3D12_MAX_DEPTH;
-				command_list.RSSetViewports(1, &m_viewport);
-			}
-
-			{
-				D3D12_RECT scissor_rect;
-				scissor_rect.left = 0;
-				scissor_rect.top = 0;
-				scissor_rect.right = 800;
-				scissor_rect.bottom = 600;
-				command_list.RSSetScissorRects(1, &m_scissor_rect);
-			}
+			command_list.RSSetViewports(1, &m_viewport);
+			command_list.RSSetScissorRects(1, &m_scissor_rect);
 
 			{
 				D3D12_RESOURCE_BARRIER resource_barrier;
