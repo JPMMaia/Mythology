@@ -11,7 +11,7 @@
 
 #include <Maia/Renderer/D3D12/Utilities/Shader.hpp>
 
-namespace Mythology::D3D12
+namespace Maia::Mythology::D3D12
 {
 	struct Triangle
 	{
@@ -27,7 +27,7 @@ namespace Mythology::D3D12
 
 		void resize_window(Eigen::Vector2i window_dimensions);
 
-		void render();
+		void render(Render_resources const& render_resources);
 		void present();
 
 	private:

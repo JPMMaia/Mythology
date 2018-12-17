@@ -8,6 +8,7 @@
 
 #include <Maia/GameEngine/Entity_manager.hpp>
 
+#include "Scene.hpp"
 #include "Renderer/D3D12/Renderer.hpp"
 
 using namespace winrt;
@@ -23,9 +24,10 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
 {
 	using clock = std::chrono::steady_clock;
 
-	std::unique_ptr<Mythology::D3D12::Renderer> m_renderer{};
+	std::unique_ptr<Maia::Mythology::D3D12::Renderer> m_renderer{};
 	winrt::agile_ref<CoreWindow> m_window{};
 	Maia::GameEngine::Entity_manager m_entity_manager{};
+	Maia::Mythology::D3D12::Render_resources m_render_resources{};
 
 	IFrameworkView CreateView()
 	{
@@ -38,11 +40,11 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
 
 	void Load(hstring const&)
 	{
-		// TODO create triangle
+		Maia::Mythology::load(m_entity_manager, m_render_resources);
 
 		IUnknown& window = *static_cast<::IUnknown*>(winrt::get_abi(m_window.get()));
 		winrt::Windows::Foundation::Rect const bounds = m_window.get().Bounds();
-		m_renderer = std::make_unique<Mythology::D3D12::Renderer>(
+		m_renderer = std::make_unique<Maia::Mythology::D3D12::Renderer>(
 			window,
 			Eigen::Vector2i{ static_cast<int>(bounds.Width), static_cast<int>(bounds.Height) }
 		);
@@ -122,7 +124,7 @@ private:
 
 	void RenderUpdate(float update_percentage)
 	{
-		m_renderer->render();
+		m_renderer->render(m_render_resources);
 		m_renderer->present();
 	}
 

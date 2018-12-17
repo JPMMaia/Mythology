@@ -9,11 +9,12 @@
 #include <Maia/Renderer/D3D12/Utilities/D3D12_utilities.hpp>
 #include <Maia/Renderer/D3D12/Utilities/Mapped_memory.hpp>
 
+#include "Render_data.hpp"
 #include "Renderer.hpp"
 
 using namespace Maia::Renderer::D3D12;
 
-namespace Mythology::D3D12
+namespace Maia::Mythology::D3D12
 {
 	namespace
 	{
@@ -84,7 +85,7 @@ namespace Mythology::D3D12
 			return pipeline_state;
 		}
 
-		Triangle create_triangle( 
+		Triangle create_triangle(
 			ID3D12Device& device,
 			ID3D12Heap& heap, UINT64 heap_offset,
 			ID3D12GraphicsCommandList& command_list,
@@ -137,30 +138,6 @@ namespace Mythology::D3D12
 
 			return triangle;
 		}
-
-		void submit_resource_barriers(ID3D12GraphicsCommandList& command_list, Triangle const& triangle)
-		{
-			std::array<D3D12_RESOURCE_BARRIER, 2> resource_barriers;
-			{
-				D3D12_RESOURCE_BARRIER& resource_barrier = resource_barriers[0];
-				resource_barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-				resource_barrier.Transition.pResource = triangle.vertex_buffer.get();
-				resource_barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-				resource_barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
-				resource_barrier.Transition.Subresource = 0;
-				resource_barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-			}
-			{
-				D3D12_RESOURCE_BARRIER& resource_barrier = resource_barriers[1];
-				resource_barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-				resource_barrier.Transition.pResource = triangle.index_buffer.get();
-				resource_barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-				resource_barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_INDEX_BUFFER;
-				resource_barrier.Transition.Subresource = 0;
-				resource_barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-			}
-			command_list.ResourceBarrier(static_cast<UINT>(resource_barriers.size()), resource_barriers.data());
-		}
 	}
 
 	Renderer::Renderer(IUnknown& window, Eigen::Vector2i window_dimensions) :
@@ -187,8 +164,6 @@ namespace Mythology::D3D12
 		m_buffers_heap{ create_buffer_heap(*m_device, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT * 2) },
 		m_triangle{ create_triangle(*m_device, *m_buffers_heap, 0, *m_command_list, *m_upload_buffer, 0) }
 	{
-		submit_resource_barriers(*m_command_list, m_triangle);
-
 		winrt::check_hresult(
 			m_command_list->Close());
 
@@ -237,7 +212,7 @@ namespace Mythology::D3D12
 		m_scissor_rect.bottom = window_dimensions(1);
 	}
 
-	void Renderer::render()
+	void Renderer::render(Render_resources const&)
 	{
 		{
 			// TODO return to do other cpu work instead of waiting
@@ -295,13 +270,23 @@ namespace Mythology::D3D12
 
 			command_list.SetGraphicsRootSignature(m_root_signature.get());
 
+
+			command_list.IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+			Render_resources render_resources;
 			{
+				Render_primitive render_primitive{};
+
 				{
 					D3D12_VERTEX_BUFFER_VIEW vertex_buffer_view;
 					vertex_buffer_view.BufferLocation = m_triangle.vertex_buffer->GetGPUVirtualAddress();
 					vertex_buffer_view.SizeInBytes = 8 * 4 * 3;
 					vertex_buffer_view.StrideInBytes = 8 * 4;
-					command_list.IASetVertexBuffers(0, 1, &vertex_buffer_view);
+
+					render_primitive.vertex_buffer_views =
+					{
+						vertex_buffer_view
+					};
 				}
 
 				{
@@ -309,13 +294,37 @@ namespace Mythology::D3D12
 					index_buffer_view.BufferLocation = m_triangle.index_buffer->GetGPUVirtualAddress();
 					index_buffer_view.SizeInBytes = 3 * 2;
 					index_buffer_view.Format = DXGI_FORMAT_R16_UINT;
-					command_list.IASetIndexBuffer(&index_buffer_view);
+
+					render_primitive.index_buffer_view = index_buffer_view;
 				}
 
-				command_list.IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-				command_list.DrawIndexedInstanced(3, 1, 0, 0, 0);
+				render_primitive.instances_location = {};
+				render_primitive.index_count = 3;
+				render_primitive.instance_count = 1;
+				render_resources.primitives.emplace_back(std::move(render_primitive));
 			}
+
+			for (const Render_primitive& render_primitive : render_resources.primitives)
+			{
+				command_list.IASetVertexBuffers(
+					0,
+					static_cast<UINT>(render_primitive.vertex_buffer_views.size()),
+					render_primitive.vertex_buffer_views.data()
+				);
+
+				command_list.IASetIndexBuffer(
+					&render_primitive.index_buffer_view
+				);
+
+				command_list.DrawIndexedInstanced(
+					render_primitive.index_count,
+					render_primitive.instance_count,
+					0,
+					0,
+					0
+				);
+			}
+
 
 			{
 				D3D12_RESOURCE_BARRIER resource_barrier;

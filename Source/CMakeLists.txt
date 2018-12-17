@@ -15,6 +15,13 @@ if (MSVC)
 	)
 endif ()
 
+if (WIN32)
+	target_compile_definitions (MaiaMythology
+		PRIVATE
+			NOMINMAX
+	)
+endif ()
+
 target_include_directories (MaiaMythology 
 	PUBLIC
 		$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
@@ -30,8 +37,11 @@ target_link_libraries (MaiaMythology
 target_sources (MaiaMythology 
 	PRIVATE
 		"App.cpp"
+		"Scene.hpp"
+		"Scene.cpp"
 		"Renderer/D3D12/Renderer.hpp"
 		"Renderer/D3D12/Renderer.cpp"
+		"Renderer/D3D12/Render_data.hpp"
 
 		"Renderer/Shaders/Color_vertex_shader.hlsl"
 		"Renderer/Shaders/Color_pixel_shader.hlsl"
