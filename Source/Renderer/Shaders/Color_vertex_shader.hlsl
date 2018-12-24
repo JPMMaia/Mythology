@@ -1,7 +1,11 @@
-struct Vertex_shader_input
+struct Input_position_h
 {
-    float4 positionH : POSITION;
-    float4 color : COLOR;
+	float4 value : POSITION;
+};
+
+struct Input_color
+{
+	float4 value : COLOR;
 };
 
 struct Vertex_shader_output
@@ -10,11 +14,11 @@ struct Vertex_shader_output
     float4 color : COLOR;
 };
 
-Vertex_shader_output main(Vertex_shader_input input)
+Vertex_shader_output main(Input_position_h positionH, Input_color color)
 {
     Vertex_shader_output output;
-    output.positionH = input.positionH;
-    output.color = input.color;
+    output.positionH = positionH.value;
+    output.color = color.value;
 
     return output;
 }

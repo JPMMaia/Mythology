@@ -23,23 +23,18 @@ namespace Maia::Mythology::D3D12
 	{
 	public:
 
-		Renderer(IUnknown& window, Eigen::Vector2i window_dimensions);
+		Renderer(IDXGIFactory6& factory, Render_resources& render_resources, IUnknown& window, Eigen::Vector2i window_dimensions);
 
 		void resize_window(Eigen::Vector2i window_dimensions);
 
-		void render(Render_resources const& render_resources);
+		void render(Scene_resources const& scene_resources);
 		void present();
 
 	private:
 
 		static constexpr std::uint8_t m_pipeline_length{ 3 };
 		static constexpr std::uint8_t m_swap_chain_buffer_count{ 3 };
-		winrt::com_ptr<IDXGIFactory6> m_factory;
-		winrt::com_ptr<IDXGIAdapter> m_adapter;
-		winrt::com_ptr<ID3D12Device5> m_device;
-		winrt::com_ptr<ID3D12CommandQueue> m_direct_command_queue;
-		std::vector<winrt::com_ptr<ID3D12CommandAllocator>> m_command_allocators;
-		winrt::com_ptr<ID3D12GraphicsCommandList> m_command_list;
+		Render_resources& m_render_resources;
 		winrt::com_ptr<ID3D12DescriptorHeap> m_rtv_descriptor_heap;
 		UINT64 m_fence_value;
 		winrt::com_ptr<ID3D12Fence> m_fence;
@@ -52,11 +47,6 @@ namespace Maia::Mythology::D3D12
 		Maia::Renderer::D3D12::Shader m_color_vertex_shader;
 		Maia::Renderer::D3D12::Shader m_color_pixel_shader;
 		winrt::com_ptr<ID3D12PipelineState> m_color_pass_pipeline_state;
-
-		winrt::com_ptr<ID3D12Heap> m_upload_heap;
-		winrt::com_ptr<ID3D12Resource> m_upload_buffer;
-		winrt::com_ptr<ID3D12Heap> m_buffers_heap;
-		Triangle m_triangle;
 
 	};
 }
