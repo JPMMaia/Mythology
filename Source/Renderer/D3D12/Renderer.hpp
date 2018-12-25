@@ -23,9 +23,10 @@ namespace Maia::Mythology::D3D12
 	{
 	public:
 
-		Renderer(IDXGIFactory6& factory, Render_resources& render_resources, IUnknown& window, Eigen::Vector2i window_dimensions);
+		Renderer(IDXGIFactory6& factory, Render_resources& render_resources, Eigen::Vector2i viewport_and_scissor_dimensions);
 
 		void resize_window(Eigen::Vector2i window_dimensions);
+		void resize_viewport_and_scissor_rects(Eigen::Vector2i dimensions);
 
 		void render(Scene_resources const& scene_resources);
 		void present();
@@ -33,7 +34,6 @@ namespace Maia::Mythology::D3D12
 	private:
 
 		static constexpr std::uint8_t m_pipeline_length{ 3 };
-		static constexpr std::uint8_t m_swap_chain_buffer_count{ 3 };
 		Render_resources& m_render_resources;
 		winrt::com_ptr<ID3D12DescriptorHeap> m_rtv_descriptor_heap;
 		UINT64 m_fence_value;

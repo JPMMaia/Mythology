@@ -140,15 +140,14 @@ namespace Maia::Mythology::D3D12
 		}
 	}
 
-	Renderer::Renderer(IDXGIFactory6& factory, Render_resources& render_resources, IUnknown& window, Eigen::Vector2i window_dimensions) :
+	Renderer::Renderer(IDXGIFactory6& factory, Render_resources& render_resources, Eigen::Vector2i viewport_and_scissor_dimensions) :
 		m_render_resources{ render_resources },
 		m_rtv_descriptor_heap{ create_descriptor_heap(*render_resources.device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, static_cast<UINT>(m_pipeline_length), D3D12_DESCRIPTOR_HEAP_FLAG_NONE, 0) },
 		m_fence_value{ 0 },
 		m_fence{ create_fence(*render_resources.device, m_fence_value, D3D12_FENCE_FLAG_NONE) },
 		m_fence_event{ ::CreateEvent(nullptr, false, false, nullptr) },
-		m_swap_chain{ create_swap_chain_and_rtvs(factory, *render_resources.direct_command_queue, window, m_swap_chain_buffer_count, *m_render_resources.device, m_rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart()) },
-		m_viewport{ 0.0f, 0.0f, static_cast<FLOAT>(window_dimensions(0)), static_cast<FLOAT>(window_dimensions(1)), D3D12_MIN_DEPTH, D3D12_MAX_DEPTH },
-		m_scissor_rect{ 0, 0, window_dimensions(0), window_dimensions(1) },
+		m_viewport{ 0.0f, 0.0f, static_cast<FLOAT>(viewport_and_scissor_dimensions(0)), static_cast<FLOAT>(viewport_and_scissor_dimensions(1)), D3D12_MIN_DEPTH, D3D12_MAX_DEPTH },
+		m_scissor_rect{ 0, 0, viewport_and_scissor_dimensions(0), viewport_and_scissor_dimensions(1) },
 		m_submitted_frames{ m_pipeline_length },
 		m_root_signature{ create_root_signature(*m_render_resources.device, {}, {}, 0) },
 		m_color_vertex_shader{ "Resources/Shaders/Color_vertex_shader.csv" },
@@ -200,7 +199,10 @@ namespace Maia::Mythology::D3D12
 			*m_render_resources.device,
 			m_rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart()
 		);
+	}
 
+	void Renderer::resize_viewport_and_scissor_rects(Eigen::Vector2i window_dimensions)
+	{
 		m_viewport.Width = static_cast<FLOAT>(window_dimensions(0));
 		m_viewport.Height = static_cast<FLOAT>(window_dimensions(1));
 		m_scissor_rect.right = window_dimensions(0);

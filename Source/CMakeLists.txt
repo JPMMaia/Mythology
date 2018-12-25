@@ -43,6 +43,8 @@ target_sources (MaiaMythology
 		"Renderer/D3D12/Renderer.cpp"
 		"Renderer/D3D12/Render_data.hpp"
 		"Renderer/D3D12/Render_data.cpp"
+		"Renderer/D3D12/Window_swap_chain.hpp"
+		"Renderer/D3D12/Window_swap_chain.cpp"
 
 		"Renderer/Shaders/Color_vertex_shader.hlsl"
 		"Renderer/Shaders/Color_pixel_shader.hlsl"
