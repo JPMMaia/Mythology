@@ -13,38 +13,25 @@
 
 namespace Maia::Mythology::D3D12
 {
-	struct Triangle
-	{
-		winrt::com_ptr<ID3D12Resource> vertex_buffer;
-		winrt::com_ptr<ID3D12Resource> index_buffer;
-	};
-
 	class Renderer
 	{
 	public:
 
-		Renderer(IUnknown& window, Eigen::Vector2i window_dimensions);
+		Renderer(IDXGIFactory6& factory, Render_resources& render_resources, Eigen::Vector2i viewport_and_scissor_dimensions, std::uint8_t pipeline_length);
 
-		void resize_window(Eigen::Vector2i window_dimensions);
+		void resize_viewport_and_scissor_rects(Eigen::Vector2i dimensions);
 
-		void render(Render_resources const& render_resources);
-		void present();
+		void wait();
+
+		void render(ID3D12Resource& render_target, D3D12_CPU_DESCRIPTOR_HANDLE render_target_descriptor_handle, Scene_resources const& scene_resources);
 
 	private:
 
-		static constexpr std::uint8_t m_pipeline_length{ 3 };
-		static constexpr std::uint8_t m_swap_chain_buffer_count{ 3 };
-		winrt::com_ptr<IDXGIFactory6> m_factory;
-		winrt::com_ptr<IDXGIAdapter> m_adapter;
-		winrt::com_ptr<ID3D12Device5> m_device;
-		winrt::com_ptr<ID3D12CommandQueue> m_direct_command_queue;
-		std::vector<winrt::com_ptr<ID3D12CommandAllocator>> m_command_allocators;
-		winrt::com_ptr<ID3D12GraphicsCommandList> m_command_list;
-		winrt::com_ptr<ID3D12DescriptorHeap> m_rtv_descriptor_heap;
+		std::uint8_t m_pipeline_length;
+		Render_resources& m_render_resources;
 		UINT64 m_fence_value;
 		winrt::com_ptr<ID3D12Fence> m_fence;
 		winrt::handle m_fence_event;
-		winrt::com_ptr<IDXGISwapChain4> m_swap_chain;
 		D3D12_VIEWPORT m_viewport;
 		D3D12_RECT m_scissor_rect;
 		std::size_t m_submitted_frames;
@@ -52,11 +39,6 @@ namespace Maia::Mythology::D3D12
 		Maia::Renderer::D3D12::Shader m_color_vertex_shader;
 		Maia::Renderer::D3D12::Shader m_color_pixel_shader;
 		winrt::com_ptr<ID3D12PipelineState> m_color_pass_pipeline_state;
-
-		winrt::com_ptr<ID3D12Heap> m_upload_heap;
-		winrt::com_ptr<ID3D12Resource> m_upload_buffer;
-		winrt::com_ptr<ID3D12Heap> m_buffers_heap;
-		Triangle m_triangle;
 
 	};
 }

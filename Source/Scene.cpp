@@ -72,7 +72,7 @@ namespace Maia::Mythology
 		{
 			using namespace Maia::Renderer::D3D12;
 
-			Mapped_memory mapped_memory{ *buffer.value, 0, {} };
+			Mapped_memory mapped_memory{ upload_buffer, 0, {} };
 			UINT64 offset = 0;
 
 			{
@@ -100,7 +100,7 @@ namespace Maia::Mythology
 			}
 
 			{
-				gsl::span<decltype(mesh.indices)::value_type> const indices{ mesh.indices };
+				gsl::span<decltype(mesh.indices)::value_type const> const indices{ mesh.indices };
 				upload_buffer_data(
 					mapped_memory,
 					command_list,
@@ -115,18 +115,22 @@ namespace Maia::Mythology
 		void upload_instances_data(D3D12::Geometry_and_instances_buffer& buffer)
 		{
 		}
+
+
 	}
 
-	void load(Maia::GameEngine::Entity_manager& entity_manager, Maia::Mythology::D3D12::Render_resources& render_resources)
+	Maia::Mythology::D3D12::Scene_resources load(Maia::GameEngine::Entity_manager& entity_manager, Maia::Mythology::D3D12::Render_resources const& render_resources)
 	{
-		ID3D12Device& device;
-		ID3D12Heap& heap;
-		UINT64 heap_offset = 0;
-		ID3D12Resource& upload_buffer;
-		UINT64 upload_buffer_offset;
-		ID3D12GraphicsCommandList& command_list;
+		ID3D12Device& device = *render_resources.device;
+		ID3D12Heap& heap = *render_resources.buffers_heap;
+		UINT64 heap_offset = render_resources.buffers_heap_offset;
+		ID3D12Resource& upload_buffer = *render_resources.upload_buffer;
+		UINT64 upload_buffer_offset = render_resources.upload_buffer_offset;
+		ID3D12GraphicsCommandList& command_list = *render_resources.command_list;
 
 		using namespace Maia::Renderer::D3D12;
+
+		Maia::Mythology::D3D12::Scene_resources scene_resources;
 
 		{
 			Colored_mesh const mesh = create_triangle_mesh();
@@ -151,6 +155,73 @@ namespace Maia::Mythology
 			upload_geometry_data(mesh, geometry_and_instances_buffer, device, upload_buffer, upload_buffer_offset, command_list);
 
 			heap_offset += total_buffer_width;
+
+			{
+				Maia::Mythology::D3D12::Render_primitive render_primitive{};
+
+				UINT64 offset{ 0 };
+
+				{
+					D3D12_VERTEX_BUFFER_VIEW const position_buffer_view = [&]() -> D3D12_VERTEX_BUFFER_VIEW
+					{
+						D3D12_VERTEX_BUFFER_VIEW buffer_view;
+						buffer_view.BufferLocation = geometry_and_instances_buffer.value->GetGPUVirtualAddress() + offset;
+
+						using data_type = decltype(mesh.vertices.positions)::value_type;
+						gsl::span<data_type const> const data_view = mesh.vertices.positions;
+						buffer_view.SizeInBytes = static_cast<UINT>(data_view.size_bytes());
+						buffer_view.StrideInBytes = sizeof(data_type);
+
+						offset += data_view.size_bytes();
+
+						return buffer_view;
+					}();
+
+					D3D12_VERTEX_BUFFER_VIEW const color_buffer_view = [&]() -> D3D12_VERTEX_BUFFER_VIEW
+					{
+						D3D12_VERTEX_BUFFER_VIEW buffer_view;
+						buffer_view.BufferLocation = geometry_and_instances_buffer.value->GetGPUVirtualAddress() + offset;
+						
+						using data_type = decltype(mesh.vertices.colors)::value_type;
+						gsl::span<data_type const> const data_view = mesh.vertices.colors;
+						buffer_view.SizeInBytes = static_cast<UINT>(data_view.size_bytes());
+						buffer_view.StrideInBytes = sizeof(data_type);
+
+						offset += data_view.size_bytes();
+
+						return buffer_view;
+					}();
+
+					render_primitive.vertex_buffer_views =
+					{
+						position_buffer_view,
+						color_buffer_view
+					};
+				}
+
+				{
+					D3D12_INDEX_BUFFER_VIEW index_buffer_view;
+					index_buffer_view.BufferLocation = geometry_and_instances_buffer.value->GetGPUVirtualAddress() + offset;
+					
+					using data_type = decltype(mesh.indices)::value_type;
+					gsl::span<data_type const> const data_view = mesh.indices;
+					index_buffer_view.SizeInBytes = static_cast<UINT>(data_view.size_bytes());
+					index_buffer_view.Format = DXGI_FORMAT_R16_UINT;
+
+					render_primitive.index_buffer_view = index_buffer_view;
+				}
+
+				render_primitive.instances_location = {};
+				render_primitive.index_count = 3;
+				render_primitive.instance_count = 1;
+				scene_resources.primitives.emplace_back(std::move(render_primitive));
+			}
+
+			scene_resources.geometry_and_instances_buffers.emplace_back(
+				std::move(geometry_and_instances_buffer)
+			);
 		}
+
+		return scene_resources;
 	}
 }

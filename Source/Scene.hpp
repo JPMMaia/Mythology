@@ -7,7 +7,7 @@
 
 namespace Maia::Mythology
 {
-	void load(Maia::GameEngine::Entity_manager& entity_manager, Maia::Mythology::D3D12::Render_resources& render_resources);
+	Maia::Mythology::D3D12::Scene_resources load(Maia::GameEngine::Entity_manager& entity_manager, Maia::Mythology::D3D12::Render_resources const& render_resources);
 }
 
 #endif
