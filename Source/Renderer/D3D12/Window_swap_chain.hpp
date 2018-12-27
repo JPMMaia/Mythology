@@ -21,7 +21,23 @@ namespace Maia::Mythology::D3D12
 			D3D12_CPU_DESCRIPTOR_HANDLE destination_descriptor
 		);
 
-		void resize(Eigen::Vector2i window_dimensions);
+		void resize(
+			ID3D12CommandQueue& direct_command_queue, 
+			Eigen::Vector2i window_dimensions, 
+			ID3D12Device& device, 
+			D3D12_CPU_DESCRIPTOR_HANDLE destination_descriptor
+		);
+
+		void present();
+
+		IDXGISwapChain4& get()
+		{
+			return *m_swap_chain.get();
+		}
+		IDXGISwapChain4 const& get() const
+		{
+			return *m_swap_chain.get();
+		}
 
 	private:
 

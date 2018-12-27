@@ -84,65 +84,11 @@ namespace Maia::Mythology::D3D12
 				device.CreateGraphicsPipelineState(&description, __uuidof(pipeline_state), pipeline_state.put_void()));
 			return pipeline_state;
 		}
-
-		Triangle create_triangle(
-			ID3D12Device& device,
-			ID3D12Heap& heap, UINT64 heap_offset,
-			ID3D12GraphicsCommandList& command_list,
-			ID3D12Resource& upload_buffer,
-			UINT64 upload_buffer_offset
-		)
-		{
-			struct Vertex
-			{
-				Eigen::Vector4f positionH;
-				Eigen::Vector4f color;
-			};
-
-			std::array<Vertex, 3> vertices
-			{
-				Vertex
-				{ { -1.0f, -1.0f, 0.5f, 1.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
-				{ { 1.0f, -1.0f, 0.5f, 1.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } },
-				{ { 0.0f, 1.0f, 0.5f, 1.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } },
-			};
-
-			std::array<std::uint16_t, 3> indices
-			{
-				0, 1, 2
-			};
-
-			Triangle triangle;
-
-			UINT64 const vertex_buffer_width = vertices.size() * sizeof(decltype(vertices)::value_type);
-			triangle.vertex_buffer =
-				create_buffer(
-					device,
-					heap,
-					heap_offset,
-					vertex_buffer_width,
-					D3D12_RESOURCE_STATE_COPY_DEST
-				);
-
-			triangle.index_buffer =
-				create_buffer(
-					device,
-					heap,
-					heap_offset + D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
-					indices.size() * sizeof(decltype(indices)::value_type),
-					D3D12_RESOURCE_STATE_COPY_DEST
-				);
-
-			upload_buffer_data<Vertex>(command_list, *triangle.vertex_buffer, 0, upload_buffer, upload_buffer_offset, vertices);
-			upload_buffer_data<std::uint16_t>(command_list, *triangle.index_buffer, 0, upload_buffer, upload_buffer_offset + vertex_buffer_width, indices);
-
-			return triangle;
-		}
 	}
 
-	Renderer::Renderer(IDXGIFactory6& factory, Render_resources& render_resources, Eigen::Vector2i viewport_and_scissor_dimensions) :
+	Renderer::Renderer(IDXGIFactory6& factory, Render_resources& render_resources, Eigen::Vector2i viewport_and_scissor_dimensions, std::uint8_t pipeline_length) :
+		m_pipeline_length{ pipeline_length },
 		m_render_resources{ render_resources },
-		m_rtv_descriptor_heap{ create_descriptor_heap(*render_resources.device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, static_cast<UINT>(m_pipeline_length), D3D12_DESCRIPTOR_HEAP_FLAG_NONE, 0) },
 		m_fence_value{ 0 },
 		m_fence{ create_fence(*render_resources.device, m_fence_value, D3D12_FENCE_FLAG_NONE) },
 		m_fence_event{ ::CreateEvent(nullptr, false, false, nullptr) },
@@ -176,29 +122,12 @@ namespace Maia::Mythology::D3D12
 		}
 	}
 
-	void Renderer::resize_window(Eigen::Vector2i window_dimensions)
+	void Renderer::wait()
 	{
 		ID3D12CommandQueue& command_queue = *m_render_resources.direct_command_queue;
 
-		{
-			UINT64 const event_value_to_signal_and_wait = m_submitted_frames + m_pipeline_length;
-			signal_and_wait(command_queue, *m_fence, m_fence_event.get(), event_value_to_signal_and_wait, INFINITE);
-		}
-
-		std::array<UINT, m_swap_chain_buffer_count> create_node_masks;
-		std::fill(create_node_masks.begin(), create_node_masks.end(), 1);
-
-		std::array<IUnknown*, m_swap_chain_buffer_count> command_queues;
-		std::fill(command_queues.begin(), command_queues.end(), &command_queue);
-
-		resize_swap_chain_buffers_and_recreate_rtvs(
-			*m_swap_chain,
-			create_node_masks,
-			command_queues,
-			window_dimensions,
-			*m_render_resources.device,
-			m_rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart()
-		);
+		UINT64 const event_value_to_signal_and_wait = m_submitted_frames + m_pipeline_length;
+		signal_and_wait(command_queue, *m_fence, m_fence_event.get(), event_value_to_signal_and_wait, INFINITE);
 	}
 
 	void Renderer::resize_viewport_and_scissor_rects(Eigen::Vector2i window_dimensions)
@@ -209,7 +138,11 @@ namespace Maia::Mythology::D3D12
 		m_scissor_rect.bottom = window_dimensions(1);
 	}
 
-	void Renderer::render(Scene_resources const& scene_resources)
+	void Renderer::render(
+		ID3D12Resource& render_target, 
+		D3D12_CPU_DESCRIPTOR_HANDLE render_target_descriptor_handle, 
+		Scene_resources const& scene_resources
+	)
 	{
 		ID3D12Device& device = *m_render_resources.device;
 		ID3D12CommandQueue& command_queue = *m_render_resources.direct_command_queue;
@@ -218,16 +151,10 @@ namespace Maia::Mythology::D3D12
 			// TODO return to do other cpu work instead of waiting
 
 			UINT64 const event_value_to_wait = m_submitted_frames - m_pipeline_length;
-			wait(command_queue, *m_fence, m_fence_event.get(), event_value_to_wait, INFINITE);
+			Maia::Renderer::D3D12::wait(command_queue, *m_fence, m_fence_event.get(), event_value_to_wait, INFINITE);
 		}
 
 		{
-			UINT const back_buffer_index = m_swap_chain->GetCurrentBackBufferIndex();
-
-			winrt::com_ptr<ID3D12Resource> back_buffer;
-			winrt::check_hresult(
-				m_swap_chain->GetBuffer(back_buffer_index, __uuidof(back_buffer), back_buffer.put_void()));
-
 			std::uint8_t current_frame_index{ m_submitted_frames % m_pipeline_length };
 			ID3D12CommandAllocator& command_allocator = *m_render_resources.command_allocators[current_frame_index];
 			ID3D12GraphicsCommandList& command_list = *m_render_resources.command_list;
@@ -244,7 +171,7 @@ namespace Maia::Mythology::D3D12
 			{
 				D3D12_RESOURCE_BARRIER resource_barrier;
 				resource_barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-				resource_barrier.Transition.pResource = back_buffer.get();
+				resource_barrier.Transition.pResource = &render_target;
 				resource_barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
 				resource_barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 				resource_barrier.Transition.Subresource = 0;
@@ -253,19 +180,10 @@ namespace Maia::Mythology::D3D12
 			}
 
 			{
-				UINT const descriptor_handle_increment_size =
-					device.GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-
-				D3D12_CPU_DESCRIPTOR_HANDLE const render_target_descriptor
-				{
-					m_rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart().ptr
-						+ descriptor_handle_increment_size * back_buffer_index
-				};
-
-				command_list.OMSetRenderTargets(1, &render_target_descriptor, true, nullptr);
+				command_list.OMSetRenderTargets(1, &render_target_descriptor_handle, true, nullptr);
 
 				std::array<FLOAT, 4> clear_color{ 0.0f, 0.0f, 1.0f, 1.0f };
-				command_list.ClearRenderTargetView(render_target_descriptor, clear_color.data(), 0, nullptr);
+				command_list.ClearRenderTargetView(render_target_descriptor_handle, clear_color.data(), 0, nullptr);
 			}
 
 			command_list.SetGraphicsRootSignature(m_root_signature.get());
@@ -298,7 +216,7 @@ namespace Maia::Mythology::D3D12
 			{
 				D3D12_RESOURCE_BARRIER resource_barrier;
 				resource_barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-				resource_barrier.Transition.pResource = back_buffer.get();
+				resource_barrier.Transition.pResource = &render_target;
 				resource_barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 				resource_barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
 				resource_barrier.Transition.Subresource = 0;
@@ -324,11 +242,5 @@ namespace Maia::Mythology::D3D12
 			command_queue.Signal(m_fence.get(), frame_finished_value);
 			++m_submitted_frames;
 		}
-	}
-
-	void Renderer::present()
-	{
-		winrt::check_hresult(
-			m_swap_chain->Present(1, 0));
 	}
 }

@@ -47,6 +47,14 @@ namespace Maia::Mythology::D3D12
 		Render_resources(IDXGIAdapter4& adapter, std::uint8_t pipeline_length);
 	};
 
+	struct Frames_resources
+	{
+		winrt::com_ptr<ID3D12DescriptorHeap> rtv_descriptor_heap;
+
+
+		Frames_resources(ID3D12Device& device, UINT pipeline_length);
+	};
+
 	struct Scene_resources
 	{
 		std::vector<Geometry_and_instances_buffer> geometry_and_instances_buffers;

@@ -32,4 +32,10 @@ namespace Maia::Mythology::D3D12
 			destination_descriptor
 		);
 	}
+
+	void Window_swap_chain::present()
+	{
+		winrt::check_hresult(
+			m_swap_chain->Present(1, 0));
+	}
 }

@@ -13,33 +13,25 @@
 
 namespace Maia::Mythology::D3D12
 {
-	struct Triangle
-	{
-		winrt::com_ptr<ID3D12Resource> vertex_buffer;
-		winrt::com_ptr<ID3D12Resource> index_buffer;
-	};
-
 	class Renderer
 	{
 	public:
 
-		Renderer(IDXGIFactory6& factory, Render_resources& render_resources, Eigen::Vector2i viewport_and_scissor_dimensions);
+		Renderer(IDXGIFactory6& factory, Render_resources& render_resources, Eigen::Vector2i viewport_and_scissor_dimensions, std::uint8_t pipeline_length);
 
-		void resize_window(Eigen::Vector2i window_dimensions);
 		void resize_viewport_and_scissor_rects(Eigen::Vector2i dimensions);
 
-		void render(Scene_resources const& scene_resources);
-		void present();
+		void wait();
+
+		void render(ID3D12Resource& render_target, D3D12_CPU_DESCRIPTOR_HANDLE render_target_descriptor_handle, Scene_resources const& scene_resources);
 
 	private:
 
-		static constexpr std::uint8_t m_pipeline_length{ 3 };
+		std::uint8_t m_pipeline_length;
 		Render_resources& m_render_resources;
-		winrt::com_ptr<ID3D12DescriptorHeap> m_rtv_descriptor_heap;
 		UINT64 m_fence_value;
 		winrt::com_ptr<ID3D12Fence> m_fence;
 		winrt::handle m_fence_event;
-		winrt::com_ptr<IDXGISwapChain4> m_swap_chain;
 		D3D12_VIEWPORT m_viewport;
 		D3D12_RECT m_scissor_rect;
 		std::size_t m_submitted_frames;
