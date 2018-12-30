@@ -89,6 +89,14 @@ namespace Maia::Mythology::D3D12
 				device.CreateGraphicsPipelineState(&description, __uuidof(pipeline_state), pipeline_state.put_void()));
 			return pipeline_state;
 		}
+
+		winrt::com_ptr<ID3D12RootSignature> create_color_pass_root_signature(ID3D12Device5& device)
+		{
+			std::array<CD3DX12_ROOT_PARAMETER1, 1> root_parameters;
+			root_parameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC, D3D12_SHADER_VISIBILITY_ALL);
+
+			return create_root_signature(device, root_parameters, {}, 0);
+		}
 	}
 
 	Renderer::Renderer(IDXGIFactory6& factory, Render_resources& render_resources, Eigen::Vector2i viewport_and_scissor_dimensions, std::uint8_t pipeline_length) :
@@ -100,7 +108,7 @@ namespace Maia::Mythology::D3D12
 		m_viewport{ 0.0f, 0.0f, static_cast<FLOAT>(viewport_and_scissor_dimensions(0)), static_cast<FLOAT>(viewport_and_scissor_dimensions(1)), D3D12_MIN_DEPTH, D3D12_MAX_DEPTH },
 		m_scissor_rect{ 0, 0, viewport_and_scissor_dimensions(0), viewport_and_scissor_dimensions(1) },
 		m_submitted_frames{ m_pipeline_length },
-		m_root_signature{ create_root_signature(*m_render_resources.device, {}, {}, 0) },
+		m_root_signature{ create_color_pass_root_signature(*m_render_resources.device) },
 		m_color_vertex_shader{ "Resources/Shaders/Color_vertex_shader.csv" },
 		m_color_pixel_shader{ "Resources/Shaders/Color_pixel_shader.csv" },
 		m_color_pass_pipeline_state{ create_color_pass_pipeline_state(*m_render_resources.device, *m_root_signature, m_color_vertex_shader.bytecode(), m_color_pixel_shader.bytecode()) }
@@ -193,6 +201,8 @@ namespace Maia::Mythology::D3D12
 
 			command_list.SetGraphicsRootSignature(m_root_signature.get());
 
+
+			command_list.SetGraphicsRootConstantBufferView(0, scene_resources.constant_buffers[0]->GetGPUVirtualAddress());
 
 			command_list.IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 

@@ -6,6 +6,7 @@
 
 #include <winrt/base.h>
 
+#include <Maia/Renderer/Matrices.hpp>
 #include <Maia/Renderer/D3D12/Utilities/D3D12_utilities.hpp>
 
 #include "Scene.hpp"
@@ -39,6 +40,12 @@ namespace Maia::Mythology
 		Eigen::Matrix4f world_matrix;
 	};
 
+	struct Pass_data
+	{
+		Eigen::Matrix4f view_matrix;
+		Eigen::Matrix4f projection_matrix;
+	};
+
 	namespace
 	{
 		Colored_mesh create_triangle_mesh()
@@ -46,9 +53,9 @@ namespace Maia::Mythology
 			std::vector<Position> vertices_positions
 			{
 				Position
-				{ { -1.0f, -1.0f, 0.5f, 1.0f } },
-				{ { 1.0f, -1.0f, 0.5f, 1.0f } },
-				{ { 0.0f, 1.0f, 0.5f, 1.0f } },
+				{ { -1.0f, 1.0f, 0.5f, 1.0f } },
+				{ { 1.0f, 1.0f, 0.5f, 1.0f } },
+				{ { 0.0f, -1.0f, 0.5f, 1.0f } },
 			};
 
 			std::vector<Color> vertices_colors
@@ -68,7 +75,7 @@ namespace Maia::Mythology
 		}
 
 		void upload_geometry_data(
-			Colored_mesh const& mesh, 
+			Colored_mesh const& mesh,
 			D3D12::Geometry_and_instances_buffer& buffer, UINT64 const base_buffer_offset,
 			ID3D12Resource& upload_buffer, UINT64 const upload_buffer_offset, // TODO create a struct for both
 			ID3D12GraphicsCommandList& command_list
@@ -143,13 +150,24 @@ namespace Maia::Mythology
 				0.0f, 0.0f, 0.0f, 1.0f;
 			return { { world_matrix } };
 		}
+
+		Eigen::Matrix4f create_api_specific_matrix()
+		{
+			Eigen::Matrix4f value;
+			value <<
+				1.0f, 0.0f, 0.0f, 0.0f,
+				0.0f, -1.0f, 0.0f, 0.0f,
+				0.0f, 0.0f, 1.0f, 0.0f,
+				0.0f, 0.0f, 0.0f, 1.0f;
+			return value;
+		}
 	}
 
 	Maia::Mythology::D3D12::Scene_resources load(Maia::GameEngine::Entity_manager& entity_manager, Maia::Mythology::D3D12::Render_resources const& render_resources)
 	{
 		ID3D12Device& device = *render_resources.device;
 		ID3D12Heap& heap = *render_resources.buffers_heap;
-		UINT64 heap_offset = render_resources.buffers_heap_offset;
+		UINT64 const heap_offset = render_resources.buffers_heap_offset;
 		ID3D12Resource& upload_buffer = *render_resources.upload_buffer;
 		UINT64 const upload_buffer_offset = render_resources.upload_buffer_offset;
 		ID3D12GraphicsCommandList& command_list = *render_resources.command_list;
@@ -170,7 +188,7 @@ namespace Maia::Mythology
 			UINT64 const instances_data_size_bytes = sizeof(Instance_data) * instances.size();
 			UINT64 const total_buffer_width = geometry_buffer_width + instances_data_size_bytes;
 
-			D3D12::Geometry_and_instances_buffer geometry_and_instances_buffer = 
+			D3D12::Geometry_and_instances_buffer geometry_and_instances_buffer =
 			{
 				create_buffer(
 					device,
@@ -207,7 +225,7 @@ namespace Maia::Mythology
 						D3D12_VERTEX_BUFFER_VIEW buffer_view;
 						buffer_view.BufferLocation = geometry_and_instances_buffer.value->GetGPUVirtualAddress() +
 							positions_size_bytes;
-						
+
 						using data_type = decltype(mesh.vertices.colors)::value_type;
 						gsl::span<data_type const> const data_view = mesh.vertices.colors;
 						buffer_view.SizeInBytes = static_cast<UINT>(data_view.size_bytes());
@@ -219,7 +237,7 @@ namespace Maia::Mythology
 					D3D12_VERTEX_BUFFER_VIEW const instance_buffer_view = [&]() -> D3D12_VERTEX_BUFFER_VIEW
 					{
 						D3D12_VERTEX_BUFFER_VIEW buffer_view;
-						buffer_view.BufferLocation = geometry_and_instances_buffer.value->GetGPUVirtualAddress() + 
+						buffer_view.BufferLocation = geometry_and_instances_buffer.value->GetGPUVirtualAddress() +
 							geometry_buffer_width;
 
 						using data_type = Instance_data;
@@ -242,7 +260,7 @@ namespace Maia::Mythology
 					D3D12_INDEX_BUFFER_VIEW index_buffer_view;
 					index_buffer_view.BufferLocation = geometry_and_instances_buffer.value->GetGPUVirtualAddress() +
 						positions_size_bytes + color_size_bytes;
-					
+
 					using data_type = decltype(mesh.indices)::value_type;
 					gsl::span<data_type const> const data_view = mesh.indices;
 					index_buffer_view.SizeInBytes = static_cast<UINT>(data_view.size_bytes());
@@ -259,6 +277,27 @@ namespace Maia::Mythology
 
 			scene_resources.geometry_and_instances_buffers.emplace_back(
 				std::move(geometry_and_instances_buffer)
+			);
+		}
+
+		{
+			winrt::com_ptr<ID3D12Resource> constant_buffer = create_buffer(
+				device,
+				heap, heap_offset + D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
+				sizeof(Pass_data),
+				D3D12_RESOURCE_STATE_COPY_DEST
+			);
+
+			Pass_data pass_data;
+			pass_data.view_matrix = Maia::Renderer::create_view_matrix({ 0.0f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f, 0.0f });
+			pass_data.projection_matrix = 
+				create_api_specific_matrix() *
+				Maia::Renderer::create_orthographic_projection_matrix({ 4.0f, 4.0f, 1.0f });
+
+			upload_buffer_data<Pass_data>(command_list, *constant_buffer, 0, upload_buffer, upload_buffer_offset + 1024, { &pass_data, 1 });
+
+			scene_resources.constant_buffers.emplace_back(
+				std::move(constant_buffer)
 			);
 		}
 
