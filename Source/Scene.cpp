@@ -9,6 +9,7 @@
 #include <Maia/Renderer/Matrices.hpp>
 #include <Maia/Renderer/D3D12/Utilities/D3D12_utilities.hpp>
 
+#include "Renderer/Pass_data.hpp"
 #include "Scene.hpp"
 
 namespace Maia::Mythology
@@ -38,12 +39,6 @@ namespace Maia::Mythology
 	struct Instance_data
 	{
 		Eigen::Matrix4f world_matrix;
-	};
-
-	struct Pass_data
-	{
-		Eigen::Matrix4f view_matrix;
-		Eigen::Matrix4f projection_matrix;
 	};
 
 	namespace
@@ -149,17 +144,6 @@ namespace Maia::Mythology
 				0.0f, 0.0f, 1.0f, 0.0f,
 				0.0f, 0.0f, 0.0f, 1.0f;
 			return { { world_matrix } };
-		}
-
-		Eigen::Matrix4f create_api_specific_matrix()
-		{
-			Eigen::Matrix4f value;
-			value <<
-				1.0f, 0.0f, 0.0f, 0.0f,
-				0.0f, -1.0f, 0.0f, 0.0f,
-				0.0f, 0.0f, 1.0f, 0.0f,
-				0.0f, 0.0f, 0.0f, 1.0f;
-			return value;
 		}
 	}
 
@@ -269,9 +253,8 @@ namespace Maia::Mythology
 					render_primitive.index_buffer_view = index_buffer_view;
 				}
 
-				render_primitive.instances_location = {};
-				render_primitive.index_count = 3;
-				render_primitive.instance_count = 1;
+				render_primitive.index_count = mesh.indices.size();
+				render_primitive.instance_count = instances.size();
 				scene_resources.primitives.emplace_back(std::move(render_primitive));
 			}
 
@@ -288,17 +271,11 @@ namespace Maia::Mythology
 				D3D12_RESOURCE_STATE_COPY_DEST
 			);
 
-			Pass_data pass_data;
-			pass_data.view_matrix = Maia::Renderer::create_view_matrix({ 0.0f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f, 0.0f });
-			pass_data.projection_matrix = 
-				create_api_specific_matrix() *
-				Maia::Renderer::create_orthographic_projection_matrix({ 4.0f, 4.0f, 1.0f });
-
-			upload_buffer_data<Pass_data>(command_list, *constant_buffer, 0, upload_buffer, upload_buffer_offset + 1024, { &pass_data, 1 });
-
 			scene_resources.constant_buffers.emplace_back(
 				std::move(constant_buffer)
 			);
+
+			scene_resources.camera = { {{ 0.0f, 0.0f, 0.0f }}, {}, EIGEN_PI / 4.0f, 2.0f, { 1.0f, 21.0f } };
 		}
 
 		return scene_resources;
