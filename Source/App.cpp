@@ -11,6 +11,7 @@
 #include <Maia/Renderer/D3D12/Utilities/D3D12_utilities.hpp>
 
 #include "Scene.hpp"
+#include "Input_system.hpp"
 #include "Renderer/D3D12/Renderer.hpp"
 #include "Renderer/D3D12/Window_swap_chain.hpp"
 
@@ -27,14 +28,15 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
 {
 	using clock = std::chrono::steady_clock;
 
+	winrt::agile_ref<CoreWindow> m_window{};
+	Maia::GameEngine::Entity_manager m_entity_manager{};
+	Maia::Mythology::Input::Input_state m_input_state{};
+
 	std::unique_ptr<Maia::Mythology::D3D12::Render_resources> m_render_resources{};
 	Maia::Mythology::D3D12::Scene_resources m_scene_resources{};
 	std::unique_ptr<Maia::Mythology::D3D12::Renderer> m_renderer{};
 	std::unique_ptr<Maia::Mythology::D3D12::Window_swap_chain> m_window_swap_chain{};
 	std::unique_ptr<Maia::Mythology::D3D12::Frames_resources> m_frames_resources{};
-
-	winrt::agile_ref<CoreWindow> m_window{};
-	Maia::GameEngine::Entity_manager m_entity_manager{};
 
 	IFrameworkView CreateView()
 	{
@@ -111,6 +113,7 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
 
 			CoreDispatcher dispatcher = window.Dispatcher();
 			dispatcher.ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
+			ProcessInput();
 
 
 			while (lag >= fixed_update_duration)
@@ -125,9 +128,12 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
 
 	void SetWindow(CoreWindow window)
 	{
+		window.KeyDown({ this, &App::OnKeyDown });
+		window.KeyUp({ this, &App::OnKeyUp });
+
 		window.PointerPressed({ this, &App::OnPointerPressed });
 		window.PointerMoved({ this, &App::OnPointerMoved });
-
+		
 		window.PointerReleased([&](auto && ...)
 		{
 		});
@@ -150,6 +156,16 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
 		m_window = window;
 	}
 
+	void OnKeyDown(CoreWindow const &, KeyEventArgs const & args)
+	{
+		Maia::Mythology::Input::set(m_input_state, { args.VirtualKey() }, true);
+	}
+	
+	void OnKeyUp(CoreWindow const &, KeyEventArgs const & args)
+	{
+		Maia::Mythology::Input::set(m_input_state, { args.VirtualKey() }, false);
+	}
+
 	void OnPointerPressed(IInspectable const &, PointerEventArgs const & args)
 	{
 	}
@@ -159,6 +175,11 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
 	}
 
 private:
+
+	void ProcessInput()
+	{
+		Maia::Mythology::Input::update(m_input_state);
+	}
 
 	void FixedUpdate(clock::duration delta_time)
 	{
