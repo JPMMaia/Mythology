@@ -6,8 +6,11 @@
 
 #include <d3dx12.h>
 
+#include <Maia/Renderer/Matrices.hpp>
 #include <Maia/Renderer/D3D12/Utilities/D3D12_utilities.hpp>
 #include <Maia/Renderer/D3D12/Utilities/Mapped_memory.hpp>
+
+#include <Renderer/Pass_data.hpp>
 
 #include "Render_data.hpp"
 #include "Renderer.hpp"
@@ -60,11 +63,16 @@ namespace Maia::Mythology::D3D12
 			}();
 			description.DepthStencilState;
 
-			std::array<D3D12_INPUT_ELEMENT_DESC, 2> input_layout_elements
+			std::array<D3D12_INPUT_ELEMENT_DESC, 6> input_layout_elements
 			{
 				D3D12_INPUT_ELEMENT_DESC
 				{ "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-				{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+				{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+
+				{ "WORLD", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 2, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
+				{ "WORLD", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 2, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
+				{ "WORLD", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 2, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
+				{ "WORLD", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 2, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
 			};
 			description.InputLayout = { input_layout_elements.data(), static_cast<UINT>(input_layout_elements.size()) };
 
@@ -84,6 +92,14 @@ namespace Maia::Mythology::D3D12
 				device.CreateGraphicsPipelineState(&description, __uuidof(pipeline_state), pipeline_state.put_void()));
 			return pipeline_state;
 		}
+
+		winrt::com_ptr<ID3D12RootSignature> create_color_pass_root_signature(ID3D12Device5& device)
+		{
+			std::array<CD3DX12_ROOT_PARAMETER1, 1> root_parameters;
+			root_parameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC, D3D12_SHADER_VISIBILITY_ALL);
+
+			return create_root_signature(device, root_parameters, {}, 0);
+		}
 	}
 
 	Renderer::Renderer(IDXGIFactory6& factory, Render_resources& render_resources, Eigen::Vector2i viewport_and_scissor_dimensions, std::uint8_t pipeline_length) :
@@ -95,7 +111,7 @@ namespace Maia::Mythology::D3D12
 		m_viewport{ 0.0f, 0.0f, static_cast<FLOAT>(viewport_and_scissor_dimensions(0)), static_cast<FLOAT>(viewport_and_scissor_dimensions(1)), D3D12_MIN_DEPTH, D3D12_MAX_DEPTH },
 		m_scissor_rect{ 0, 0, viewport_and_scissor_dimensions(0), viewport_and_scissor_dimensions(1) },
 		m_submitted_frames{ m_pipeline_length },
-		m_root_signature{ create_root_signature(*m_render_resources.device, {}, {}, 0) },
+		m_root_signature{ create_color_pass_root_signature(*m_render_resources.device) },
 		m_color_vertex_shader{ "Resources/Shaders/Color_vertex_shader.csv" },
 		m_color_pixel_shader{ "Resources/Shaders/Color_pixel_shader.csv" },
 		m_color_pass_pipeline_state{ create_color_pass_pipeline_state(*m_render_resources.device, *m_root_signature, m_color_vertex_shader.bytecode(), m_color_pixel_shader.bytecode()) }
@@ -138,35 +154,51 @@ namespace Maia::Mythology::D3D12
 		m_scissor_rect.bottom = window_dimensions(1);
 	}
 
-	void Renderer::render(
-		ID3D12Resource& render_target, 
-		D3D12_CPU_DESCRIPTOR_HANDLE render_target_descriptor_handle, 
-		Scene_resources const& scene_resources
-	)
+	namespace
 	{
-		ID3D12Device& device = *m_render_resources.device;
-		ID3D12CommandQueue& command_queue = *m_render_resources.direct_command_queue;
-
+		Eigen::Matrix4f create_api_specific_matrix()
 		{
-			// TODO return to do other cpu work instead of waiting
-
-			UINT64 const event_value_to_wait = m_submitted_frames - m_pipeline_length;
-			Maia::Renderer::D3D12::wait(command_queue, *m_fence, m_fence_event.get(), event_value_to_wait, INFINITE);
+			Eigen::Matrix4f value;
+			value <<
+				1.0f, 0.0f, 0.0f, 0.0f,
+				0.0f, -1.0f, 0.0f, 0.0f,
+				0.0f, 0.0f, 1.0f, 0.0f,
+				0.0f, 0.0f, 0.0f, 1.0f;
+			return value;
 		}
 
+		void upload_data(
+			ID3D12GraphicsCommandList& command_list, 
+			ID3D12Resource& upload_buffer, 
+			Scene_resources const& scene_resources,
+			std::uint8_t const current_frame_index
+		)
 		{
-			std::uint8_t current_frame_index{ m_submitted_frames % m_pipeline_length };
-			ID3D12CommandAllocator& command_allocator = *m_render_resources.command_allocators[current_frame_index];
-			ID3D12GraphicsCommandList& command_list = *m_render_resources.command_list;
+			{
+				Camera const& camera = scene_resources.camera;
 
-			winrt::check_hresult(
-				command_allocator.Reset());
+				Pass_data pass_data;
+				pass_data.view_matrix = Maia::Renderer::create_view_matrix(camera.position.value, camera.rotation.value);
+				pass_data.projection_matrix =
+					create_api_specific_matrix() *
+					Maia::Renderer::create_orthographic_projection_matrix({ 4.0f, 4.0f, 1.0f });
 
-			winrt::check_hresult(
-				command_list.Reset(&command_allocator, m_color_pass_pipeline_state.get()));
+				ID3D12Resource& constant_buffer = *scene_resources.constant_buffers[0];
+				UINT64 const upload_buffer_offset = 1024 + 1024 * current_frame_index;;
+				upload_buffer_data<Pass_data>(command_list, constant_buffer, 0, upload_buffer, upload_buffer_offset, { &pass_data, 1 });
+			}
+		}
 
-			command_list.RSSetViewports(1, &m_viewport);
-			command_list.RSSetScissorRects(1, &m_scissor_rect);
+		void draw(
+			ID3D12GraphicsCommandList& command_list, 
+			D3D12_VIEWPORT const& viewport, D3D12_RECT const& scissor_rect,
+			ID3D12Resource& render_target, D3D12_CPU_DESCRIPTOR_HANDLE render_target_descriptor_handle,
+			ID3D12RootSignature& root_signature,
+			Scene_resources const& scene_resources
+			)
+		{
+			command_list.RSSetViewports(1, &viewport);
+			command_list.RSSetScissorRects(1, &scissor_rect);
 
 			{
 				D3D12_RESOURCE_BARRIER resource_barrier;
@@ -186,8 +218,10 @@ namespace Maia::Mythology::D3D12
 				command_list.ClearRenderTargetView(render_target_descriptor_handle, clear_color.data(), 0, nullptr);
 			}
 
-			command_list.SetGraphicsRootSignature(m_root_signature.get());
+			command_list.SetGraphicsRootSignature(&root_signature);
 
+
+			command_list.SetGraphicsRootConstantBufferView(0, scene_resources.constant_buffers[0]->GetGPUVirtualAddress());
 
 			command_list.IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
@@ -223,18 +257,77 @@ namespace Maia::Mythology::D3D12
 				resource_barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
 				command_list.ResourceBarrier(1, &resource_barrier);
 			}
+		}
+	}
+
+	void Renderer::render(
+		ID3D12Resource& render_target,
+		D3D12_CPU_DESCRIPTOR_HANDLE render_target_descriptor_handle,
+		Scene_resources const& scene_resources
+	)
+	{
+		ID3D12Device& device = *m_render_resources.device;
+		ID3D12CommandQueue& command_queue = *m_render_resources.direct_command_queue;
+
+		{
+			// TODO return to do other cpu work instead of waiting
+
+			UINT64 const event_value_to_wait = m_submitted_frames - m_pipeline_length;
+			Maia::Renderer::D3D12::wait(command_queue, *m_fence, m_fence_event.get(), event_value_to_wait, INFINITE);
+		}
+
+		{
+			std::uint8_t current_frame_index{ m_submitted_frames % m_pipeline_length };
+			ID3D12CommandAllocator& command_allocator = *m_render_resources.command_allocators[current_frame_index];
 
 			winrt::check_hresult(
-				command_list.Close());
+				command_allocator.Reset());
 
-			std::array<ID3D12CommandList*, 1> command_lists_to_execute
 			{
-				&command_list
-			};
+				ID3D12GraphicsCommandList& command_list = *m_render_resources.command_list;
+				winrt::check_hresult(
+					command_list.Reset(&command_allocator, m_color_pass_pipeline_state.get()));
 
-			command_queue.ExecuteCommandLists(
-				static_cast<UINT>(command_lists_to_execute.size()), command_lists_to_execute.data()
-			);
+				upload_data(command_list, *m_render_resources.upload_buffer, scene_resources, current_frame_index);
+
+				winrt::check_hresult(
+					command_list.Close());
+
+				std::array<ID3D12CommandList*, 1> command_lists_to_execute
+				{
+					&command_list
+				};
+
+				command_queue.ExecuteCommandLists(
+					static_cast<UINT>(command_lists_to_execute.size()), command_lists_to_execute.data()
+				);
+			}
+
+			{
+				ID3D12GraphicsCommandList& command_list = *m_render_resources.command_list;
+				winrt::check_hresult(
+					command_list.Reset(&command_allocator, m_color_pass_pipeline_state.get()));
+
+				draw(
+					command_list,
+					m_viewport, m_scissor_rect,
+					render_target, render_target_descriptor_handle,
+					*m_root_signature,
+					scene_resources
+				);
+
+				winrt::check_hresult(
+					command_list.Close());
+
+				std::array<ID3D12CommandList*, 1> command_lists_to_execute
+				{
+					&command_list
+				};
+
+				command_queue.ExecuteCommandLists(
+					static_cast<UINT>(command_lists_to_execute.size()), command_lists_to_execute.data()
+				);
+			}
 		}
 
 		{

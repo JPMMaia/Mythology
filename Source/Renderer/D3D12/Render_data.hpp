@@ -8,6 +8,8 @@
 #include <dxgi1_6.h>
 #include <d3d12.h>
 
+#include <Camera.hpp>
+
 namespace Maia::Mythology::D3D12
 {
 	struct Geometry_and_instances_buffer
@@ -24,7 +26,6 @@ namespace Maia::Mythology::D3D12
 	{
 		std::vector<D3D12_VERTEX_BUFFER_VIEW> vertex_buffer_views;
 		D3D12_INDEX_BUFFER_VIEW index_buffer_view;
-		D3D12_GPU_VIRTUAL_ADDRESS instances_location;
 		UINT index_count;
 		UINT instance_count;
 	};
@@ -57,6 +58,8 @@ namespace Maia::Mythology::D3D12
 
 	struct Scene_resources
 	{
+		Camera camera;
+		std::vector<winrt::com_ptr<ID3D12Resource>> constant_buffers;
 		std::vector<Geometry_and_instances_buffer> geometry_and_instances_buffers;
 		std::vector<Render_primitive> primitives;
 	};

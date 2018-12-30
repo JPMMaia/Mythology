@@ -1,5 +1,6 @@
 #include <array>
 #include <chrono>
+#include <iostream>
 
 #include <winrt/Windows.ApplicationModel.Core.h>
 #include <winrt/Windows.UI.Core.h>
@@ -48,6 +49,14 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
 	{
 		winrt::com_ptr<IDXGIFactory6> factory{ Maia::Renderer::D3D12::create_factory({}) };
 		winrt::com_ptr<IDXGIAdapter4> adapter{ Maia::Renderer::D3D12::select_adapter(*factory, false) };
+		{
+			DXGI_ADAPTER_DESC3 description;
+			winrt::check_hresult(
+				adapter->GetDesc3(&description));
+
+			std::wcout << std::wstring_view{ description.Description } << '\n';
+		}
+
 		std::uint8_t const pipeline_length{ 3 };
 		m_render_resources = std::make_unique<Maia::Mythology::D3D12::Render_resources>(*adapter, pipeline_length);
 
