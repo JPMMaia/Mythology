@@ -133,10 +133,7 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
 
 		window.PointerPressed({ this, &App::OnPointerPressed });
 		window.PointerMoved({ this, &App::OnPointerMoved });
-		
-		window.PointerReleased([&](auto && ...)
-		{
-		});
+		window.PointerReleased({ this, &App::OnPointerReleased });
 
 		window.SizeChanged(
 			[&](CoreWindow window, WindowSizeChangedEventArgs const& event_args)
@@ -171,6 +168,12 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
 	}
 
 	void OnPointerMoved(IInspectable const &, PointerEventArgs const & args)
+	{
+		winrt::Windows::Foundation::Point const position = args.CurrentPoint().Position();
+		Maia::Mythology::Input::set(m_input_state, { position.X, position.Y });
+	}
+
+	void OnPointerReleased(IInspectable const &, PointerEventArgs const & args)
 	{
 	}
 
