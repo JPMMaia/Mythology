@@ -41,6 +41,7 @@ target_sources (MaiaMythology
 		"Scene.cpp"
 
 		"Camera.hpp"
+		"Input_system.hpp"
 
 		"Renderer/Pass_data.hpp"
 		"Renderer/D3D12/Renderer.hpp"

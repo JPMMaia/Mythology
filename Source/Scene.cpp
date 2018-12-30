@@ -253,8 +253,8 @@ namespace Maia::Mythology
 					render_primitive.index_buffer_view = index_buffer_view;
 				}
 
-				render_primitive.index_count = mesh.indices.size();
-				render_primitive.instance_count = instances.size();
+				render_primitive.index_count = static_cast<UINT>(mesh.indices.size());
+				render_primitive.instance_count = static_cast<UINT>(instances.size());
 				scene_resources.primitives.emplace_back(std::move(render_primitive));
 			}
 
