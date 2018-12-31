@@ -66,7 +66,7 @@ namespace Maia::Mythology::Input
 			is_up(input_state.keys_current_state, key);
 	}
 
-	Eigen::Vector2f delta_mouse_position(Input_state const& input_state)
+	Eigen::Vector2f get_delta_mouse_position(Input_state const& input_state)
 	{
 		return input_state.mouse_current_state.position - input_state.mouse_previous_state.position;
 	}
@@ -80,9 +80,10 @@ namespace Maia::Mythology::Input
 		input_state.mouse_current_state.position = mouse_position;
 	}
 
-	void update(Input_state& input_state)
+	void set_previous_state(Input_state& input_state)
 	{
 		input_state.keys_previous_state = input_state.keys_current_state;
+		input_state.mouse_previous_state = input_state.mouse_current_state;
 	}
 }
 
