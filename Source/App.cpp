@@ -24,10 +24,99 @@ using namespace Windows::UI;
 using namespace Windows::UI::Core;
 using namespace Windows::UI::Composition;
 
+using Clock = std::chrono::steady_clock;
+
+namespace
+{
+	void move(Eigen::Vector3f& position, Eigen::Vector3f const& world_right, Eigen::Vector3f const& world_forward, Maia::Mythology::Input::Input_state const& input_state, Clock::duration const delta_time)
+	{
+		using namespace winrt::Windows::System;
+		using namespace Maia::Mythology::Input;
+
+		Eigen::Vector3f const direction = [&]() -> Eigen::Vector3f
+		{
+			std::int8_t const x_direction = [&]() -> std::int8_t
+			{
+				std::int8_t x_direction{ 0 };
+
+				if (is_down(input_state, { VirtualKey::D }))
+					++x_direction;
+				if (is_down(input_state, { VirtualKey::A }))
+					--x_direction;
+
+				return x_direction;
+			}();
+
+			std::int8_t const z_direction = [&]() -> std::int8_t
+			{
+				std::int8_t z_direction{ 0 };
+
+				if (is_down(input_state, { VirtualKey::W }))
+					++z_direction;
+				if (is_down(input_state, { VirtualKey::S }))
+					--z_direction;
+
+				return z_direction;
+			}();
+
+			Eigen::Vector3f const direction = x_direction * world_right + z_direction * world_forward;
+			return direction.normalized();
+		}();
+
+		float const speed = 1.0f;
+		float const distance = speed * std::chrono::duration<float>{ delta_time }.count();
+		position += distance * direction;
+	}
+
+	void rotate(Eigen::Quaternionf& rotation, Eigen::Vector3f const& world_forward, Maia::Mythology::Input::Input_state const& input_state, Clock::duration const delta_time)
+	{
+		using namespace winrt::Windows::System;
+		using namespace Maia::Mythology::Input;
+
+		float const speed = 0.5f;
+		float const magnitude = speed * std::chrono::duration<float>{ delta_time }.count();
+
+		Eigen::Vector3f const movement_direction = [&]() -> Eigen::Vector3f 
+		{
+			Eigen::Vector2f const delta_mouse_position = get_delta_mouse_position(input_state);
+			return { delta_mouse_position(0), delta_mouse_position(1), 0.0f };
+		}();
+		
+		Eigen::Vector3f const new_forward_direction = world_forward + magnitude * movement_direction;
+
+		rotation = Eigen::Quaternionf::FromTwoVectors(world_forward, new_forward_direction) * rotation;
+	}
+
+	void update(Maia::Mythology::Camera& camera, Maia::Mythology::Input::Input_state const& input_state, Clock::duration const delta_time)
+	{
+		using namespace Maia::Mythology::Input;
+		using namespace winrt::Windows::System;
+
+		Eigen::Matrix3f const rotation_matrix = camera.rotation.value.toRotationMatrix();
+
+		Eigen::Vector3f const right_direction{ rotation_matrix.col(0) };
+		Eigen::Vector3f const forward_direction{ rotation_matrix.col(2) };
+
+		move(camera.position.value, right_direction, forward_direction, input_state, delta_time);
+
+		if (is_down(input_state, { VirtualKey::Z }))
+			rotate(camera.rotation.value, forward_direction, input_state, delta_time);
+	}
+
+	void update_mouse_position(Maia::Mythology::Input::Input_state& input_state, CoreWindow window)
+	{
+		using namespace Maia::Mythology::Input;
+		using namespace winrt::Windows::Foundation;
+
+		{
+			Point const pointer_position = window.PointerPosition();
+			set(input_state, { pointer_position.X, pointer_position.Y });
+		}
+	}
+}
+
 struct App : implements<App, IFrameworkViewSource, IFrameworkView>
 {
-	using clock = std::chrono::steady_clock;
-
 	winrt::agile_ref<CoreWindow> m_window{};
 	Maia::GameEngine::Entity_manager m_entity_manager{};
 	Maia::Mythology::Input::Input_state m_input_state{};
@@ -85,6 +174,7 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
 			*m_render_resources->device,
 			m_frames_resources->rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart()
 		);
+		m_scene_resources.camera.width_by_height_ratio = bounds.Width / bounds.Height;
 	}
 
 	void Uninitialize()
@@ -99,14 +189,14 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
 		using namespace std::chrono;
 		using namespace std::chrono_literals;
 
-		constexpr clock::duration fixed_update_duration{ 50ms };
-		clock::time_point previous_time_point{ clock::now() };
-		clock::duration lag{};
+		constexpr Clock::duration fixed_update_duration{ 50ms };
+		Clock::time_point previous_time_point{ Clock::now() };
+		Clock::duration lag{};
 
 		while (true)
 		{
-			clock::time_point current_time_point{ clock::now() };
-			clock::duration delta_time{ current_time_point - previous_time_point };
+			Clock::time_point current_time_point{ Clock::now() };
+			Clock::duration delta_time{ current_time_point - previous_time_point };
 			previous_time_point = current_time_point;
 			lag += delta_time;
 
@@ -118,7 +208,7 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
 
 			while (lag >= fixed_update_duration)
 			{
-				FixedUpdate(delta_time);
+				FixedUpdate(fixed_update_duration);
 				lag -= fixed_update_duration;
 			}
 
@@ -130,10 +220,6 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
 	{
 		window.KeyDown({ this, &App::OnKeyDown });
 		window.KeyUp({ this, &App::OnKeyUp });
-
-		window.PointerPressed({ this, &App::OnPointerPressed });
-		window.PointerMoved({ this, &App::OnPointerMoved });
-		window.PointerReleased({ this, &App::OnPointerReleased });
 
 		window.SizeChanged(
 			[&](CoreWindow window, WindowSizeChangedEventArgs const& event_args)
@@ -147,45 +233,43 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
 				*m_render_resources->device,
 				m_frames_resources->rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart()
 			);
+
+			m_renderer->resize_viewport_and_scissor_rects({ static_cast<int>(size.Width), static_cast<int>(size.Height) });
+			m_scene_resources.camera.width_by_height_ratio = size.Width / size.Height;
 		}
 		);
 
 		m_window = window;
 	}
 
+private:
+
+
 	void OnKeyDown(CoreWindow const &, KeyEventArgs const & args)
 	{
+		args.Handled(true);
+
 		Maia::Mythology::Input::set(m_input_state, { args.VirtualKey() }, true);
 	}
-	
+
 	void OnKeyUp(CoreWindow const &, KeyEventArgs const & args)
 	{
+		args.Handled(true);
+
 		Maia::Mythology::Input::set(m_input_state, { args.VirtualKey() }, false);
 	}
 
-	void OnPointerPressed(IInspectable const &, PointerEventArgs const & args)
-	{
-	}
-
-	void OnPointerMoved(IInspectable const &, PointerEventArgs const & args)
-	{
-		winrt::Windows::Foundation::Point const position = args.CurrentPoint().Position();
-		Maia::Mythology::Input::set(m_input_state, { position.X, position.Y });
-	}
-
-	void OnPointerReleased(IInspectable const &, PointerEventArgs const & args)
-	{
-	}
-
-private:
 
 	void ProcessInput()
 	{
-		Maia::Mythology::Input::update(m_input_state);
+		Maia::Mythology::Input::set_previous_state(m_input_state);
+
+		update_mouse_position(m_input_state, m_window.get());
 	}
 
-	void FixedUpdate(clock::duration delta_time)
+	void FixedUpdate(Clock::duration delta_time)
 	{
+		update(m_scene_resources.camera, m_input_state, delta_time);
 	}
 
 	void RenderUpdate(float update_percentage)

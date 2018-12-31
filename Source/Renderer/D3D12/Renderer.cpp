@@ -181,7 +181,7 @@ namespace Maia::Mythology::D3D12
 				pass_data.view_matrix = Maia::Renderer::create_view_matrix(camera.position.value, camera.rotation.value);
 				pass_data.projection_matrix =
 					create_api_specific_matrix() *
-					Maia::Renderer::create_orthographic_projection_matrix({ 4.0f, 4.0f, 1.0f });
+					Maia::Renderer::create_perspective_projection_matrix(camera.vertical_half_angle_of_view, camera.width_by_height_ratio, camera.zRange);
 
 				ID3D12Resource& constant_buffer = *scene_resources.constant_buffers[0];
 				UINT64 const upload_buffer_offset = 1024 + 1024 * current_frame_index;;

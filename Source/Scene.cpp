@@ -48,9 +48,9 @@ namespace Maia::Mythology
 			std::vector<Position> vertices_positions
 			{
 				Position
-				{ { -1.0f, 1.0f, 0.5f, 1.0f } },
-				{ { 1.0f, 1.0f, 0.5f, 1.0f } },
-				{ { 0.0f, -1.0f, 0.5f, 1.0f } },
+				{ { -1.0f, 1.0f, 0.0f, 1.0f } },
+				{ { 1.0f, 1.0f, 0.0f, 1.0f } },
+				{ { 0.0f, -1.0f, 0.0f, 1.0f } },
 			};
 
 			std::vector<Color> vertices_colors
@@ -141,7 +141,7 @@ namespace Maia::Mythology
 			world_matrix <<
 				1.0f, 0.0f, 0.0f, 0.0f,
 				0.0f, 1.0f, 0.0f, 0.0f,
-				0.0f, 0.0f, 1.0f, 0.0f,
+				0.0f, 0.0f, 1.0f, 1.0f,
 				0.0f, 0.0f, 0.0f, 1.0f;
 			return { { world_matrix } };
 		}
@@ -275,7 +275,7 @@ namespace Maia::Mythology
 				std::move(constant_buffer)
 			);
 
-			scene_resources.camera = { {{ 0.0f, 0.0f, 0.0f }}, {}, EIGEN_PI / 4.0f, 2.0f, { 1.0f, 21.0f } };
+			scene_resources.camera = { {{ 0.0f, 0.0f, 0.0f }}, {}, static_cast<float>(EIGEN_PI) / 4.0f, 2.0f, { 0.1f, 21.0f } };
 		}
 
 		return scene_resources;
