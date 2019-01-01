@@ -9,6 +9,8 @@
 #include <Maia/Renderer/Matrices.hpp>
 #include <Maia/Renderer/D3D12/Utilities/D3D12_utilities.hpp>
 
+#include <Maia/GameEngine/Systems/Transform_system.hpp>
+
 #include "Renderer/Pass_data.hpp"
 #include "Scene.hpp"
 
@@ -123,7 +125,7 @@ namespace Maia::Mythology
 			D3D12::Geometry_and_instances_buffer& buffer, UINT64 const base_buffer_offset,
 			ID3D12Resource& upload_buffer, UINT64 const upload_buffer_offset, // TODO create a struct for both
 			ID3D12GraphicsCommandList& command_list,
-			gsl::span<Instance_data> instances_data)
+			gsl::span<Instance_data const> instances_data)
 		{
 			using namespace Maia::Renderer::D3D12;
 
@@ -133,17 +135,6 @@ namespace Maia::Mythology
 				upload_buffer, upload_buffer_offset,
 				instances_data
 			);
-		}
-
-		std::vector<Instance_data> create_instances_data()
-		{
-			Eigen::Matrix4f world_matrix;
-			world_matrix <<
-				1.0f, 0.0f, 0.0f, 0.0f,
-				0.0f, 1.0f, 0.0f, 0.0f,
-				0.0f, 0.0f, 1.0f, 1.0f,
-				0.0f, 0.0f, 0.0f, 1.0f;
-			return { { world_matrix } };
 		}
 	}
 
@@ -161,106 +152,149 @@ namespace Maia::Mythology
 		Maia::Mythology::D3D12::Scene_resources scene_resources;
 
 		{
-			Colored_mesh const mesh = create_triangle_mesh();
-			std::vector<Instance_data> instances = create_instances_data();
+			using namespace Maia::GameEngine;
+			using namespace Maia::GameEngine::Systems;
+		
+			Entity_type<Transform_matrix> triangle_entity_type =
+				entity_manager.create_entity_type<Transform_matrix>(100);
 
-			UINT64 positions_size_bytes = mesh.vertices.positions.size() * sizeof(decltype(mesh.vertices.positions)::value_type);
-			UINT64 color_size_bytes = mesh.vertices.colors.size() * sizeof(decltype(mesh.vertices.colors)::value_type);
-			UINT64 indices_size_bytes = mesh.indices.size() * sizeof(decltype(mesh.indices)::value_type);
-			UINT64 const geometry_buffer_width =
-				positions_size_bytes + color_size_bytes + indices_size_bytes;
-			UINT64 const instances_data_size_bytes = sizeof(Instance_data) * instances.size();
-			UINT64 const total_buffer_width = geometry_buffer_width + instances_data_size_bytes;
-
-			D3D12::Geometry_and_instances_buffer geometry_and_instances_buffer =
+			constexpr std::size_t instance_count = 100;
 			{
-				create_buffer(
-					device,
-					heap, heap_offset,
-					total_buffer_width,
-					D3D12_RESOURCE_STATE_COPY_DEST
-				)
-			};
+				float const z = 10.0f;
+				for (std::size_t i = 0; i < 10; ++i)
+				{
+					float const y = -15.0f + i * 3.0f;
 
-			{
-				upload_geometry_data(mesh, geometry_and_instances_buffer, 0, upload_buffer, upload_buffer_offset, command_list);
-				upload_instances_data(geometry_and_instances_buffer, geometry_buffer_width, upload_buffer, upload_buffer_offset + geometry_buffer_width, command_list, instances);
+					for (std::size_t j = 0; j < 10; ++j)
+					{
+						float const x = -15.0f + j * 3.0f;
+
+						Eigen::Matrix4f world_matrix;
+						world_matrix <<
+							1.0f, 0.0f, 0.0f, x,
+							0.0f, 1.0f, 0.0f, y,
+							0.0f, 0.0f, 1.0f, z,
+							0.0f, 0.0f, 0.0f, 1.0f;
+						
+						entity_manager.create_entity(triangle_entity_type, Transform_matrix{world_matrix});
+					}
+				}
 			}
 
+			// Create geometry and instances buffer
 			{
-				Maia::Mythology::D3D12::Render_primitive render_primitive{};
+				Colored_mesh const mesh = create_triangle_mesh();
+
+				UINT64 positions_size_bytes = mesh.vertices.positions.size() * sizeof(decltype(mesh.vertices.positions)::value_type);
+				UINT64 color_size_bytes = mesh.vertices.colors.size() * sizeof(decltype(mesh.vertices.colors)::value_type);
+				UINT64 indices_size_bytes = mesh.indices.size() * sizeof(decltype(mesh.indices)::value_type);
+				UINT64 const geometry_buffer_width =
+					positions_size_bytes + color_size_bytes + indices_size_bytes;
+				UINT64 const instances_data_size_bytes = sizeof(Instance_data) * instance_count;
+				UINT64 const total_buffer_width = geometry_buffer_width + instances_data_size_bytes;
 
 				{
-					D3D12_VERTEX_BUFFER_VIEW const position_buffer_view = [&]() -> D3D12_VERTEX_BUFFER_VIEW
+					D3D12::Geometry_and_instances_buffer geometry_and_instances_buffer =
 					{
-						D3D12_VERTEX_BUFFER_VIEW buffer_view;
-						buffer_view.BufferLocation = geometry_and_instances_buffer.value->GetGPUVirtualAddress();
-
-						using data_type = decltype(mesh.vertices.positions)::value_type;
-						gsl::span<data_type const> const data_view = mesh.vertices.positions;
-						buffer_view.SizeInBytes = static_cast<UINT>(data_view.size_bytes());
-						buffer_view.StrideInBytes = sizeof(data_type);
-
-						return buffer_view;
-					}();
-
-					D3D12_VERTEX_BUFFER_VIEW const color_buffer_view = [&]() -> D3D12_VERTEX_BUFFER_VIEW
-					{
-						D3D12_VERTEX_BUFFER_VIEW buffer_view;
-						buffer_view.BufferLocation = geometry_and_instances_buffer.value->GetGPUVirtualAddress() +
-							positions_size_bytes;
-
-						using data_type = decltype(mesh.vertices.colors)::value_type;
-						gsl::span<data_type const> const data_view = mesh.vertices.colors;
-						buffer_view.SizeInBytes = static_cast<UINT>(data_view.size_bytes());
-						buffer_view.StrideInBytes = sizeof(data_type);
-
-						return buffer_view;
-					}();
-
-					D3D12_VERTEX_BUFFER_VIEW const instance_buffer_view = [&]() -> D3D12_VERTEX_BUFFER_VIEW
-					{
-						D3D12_VERTEX_BUFFER_VIEW buffer_view;
-						buffer_view.BufferLocation = geometry_and_instances_buffer.value->GetGPUVirtualAddress() +
-							geometry_buffer_width;
-
-						using data_type = Instance_data;
-						gsl::span<data_type const> const data_view = instances;
-						buffer_view.SizeInBytes = static_cast<UINT>(data_view.size_bytes());
-						buffer_view.StrideInBytes = sizeof(data_type);
-
-						return buffer_view;
-					}();
-
-					render_primitive.vertex_buffer_views =
-					{
-						position_buffer_view,
-						color_buffer_view,
-						instance_buffer_view
+						create_buffer(
+							device,
+							heap, heap_offset,
+							total_buffer_width,
+							D3D12_RESOURCE_STATE_COPY_DEST
+						)
 					};
+
+					upload_geometry_data(mesh, geometry_and_instances_buffer, 0, upload_buffer, upload_buffer_offset, command_list);
+
+					scene_resources.geometry_and_instances_buffers.emplace_back(
+						std::move(geometry_and_instances_buffer)
+					);
 				}
 
 				{
-					D3D12_INDEX_BUFFER_VIEW index_buffer_view;
-					index_buffer_view.BufferLocation = geometry_and_instances_buffer.value->GetGPUVirtualAddress() +
-						positions_size_bytes + color_size_bytes;
+					D3D12::Geometry_and_instances_buffer& buffer = scene_resources.geometry_and_instances_buffers.back();
 
-					using data_type = decltype(mesh.indices)::value_type;
-					gsl::span<data_type const> const data_view = mesh.indices;
-					index_buffer_view.SizeInBytes = static_cast<UINT>(data_view.size_bytes());
-					index_buffer_view.Format = DXGI_FORMAT_R16_UINT;
-
-					render_primitive.index_buffer_view = index_buffer_view;
+					Component_group const& component_group = entity_manager.get_component_group(triangle_entity_type.id);
+					
+					gsl::span<Transform_matrix const> transform_matrices = component_group.components<Transform_matrix>(0);
+					gsl::span<Instance_data const> instances_data{ reinterpret_cast<Instance_data const*>(transform_matrices.data()), transform_matrices.size() };
+					upload_instances_data(buffer, geometry_buffer_width, upload_buffer, upload_buffer_offset + geometry_buffer_width, command_list, instances_data);
 				}
 
-				render_primitive.index_count = static_cast<UINT>(mesh.indices.size());
-				render_primitive.instance_count = static_cast<UINT>(instances.size());
-				scene_resources.primitives.emplace_back(std::move(render_primitive));
-			}
+				{
+					Maia::Mythology::D3D12::Render_primitive render_primitive{};
 
-			scene_resources.geometry_and_instances_buffers.emplace_back(
-				std::move(geometry_and_instances_buffer)
-			);
+					D3D12::Geometry_and_instances_buffer& buffer = scene_resources.geometry_and_instances_buffers.back();
+					D3D12_GPU_VIRTUAL_ADDRESS const geometry_and_instances_buffer_address = 
+						buffer.value->GetGPUVirtualAddress();
+					UINT const instances_data_size_bytes{ instance_count * sizeof(Instance_data) };
+
+					{
+						D3D12_VERTEX_BUFFER_VIEW const position_buffer_view = [&]() -> D3D12_VERTEX_BUFFER_VIEW
+						{
+							D3D12_VERTEX_BUFFER_VIEW buffer_view;
+							buffer_view.BufferLocation = geometry_and_instances_buffer_address;
+
+							using data_type = decltype(mesh.vertices.positions)::value_type;
+							gsl::span<data_type const> const data_view = mesh.vertices.positions;
+							buffer_view.SizeInBytes = static_cast<UINT>(data_view.size_bytes());
+							buffer_view.StrideInBytes = sizeof(data_type);
+
+							return buffer_view;
+						}();
+
+						D3D12_VERTEX_BUFFER_VIEW const color_buffer_view = [&]() -> D3D12_VERTEX_BUFFER_VIEW
+						{
+							D3D12_VERTEX_BUFFER_VIEW buffer_view;
+							buffer_view.BufferLocation = geometry_and_instances_buffer_address +
+								positions_size_bytes;
+
+							using data_type = decltype(mesh.vertices.colors)::value_type;
+							gsl::span<data_type const> const data_view = mesh.vertices.colors;
+							buffer_view.SizeInBytes = static_cast<UINT>(data_view.size_bytes());
+							buffer_view.StrideInBytes = sizeof(data_type);
+
+							return buffer_view;
+						}();
+
+						D3D12_VERTEX_BUFFER_VIEW const instance_buffer_view = [&]() -> D3D12_VERTEX_BUFFER_VIEW
+						{
+							D3D12_VERTEX_BUFFER_VIEW buffer_view;
+							buffer_view.BufferLocation = geometry_and_instances_buffer_address +
+								geometry_buffer_width;
+							buffer_view.SizeInBytes = instances_data_size_bytes;
+							buffer_view.StrideInBytes = sizeof(Instance_data);
+
+							return buffer_view;
+						}();
+
+						render_primitive.vertex_buffer_views =
+						{
+							position_buffer_view,
+							color_buffer_view,
+							instance_buffer_view
+						};
+					}
+
+					{
+						D3D12_INDEX_BUFFER_VIEW index_buffer_view;
+						index_buffer_view.BufferLocation = geometry_and_instances_buffer_address +
+							positions_size_bytes + color_size_bytes;
+
+						using data_type = decltype(mesh.indices)::value_type;
+						gsl::span<data_type const> const data_view = mesh.indices;
+						index_buffer_view.SizeInBytes = static_cast<UINT>(data_view.size_bytes());
+						index_buffer_view.Format = DXGI_FORMAT_R16_UINT;
+
+						render_primitive.index_buffer_view = index_buffer_view;
+					}
+
+					render_primitive.index_count = static_cast<UINT>(mesh.indices.size());
+					render_primitive.instance_count = static_cast<UINT>(instance_count);
+					
+					scene_resources.primitives.emplace_back(std::move(render_primitive));
+				}
+			}			
 		}
 
 		{
