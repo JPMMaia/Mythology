@@ -34,6 +34,9 @@ target_link_libraries (MaiaMythology
 		Maia::Utilities
 )
 
+find_package (nlohmann_json 3.5.0 REQUIRED)
+target_link_libraries (MaiaMythology PRIVATE nlohmann_json::nlohmann_json)
+
 target_sources (MaiaMythology 
 	PRIVATE
 		"App.cpp"
@@ -71,3 +74,6 @@ target_add_hlsl_shader (
 		"${CMAKE_BINARY_DIR}/${CMAKE_CFG_INTDIR}/AppX/Resources/Shaders/Color_pixel_shader.csv"
 		"main" "ps_5_1" true ""
 )
+
+target_sources (MaiaMythology PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../Resources/box.gltf")
+set_source_files_properties ("${CMAKE_CURRENT_LIST_DIR}/../Resources/box.gltf" PROPERTIES VS_DEPLOYMENT_CONTENT 1)
