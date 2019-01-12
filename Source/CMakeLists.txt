@@ -34,9 +34,6 @@ target_link_libraries (MaiaMythology
 		Maia::Utilities
 )
 
-find_package (nlohmann_json 3.5.0 REQUIRED)
-target_link_libraries (MaiaMythology PRIVATE nlohmann_json::nlohmann_json)
-
 target_sources (MaiaMythology 
 	PRIVATE
 		"App.cpp"

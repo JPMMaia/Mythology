@@ -8,12 +8,12 @@
 
 #include <winrt/base.h>
 
-#include <nlohmann/json.hpp>
-
 #include <Maia/Renderer/Matrices.hpp>
 #include <Maia/Renderer/D3D12/Utilities/D3D12_utilities.hpp>
 
 #include <Maia/GameEngine/Systems/Transform_system.hpp>
+
+#include <Maia/Utilities/glTF/gltf.hpp>
 
 #include "Renderer/Pass_data.hpp"
 #include "Scene.hpp"
@@ -140,115 +140,67 @@ namespace Maia::Mythology
 				instances_data
 			);
 		}
-	}
 
-
-	template <class Value_type>
-	void get_to_if_exists(nlohmann::json const& json, std::string_view key, std::optional<Value_type>& value)
-	{
-		nlohmann::json::const_iterator const location = json.find(key);
-
-		if (location != json.end())
-			value = location->get<Value_type>();
-		else
-			value = {};
-	}
-
-
-	struct Buffer
-	{
-		std::optional<std::string> uri;
-		std::size_t byteLength;
-	};
-
-	void from_json(nlohmann::json const& json, Buffer& value)
-	{
-		get_to_if_exists(json, "uri", value.uri);
-		json.at("byteLength").get_to(value.byteLength);
-	}
-	
-
-	struct Scene
-	{
-		std::optional<std::string> name;
-		std::optional<std::vector<std::size_t>> nodes;
-	};
-
-	void from_json(nlohmann::json const& json, Scene& value)
-	{
-		get_to_if_exists(json, "name", value.name);
-		get_to_if_exists(json, "nodes", value.nodes);
-	}
-
-
-	struct Primitive
-	{
-		std::map<std::string, std::size_t> attributes;
-		std::optional<std::size_t> indices_index;
-		std::optional<std::size_t> material_index;
-	};
-
-	void from_json(nlohmann::json const& json, Primitive& value)
-	{
-		json.at("attributes").get_to(value.attributes);
-		get_to_if_exists(json, "indices", value.indices_index);
-		get_to_if_exists(json, "material", value.material_index);
-	}
-
-
-	struct Mesh
-	{
-		std::vector<Primitive> primitives;
-		std::optional<std::string> name;
-	};
-
-	void from_json(nlohmann::json const& json, Mesh& value)
-	{
-		get_to_if_exists<std::string>(json, "name", value.name);
-		json.at("primitives").get_to(value.primitives);
-	}
-
-	std::vector<std::byte> base64_decode(std::string_view input)
-	{	
-		constexpr std::array<std::uint8_t, 80> lookup_table
+		std::vector<std::byte> base64_decode(std::string_view input)
 		{
-			62,  255, 62,  255, 63,  52,  53, 54, 55, 56, 57, 58, 59, 60, 61, 255,
-			255, 0,   255, 255, 255, 255, 0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
-			10,  11,  12,  13,  14,  15,  16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
-			255, 255, 255, 255, 63,  255, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
-			36,  37,  38,  39,  40,  41,  42, 43, 44, 45, 46, 47, 48, 49, 50, 51 
-		};
-		static_assert(sizeof(lookup_table) == 'z' - '+' + 1);
-
-		std::vector<std::byte> output;
-		output.reserve(input.size() * 3 / 4);
-
-		{
-			std::uint32_t bits{ 0 };
-			std::uint8_t bit_count{ 0 };
-
-			for (char c : input)
+			constexpr std::array<std::uint8_t, 80> lookup_table
 			{
-				assert('+' <= c && c <= 'z');
-				assert(lookup_table[c - '+'] < 64);
-				
-				c -= '+';
+				62,  255, 62,  255, 63,  52,  53, 54, 55, 56, 57, 58, 59, 60, 61, 255,
+				255, 0,   255, 255, 255, 255, 0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
+				10,  11,  12,  13,  14,  15,  16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+				255, 255, 255, 255, 63,  255, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
+				36,  37,  38,  39,  40,  41,  42, 43, 44, 45, 46, 47, 48, 49, 50, 51
+			};
+			static_assert(sizeof(lookup_table) == 'z' - '+' + 1);
 
-				bits = (bits << 6) + lookup_table[c];
-				bit_count += 6;
+			std::vector<std::byte> output;
+			output.reserve(input.size() * 3 / 4);
 
-				if (bit_count >= 8)
+			{
+				std::uint32_t bits{ 0 };
+				std::uint8_t bit_count{ 0 };
+
+				for (char c : input)
 				{
-					bit_count -= 8;
-					output.push_back(static_cast<std::byte>((bits >> bit_count) & 0xFF));
+					assert('+' <= c && c <= 'z');
+					assert(lookup_table[c - '+'] < 64);
+
+					c -= '+';
+
+					bits = (bits << 6) + lookup_table[c];
+					bit_count += 6;
+
+					if (bit_count >= 8)
+					{
+						bit_count -= 8;
+						output.push_back(static_cast<std::byte>((bits >> bit_count) & 0xFF));
+					}
 				}
+
+				assert(bit_count == 0);
 			}
 
-			assert(bit_count == 0);
+			return output;
 		}
 
-		return output;
+		std::vector<std::byte> generate_byte_data(std::string_view const uri, std::size_t const byte_length)
+		{
+			char const* const prefix{ "data:application/octet-stream;base64," };
+			std::size_t const prefix_size{ std::strlen(prefix) };
+			assert(uri.compare(0, prefix_size, prefix) == 0 && "Uri format not supported");
+
+			std::string_view const data_view{ uri.data() + prefix_size, uri.size() - prefix_size };
+			assert(data_view.size() / 4 * 3 == byte_length && "Data content is ill-formed");
+
+			return base64_decode(data_view);
+		}
 	}
+
+
+	
+
+
+	
 
 
 	Maia::Mythology::D3D12::Scene_resources load(Maia::GameEngine::Entity_manager& entity_manager, Maia::Mythology::D3D12::Render_resources const& render_resources)
@@ -261,9 +213,11 @@ namespace Maia::Mythology
 		ID3D12GraphicsCommandList& command_list = *render_resources.command_list;
 
 		using namespace Maia::Renderer::D3D12;
+		using namespace Maia::Utilities::glTF;
 
 		Maia::Mythology::D3D12::Scene_resources scene_resources;
 
+		Gltf const gltf = []() -> Gltf
 		{
 			nlohmann::json const gltf_json = []() -> nlohmann::json
 			{
@@ -275,46 +229,129 @@ namespace Maia::Mythology
 				return json;
 			}();
 
-			for (auto&[key, value] : gltf_json.items())
+			return gltf_json.get<Gltf>();
+		}();
+
+		if (gltf.buffers)
+		{
+			scene_resources.geometry_buffers.reserve(gltf.buffers->size());
+
+			for (Buffer const& buffer : *gltf.buffers)
 			{
-				if (key == "buffers")
+				if (buffer.uri)
 				{
-					std::vector<Buffer> buffers;
-					value.get_to(buffers);
+					std::vector<std::byte> const buffer_data =
+						generate_byte_data(*buffer.uri, buffer.byte_length);
+
+					// TODO expand index data from byte to short if required
 
 					{
-						Buffer const& buffer = buffers[0];
+						using namespace Maia::Renderer::D3D12;
 
-						std::vector<std::byte> buffer_data;
-						buffer_data.reserve(buffer.byteLength);
-
-						if (buffer.uri)
+						D3D12::Geometry_buffer buffer
 						{
-							std::string const& uri = buffer.uri.value();
-							
-							char const* const prefix{ "data:application/octet-stream;base64," };
-							std::size_t const prefix_size{ std::strlen(prefix) };
-							assert(uri.compare(0, prefix_size, prefix) == 0 && "Uri format not supported");
+							create_buffer(
+								device,
+								heap, heap_offset, // TODO offset
+								buffer_data.size(),
+								D3D12_RESOURCE_STATE_COPY_DEST
+							)
+						};
 
-							std::string_view const data_view{ uri.data() + prefix_size, uri.size() - prefix_size };
-							assert(data_view.size() / 4 * 3 == buffer.byteLength && "Data content is ill-formed");
+						upload_buffer_data<std::byte>(
+							command_list,
+							*buffer.value, 0,
+							upload_buffer, upload_buffer_offset,
+							buffer_data
+						);
 
-							buffer_data = base64_decode(data_view);
-						}
+						scene_resources.geometry_buffers.emplace_back(std::move(buffer));
 					}
-				}
-				else if (key == "meshes")
-				{
-					std::vector<Mesh> meshes;
-					value.get_to(meshes);
 				}
 			}
 		}
 
+		if (gltf.materials)
 		{
-			using namespace Maia::GameEngine;
+			for (Material const& material : *gltf.materials)
+			{
+				// TODO
+			}
+		}
+
+		if (gltf.meshes)
+		{
+			gsl::span<Accessor const> accessors{ *gltf.accessors };
+			gsl::span<Buffer_view const> buffer_views{ *gltf.buffer_views };
+			
+			for (Mesh const& mesh : *gltf.meshes)
+			{
+				for (Primitive const& primitive : mesh.primitives)
+				{
+					D3D12::Render_primitive render_primitive;
+
+					render_primitive.vertex_buffer_views.reserve(primitive.attributes.size());
+					for (std::pair<const std::string, size_t> const& attribute : primitive.attributes)
+					{
+						Accessor const& accessor = accessors[attribute.second];
+						
+						if (accessor.buffer_view_index)
+						{
+							Buffer_view const& buffer_view = buffer_views[*accessor.buffer_view_index];
+
+							D3D12_GPU_VIRTUAL_ADDRESS const base_buffer_address =
+								scene_resources.geometry_buffers[buffer_view.buffer_index].value->GetGPUVirtualAddress();
+
+							D3D12_VERTEX_BUFFER_VIEW vertex_buffer_view;
+							vertex_buffer_view.BufferLocation = 
+								base_buffer_address + buffer_view.byte_offset;
+							vertex_buffer_view.SizeInBytes = static_cast<UINT>(buffer_view.byte_length);
+							vertex_buffer_view.StrideInBytes = size_of(accessor.component_type) * size_of(accessor.type);
+							render_primitive.vertex_buffer_views.push_back(vertex_buffer_view);
+						}
+					}
+
+					if (primitive.indices_index)
+					{
+						Accessor const& accessor = accessors[*primitive.indices_index];
+						assert(accessor.component_type == Component_type::Unsigned_short || accessor.component_type == Component_type::Unsigned_int);
+
+						if (accessor.buffer_view_index)
+						{
+							Buffer_view const& buffer_view = buffer_views[*accessor.buffer_view_index];
+
+							D3D12_GPU_VIRTUAL_ADDRESS const base_buffer_address = 
+								scene_resources.geometry_buffers[buffer_view.buffer_index].value->GetGPUVirtualAddress();
+
+							D3D12_INDEX_BUFFER_VIEW	index_buffer_view;
+							index_buffer_view.BufferLocation = 
+								base_buffer_address + buffer_view.byte_offset;
+							index_buffer_view.SizeInBytes = static_cast<UINT>(buffer_view.byte_length);
+							index_buffer_view.Format = accessor.component_type == Component_type::Unsigned_int ?
+								DXGI_FORMAT_R32_UINT :
+								DXGI_FORMAT_R16_UINT;
+							render_primitive.index_buffer_view = index_buffer_view;
+							render_primitive.index_count = static_cast<UINT>(accessor.count);
+						}
+					}
+				}
+			}
+		}
+
+		if (gltf.scene_index)
+		{
+			if (gltf.scenes)
+			{
+				Scene const& scene = gltf.scenes->at(*gltf.scene_index);
+				
+				// TODO handle nodes
+			}
+		}
+
+		{
+			using namespace Maia::GameEngine; 
 			using namespace Maia::GameEngine::Systems;
-		
+
 			Entity_type<Transform_matrix> triangle_entity_type =
 				entity_manager.create_entity_type<Transform_matrix>(100);
 
@@ -335,8 +372,8 @@ namespace Maia::Mythology
 							0.0f, 1.0f, 0.0f, y,
 							0.0f, 0.0f, 1.0f, z,
 							0.0f, 0.0f, 0.0f, 1.0f;
-						
-						entity_manager.create_entity(triangle_entity_type, Transform_matrix{world_matrix});
+
+						entity_manager.create_entity(triangle_entity_type, Transform_matrix{ world_matrix });
 					}
 				}
 			}
@@ -375,7 +412,7 @@ namespace Maia::Mythology
 					D3D12::Geometry_and_instances_buffer& buffer = scene_resources.geometry_and_instances_buffers.back();
 
 					Component_group const& component_group = entity_manager.get_component_group(triangle_entity_type.id);
-					
+
 					gsl::span<Transform_matrix const> transform_matrices = component_group.components<Transform_matrix>(0);
 					gsl::span<Instance_data const> instances_data{ reinterpret_cast<Instance_data const*>(transform_matrices.data()), transform_matrices.size() };
 					upload_instances_data(buffer, geometry_buffer_width, upload_buffer, upload_buffer_offset + geometry_buffer_width, command_list, instances_data);
@@ -385,7 +422,7 @@ namespace Maia::Mythology
 					Maia::Mythology::D3D12::Render_primitive render_primitive{};
 
 					D3D12::Geometry_and_instances_buffer& buffer = scene_resources.geometry_and_instances_buffers.back();
-					D3D12_GPU_VIRTUAL_ADDRESS const geometry_and_instances_buffer_address = 
+					D3D12_GPU_VIRTUAL_ADDRESS const geometry_and_instances_buffer_address =
 						buffer.value->GetGPUVirtualAddress();
 					UINT const instances_data_size_bytes{ instance_count * sizeof(Instance_data) };
 
@@ -451,10 +488,10 @@ namespace Maia::Mythology
 
 					render_primitive.index_count = static_cast<UINT>(mesh.indices.size());
 					render_primitive.instance_count = static_cast<UINT>(instance_count);
-					
+
 					scene_resources.primitives.emplace_back(std::move(render_primitive));
 				}
-			}			
+			}
 		}
 
 		{

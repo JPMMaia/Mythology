@@ -17,6 +17,11 @@ namespace Maia::Mythology::D3D12
 		winrt::com_ptr<ID3D12Resource> value;
 	};
 
+	struct Geometry_buffer
+	{
+		winrt::com_ptr<ID3D12Resource> value;
+	};
+
 	struct Instance_count
 	{
 		UINT value;
@@ -60,6 +65,7 @@ namespace Maia::Mythology::D3D12
 	{
 		Camera camera;
 		std::vector<winrt::com_ptr<ID3D12Resource>> constant_buffers;
+		std::vector<Geometry_buffer> geometry_buffers;
 		std::vector<Geometry_and_instances_buffer> geometry_and_instances_buffers;
 		std::vector<Render_primitive> primitives;
 	};
