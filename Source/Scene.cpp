@@ -334,6 +334,8 @@ namespace Maia::Mythology
 							render_primitive.index_count = static_cast<UINT>(accessor.count);
 						}
 					}
+
+					scene_resources.primitives.push_back(render_primitive);
 				}
 			}
 		}
