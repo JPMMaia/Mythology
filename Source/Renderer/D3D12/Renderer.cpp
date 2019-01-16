@@ -225,27 +225,36 @@ namespace Maia::Mythology::D3D12
 
 			command_list.IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-			for (const Render_primitive& render_primitive : scene_resources.primitives)
+			for (std::size_t mesh_index = 0; mesh_index < scene_resources.mesh_views.size(); ++mesh_index)
 			{
-				command_list.IASetVertexBuffers(
-					0,
-					static_cast<UINT>(render_primitive.vertex_buffer_views.size()),
-					render_primitive.vertex_buffer_views.data()
-				);
+				Mesh_view const& mesh_view = scene_resources.mesh_views[mesh_index];
+				UINT const instance_count = scene_resources.instances_count[mesh_index];
 
-				command_list.IASetIndexBuffer(
-					&render_primitive.index_buffer_view
-				);
+				if (instance_count > 0)
+				{
+					for (Submesh_view const& submesh_view : mesh_view.submesh_views)
+					{
+						command_list.IASetVertexBuffers(
+							0,
+							static_cast<UINT>(submesh_view.vertex_buffer_views.size()),
+							submesh_view.vertex_buffer_views.data()
+						);
 
-				command_list.DrawIndexedInstanced(
-					render_primitive.index_count,
-					render_primitive.instance_count,
-					0,
-					0,
-					0
-				);
+						command_list.IASetIndexBuffer(
+							&submesh_view.index_buffer_view
+						);
+
+						command_list.DrawIndexedInstanced(
+							submesh_view.index_count,
+							instance_count,
+							0,
+							0,
+							0
+						);
+					}
+				}
 			}
-
+			
 
 			{
 				D3D12_RESOURCE_BARRIER resource_barrier;

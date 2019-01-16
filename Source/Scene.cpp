@@ -212,6 +212,8 @@ namespace Maia::Mythology
 		UINT64 const upload_buffer_offset = render_resources.upload_buffer_offset;
 		ID3D12GraphicsCommandList& command_list = *render_resources.command_list;
 
+		UINT64 allocated_bytes = 0;
+
 		using namespace Maia::Renderer::D3D12;
 		using namespace Maia::Utilities::glTF;
 
@@ -243,8 +245,6 @@ namespace Maia::Mythology
 					std::vector<std::byte> const buffer_data =
 						generate_byte_data(*buffer.uri, buffer.byte_length);
 
-					// TODO expand index data from byte to short if required
-
 					{
 						using namespace Maia::Renderer::D3D12;
 
@@ -252,7 +252,7 @@ namespace Maia::Mythology
 						{
 							create_buffer(
 								device,
-								heap, heap_offset, // TODO offset
+								heap, heap_offset + allocated_bytes,
 								buffer_data.size(),
 								D3D12_RESOURCE_STATE_COPY_DEST
 							)
@@ -261,10 +261,11 @@ namespace Maia::Mythology
 						upload_buffer_data<std::byte>(
 							command_list,
 							*buffer.value, 0,
-							upload_buffer, upload_buffer_offset,
+							upload_buffer, upload_buffer_offset + allocated_bytes,
 							buffer_data
 						);
 
+						allocated_bytes += buffer_data.size();
 						scene_resources.geometry_buffers.emplace_back(std::move(buffer));
 					}
 				}
@@ -286,11 +287,14 @@ namespace Maia::Mythology
 			
 			for (Mesh const& mesh : *gltf.meshes)
 			{
+				std::vector<D3D12::Submesh_view> submesh_views;
+				submesh_views.reserve(mesh.primitives.size());
+
 				for (Primitive const& primitive : mesh.primitives)
 				{
-					D3D12::Render_primitive render_primitive;
+					D3D12::Submesh_view submesh_view{};
 
-					render_primitive.vertex_buffer_views.reserve(primitive.attributes.size());
+					submesh_view.vertex_buffer_views.reserve(primitive.attributes.size());
 					for (std::pair<const std::string, size_t> const& attribute : primitive.attributes)
 					{
 						Accessor const& accessor = accessors[attribute.second];
@@ -307,7 +311,7 @@ namespace Maia::Mythology
 								base_buffer_address + buffer_view.byte_offset;
 							vertex_buffer_view.SizeInBytes = static_cast<UINT>(buffer_view.byte_length);
 							vertex_buffer_view.StrideInBytes = size_of(accessor.component_type) * size_of(accessor.type);
-							render_primitive.vertex_buffer_views.push_back(vertex_buffer_view);
+							submesh_view.vertex_buffer_views.push_back(vertex_buffer_view);
 						}
 					}
 
@@ -330,13 +334,16 @@ namespace Maia::Mythology
 							index_buffer_view.Format = accessor.component_type == Component_type::Unsigned_int ?
 								DXGI_FORMAT_R32_UINT :
 								DXGI_FORMAT_R16_UINT;
-							render_primitive.index_buffer_view = index_buffer_view;
-							render_primitive.index_count = static_cast<UINT>(accessor.count);
+							submesh_view.index_buffer_view = index_buffer_view;
+							submesh_view.index_count = static_cast<UINT>(accessor.count);
 						}
 					}
 
-					scene_resources.primitives.push_back(render_primitive);
+					submesh_views.push_back(submesh_view);
 				}
+
+				scene_resources.mesh_views.push_back({ std::move(submesh_views) });
+				scene_resources.instances_count.push_back(0);
 			}
 		}
 
@@ -346,7 +353,35 @@ namespace Maia::Mythology
 			{
 				Scene const& scene = gltf.scenes->at(*gltf.scene_index);
 				
-				// TODO handle nodes
+				if (scene.nodes)
+				{
+					gsl::span<Node const> nodes = *gltf.nodes;
+
+					for (std::size_t const node_index : *scene.nodes)
+					{
+						Node const& node = nodes[node_index];
+						
+						if (node.mesh_index)
+						{
+							// TODO matrix or translation, etc
+							++scene_resources.instances_count[*node.mesh_index];
+						}
+					}
+
+					for (std::size_t mesh_index = 0; mesh_index < scene_resources.instances_count.size(); ++mesh_index)
+					{
+						D3D12::Instance_buffer instance_buffer{};
+
+						UINT const instance_count = scene_resources.instances_count[mesh_index];
+						instance_buffer.value = Maia::Renderer::D3D12::create_buffer(
+							device, heap, heap_offset + allocated_bytes, instance_count * sizeof(Instance_data));
+
+						// TODO upload data
+
+						allocated_bytes += instance_count * sizeof(Instance_data);
+						scene_resources.instance_buffers.push_back(instance_buffer);
+					}
+				}
 			}
 		}
 
@@ -421,7 +456,7 @@ namespace Maia::Mythology
 				}
 
 				{
-					Maia::Mythology::D3D12::Render_primitive render_primitive{};
+					Maia::Mythology::D3D12::Submesh_view render_primitive{};
 
 					D3D12::Geometry_and_instances_buffer& buffer = scene_resources.geometry_and_instances_buffers.back();
 					D3D12_GPU_VIRTUAL_ADDRESS const geometry_and_instances_buffer_address =
@@ -489,9 +524,11 @@ namespace Maia::Mythology
 					}
 
 					render_primitive.index_count = static_cast<UINT>(mesh.indices.size());
-					render_primitive.instance_count = static_cast<UINT>(instance_count);
+					scene_resources.instances_count.push_back(static_cast<UINT>(instance_count));
 
-					scene_resources.primitives.emplace_back(std::move(render_primitive));
+					D3D12::Mesh_view mesh_view;
+					mesh_view.submesh_views.push_back(render_primitive);
+					scene_resources.mesh_views.push_back(mesh_view);
 				}
 			}
 		}
