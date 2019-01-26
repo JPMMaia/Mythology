@@ -37,22 +37,26 @@ target_link_libraries (MaiaMythology
 target_sources (MaiaMythology 
 	PRIVATE
 		"App.cpp"
-		"Scene.hpp"
-		"Scene.cpp"
 
 		"Camera.hpp"
 		"Input_system.hpp"
 
-		"Renderer/Pass_data.hpp"
-		"Renderer/D3D12/Renderer.hpp"
-		"Renderer/D3D12/Renderer.cpp"
-		"Renderer/D3D12/Render_data.hpp"
-		"Renderer/D3D12/Render_data.cpp"
-		"Renderer/D3D12/Window_swap_chain.hpp"
-		"Renderer/D3D12/Window_swap_chain.cpp"
+		"Render/Pass_data.hpp"
+		"Render/Shaders/Color_vertex_shader.hlsl"
+		"Render/Shaders/Color_pixel_shader.hlsl"
 
-		"Renderer/Shaders/Color_vertex_shader.hlsl"
-		"Renderer/Shaders/Color_pixel_shader.hlsl"
+		"Render/D3D12/Load_scene_system.hpp"
+		"Render/D3D12/Load_scene_system.cpp"
+		"Render/D3D12/Scene.hpp"
+		"Render/D3D12/Scene.cpp"
+		"Render/D3D12/Render_system.hpp"
+		"Render/D3D12/Render_system.cpp"
+		"Render/D3D12/Render_data.hpp"
+		"Render/D3D12/Render_data.cpp"
+		"Render/D3D12/Renderer.hpp"
+		"Render/D3D12/Renderer.cpp"
+		"Render/D3D12/Window_swap_chain.hpp"
+		"Render/D3D12/Window_swap_chain.cpp"
 )
 
 include ("${maiarenderer_SOURCE_DIR}/CMake/Scripts/target_add_hlsl_shader.cmake")
@@ -60,14 +64,14 @@ include ("${maiarenderer_SOURCE_DIR}/CMake/Scripts/target_add_hlsl_shader.cmake"
 target_add_hlsl_shader (
 	MaiaMythology
 		"Shaders"
-		"${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/Color_vertex_shader.hlsl"
+		"${CMAKE_CURRENT_SOURCE_DIR}/Render/Shaders/Color_vertex_shader.hlsl"
 		"${CMAKE_BINARY_DIR}/${CMAKE_CFG_INTDIR}/AppX/Resources/Shaders/Color_vertex_shader.csv"
 		"main" "vs_5_1" true ""
 )
 target_add_hlsl_shader (
 	MaiaMythology
 		"Shaders"
-		"${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/Color_pixel_shader.hlsl"
+		"${CMAKE_CURRENT_SOURCE_DIR}/Render/Shaders/Color_pixel_shader.hlsl"
 		"${CMAKE_BINARY_DIR}/${CMAKE_CFG_INTDIR}/AppX/Resources/Shaders/Color_pixel_shader.csv"
 		"main" "ps_5_1" true ""
 )

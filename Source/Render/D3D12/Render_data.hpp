@@ -84,6 +84,7 @@ namespace Maia::Mythology::D3D12
 		
 		std::vector<Mesh_view> mesh_views;
 		std::vector<Instance_buffer> instance_buffers;
+		std::vector<bool> dirty_instance_buffers;
 		std::vector<UINT> instances_count;
 	};
 }

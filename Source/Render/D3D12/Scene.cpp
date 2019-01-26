@@ -203,7 +203,7 @@ namespace Maia::Mythology
 	
 
 
-	Maia::Mythology::D3D12::Scene_resources load(Maia::GameEngine::Entity_manager& entity_manager, Maia::Mythology::D3D12::Render_resources const& render_resources)
+	Maia::Mythology::D3D12::Scene_resources load(Maia::GameEngine::Entity_manager& entity_manager, Maia::Mythology::D3D12::Render_resources& render_resources)
 	{
 		ID3D12Device& device = *render_resources.device;
 		ID3D12Heap& heap = *render_resources.buffers_heap;
@@ -280,10 +280,17 @@ namespace Maia::Mythology
 			}
 		}
 
+		using namespace Maia::GameEngine;
+		using namespace Maia::GameEngine::Systems;
+
+		std::vector<Entity_type<Local_position, Local_rotation, Transform_matrix>> entity_types;
+
 		if (gltf.meshes)
 		{
 			gsl::span<Accessor const> accessors{ *gltf.accessors };
 			gsl::span<Buffer_view const> buffer_views{ *gltf.buffer_views };
+
+			entity_types.reserve(gltf.meshes->size());
 			
 			for (Mesh const& mesh : *gltf.meshes)
 			{
@@ -344,6 +351,8 @@ namespace Maia::Mythology
 
 				scene_resources.mesh_views.push_back({ std::move(submesh_views) });
 				scene_resources.instances_count.push_back(0);
+				
+				entity_types.push_back(entity_manager.create_entity_type<Local_position, Local_rotation, Transform_matrix>(10));
 			}
 		}
 
@@ -363,23 +372,16 @@ namespace Maia::Mythology
 						
 						if (node.mesh_index)
 						{
-							// TODO matrix or translation, etc
+							entity_manager.create_entity(
+								entity_types[*node.mesh_index], 
+								Local_position{ node.translation },
+								Local_rotation{ node.rotation },
+								// TODO add local scale
+								Transform_matrix{}
+							);
+
 							++scene_resources.instances_count[*node.mesh_index];
 						}
-					}
-
-					for (std::size_t mesh_index = 0; mesh_index < scene_resources.instances_count.size(); ++mesh_index)
-					{
-						D3D12::Instance_buffer instance_buffer{};
-
-						UINT const instance_count = scene_resources.instances_count[mesh_index];
-						instance_buffer.value = Maia::Renderer::D3D12::create_buffer(
-							device, heap, heap_offset + allocated_bytes, instance_count * sizeof(Instance_data));
-
-						// TODO upload data
-
-						allocated_bytes += instance_count * sizeof(Instance_data);
-						scene_resources.instance_buffers.push_back(instance_buffer);
 					}
 				}
 			}
@@ -432,11 +434,12 @@ namespace Maia::Mythology
 					{
 						create_buffer(
 							device,
-							heap, heap_offset,
+							heap, heap_offset + allocated_bytes,
 							total_buffer_width,
 							D3D12_RESOURCE_STATE_COPY_DEST
 						)
 					};
+					allocated_bytes += total_buffer_width;
 
 					upload_geometry_data(mesh, geometry_and_instances_buffer, 0, upload_buffer, upload_buffer_offset, command_list);
 
@@ -547,6 +550,9 @@ namespace Maia::Mythology
 
 			scene_resources.camera = { {{ 0.0f, 0.0f, 0.0f }}, {}, static_cast<float>(EIGEN_PI) / 4.0f, 2.0f, { 0.1f, 21.0f } };
 		}
+
+		render_resources.buffers_heap_offset += allocated_bytes;
+		render_resources.upload_buffer_offset += allocated_bytes;
 
 		return scene_resources;
 	}
