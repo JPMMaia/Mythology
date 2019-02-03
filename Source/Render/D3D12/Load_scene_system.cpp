@@ -19,8 +19,11 @@ namespace Maia::Mythology::D3D12
 		m_command_allocator{ create_command_allocator(device, D3D12_COMMAND_LIST_TYPE_COPY) },
 		m_command_list{ create_closed_graphics_command_list(device, 0, D3D12_COMMAND_LIST_TYPE_COPY, *m_command_allocator) },
 		m_upload_heap{ create_upload_heap(device, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT) },
-		m_upload_buffer{ create_buffer(device, *m_upload_heap, 0, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT, D3D12_RESOURCE_STATE_COPY_SOURCE) }
-	{
+		m_upload_buffer{ create_buffer(device, *m_upload_heap, 0, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT, D3D12_RESOURCE_STATE_COPY_SOURCE) },
+		m_fence_value{ 0 },
+		m_fence{ create_fence(m_device, m_fence_value, D3D12_FENCE_FLAG_NONE) },
+		m_fence_event{ ::CreateEvent(nullptr, false, false, nullptr) }
+	{		
 	}
 
 	namespace
@@ -244,11 +247,23 @@ namespace Maia::Mythology::D3D12
 			return mesh_views;
 		}();
 
+		std::vector<Node> nodes = [&]() -> std::vector<Node>
+		{
+			if (gltf.nodes)
+			{
+				return std::move(*gltf.nodes);
+			}
+			else
+			{
+				return {};
+			}
+		}();
+
 		std::vector<Maia::Utilities::glTF::Scene> scenes = [&]() -> std::vector<Maia::Utilities::glTF::Scene>
 		{
 			if (gltf.scenes)
 			{
-				return *gltf.scenes;
+				return std::move(*gltf.scenes);
 			}
 			else
 			{
@@ -258,10 +273,19 @@ namespace Maia::Mythology::D3D12
 
 		std::size_t scene_index = gltf.scene_index ? *gltf.scene_index : 0;
 
-		return { std::move(geometry_resources), std::move(mesh_views), std::move(scenes), scene_index };
+		return { std::move(geometry_resources), std::move(mesh_views), std::move(nodes), std::move(scenes), scene_index };
 	}
 
-	void create_entities(
+	void Load_scene_system::wait()
+	{
+		ID3D12CommandQueue& command_queue = *m_command_queue;
+
+		UINT64 const event_value_to_signal_and_wait = m_fence_value + 1;
+		signal_and_wait(command_queue, *m_fence, m_fence_event.get(), event_value_to_signal_and_wait, INFINITE);
+		++m_fence_value;
+	}
+
+	std::vector<Static_entity_type> create_entities(
 		Maia::Utilities::glTF::Scene const& scene,
 		gsl::span<Maia::Utilities::glTF::Node const> nodes,
 		std::size_t const mesh_count,
@@ -272,119 +296,43 @@ namespace Maia::Mythology::D3D12
 		using namespace Maia::GameEngine::Systems;
 		using namespace Maia::Utilities::glTF;
 
-		using Static_entity_type = Entity_type<Transform_matrix>;
+		std::vector<Static_entity_type> entity_types;
+		entity_types.reserve(mesh_count);
 
-		std::vector<Static_entity_type> entity_types = [&]() -> std::vector<Static_entity_type>
+		for (size_t i = 0; i < entity_types.capacity(); ++i)
 		{
-			std::vector<Static_entity_type> entity_types;
-			entity_types.reserve(mesh_count);
+			entity_types.push_back(entity_manager.create_entity_type<Transform_matrix>(10));
+		}
 
-			for (size_t i = 0; i < entity_types.capacity(); ++i)
+		if (scene.nodes)
+		{
+			for (std::size_t const node_index : *scene.nodes)
 			{
-				entity_types.push_back(entity_manager.create_entity_type<Transform_matrix>(10));
-			}
+				Node const& node = nodes[node_index];
 
-			if (scene.nodes)
-			{
-				for (std::size_t const node_index : *scene.nodes)
+				if (node.mesh_index)
 				{
-					Node const& node = nodes[node_index];
+					Transform_matrix const transform_matrix =
+						create_transform({ node.translation }, { node.rotation });
 
-					if (node.mesh_index)
-					{
-						Transform_matrix const transform_matrix = 
-							create_transform({ node.translation }, { node.rotation });
-
-						entity_manager.create_entity(
-							entity_types[*node.mesh_index],
-							transform_matrix
-						);
-					}
+					entity_manager.create_entity(
+						entity_types[*node.mesh_index],
+						transform_matrix
+					);
 				}
-			}
-
-			return entity_types;
-		}();
-
-		// TODO return entity_types
-	}
-
-	using namespace Maia::GameEngine;
-	using namespace Maia::GameEngine::Systems;
-
-	struct Scene_instance_data
-	{
-		winrt::com_ptr<ID3D12Heap> instance_heap;
-		Instance_buffer instance_buffer;
-	};
-
-	Scene_instance_data create_instance_buffers(
-		ID3D12Device& device, 
-		Maia::GameEngine::Entity_manager const& entity_manager, 
-		gsl::span<Entity_type<Transform_matrix> const> entity_types
-	)
-	{
-		std::size_t const size_in_bytes = [&]() -> std::size_t
-		{
-			std::size_t count{ 0 };
-
-			for (Entity_type<Transform_matrix> const entity_type : entity_types)
-			{
-				Component_group const& component_group = entity_manager.get_component_group(entity_type.id);
-
-				count += component_group.size();
-			}
-
-			return count * sizeof(Transform_matrix);
-		}();
-
-		winrt::com_ptr<ID3D12Heap> instance_heap = 
-			create_buffer_heap(device, size_in_bytes);
-
-		Instance_buffer instance_buffer
-		{
-			create_buffer(
-				device, 
-				*instance_heap, 0,
-				size_in_bytes,
-				D3D12_RESOURCE_STATE_COPY_DEST
-			)
-		};
-
-		return { std::move(instance_heap), std::move(instance_buffer) };
-	}
-
-	UINT64 upload_instance_data(
-		ID3D12Device& device,
-		ID3D12GraphicsCommandList& command_list,
-		Maia::GameEngine::Entity_manager const& entity_manager,
-		gsl::span<Entity_type<Transform_matrix> const> entity_types,
-		Instance_buffer const& instance_buffer,
-		ID3D12Resource& upload_buffer, UINT64 const upload_buffer_offset_in_bytes
-	)
-	{
-		UINT64 instance_buffer_offset_in_bytes{ 0 };
-
-		for (Entity_type<Transform_matrix> const entity_type : entity_types)
-		{
-			Component_group const& component_group = entity_manager.get_component_group(entity_type.id);
-
-			for (std::size_t chunk_index = 0; chunk_index < component_group.num_chunks(); ++chunk_index)
-			{
-				gsl::span<Transform_matrix const> const transform_matrices =
-					component_group.components<Transform_matrix>(chunk_index);
-
-				upload_buffer_data(
-					command_list,
-					*instance_buffer.value, instance_buffer_offset_in_bytes,
-					upload_buffer, upload_buffer_offset_in_bytes,
-					transform_matrices
-				);
-
-				instance_buffer_offset_in_bytes += transform_matrices.size_bytes();
 			}
 		}
 
-		return instance_buffer_offset_in_bytes;
+		return entity_types;
 	}
+
+	void destroy_entities(
+		Maia::GameEngine::Entity_manager& entity_manager
+		// TODO entity types
+	)
+	{
+		// TODO destroy entity types
+		// TODO call this from destructor of struct returned by create_entities
+	}
+
 }

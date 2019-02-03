@@ -39,6 +39,7 @@ namespace Maia::Mythology::D3D12
 		Maia::Renderer::D3D12::Shader m_color_vertex_shader;
 		Maia::Renderer::D3D12::Shader m_color_pixel_shader;
 		winrt::com_ptr<ID3D12PipelineState> m_color_pass_pipeline_state;
+		std::vector<Scene_instance_data> m_instance_buffer_per_frame;
 
 	};
 }

@@ -94,12 +94,6 @@ namespace Maia::Mythology::D3D12
 		}
 	}
 
-	void Render_system::upload_geometry_data(Maia::Utilities::glTF::GlTF const& gltf)
-	{
-		// TODO upload geometry data from gltf
-		// TODO create instance buffers
-	}
-
 	void Render_system::on_window_resized(Eigen::Vector2i new_size)
 	{
 		m_renderer.wait();

@@ -6,11 +6,14 @@
 
 #include <d3dx12.h>
 
+#include <Maia/GameEngine/Entity_manager.hpp>
+#include <Maia/GameEngine/Systems/Transform_system.hpp>
+
 #include <Maia/Renderer/Matrices.hpp>
 #include <Maia/Renderer/D3D12/Utilities/D3D12_utilities.hpp>
 #include <Maia/Renderer/D3D12/Utilities/Mapped_memory.hpp>
 
-#include <Renderer/Pass_data.hpp>
+#include <Render/Pass_data.hpp>
 
 #include "Render_data.hpp"
 #include "Renderer.hpp"
@@ -156,6 +159,108 @@ namespace Maia::Mythology::D3D12
 
 	namespace
 	{
+		struct Scene_instance_data
+		{
+			winrt::com_ptr<ID3D12Heap> instance_heap;
+			Instance_buffer instance_buffer;
+		};
+
+		Scene_instance_data create_instance_buffers(
+			ID3D12Device& device,
+			Maia::GameEngine::Entity_manager const& entity_manager,
+			gsl::span<Maia::GameEngine::Entity_type_id const> entity_types_ids
+		)
+		{
+			using namespace Maia::GameEngine;
+
+			std::size_t const size_in_bytes = [&]() -> std::size_t
+			{
+				std::size_t count{ 0 };
+
+				for (Maia::GameEngine::Entity_type_id const entity_type_id : entity_types_ids)
+				{
+					Component_group const& component_group = entity_manager.get_component_group(entity_type_id);
+
+					count += component_group.size();
+				}
+
+				std::size_t const unaligned_size_in_bytes = count * sizeof(Instance_data);
+				std::size_t constexpr alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+
+				std::size_t const num_blocks = unaligned_size_in_bytes / alignment
+					+ (unaligned_size_in_bytes % alignment == 0 ? 0 : 1);
+
+				return num_blocks * alignment;
+			}();
+
+			winrt::com_ptr<ID3D12Heap> instance_heap =
+				create_buffer_heap(device, size_in_bytes);
+
+			Instance_buffer instance_buffer
+			{
+				create_buffer(
+					device,
+					*instance_heap, 0,
+					size_in_bytes,
+					D3D12_RESOURCE_STATE_COPY_DEST
+				)
+			};
+
+			return { std::move(instance_heap), std::move(instance_buffer) };
+		}
+
+		std::vector<D3D12_VERTEX_BUFFER_VIEW> upload_instance_data(
+			Maia::GameEngine::Entity_manager const& entity_manager,
+			gsl::span<Maia::GameEngine::Entity_type_id const> entity_types_ids,
+			ID3D12GraphicsCommandList& command_list,
+			Instance_buffer const& instance_buffer,
+			ID3D12Resource& upload_buffer, UINT64 const upload_buffer_offset_in_bytes
+		)
+		{
+			using namespace Maia::GameEngine;
+
+			std::vector<D3D12_VERTEX_BUFFER_VIEW> instance_buffer_views;
+			instance_buffer_views.reserve(entity_types_ids.size());
+
+			UINT64 instance_buffer_offset_in_bytes{ 0 };
+
+			for (Entity_type_id const entity_type_id : entity_types_ids)
+			{
+				Component_group const& component_group = entity_manager.get_component_group(entity_type_id);
+
+				UINT64 size_in_bytes{ 0 };
+
+				for (std::size_t chunk_index = 0; chunk_index < component_group.num_chunks(); ++chunk_index)
+				{
+					using namespace Maia::GameEngine::Systems;
+
+					gsl::span<Transform_matrix const> const transform_matrices =
+						component_group.components<Transform_matrix>(chunk_index);
+
+					upload_buffer_data(
+						command_list,
+						*instance_buffer.value, instance_buffer_offset_in_bytes + size_in_bytes,
+						upload_buffer, upload_buffer_offset_in_bytes,
+						transform_matrices
+					);
+
+					size_in_bytes += transform_matrices.size_bytes();
+				}
+
+				D3D12_VERTEX_BUFFER_VIEW instance_buffer_view;
+				instance_buffer_view.BufferLocation =
+					instance_buffer.value->GetGPUVirtualAddress() +
+					instance_buffer_offset_in_bytes;
+				instance_buffer_view.SizeInBytes = size_in_bytes;
+				instance_buffer_view.StrideInBytes = sizeof(Instance_data);
+				instance_buffer_views.push_back(instance_buffer_view);
+
+				instance_buffer_offset_in_bytes += size_in_bytes;
+			}
+
+			return instance_buffer_views;
+		}
+
 		Eigen::Matrix4f create_api_specific_matrix()
 		{
 			Eigen::Matrix4f value;
@@ -167,36 +272,40 @@ namespace Maia::Mythology::D3D12
 			return value;
 		}
 
-		void upload_data(
-			ID3D12GraphicsCommandList& command_list, 
-			ID3D12Resource& upload_buffer, 
-			Scene_resources const& scene_resources,
-			std::uint8_t const current_frame_index
+		void upload_pass_data(
+			Camera const& camera,
+			ID3D12GraphicsCommandList& command_list,
+			ID3D12Resource& destination_buffer, UINT64 const destination_buffer_offset,
+			ID3D12Resource& upload_buffer, UINT64 const upload_buffer_offset
 		)
 		{
-			{
-				Camera const& camera = scene_resources.camera;
+			Pass_data pass_data;
+			pass_data.view_matrix = Maia::Renderer::create_view_matrix(camera.position.value, camera.rotation.value);
+			pass_data.projection_matrix =
+				create_api_specific_matrix() *
+				Maia::Renderer::create_perspective_projection_matrix(camera.vertical_half_angle_of_view, camera.width_by_height_ratio, camera.zRange);
 
-				Pass_data pass_data;
-				pass_data.view_matrix = Maia::Renderer::create_view_matrix(camera.position.value, camera.rotation.value);
-				pass_data.projection_matrix =
-					create_api_specific_matrix() *
-					Maia::Renderer::create_perspective_projection_matrix(camera.vertical_half_angle_of_view, camera.width_by_height_ratio, camera.zRange);
-
-				ID3D12Resource& constant_buffer = *scene_resources.constant_buffers[0];
-				UINT64 const upload_buffer_offset = 1024 + 1024 * current_frame_index;;
-				upload_buffer_data<Pass_data>(command_list, constant_buffer, 0, upload_buffer, upload_buffer_offset, { &pass_data, 1 });
-			}
+			upload_buffer_data<Pass_data>(
+				command_list, 
+				destination_buffer, destination_buffer_offset, 
+				upload_buffer, upload_buffer_offset, 
+				{ &pass_data, 1 }
+			);
 		}
 
 		void draw(
-			ID3D12GraphicsCommandList& command_list, 
+			ID3D12GraphicsCommandList& command_list,
 			D3D12_VIEWPORT const& viewport, D3D12_RECT const& scissor_rect,
 			ID3D12Resource& render_target, D3D12_CPU_DESCRIPTOR_HANDLE render_target_descriptor_handle,
 			ID3D12RootSignature& root_signature,
-			Scene_resources const& scene_resources
-			)
+			D3D12_GPU_VIRTUAL_ADDRESS const pass_data_constant_buffer_address,
+			gsl::span<Mesh_view const> const mesh_views,
+			gsl::span<D3D12_VERTEX_BUFFER_VIEW const> const instance_buffer_views,
+			gsl::span<UINT const> const instances_count
+		)
 		{
+			assert(mesh_views.size() == instance_buffer_views.size());
+
 			command_list.RSSetViewports(1, &viewport);
 			command_list.RSSetScissorRects(1, &scissor_rect);
 
@@ -221,23 +330,31 @@ namespace Maia::Mythology::D3D12
 			command_list.SetGraphicsRootSignature(&root_signature);
 
 
-			command_list.SetGraphicsRootConstantBufferView(0, scene_resources.constant_buffers[0]->GetGPUVirtualAddress());
+			command_list.SetGraphicsRootConstantBufferView(0, pass_data_constant_buffer_address);
 
 			command_list.IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-			for (std::size_t mesh_index = 0; mesh_index < scene_resources.mesh_views.size(); ++mesh_index)
+			for (std::size_t mesh_index = 0; mesh_index < mesh_views.size(); ++mesh_index)
 			{
-				Mesh_view const& mesh_view = scene_resources.mesh_views[mesh_index];
-				UINT const instance_count = scene_resources.instances_count[mesh_index];
+				UINT const instance_count = instances_count[mesh_index];
 
 				if (instance_count > 0)
 				{
+					Mesh_view const& mesh_view = mesh_views[mesh_index];
+					D3D12_VERTEX_BUFFER_VIEW const& instance_buffer_view = instance_buffer_views[mesh_index];
+
 					for (Submesh_view const& submesh_view : mesh_view.submesh_views)
 					{
 						command_list.IASetVertexBuffers(
 							0,
 							static_cast<UINT>(submesh_view.vertex_buffer_views.size()),
 							submesh_view.vertex_buffer_views.data()
+						);
+
+						command_list.IASetVertexBuffers(
+							static_cast<UINT>(submesh_view.vertex_buffer_views.size()),
+							1,
+							&instance_buffer_view
 						);
 
 						command_list.IASetIndexBuffer(
@@ -254,7 +371,7 @@ namespace Maia::Mythology::D3D12
 					}
 				}
 			}
-			
+
 
 			{
 				D3D12_RESOURCE_BARRIER resource_barrier;
@@ -272,12 +389,29 @@ namespace Maia::Mythology::D3D12
 	void Renderer::render(
 		ID3D12Resource& render_target,
 		D3D12_CPU_DESCRIPTOR_HANDLE render_target_descriptor_handle,
-		Scene_resources const& scene_resources
+		Maia::GameEngine::Entity_manager& entity_manager,
+		gsl::span<Maia::GameEngine::Entity_type_id const> const entity_types_ids,
+		gsl::span<Mesh_view const> const mesh_views,
+		gsl::span<UINT const> const instances_count,
+		Instance_buffer const& instance_buffer,
+		gsl::span<D3D12_VERTEX_BUFFER_VIEW const> const instance_buffer_views,
+		D3D12_GPU_VIRTUAL_ADDRESS const pass_data_buffer_address
 	)
 	{
 		ID3D12Device& device = *m_render_resources.device;
+
+		// TODO move to render_system
+		{
+			std::uint8_t current_frame_index{ m_submitted_frames % m_pipeline_length };
+
+			// TODO check if it is needed to create new instance buffers
+			m_instance_buffer_per_frame[current_frame_index] =
+				create_instance_buffers(device, entity_manager, entity_types_ids);
+		}
+
 		ID3D12CommandQueue& command_queue = *m_render_resources.direct_command_queue;
 
+		// TODO move to render_system
 		{
 			// TODO return to do other cpu work instead of waiting
 
@@ -292,12 +426,34 @@ namespace Maia::Mythology::D3D12
 			winrt::check_hresult(
 				command_allocator.Reset());
 
+			// TODO move to render_system
 			{
 				ID3D12GraphicsCommandList& command_list = *m_render_resources.command_list;
 				winrt::check_hresult(
 					command_list.Reset(&command_allocator, m_color_pass_pipeline_state.get()));
 
-				upload_data(command_list, *m_render_resources.upload_buffer, scene_resources, current_frame_index);
+				ID3D12Resource& upload_buffer = *m_render_resources.upload_buffer;
+				UINT64 const upload_buffer_offset = 1024 + 1024 * current_frame_index;
+
+				{
+					Instance_buffer const& instance_buffer = m_instance_buffer_per_frame[current_frame_index];
+
+					std::vector<D3D12_VERTEX_BUFFER_VIEW> vertex_buffer_views = upload_instance_data(
+						entity_manager, entity_types_ids,
+						command_list,
+						instance_buffer,
+						upload_buffer, upload_buffer_offset
+					);
+				}
+
+				{
+					upload_pass_data(
+						camera,
+						command_list,
+						pass_buffer, 0,
+						upload_buffer, upload_buffer_offset // TODO offset
+					);
+				}
 
 				winrt::check_hresult(
 					command_list.Close());
@@ -322,7 +478,10 @@ namespace Maia::Mythology::D3D12
 					m_viewport, m_scissor_rect,
 					render_target, render_target_descriptor_handle,
 					*m_root_signature,
-					scene_resources
+					pass_data_buffer_address,
+					mesh_views,
+					instance_buffer_views,
+					instances_count
 				);
 
 				winrt::check_hresult(

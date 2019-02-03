@@ -32,10 +32,10 @@ namespace Maia::Mythology::D3D12
 
 		void render_frame(Maia::GameEngine::Entity_manager const& entity_manager);
 
-		void upload_geometry_data(Maia::Utilities::glTF::GlTF const& gltf);
-
 		void on_window_resized(Eigen::Vector2i new_size);
 
+
+		ID3D12Device5& d3d12_device() const { return *m_render_resources.device; }
 
 	private:
 

@@ -32,6 +32,11 @@ namespace Maia::Mythology::D3D12
 		UINT value;
 	};
 
+	struct Instance_data
+	{
+		Eigen::Matrix4f world_matrix;
+	};
+
 	struct Pbr_material
 	{
 	};

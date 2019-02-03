@@ -55,6 +55,8 @@ target_sources (MaiaMythology
 		"Render/D3D12/Render_data.cpp"
 		"Render/D3D12/Renderer.hpp"
 		"Render/D3D12/Renderer.cpp"
+		"Render/D3D12/Upload_frame_data_system.hpp"
+		"Render/D3D12/Upload_frame_data_system.cpp"
 		"Render/D3D12/Window_swap_chain.hpp"
 		"Render/D3D12/Window_swap_chain.cpp"
 )

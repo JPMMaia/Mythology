@@ -13,6 +13,7 @@
 
 #include "Camera.hpp"
 #include "Input_system.hpp"
+#include "Render/D3D12/Load_scene_system.hpp"
 #include "Render/D3D12/Render_system.hpp"
 
 using namespace winrt;
@@ -76,12 +77,12 @@ namespace
 		float const speed = 0.5f;
 		float const magnitude = speed * std::chrono::duration<float>{ delta_time }.count();
 
-		Eigen::Vector3f const movement_direction = [&]() -> Eigen::Vector3f 
+		Eigen::Vector3f const movement_direction = [&]() -> Eigen::Vector3f
 		{
 			Eigen::Vector2f const delta_mouse_position = get_delta_mouse_position(input_state);
 			return { delta_mouse_position(0), delta_mouse_position(1), 0.0f };
 		}();
-		
+
 		Eigen::Vector3f const new_forward_direction = world_forward + magnitude * movement_direction;
 
 		rotation = Eigen::Quaternionf::FromTwoVectors(world_forward, new_forward_direction) * rotation;
@@ -115,13 +116,59 @@ namespace
 	}
 }
 
+namespace
+{
+	struct Scenes_resources
+	{
+		Maia::GameEngine::Entity_manager entity_manager;
+		std::vector<std::vector<Maia::Mythology::D3D12::Static_entity_type>> entity_types_per_scene;
+		std::size_t current_scene_index;
+
+		Maia::Mythology::D3D12::Geometry_resources geometry_resources;
+		std::vector<Maia::Mythology::D3D12::Mesh_view> mesh_views;
+	};
+
+	Scenes_resources load_scenes(Maia::Mythology::D3D12::Load_scene_system& load_scene_system, std::filesystem::path const& gltf_file_path)
+	{
+		using namespace Maia::Mythology;
+
+		D3D12::Scenes_resources scenes_resources =
+			load_scene_system.load(gltf_file_path);
+
+		Maia::GameEngine::Entity_manager entity_manager{};
+
+		std::vector<std::vector<D3D12::Static_entity_type>> entity_types_per_scene;
+		entity_types_per_scene.reserve(scenes_resources.scenes.size());
+
+		for (Maia::Utilities::glTF::Scene const& scene : scenes_resources.scenes)
+		{
+			entity_types_per_scene.push_back(
+				D3D12::create_entities(scene, scenes_resources.nodes, scenes_resources.mesh_views.size(), entity_manager)
+			);
+		}
+
+		load_scene_system.wait();
+
+		return
+		{
+			std::move(entity_manager),
+			std::move(entity_types_per_scene),
+			scenes_resources.current_scene_index,
+			std::move(scenes_resources.geometry_resources),
+			std::move(scenes_resources.mesh_views)
+		};
+	}
+}
+
 struct App : implements<App, IFrameworkViewSource, IFrameworkView>
 {
 	winrt::agile_ref<CoreWindow> m_window{};
 	Maia::GameEngine::Entity_manager m_entity_manager{};
 	Maia::Mythology::Input::Input_state m_input_state{};
 	std::vector<Maia::Utilities::glTF::Gltf> m_gltfs{};
-	std::unique_ptr<Maia::Mythology::D3D12::Render_system> m_render_system;
+	std::unique_ptr<Maia::Mythology::D3D12::Render_system> m_render_system{};
+	std::unique_ptr<Maia::Mythology::D3D12::Load_scene_system> m_load_scene_system{};
+	std::optional<std::future<Scenes_resources>> m_scene_being_loaded;
 
 	IFrameworkView CreateView()
 	{
@@ -134,7 +181,20 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
 
 	void Load(hstring const&)
 	{
-		m_render_system = std::make_unique<Maia::Mythology::D3D12::Render_system>();
+		const Maia::Mythology::D3D12::Window window = [&]() -> Maia::Mythology::D3D12::Window
+		{
+			const winrt::Windows::Foundation::Rect bounds = m_window.get().Bounds();
+
+			return
+			{
+				*static_cast<::IUnknown*>(winrt::get_abi(m_window.get())),
+				{ bounds.X, bounds.Y }
+			};
+		}();
+
+
+		m_render_system = std::make_unique<Maia::Mythology::D3D12::Render_system>(window);
+		m_load_scene_system = std::make_unique<Maia::Mythology::D3D12::Load_scene_system>(m_render_system->d3d12_device());
 	}
 
 	void Uninitialize()
@@ -216,15 +276,35 @@ private:
 		Maia::Mythology::Input::set_previous_state(m_input_state);
 
 		update_mouse_position(m_input_state, m_window.get());
+
+		if (Maia::Mythology::Input::is_pressed(m_input_state, { winrt::Windows::System::VirtualKey::Number1 }))
+		{
+			m_scene_being_loaded =
+				std::async(std::launch::async,
+					[&]() -> Scenes_resources { return load_scenes(*m_load_scene_system, L"box.gltf"); });
+		}
 	}
 
 	void FixedUpdate(Clock::duration delta_time)
 	{
-		update(m_scene_resources.camera, m_input_state, delta_time);
+		if (m_scene_being_loaded)
+		{
+			using namespace std::chrono_literals;
+
+			if (m_scene_being_loaded->wait_for(0s) == std::future_status::ready)
+			{
+				// TODO switch scene
+			}
+		}
+
+		// TODO camera
+		// update(m_scene_resources.camera, m_input_state, delta_time);
 	}
 
 	void RenderUpdate(float update_percentage)
 	{
+		// TODO render a scene (empty by default)
+
 		using namespace Maia::GameEngine::Systems;
 
 		Transform_system{}.execute(m_entity_manager);
