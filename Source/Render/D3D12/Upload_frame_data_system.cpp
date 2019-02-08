@@ -86,8 +86,8 @@ namespace Maia::Mythology::D3D12
 
 	std::vector<D3D12_VERTEX_BUFFER_VIEW> Upload_frame_data_system::upload_instance_data(
 		Instance_buffer const& instance_buffer,
-		Maia::GameEngine::Entity_manager& entity_manager,
-		gsl::span<Maia::GameEngine::Entity_type_id> entity_types_ids
+		Maia::GameEngine::Entity_manager const& entity_manager,
+		gsl::span<Maia::GameEngine::Entity_type_id const> const entity_types_ids
 	) const
 	{
 		return upload_instance_data_impl(
