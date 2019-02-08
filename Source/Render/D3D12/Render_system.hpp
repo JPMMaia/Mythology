@@ -45,7 +45,11 @@ namespace Maia::Mythology::D3D12
 
 		winrt::com_ptr<IDXGIFactory6> m_factory;
 		winrt::com_ptr<IDXGIAdapter4> m_adapter;
+
 		Maia::Mythology::D3D12::Render_resources m_render_resources;
+		winrt::com_ptr<ID3D12CommandQueue> m_copy_command_queue;
+		winrt::com_ptr<ID3D12CommandQueue> m_direct_command_queue;
+
 		Maia::Mythology::D3D12::Upload_frame_data_system m_upload_frame_data_system;
 		Maia::Mythology::D3D12::Renderer m_renderer;
 		Maia::Mythology::D3D12::Window_swap_chain m_window_swap_chain;

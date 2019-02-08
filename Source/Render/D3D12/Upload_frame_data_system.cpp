@@ -146,18 +146,11 @@ namespace Maia::Mythology::D3D12
 	}
 
 
-	void Upload_frame_data_system::execute()
+	ID3D12CommandList& Upload_frame_data_system::close()
 	{
 		winrt::check_hresult(
 			m_command_list->Close());
 
-		std::array<ID3D12CommandList*, 1> command_lists_to_execute
-		{
-			m_command_list.get()
-		};
-
-		m_command_queue->ExecuteCommandLists(
-			static_cast<UINT>(command_lists_to_execute.size()), command_lists_to_execute.data()
-		);
+		return *m_command_list;
 	}
 }
