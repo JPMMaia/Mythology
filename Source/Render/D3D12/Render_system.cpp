@@ -142,6 +142,15 @@ namespace Maia::Mythology::D3D12
 		*/
 	}
 
+	namespace
+	{
+		template <class T, class U>
+		T align(T value, U alignment)
+		{
+			return ((value - 1) | (alignment - 1)) + 1;
+		}
+	}
+
 	void Render_system::render_frame(
 		Camera const& camera,
 		Maia::GameEngine::Entity_manager const& entity_manager,
@@ -175,7 +184,7 @@ namespace Maia::Mythology::D3D12
 			m_upload_frame_data_system.upload_pass_data(
 				bundle,
 				camera,
-				pass_buffer, current_frame_index * sizeof(Pass_data)
+				pass_buffer, current_frame_index * align(sizeof(Pass_data), 256)
 			);
 
 
@@ -231,7 +240,7 @@ namespace Maia::Mythology::D3D12
 
 			{
 				D3D12_GPU_VIRTUAL_ADDRESS const pass_data_buffer_address =
-					m_pass_buffer->GetGPUVirtualAddress() + current_frame_index * sizeof(Pass_data);
+					m_pass_buffer->GetGPUVirtualAddress() + current_frame_index * align(sizeof(Pass_data), 256);
 
 				ID3D12CommandList& command_list =
 					m_renderer.render(

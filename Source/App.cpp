@@ -285,16 +285,16 @@ private:
 
 	void ProcessInput()
 	{
-		Maia::Mythology::Input::set_previous_state(m_input_state);
-
 		update_mouse_position(m_input_state, m_window.get());
 
-		if (Maia::Mythology::Input::is_pressed(m_input_state, { winrt::Windows::System::VirtualKey::Number1 }))
+		if (Maia::Mythology::Input::is_pressed(m_input_state, { winrt::Windows::System::VirtualKey::L }))
 		{
 			m_scene_being_loaded =
 				std::async(std::launch::async,
 					[&]() -> Scenes_resources { return load_scenes(*m_load_scene_system, L"box.gltf"); });
 		}
+
+		Maia::Mythology::Input::set_previous_state(m_input_state);
 	}
 
 	void FixedUpdate(Clock::duration delta_time)

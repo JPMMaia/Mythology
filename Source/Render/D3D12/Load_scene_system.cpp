@@ -87,6 +87,14 @@ namespace Maia::Mythology::D3D12
 	{
 		using namespace Maia::Utilities::glTF;
 
+		{
+			winrt::check_hresult(
+				m_command_allocator->Reset());
+
+			winrt::check_hresult(
+				m_command_list->Reset(m_command_allocator.get(), nullptr));
+		}
+
 		Gltf const gltf = [&]() -> Gltf
 		{
 			nlohmann::json const gltf_json = [&]() -> nlohmann::json
@@ -270,6 +278,20 @@ namespace Maia::Mythology::D3D12
 				return {};
 			}
 		}();
+
+		{
+			winrt::check_hresult(
+				m_command_list->Close());
+
+			std::array<ID3D12CommandList*, 1> command_lists_to_execute
+			{
+				m_command_list.get()
+			};
+
+			m_command_queue->ExecuteCommandLists(
+				static_cast<UINT>(command_lists_to_execute.size()), command_lists_to_execute.data()
+			);
+		}
 
 		std::size_t scene_index = gltf.scene_index ? *gltf.scene_index : 0;
 
