@@ -19,7 +19,7 @@ namespace Maia::Mythology::D3D12
 		m_command_allocator{ create_command_allocator(device, D3D12_COMMAND_LIST_TYPE_COPY) },
 		m_command_list{ create_closed_graphics_command_list(device, 0, D3D12_COMMAND_LIST_TYPE_COPY, *m_command_allocator) },
 		m_upload_heap{ create_upload_heap(device, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT) },
-		m_upload_buffer{ create_buffer(device, *m_upload_heap, 0, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT, D3D12_RESOURCE_STATE_COPY_SOURCE) },
+		m_upload_buffer{ create_buffer(device, *m_upload_heap, 0, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT, D3D12_RESOURCE_STATE_GENERIC_READ) },
 		m_fence_value{ 0 },
 		m_fence{ create_fence(m_device, m_fence_value, D3D12_FENCE_FLAG_NONE) },
 		m_fence_event{ ::CreateEvent(nullptr, false, false, nullptr) }

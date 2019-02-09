@@ -58,17 +58,6 @@ namespace Maia::Mythology::D3D12
 	{
 		winrt::com_ptr<ID3D12Device5> device;
 
-		winrt::com_ptr<ID3D12CommandQueue> direct_command_queue;
-		std::vector<winrt::com_ptr<ID3D12CommandAllocator>> command_allocators;
-		winrt::com_ptr<ID3D12GraphicsCommandList> command_list;
-
-		winrt::com_ptr<ID3D12Heap> upload_heap;
-		winrt::com_ptr<ID3D12Resource> upload_buffer;
-		UINT64 upload_buffer_offset;
-		winrt::com_ptr<ID3D12Heap> buffers_heap;
-		UINT64 buffers_heap_offset;
-
-
 		Render_resources(IDXGIAdapter4& adapter, std::uint8_t pipeline_length);
 	};
 

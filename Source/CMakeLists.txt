@@ -47,8 +47,8 @@ target_sources (MaiaMythology
 
 		"Render/D3D12/Load_scene_system.hpp"
 		"Render/D3D12/Load_scene_system.cpp"
-		"Render/D3D12/Scene.hpp"
-		"Render/D3D12/Scene.cpp"
+		#"Render/D3D12/Scene.hpp"
+		#"Render/D3D12/Scene.cpp"
 		"Render/D3D12/Render_system.hpp"
 		"Render/D3D12/Render_system.cpp"
 		"Render/D3D12/Render_data.hpp"

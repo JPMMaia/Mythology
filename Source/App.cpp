@@ -120,13 +120,21 @@ namespace
 {
 	struct Scenes_resources
 	{
-		Maia::GameEngine::Entity_manager entity_manager;
-		std::vector<std::vector<Maia::Mythology::D3D12::Static_entity_type>> entity_types_per_scene;
-		std::size_t current_scene_index;
+		Maia::GameEngine::Entity_manager entity_manager{};
+		std::vector<std::vector<Maia::Mythology::D3D12::Static_entity_type>> entity_types_per_scene{};
+		std::size_t current_scene_index{};
 
-		Maia::Mythology::D3D12::Geometry_resources geometry_resources;
-		std::vector<Maia::Mythology::D3D12::Mesh_view> mesh_views;
+		Maia::Mythology::D3D12::Geometry_resources geometry_resources{};
+		std::vector<Maia::Mythology::D3D12::Mesh_view> mesh_views{};
+		Maia::Mythology::Camera camera{};
 	};
+
+	Scenes_resources create_default_scene()
+	{
+		Scenes_resources scenes_resources;
+		scenes_resources.entity_types_per_scene.emplace_back();
+		return scenes_resources;
+	}
 
 	Scenes_resources load_scenes(Maia::Mythology::D3D12::Load_scene_system& load_scene_system, std::filesystem::path const& gltf_file_path)
 	{
@@ -155,7 +163,8 @@ namespace
 			std::move(entity_types_per_scene),
 			scenes_resources.current_scene_index,
 			std::move(scenes_resources.geometry_resources),
-			std::move(scenes_resources.mesh_views)
+			std::move(scenes_resources.mesh_views), 
+			Camera{} // TODO camera
 		};
 	}
 }
@@ -163,12 +172,14 @@ namespace
 struct App : implements<App, IFrameworkViewSource, IFrameworkView>
 {
 	winrt::agile_ref<CoreWindow> m_window{};
-	Maia::GameEngine::Entity_manager m_entity_manager{};
 	Maia::Mythology::Input::Input_state m_input_state{};
-	std::vector<Maia::Utilities::glTF::Gltf> m_gltfs{};
+	
 	std::unique_ptr<Maia::Mythology::D3D12::Render_system> m_render_system{};
+
 	std::unique_ptr<Maia::Mythology::D3D12::Load_scene_system> m_load_scene_system{};
 	std::optional<std::future<Scenes_resources>> m_scene_being_loaded;
+	std::vector<Scenes_resources> m_scenes_resources{};
+	std::size_t m_current_scenes_index{ 0 };
 
 	IFrameworkView CreateView()
 	{
@@ -195,6 +206,7 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
 
 		m_render_system = std::make_unique<Maia::Mythology::D3D12::Render_system>(window);
 		m_load_scene_system = std::make_unique<Maia::Mythology::D3D12::Load_scene_system>(m_render_system->d3d12_device());
+		m_scenes_resources.push_back(create_default_scene());
 	}
 
 	void Uninitialize()
@@ -293,23 +305,48 @@ private:
 
 			if (m_scene_being_loaded->wait_for(0s) == std::future_status::ready)
 			{
-				// TODO switch scene
+				m_scenes_resources.push_back(m_scene_being_loaded->get());
+				m_scene_being_loaded = {};
+
+				m_current_scenes_index = m_scenes_resources.size() - 1;
 			}
 		}
 
-		// TODO camera
-		// update(m_scene_resources.camera, m_input_state, delta_time);
+		auto& camera = m_scenes_resources[m_current_scenes_index].camera;
+		update(camera, m_input_state, delta_time);
 	}
 
 	void RenderUpdate(float update_percentage)
 	{
-		// TODO render a scene (empty by default)
-
 		using namespace Maia::GameEngine::Systems;
 
-		Transform_system{}.execute(m_entity_manager);
+		{
+			Scenes_resources& scenes = m_scenes_resources[m_current_scenes_index];
+			Transform_system{}.execute(scenes.entity_manager);
+		}
 
-		m_render_system->render_frame(m_entity_manager);
+		{
+			Scenes_resources const& scenes = m_scenes_resources[m_current_scenes_index];
+
+			// TODO move this elsewhere
+			std::vector<Maia::GameEngine::Entity_type_id> entity_types_ids;
+			{
+				gsl::span<Maia::Mythology::D3D12::Static_entity_type const> const entity_types =
+					scenes.entity_types_per_scene[scenes.current_scene_index];
+
+				entity_types_ids.reserve(entity_types.size());
+
+				std::transform(entity_types.begin(), entity_types.end(), std::back_inserter(entity_types_ids),
+					[](Maia::Mythology::D3D12::Static_entity_type entity_type) -> Maia::GameEngine::Entity_type_id { return entity_type.id; });
+			}
+
+			m_render_system->render_frame(
+				scenes.camera,
+				scenes.entity_manager,
+				entity_types_ids,
+				scenes.mesh_views
+			);
+		}
 	}
 };
 

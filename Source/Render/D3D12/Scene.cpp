@@ -15,7 +15,7 @@
 
 #include <Maia/Utilities/glTF/gltf.hpp>
 
-#include "Renderer/Pass_data.hpp"
+#include <Render/Pass_data.hpp>
 #include "Scene.hpp"
 
 namespace Maia::Mythology

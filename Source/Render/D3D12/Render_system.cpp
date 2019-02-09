@@ -91,15 +91,18 @@ namespace Maia::Mythology::D3D12
 	Render_system::Render_system(Window const& window) :
 		m_factory{ Maia::Renderer::D3D12::create_factory({}) },
 		m_adapter{ select_adapter(*m_factory) },
+		m_pipeline_length{ 3 },
 		m_render_resources{ *m_adapter, m_pipeline_length },
 		m_copy_command_queue{ create_command_queue(*m_render_resources.device, D3D12_COMMAND_LIST_TYPE_COPY, 0, D3D12_COMMAND_QUEUE_FLAG_NONE, 0) },
 		m_direct_command_queue{ create_command_queue(*m_render_resources.device, D3D12_COMMAND_LIST_TYPE_DIRECT, 0, D3D12_COMMAND_QUEUE_FLAG_NONE, 0) },
+		m_copy_fence_value{ 0 },
+		m_copy_fence{ create_fence(*m_render_resources.device, m_copy_fence_value, D3D12_FENCE_FLAG_NONE) },
+		
 		m_upload_frame_data_system{ *m_render_resources.device, m_pipeline_length },
 		m_renderer{ *m_factory, *m_render_resources.device, window.bounds, m_pipeline_length },
-		m_window_swap_chain{ *m_factory, *m_render_resources.direct_command_queue, window.value, *m_render_resources.device, m_frames_resources.rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart() },
 		m_frames_resources{ *m_render_resources.device, m_pipeline_length },
+		m_window_swap_chain{ *m_factory, *m_direct_command_queue, window.value, *m_render_resources.device, m_frames_resources.rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart() },
 
-		m_pipeline_length{ 3 },
 		m_fence_value{ 0 },
 		m_fence{ create_fence(*m_render_resources.device, m_fence_value, D3D12_FENCE_FLAG_NONE) },
 		m_fence_event{ ::CreateEvent(nullptr, false, false, nullptr) },
@@ -111,8 +114,6 @@ namespace Maia::Mythology::D3D12
 		m_instance_buffers_heap{ create_buffer_heap(*m_render_resources.device, m_pipeline_length * D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT) },
 		m_instance_buffer_per_frame{ create_instance_buffers(*m_render_resources.device, *m_instance_buffers_heap, 0, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT, m_pipeline_length) }
 	{
-		// TODO maybe execute command list?
-
 		/*m_scene_resources = Maia::Mythology::load(m_entity_manager, *m_render_resources);
 		m_scene_resources.camera.width_by_height_ratio = bounds.Width / bounds.Height;*/
 
@@ -142,7 +143,7 @@ namespace Maia::Mythology::D3D12
 	}
 
 	void Render_system::render_frame(
-		Camera camera,
+		Camera const& camera,
 		Maia::GameEngine::Entity_manager const& entity_manager,
 		gsl::span<Maia::GameEngine::Entity_type_id const> const entity_types_ids,
 		gsl::span<Maia::Mythology::D3D12::Mesh_view const> const mesh_views
@@ -166,11 +167,13 @@ namespace Maia::Mythology::D3D12
 
 		std::vector<D3D12_VERTEX_BUFFER_VIEW> instance_buffer_views;
 		{
-			m_upload_frame_data_system.reset(current_frame_index);
+			Upload_bundle bundle =
+				m_upload_frame_data_system.reset(current_frame_index);
 
 
 			ID3D12Resource& pass_buffer = *m_pass_buffer;
 			m_upload_frame_data_system.upload_pass_data(
+				bundle,
 				camera,
 				pass_buffer, current_frame_index * sizeof(Pass_data)
 			);
@@ -181,6 +184,7 @@ namespace Maia::Mythology::D3D12
 
 			instance_buffer_views =
 				m_upload_frame_data_system.upload_instance_data(
+					bundle,
 					instance_buffer,
 					entity_manager,
 					entity_types_ids
@@ -188,7 +192,7 @@ namespace Maia::Mythology::D3D12
 
 			{
 				ID3D12CommandList& command_list =
-					m_upload_frame_data_system.close();
+					m_upload_frame_data_system.close(bundle);
 
 				std::array<ID3D12CommandList*, 1> command_lists_to_execute
 				{
@@ -200,9 +204,12 @@ namespace Maia::Mythology::D3D12
 					static_cast<UINT>(command_lists_to_execute.size()), command_lists_to_execute.data()
 				);
 			}
+		}
 
-			// TODO Sync copy queue with other render queue
-			// TODO signal
+		{
+			UINT64 const copy_fence_value_to_signal_and_wait = ++m_copy_fence_value;
+			m_copy_command_queue->Signal(m_copy_fence.get(), copy_fence_value_to_signal_and_wait);
+			m_direct_command_queue->Wait(m_copy_fence.get(), copy_fence_value_to_signal_and_wait);
 		}
 
 		{
@@ -240,7 +247,6 @@ namespace Maia::Mythology::D3D12
 					&command_list
 				};
 
-				// TODO wait for copy queue signal
 				ID3D12CommandQueue& command_queue = *m_direct_command_queue;
 				command_queue.ExecuteCommandLists(
 					static_cast<UINT>(command_lists_to_execute.size()), command_lists_to_execute.data()
@@ -261,7 +267,7 @@ namespace Maia::Mythology::D3D12
 
 	void Render_system::wait()
 	{
-		ID3D12CommandQueue& command_queue = *m_render_resources.direct_command_queue;
+		ID3D12CommandQueue& command_queue = *m_direct_command_queue;
 
 		UINT64 const event_value_to_signal_and_wait = m_submitted_frames + m_pipeline_length;
 		signal_and_wait(command_queue, *m_fence, m_fence_event.get(), event_value_to_signal_and_wait, INFINITE);
@@ -272,7 +278,7 @@ namespace Maia::Mythology::D3D12
 		wait();
 
 		m_window_swap_chain.resize(
-			*m_render_resources.direct_command_queue,
+			*m_direct_command_queue,
 			new_size,
 			*m_render_resources.device,
 			m_frames_resources.rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart()

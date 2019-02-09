@@ -32,7 +32,12 @@ namespace Maia::Mythology::D3D12
 		explicit Render_system(Window const& window);
 
 
-		void render_frame(Maia::GameEngine::Entity_manager const& entity_manager);
+		void render_frame(
+			Camera const& camera,
+			Maia::GameEngine::Entity_manager const& entity_manager,
+			gsl::span<Maia::GameEngine::Entity_type_id const> entity_types_ids,
+			gsl::span<Maia::Mythology::D3D12::Mesh_view const> mesh_views
+		);
 
 		void wait();
 
@@ -46,16 +51,18 @@ namespace Maia::Mythology::D3D12
 		winrt::com_ptr<IDXGIFactory6> m_factory;
 		winrt::com_ptr<IDXGIAdapter4> m_adapter;
 
+		std::uint8_t const m_pipeline_length;
 		Maia::Mythology::D3D12::Render_resources m_render_resources;
 		winrt::com_ptr<ID3D12CommandQueue> m_copy_command_queue;
 		winrt::com_ptr<ID3D12CommandQueue> m_direct_command_queue;
+		UINT64 m_copy_fence_value;
+		winrt::com_ptr<ID3D12Fence> m_copy_fence;
 
 		Maia::Mythology::D3D12::Upload_frame_data_system m_upload_frame_data_system;
 		Maia::Mythology::D3D12::Renderer m_renderer;
-		Maia::Mythology::D3D12::Window_swap_chain m_window_swap_chain;
 		Maia::Mythology::D3D12::Frames_resources m_frames_resources;
+		Maia::Mythology::D3D12::Window_swap_chain m_window_swap_chain;
 
-		std::uint8_t const m_pipeline_length;
 		UINT64 m_fence_value;
 		winrt::com_ptr<ID3D12Fence> m_fence;
 		winrt::handle m_fence_event;
