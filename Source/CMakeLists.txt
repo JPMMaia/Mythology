@@ -36,7 +36,11 @@ target_link_libraries (MaiaMythology
 
 target_sources (MaiaMythology 
 	PRIVATE
-		"App.cpp"
+		"Core_window_main.cpp"
+		#"Win32_window_main.cpp"
+		
+		"Application.hpp"
+		"Application.cpp"
 
 		"Camera.hpp"
 		"Input_system.hpp"

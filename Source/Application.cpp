@@ -1,11 +1,5 @@
 #include <array>
-#include <chrono>
 #include <iostream>
-
-#include <winrt/Windows.ApplicationModel.Core.h>
-#include <winrt/Windows.UI.Core.h>
-#include <winrt/Windows.UI.Composition.h>
-#include <winrt/Windows.UI.Input.h>
 
 #include <Maia/GameEngine/Entity_manager.hpp>
 #include <Maia/GameEngine/Systems/Transform_system.hpp>
@@ -13,17 +7,9 @@
 
 #include "Camera.hpp"
 #include "Input_system.hpp"
-#include "Render/D3D12/Load_scene_system.hpp"
 #include "Render/D3D12/Render_system.hpp"
 
-using namespace winrt;
-
-using namespace Windows;
-using namespace Windows::ApplicationModel::Core;
-using namespace Windows::Foundation::Numerics;
-using namespace Windows::UI;
-using namespace Windows::UI::Core;
-using namespace Windows::UI::Composition;
+#include "Application.hpp"
 
 using Clock = std::chrono::steady_clock;
 
@@ -103,40 +89,18 @@ namespace
 		if (is_down(input_state, { VirtualKey::Z }))
 			rotate(camera.rotation.value, forward_direction, input_state, delta_time);
 	}
-
-	void update_mouse_position(Maia::Mythology::Input::Input_state& input_state, CoreWindow window)
-	{
-		using namespace Maia::Mythology::Input;
-		using namespace winrt::Windows::Foundation;
-
-		{
-			Point const pointer_position = window.PointerPosition();
-			set(input_state, { pointer_position.X, pointer_position.Y });
-		}
-	}
 }
 
 namespace
 {
-	struct Scenes_resources
+	Maia::Mythology::Scenes_resources create_default_scene()
 	{
-		Maia::GameEngine::Entity_manager entity_manager{};
-		std::vector<std::vector<Maia::Mythology::D3D12::Static_entity_type>> entity_types_per_scene{};
-		std::size_t current_scene_index{};
-
-		Maia::Mythology::D3D12::Geometry_resources geometry_resources{};
-		std::vector<Maia::Mythology::D3D12::Mesh_view> mesh_views{};
-		Maia::Mythology::Camera camera{};
-	};
-
-	Scenes_resources create_default_scene()
-	{
-		Scenes_resources scenes_resources;
+		Maia::Mythology::Scenes_resources scenes_resources;
 		scenes_resources.entity_types_per_scene.emplace_back();
 		return scenes_resources;
 	}
 
-	Scenes_resources load_scenes(Maia::Mythology::D3D12::Load_scene_system& load_scene_system, std::filesystem::path const& gltf_file_path)
+	Maia::Mythology::Scenes_resources load_scenes(Maia::Mythology::D3D12::Load_scene_system& load_scene_system, std::filesystem::path const& gltf_file_path)
 	{
 		using namespace Maia::Mythology;
 
@@ -163,61 +127,25 @@ namespace
 			std::move(entity_types_per_scene),
 			scenes_resources.current_scene_index,
 			std::move(scenes_resources.geometry_resources),
-			std::move(scenes_resources.mesh_views), 
+			std::move(scenes_resources.mesh_views),
 			Camera{} // TODO camera
 		};
 	}
 }
 
-struct App : implements<App, IFrameworkViewSource, IFrameworkView>
+namespace Maia::Mythology
 {
-	winrt::agile_ref<CoreWindow> m_window{};
-	Maia::Mythology::Input::Input_state m_input_state{};
-	
-	std::unique_ptr<Maia::Mythology::D3D12::Render_system> m_render_system{};
-
-	std::unique_ptr<Maia::Mythology::D3D12::Load_scene_system> m_load_scene_system{};
-	std::optional<std::future<Scenes_resources>> m_scene_being_loaded;
-	std::vector<Scenes_resources> m_scenes_resources{};
-	std::size_t m_current_scenes_index{ 0 };
-
-	IFrameworkView CreateView()
+	void Application::load(Maia::Mythology::D3D12::Render_system& render_system)
 	{
-		return *this;
-	}
-
-	void Initialize(CoreApplicationView const &)
-	{
-	}
-
-	void Load(hstring const&)
-	{
-		const Maia::Mythology::D3D12::Window window = [&]() -> Maia::Mythology::D3D12::Window
-		{
-			const winrt::Windows::Foundation::Rect bounds = m_window.get().Bounds();
-
-			return
-			{
-				*static_cast<::IUnknown*>(winrt::get_abi(m_window.get())),
-				{ bounds.X, bounds.Y }
-			};
-		}();
-
-
-		m_render_system = std::make_unique<Maia::Mythology::D3D12::Render_system>(window);
-		m_load_scene_system = std::make_unique<Maia::Mythology::D3D12::Load_scene_system>(m_render_system->d3d12_device());
+		m_load_scene_system = std::make_unique<Maia::Mythology::D3D12::Load_scene_system>(render_system.d3d12_device());
 		m_scenes_resources.push_back(create_default_scene());
 	}
 
-	void Uninitialize()
+	void Application::run(
+		Maia::Mythology::D3D12::Render_system& render_system,
+		std::function<Maia::Mythology::Input::Input_state const&()> process_events
+	)
 	{
-	}
-
-	void Run()
-	{
-		CoreWindow window = CoreWindow::GetForCurrentThread();
-		window.Activate();
-
 		using namespace std::chrono;
 		using namespace std::chrono_literals;
 
@@ -232,72 +160,32 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
 			previous_time_point = current_time_point;
 			lag += delta_time;
 
-
-			CoreDispatcher dispatcher = window.Dispatcher();
-			dispatcher.ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
-			ProcessInput();
+			const Input::Input_state& input_state = process_events();
+			process_input(input_state);
 
 
 			while (lag >= fixed_update_duration)
 			{
-				FixedUpdate(fixed_update_duration);
+				fixed_update(fixed_update_duration, input_state);
 				lag -= fixed_update_duration;
 			}
 
-			RenderUpdate(duration<float>{ lag } / fixed_update_duration);
+			render_update(render_system, duration<float>{ lag } / fixed_update_duration);
 		}
 	}
 
-	void SetWindow(CoreWindow window)
+	
+	void Application::process_input(Maia::Mythology::Input::Input_state const& input_state)
 	{
-		window.KeyDown({ this, &App::OnKeyDown });
-		window.KeyUp({ this, &App::OnKeyUp });
-
-		window.SizeChanged(
-			[&](CoreWindow window, WindowSizeChangedEventArgs const& event_args)
-		{
-			winrt::Windows::Foundation::Size const new_size = event_args.Size();
-
-			m_render_system->on_window_resized({ static_cast<int>(new_size.Width), static_cast<int>(new_size.Height) });
-		}
-		);
-
-		m_window = window;
-	}
-
-private:
-
-
-	void OnKeyDown(CoreWindow const &, KeyEventArgs const & args)
-	{
-		args.Handled(true);
-
-		Maia::Mythology::Input::set(m_input_state, { args.VirtualKey() }, true);
-	}
-
-	void OnKeyUp(CoreWindow const &, KeyEventArgs const & args)
-	{
-		args.Handled(true);
-
-		Maia::Mythology::Input::set(m_input_state, { args.VirtualKey() }, false);
-	}
-
-
-	void ProcessInput()
-	{
-		update_mouse_position(m_input_state, m_window.get());
-
-		if (Maia::Mythology::Input::is_pressed(m_input_state, { winrt::Windows::System::VirtualKey::L }))
+		if (Maia::Mythology::Input::is_pressed(input_state, { winrt::Windows::System::VirtualKey::L }))
 		{
 			m_scene_being_loaded =
 				std::async(std::launch::async,
 					[&]() -> Scenes_resources { return load_scenes(*m_load_scene_system, L"box.gltf"); });
 		}
-
-		Maia::Mythology::Input::set_previous_state(m_input_state);
 	}
 
-	void FixedUpdate(Clock::duration delta_time)
+	void Application::fixed_update(Clock::duration delta_time, Maia::Mythology::Input::Input_state const& input_state)
 	{
 		if (m_scene_being_loaded)
 		{
@@ -313,10 +201,10 @@ private:
 		}
 
 		auto& camera = m_scenes_resources[m_current_scenes_index].camera;
-		update(camera, m_input_state, delta_time);
+		update(camera, input_state, delta_time);
 	}
 
-	void RenderUpdate(float update_percentage)
+	void Application::render_update(Maia::Mythology::D3D12::Render_system& render_system, float update_percentage)
 	{
 		using namespace Maia::GameEngine::Systems;
 
@@ -340,7 +228,7 @@ private:
 					[](Maia::Mythology::D3D12::Static_entity_type entity_type) -> Maia::GameEngine::Entity_type_id { return entity_type.id; });
 			}
 
-			m_render_system->render_frame(
+			render_system.render_frame(
 				scenes.camera,
 				scenes.entity_manager,
 				entity_types_ids,
@@ -348,11 +236,4 @@ private:
 			);
 		}
 	}
-};
-
-int main()
-{
-	CoreApplication::Run(App{});
-
-	return 0;
 }

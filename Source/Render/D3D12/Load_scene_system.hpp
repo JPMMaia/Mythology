@@ -3,6 +3,10 @@
 
 #include <filesystem>
 
+#include <Maia/GameEngine/Systems/Transform_system.hpp>
+
+#include <Maia/Utilities/glTF/gltf.hpp>
+
 #include "Render_data.hpp"
 
 namespace Maia::Mythology::D3D12

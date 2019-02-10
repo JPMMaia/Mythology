@@ -4,6 +4,8 @@
 #include <bitset>
 #include <cstdint>
 
+#include <Eigen/Core>
+
 #include <winrt/Windows.UI.Core.h>
 
 namespace Maia::Mythology::Input
@@ -18,16 +20,16 @@ namespace Maia::Mythology::Input
 		std::bitset<256> value{};
 	};
 
-	bool is_down(Keys_state const& keys_state, Key key)
+	inline bool is_down(Keys_state const& keys_state, Key key)
 	{
 		return keys_state.value.test(static_cast<std::size_t>(key.value));
 	}
-	bool is_up(Keys_state const& keys_state, Key key)
+	inline bool is_up(Keys_state const& keys_state, Key key)
 	{
 		return !is_down(keys_state, key);
 	}
 
-	void set(Keys_state& keys_state, Key key, bool value)
+	inline void set(Keys_state& keys_state, Key key, bool value)
 	{
 		keys_state.value.set(static_cast<std::size_t>(key.value), value);
 	}
@@ -47,40 +49,40 @@ namespace Maia::Mythology::Input
 		Mouse_state mouse_current_state{};
 	};
 
-	bool is_down(Input_state const& input_state, Key key)
+	inline bool is_down(Input_state const& input_state, Key key)
 	{
 		return is_down(input_state.keys_current_state, key);
 	}
-	bool is_up(Input_state const& input_state, Key key)
+	inline bool is_up(Input_state const& input_state, Key key)
 	{
 		return is_up(input_state.keys_current_state, key);
 	}
-	bool is_pressed(Input_state const& input_state, Key key)
+	inline bool is_pressed(Input_state const& input_state, Key key)
 	{
 		return is_down(input_state.keys_current_state, key) && 
 			is_up(input_state.keys_previous_state, key);
 	}
-	bool is_released(Input_state const& input_state, Key key)
+	inline bool is_released(Input_state const& input_state, Key key)
 	{
 		return is_down(input_state.keys_previous_state, key) &&
 			is_up(input_state.keys_current_state, key);
 	}
 
-	Eigen::Vector2f get_delta_mouse_position(Input_state const& input_state)
+	inline Eigen::Vector2f get_delta_mouse_position(Input_state const& input_state)
 	{
 		return input_state.mouse_current_state.position - input_state.mouse_previous_state.position;
 	}
 
-	void set(Input_state& input_state, Key key, bool value)
+	inline void set(Input_state& input_state, Key key, bool value)
 	{
 		set(input_state.keys_current_state, key, value);
 	}
-	void set(Input_state& input_state, Eigen::Vector2f mouse_position)
+	inline void set(Input_state& input_state, Eigen::Vector2f mouse_position)
 	{
 		input_state.mouse_current_state.position = mouse_position;
 	}
 
-	void set_previous_state(Input_state& input_state)
+	inline void set_previous_state(Input_state& input_state)
 	{
 		input_state.keys_previous_state = input_state.keys_current_state;
 		input_state.mouse_previous_state = input_state.mouse_current_state;
