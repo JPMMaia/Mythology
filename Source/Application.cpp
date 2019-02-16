@@ -143,7 +143,8 @@ namespace Maia::Mythology
 
 	void Application::run(
 		Maia::Mythology::D3D12::Render_system& render_system,
-		std::function<Maia::Mythology::Input::Input_state const&()> process_events
+		std::function<bool()> process_events,
+		std::function<Maia::Mythology::Input::Input_state const&()> process_input
 	)
 	{
 		using namespace std::chrono;
@@ -155,13 +156,17 @@ namespace Maia::Mythology
 
 		while (true)
 		{
-			Clock::time_point current_time_point{ Clock::now() };
-			Clock::duration delta_time{ current_time_point - previous_time_point };
+			Clock::time_point const current_time_point{ Clock::now() };
+			Clock::duration const delta_time{ current_time_point - previous_time_point };
 			previous_time_point = current_time_point;
 			lag += delta_time;
 
-			const Input::Input_state& input_state = process_events();
-			process_input(input_state);
+
+			if (!process_events())
+				break;
+
+			const Input::Input_state& input_state = process_input();
+			handle_input(input_state);
 
 
 			while (lag >= fixed_update_duration)
@@ -175,7 +180,7 @@ namespace Maia::Mythology
 	}
 
 	
-	void Application::process_input(Maia::Mythology::Input::Input_state const& input_state)
+	void Application::handle_input(Maia::Mythology::Input::Input_state const& input_state)
 	{
 		if (Maia::Mythology::Input::is_pressed(input_state, { winrt::Windows::System::VirtualKey::L }))
 		{

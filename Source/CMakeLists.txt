@@ -36,9 +36,6 @@ target_link_libraries (MaiaMythology
 
 target_sources (MaiaMythology 
 	PRIVATE
-		"Core_window_main.cpp"
-		#"Win32_window_main.cpp"
-		
 		"Application.hpp"
 		"Application.cpp"
 
@@ -64,6 +61,18 @@ target_sources (MaiaMythology
 		"Render/D3D12/Window_swap_chain.hpp"
 		"Render/D3D12/Window_swap_chain.cpp"
 )
+
+if (WINDOWS_STORE)
+	target_sources (MaiaMythology PRIVATE "Core_window_main.cpp")
+else ()
+	target_sources (
+		MaiaMythology 
+			PRIVATE 
+				"Win32_window_main.cpp"
+				"Win32/Win32_window.hpp"
+				"Win32/Win32_window.cpp"
+	)
+endif()
 
 include ("${maiarenderer_SOURCE_DIR}/CMake/Scripts/target_add_hlsl_shader.cmake")
 

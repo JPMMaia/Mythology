@@ -47,14 +47,15 @@ namespace Maia::Mythology
 
 		void run(
 			Maia::Mythology::D3D12::Render_system& render_system,
-			std::function<Maia::Mythology::Input::Input_state const&()> process_events
+			std::function<bool()> process_events,
+			std::function<Maia::Mythology::Input::Input_state const&()> process_input
 		);
 
 
 	private:
 
 		
-		void process_input(Maia::Mythology::Input::Input_state const& input_state);
+		void handle_input(Maia::Mythology::Input::Input_state const& input_state);
 		void fixed_update(Clock::duration delta_time, Maia::Mythology::Input::Input_state const& input_state);
 		void render_update(Maia::Mythology::D3D12::Render_system& render_system, float update_percentage);
 
