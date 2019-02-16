@@ -62,7 +62,10 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
 			};
 		}();
 
+		Maia::Mythology::D3D12::Window_swap_chain m_window_swap_chain;
 		m_render_system = std::make_unique<Maia::Mythology::D3D12::Render_system>(window);
+
+		m_window_swap_chain{ *m_factory, *m_direct_command_queue, window.value, *m_render_resources.device, m_frames_resources.rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart() },
 
 		m_application.load(*m_render_system);
 	}

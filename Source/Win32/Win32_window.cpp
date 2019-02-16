@@ -67,22 +67,23 @@ namespace Maia::Mythology::Win32
 			return window_handle;
 		}
 
+		Window::Dimensions calculate_fullscreen_dimensions()
+		{
+			return
+			{
+				0, 0,
+				GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN)
+			};
+		}
+
 		HWND create_fullscreen_window(
 			WNDPROC const window_process,
 			HINSTANCE const instance,
 			LPCSTR const class_name,
-			LPCSTR const window_name
+			LPCSTR const window_name,
+			Window::Dimensions const dimensions
 		)
 		{
-			Window::Dimensions const dimensions = [&]() -> Window::Dimensions
-			{
-				return
-				{
-					0, 0,
-					GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN),
-				};
-			}();
-
 			HWND const window_handle = create_window(
 				window_process,
 				instance, 
@@ -114,7 +115,8 @@ namespace Maia::Mythology::Win32
 	Window::Window(WNDPROC window_process, LPCSTR class_name, LPCSTR window_name) :
 		m_instance{ GetModuleHandle(nullptr) },
 		m_class_name{ class_name },
-		m_window_handle{ create_fullscreen_window(window_process, m_instance, class_name, window_name) },
+		m_dimensions{ calculate_fullscreen_dimensions() },
+		m_window_handle{ create_fullscreen_window(window_process, m_instance, class_name, window_name, m_dimensions) },
 		m_fullscreen{ true }
 	{
 	}
@@ -122,6 +124,7 @@ namespace Maia::Mythology::Win32
 	Window::Window(WNDPROC window_process, LPCSTR class_name, LPCSTR window_name, Dimensions dimensions) :
 		m_instance{ GetModuleHandle(nullptr) },
 		m_class_name{ class_name },
+		m_dimensions{ dimensions },
 		m_window_handle{ create_window(window_process, m_instance, class_name, window_name, dimensions) },
 		m_fullscreen{ false }
 	{

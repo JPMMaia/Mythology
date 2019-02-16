@@ -17,21 +17,6 @@ namespace Maia::Mythology::D3D12
 {
 	namespace
 	{
-		winrt::com_ptr<IDXGIAdapter4> select_adapter(IDXGIFactory6& factory)
-		{
-			winrt::com_ptr<IDXGIAdapter4> adapter = Maia::Renderer::D3D12::select_adapter(factory, false);
-
-			{
-				DXGI_ADAPTER_DESC3 description;
-				winrt::check_hresult(
-					adapter->GetDesc3(&description));
-
-				std::wcout << std::wstring_view{ description.Description } << '\n';
-			}
-
-			return adapter;
-		}
-
 		std::size_t calculate_instance_buffer_size(
 			Maia::GameEngine::Entity_manager const& entity_manager,
 			gsl::span<Maia::GameEngine::Entity_type_id const> const entity_types_ids
@@ -88,31 +73,35 @@ namespace Maia::Mythology::D3D12
 		}
 	}
 
-	Render_system::Render_system(Window const& window) :
-		m_factory{ Maia::Renderer::D3D12::create_factory({}) },
-		m_adapter{ select_adapter(*m_factory) },
-		m_pipeline_length{ 3 },
-		m_render_resources{ *m_adapter, m_pipeline_length },
-		m_copy_command_queue{ create_command_queue(*m_render_resources.device, D3D12_COMMAND_LIST_TYPE_COPY, 0, D3D12_COMMAND_QUEUE_FLAG_NONE, 0) },
-		m_direct_command_queue{ create_command_queue(*m_render_resources.device, D3D12_COMMAND_LIST_TYPE_DIRECT, 0, D3D12_COMMAND_QUEUE_FLAG_NONE, 0) },
+	Render_system::Render_system(
+		ID3D12Device5& device,
+		ID3D12CommandQueue& copy_command_queue,
+		ID3D12CommandQueue& direct_command_queue,
+		Swap_chain swap_chain,
+		std::uint8_t const pipeline_length
+	) :
+		m_device{ device },
+		m_copy_command_queue{ copy_command_queue },
+		m_direct_command_queue{ direct_command_queue },
+		m_swap_chain{ swap_chain.value },
+		m_pipeline_length{ pipeline_length },
 		m_copy_fence_value{ 0 },
-		m_copy_fence{ create_fence(*m_render_resources.device, m_copy_fence_value, D3D12_FENCE_FLAG_NONE) },
+		m_copy_fence{ create_fence(device, m_copy_fence_value, D3D12_FENCE_FLAG_NONE) },
 		
-		m_upload_frame_data_system{ *m_render_resources.device, m_pipeline_length },
-		m_renderer{ *m_factory, *m_render_resources.device, window.bounds, m_pipeline_length },
-		m_frames_resources{ *m_render_resources.device, m_pipeline_length },
-		m_window_swap_chain{ *m_factory, *m_direct_command_queue, window.value, *m_render_resources.device, m_frames_resources.rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart() },
+		m_upload_frame_data_system{ device, m_pipeline_length },
+		m_renderer{ device, swap_chain.bounds, m_pipeline_length },
+		m_frames_resources{ device, m_pipeline_length },
 
 		m_fence_value{ 0 },
-		m_fence{ create_fence(*m_render_resources.device, m_fence_value, D3D12_FENCE_FLAG_NONE) },
+		m_fence{ create_fence(device, m_fence_value, D3D12_FENCE_FLAG_NONE) },
 		m_fence_event{ ::CreateEvent(nullptr, false, false, nullptr) },
 		m_submitted_frames{ m_pipeline_length },
 
-		m_pass_heap{ create_buffer_heap(*m_render_resources.device, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT) },
-		m_pass_buffer{ create_buffer(*m_render_resources.device, *m_pass_heap, 0, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT, D3D12_RESOURCE_STATE_COPY_DEST) },
+		m_pass_heap{ create_buffer_heap(device, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT) },
+		m_pass_buffer{ create_buffer(device, *m_pass_heap, 0, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT, D3D12_RESOURCE_STATE_COPY_DEST) },
 
-		m_instance_buffers_heap{ create_buffer_heap(*m_render_resources.device, m_pipeline_length * D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT) },
-		m_instance_buffer_per_frame{ create_instance_buffers(*m_render_resources.device, *m_instance_buffers_heap, 0, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT, m_pipeline_length) }
+		m_instance_buffers_heap{ create_buffer_heap(device, m_pipeline_length * D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT) },
+		m_instance_buffer_per_frame{ create_instance_buffers(device, *m_instance_buffers_heap, 0, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT, m_pipeline_length) }
 	{
 		/*m_scene_resources = Maia::Mythology::load(m_entity_manager, *m_render_resources);
 		m_scene_resources.camera.width_by_height_ratio = bounds.Width / bounds.Height;*/
@@ -167,11 +156,9 @@ namespace Maia::Mythology::D3D12
 		{
 			// TODO return to do other cpu work instead of waiting
 
-			ID3D12CommandQueue& direct_command_queue = *m_direct_command_queue;
-
 			UINT64 const event_value_to_wait = m_submitted_frames - m_pipeline_length;
 			Maia::Renderer::D3D12::wait(
-				direct_command_queue, *m_fence, m_fence_event.get(), event_value_to_wait, INFINITE);
+				m_direct_command_queue, *m_fence, m_fence_event.get(), event_value_to_wait, INFINITE);
 		}
 
 		std::vector<D3D12_VERTEX_BUFFER_VIEW> instance_buffer_views;
@@ -208,8 +195,7 @@ namespace Maia::Mythology::D3D12
 					&command_list
 				};
 
-				ID3D12CommandQueue& command_queue = *m_copy_command_queue;
-				command_queue.ExecuteCommandLists(
+				m_copy_command_queue.ExecuteCommandLists(
 					static_cast<UINT>(command_lists_to_execute.size()), command_lists_to_execute.data()
 				);
 			}
@@ -217,12 +203,12 @@ namespace Maia::Mythology::D3D12
 
 		{
 			UINT64 const copy_fence_value_to_signal_and_wait = ++m_copy_fence_value;
-			m_copy_command_queue->Signal(m_copy_fence.get(), copy_fence_value_to_signal_and_wait);
-			m_direct_command_queue->Wait(m_copy_fence.get(), copy_fence_value_to_signal_and_wait);
+			m_copy_command_queue.Signal(m_copy_fence.get(), copy_fence_value_to_signal_and_wait);
+			m_direct_command_queue.Wait(m_copy_fence.get(), copy_fence_value_to_signal_and_wait);
 		}
 
 		{
-			IDXGISwapChain4& swap_chain = m_window_swap_chain.get();
+			IDXGISwapChain4& swap_chain = m_swap_chain;
 
 			UINT const back_buffer_index = swap_chain.GetCurrentBackBufferIndex();
 			winrt::com_ptr<ID3D12Resource> back_buffer;
@@ -230,7 +216,7 @@ namespace Maia::Mythology::D3D12
 				swap_chain.GetBuffer(back_buffer_index, __uuidof(back_buffer), back_buffer.put_void()));
 
 			UINT const descriptor_handle_increment_size =
-				m_render_resources.device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+				m_device.GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
 			D3D12_CPU_DESCRIPTOR_HANDLE const render_target_descriptor_handle
 			{
@@ -256,8 +242,7 @@ namespace Maia::Mythology::D3D12
 					&command_list
 				};
 
-				ID3D12CommandQueue& command_queue = *m_direct_command_queue;
-				command_queue.ExecuteCommandLists(
+				m_direct_command_queue.ExecuteCommandLists(
 					static_cast<UINT>(command_lists_to_execute.size()), command_lists_to_execute.data()
 				);
 			}
@@ -265,33 +250,40 @@ namespace Maia::Mythology::D3D12
 			{
 				UINT64 const frame_finished_value = static_cast<UINT64>(m_submitted_frames);
 
-				ID3D12CommandQueue& command_queue = *m_direct_command_queue;
-				command_queue.Signal(m_fence.get(), frame_finished_value);
+				m_direct_command_queue.Signal(m_fence.get(), frame_finished_value);
 				++m_submitted_frames;
 			}
 
-			m_window_swap_chain.present();
+			winrt::check_hresult(
+				m_swap_chain.Present(1, 0));
 		}
 	}
 
 	void Render_system::wait()
 	{
-		ID3D12CommandQueue& command_queue = *m_direct_command_queue;
-
 		UINT64 const event_value_to_signal_and_wait = m_submitted_frames + m_pipeline_length;
-		signal_and_wait(command_queue, *m_fence, m_fence_event.get(), event_value_to_signal_and_wait, INFINITE);
+		signal_and_wait(m_direct_command_queue, *m_fence, m_fence_event.get(), event_value_to_signal_and_wait, INFINITE);
 	}
 
 	void Render_system::on_window_resized(Eigen::Vector2i new_size)
 	{
 		wait();
 
-		m_window_swap_chain.resize(
-			*m_direct_command_queue,
-			new_size,
-			*m_render_resources.device,
-			m_frames_resources.rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart()
-		);
+		{
+			ID3D12CommandQueue& command_queue = m_direct_command_queue;
+
+			std::vector<UINT> create_node_masks(m_pipeline_length, 1);
+			std::vector<IUnknown*> command_queues(m_pipeline_length, &command_queue);
+
+			resize_swap_chain_buffers_and_recreate_rtvs(
+				m_swap_chain,
+				create_node_masks,
+				command_queues,
+				new_size,
+				m_device,
+				m_frames_resources.rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart()
+			);
+		}
 
 		m_renderer.resize_viewport_and_scissor_rects(new_size);
 

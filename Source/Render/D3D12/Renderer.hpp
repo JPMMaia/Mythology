@@ -19,7 +19,6 @@ namespace Maia::Mythology::D3D12
 	public:
 
 		Renderer(
-			IDXGIFactory6& factory,
 			ID3D12Device5& device,
 			Eigen::Vector2i viewport_and_scissor_dimensions,
 			std::uint8_t pipeline_length

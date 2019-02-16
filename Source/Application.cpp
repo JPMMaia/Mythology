@@ -15,6 +15,7 @@ using Clock = std::chrono::steady_clock;
 
 namespace
 {
+	// TODO convert to system
 	void move(Eigen::Vector3f& position, Eigen::Vector3f const& world_right, Eigen::Vector3f const& world_forward, Maia::Mythology::Input::Input_state const& input_state, Clock::duration const delta_time)
 	{
 		using namespace winrt::Windows::System;
@@ -55,6 +56,7 @@ namespace
 		position += distance * direction;
 	}
 
+	// TODO convert to system
 	void rotate(Eigen::Quaternionf& rotation, Eigen::Vector3f const& world_forward, Maia::Mythology::Input::Input_state const& input_state, Clock::duration const delta_time)
 	{
 		using namespace winrt::Windows::System;
@@ -74,6 +76,7 @@ namespace
 		rotation = Eigen::Quaternionf::FromTwoVectors(world_forward, new_forward_direction) * rotation;
 	}
 
+	// TODO convert to system
 	void update(Maia::Mythology::Camera& camera, Maia::Mythology::Input::Input_state const& input_state, Clock::duration const delta_time)
 	{
 		using namespace Maia::Mythology::Input;
@@ -135,10 +138,14 @@ namespace
 
 namespace Maia::Mythology
 {
-	void Application::load(Maia::Mythology::D3D12::Render_system& render_system)
+	Application::Application(
+		std::unique_ptr<Maia::Mythology::D3D12::Load_scene_system> load_scene_system
+	) :
+		m_load_scene_system{ std::move(load_scene_system) },
+		m_scene_being_loaded{},
+		m_scenes_resources{ create_default_scene() },
+		m_current_scenes_index{ 0 }
 	{
-		m_load_scene_system = std::make_unique<Maia::Mythology::D3D12::Load_scene_system>(render_system.d3d12_device());
-		m_scenes_resources.push_back(create_default_scene());
 	}
 
 	void Application::run(

@@ -43,8 +43,11 @@ namespace Maia::Mythology
 		using Clock = std::chrono::steady_clock;
 
 
-		void load(Maia::Mythology::D3D12::Render_system& render_system);
+		explicit Application(
+			std::unique_ptr<Maia::Mythology::D3D12::Load_scene_system> load_scene_system
+		);
 
+		// TODO pass all other systems through the application constructor
 		void run(
 			Maia::Mythology::D3D12::Render_system& render_system,
 			std::function<bool()> process_events,
@@ -59,10 +62,10 @@ namespace Maia::Mythology
 		void fixed_update(Clock::duration delta_time, Maia::Mythology::Input::Input_state const& input_state);
 		void render_update(Maia::Mythology::D3D12::Render_system& render_system, float update_percentage);
 
-		std::unique_ptr<Maia::Mythology::D3D12::Load_scene_system> m_load_scene_system{};
+		std::unique_ptr<Maia::Mythology::D3D12::Load_scene_system> m_load_scene_system;
 		std::optional<std::future<Scenes_resources>> m_scene_being_loaded;
-		std::vector<Scenes_resources> m_scenes_resources{};
-		std::size_t m_current_scenes_index{ 0 };
+		std::vector<Scenes_resources> m_scenes_resources;
+		std::size_t m_current_scenes_index;
 
 	};
 

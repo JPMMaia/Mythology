@@ -19,10 +19,14 @@ namespace Maia::Mythology::Win32
 		Window(WNDPROC window_process, LPCSTR class_name, LPCSTR window_name, Dimensions dimensions);
 		~Window();
 
+		Dimensions dimensions() const { return m_dimensions; }
+		HWND handle() const { return m_window_handle; }
+
 	private:
 
 		HINSTANCE m_instance;
 		LPCSTR m_class_name;
+		Dimensions m_dimensions;
 		HWND m_window_handle;
 		bool m_fullscreen;
 
