@@ -1,8 +1,8 @@
 #include <iostream>
 
-#include "Win32/Win32_window.hpp"
+#include "Win32/Window.hpp"
 #include "Application.hpp"
-#include "Input_system.hpp"
+#include "Win32/Input_system.hpp"
 #include "Render/D3D12/Render_system.hpp"
 
 #include <Maia/Renderer/D3D12/Utilities/D3D12_utilities.hpp>
@@ -11,34 +11,6 @@ using namespace Maia::Renderer::D3D12;
 
 namespace
 {
-	LRESULT CALLBACK main_window_process(HWND window_handle, UINT message, WPARAM w_param, LPARAM l_param)
-	{
-		switch (message)
-		{
-		case WM_DESTROY:
-			PostQuitMessage(0);
-			return 0;
-
-		case WM_CLOSE:
-			PostQuitMessage(0);
-			return 0;
-
-		default:
-			// TODO give to default window param
-			return DefWindowProc(window_handle, message, w_param, l_param);
-		}
-	}
-
-	// Convert to system
-	bool process_all_pending_events()
-	{
-		MSG message{};
-
-		PeekMessage(&message, nullptr, 0, 0, PM_REMOVE);
-
-		return message.message != WM_QUIT;
-	}
-
 	winrt::com_ptr<IDXGIAdapter4> select_adapter(IDXGIFactory6& factory)
 	{
 		winrt::com_ptr<IDXGIAdapter4> adapter = Maia::Renderer::D3D12::select_adapter(factory, false);
@@ -72,11 +44,49 @@ namespace
 		}
 	};
 
-	Maia::Mythology::Application create_application(ID3D12Device& device)
+	LRESULT CALLBACK main_window_process(HWND window_handle, UINT message, WPARAM w_param, LPARAM l_param)
 	{
-		auto load_scene_system = std::make_unique<Maia::Mythology::D3D12::Load_scene_system>(device);
+		switch (message)
+		{
+		case WM_DESTROY:
+			PostQuitMessage(0);
+			return 0;
 
-		return Maia::Mythology::Application { std::move(load_scene_system) };
+		case WM_CLOSE:
+			PostQuitMessage(0);
+			return 0;
+
+		default:
+			// TODO give to default window param
+			return DefWindowProc(window_handle, message, w_param, l_param);
+		}
+	}
+
+	// Convert to system
+	bool process_all_pending_events()
+	{
+		MSG message{};
+
+		PeekMessage(&message, nullptr, 0, 0, PM_REMOVE);
+
+		return message.message != WM_QUIT;
+	}
+
+	winrt::com_ptr<IDXGISwapChain4> create_swap_chain(
+		Render_resources const& render_resources, 
+		Maia::Mythology::Win32::Window const& window,
+		UINT const buffer_count
+	)
+	{
+		return Maia::Renderer::D3D12::create_swap_chain(
+			*render_resources.factory,
+			*render_resources.direct_command_queue,
+			window.handle(),
+			DXGI_FORMAT_R8G8B8A8_UNORM,
+			buffer_count,
+			DXGI_RATIONAL{ 60, 1 },
+			window.fullscreen()
+		);
 	}
 
 	Maia::Mythology::D3D12::Render_system create_render_system(
@@ -91,42 +101,42 @@ namespace
 			return { dimensions.width, dimensions.height };
 		}();
 
-		return 
-		{ 
-			*render_resources.device, 
-			*render_resources.copy_command_queue, 
-			*render_resources.direct_command_queue, 
+		return
+		{
+			*render_resources.device,
+			*render_resources.copy_command_queue,
+			*render_resources.direct_command_queue,
 			{ swap_chain, dimensions },
 			3
 		};
 	}
 
+	Maia::Mythology::Application create_application(ID3D12Device& device)
+	{
+		auto load_scene_system = std::make_unique<Maia::Mythology::D3D12::Load_scene_system>(device);
+
+		return Maia::Mythology::Application { std::move(load_scene_system) };
+	}
+
 	struct App
 	{
 		Maia::Mythology::Win32::Window m_window;
-		Maia::Mythology::Input::Input_state m_input_state;
+		Maia::Mythology::Win32::Input_system m_input_system;
 
 		std::unique_ptr<Render_resources> m_render_resources;
-
 		winrt::com_ptr<IDXGISwapChain4> m_swap_chain;
 		Maia::Mythology::D3D12::Render_system m_render_system;
+
 		Maia::Mythology::Application m_application;
 
 		App() :
-			m_window{ main_window_process, "Mythology_win32_app", "Mythology" },
-			m_input_state{},
+			m_window{ main_window_process, "Mythology_win32_app", "Mythology", { 0, 0, 800, 600 } },
+			m_input_system{},
 			m_render_resources{ std::make_unique<Render_resources>() },
-			m_swap_chain{ create_swap_chain(*m_render_resources->factory, *m_render_resources->direct_command_queue, m_window.handle(), DXGI_FORMAT_R8G8B8A8_UNORM, 3, DXGI_RATIONAL{ 60, 1 }, false) },
+			m_swap_chain{ create_swap_chain(*m_render_resources, m_window, 3) },
 			m_render_system{ create_render_system(*m_render_resources, m_window, *m_swap_chain) },
 			m_application{ create_application(*m_render_resources->device) }
 		{
-		}
-
-		// TODO convert to system and pass to application constructor
-		Maia::Mythology::Input::Input_state const& process_input()
-		{
-			// TODO
-			return m_input_state;
 		}
 
 		void run()
@@ -134,7 +144,7 @@ namespace
 			m_application.run(
 				m_render_system, 
 				process_all_pending_events, 
-				[&]() -> Maia::Mythology::Input::Input_state const& { return process_input(); }
+				m_input_system
 			);
 		}
 	};

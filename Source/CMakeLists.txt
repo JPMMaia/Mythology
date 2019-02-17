@@ -40,7 +40,8 @@ target_sources (MaiaMythology
 		"Application.cpp"
 
 		"Camera.hpp"
-		"Input_system.hpp"
+		"IInput_system.hpp"
+		"Input_state.hpp"
 
 		"Render/Pass_data.hpp"
 		"Render/Shaders/Color_vertex_shader.hlsl"
@@ -66,9 +67,11 @@ else ()
 	target_sources (
 		MaiaMythology 
 			PRIVATE 
-				"Win32_window_main.cpp"
-				"Win32/Win32_window.hpp"
-				"Win32/Win32_window.cpp"
+				"Win32_main.cpp"
+				"Win32/Window.hpp"
+				"Win32/Window.cpp"
+				"Win32/Input_system.hpp"
+				"Win32/Input_system.cpp"
 	)
 endif()
 

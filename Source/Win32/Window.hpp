@@ -1,3 +1,6 @@
+#ifndef MAIA_MYTHOLOGY_WIN32_WINDOW_H_INCLUDED
+#define MAIA_MYTHOLOGY_WIN32_WINDOW_H_INCLUDED
+
 #include <Windows.h>
 
 namespace Maia::Mythology::Win32
@@ -20,6 +23,7 @@ namespace Maia::Mythology::Win32
 		~Window();
 
 		Dimensions dimensions() const { return m_dimensions; }
+		bool fullscreen() const { return m_fullscreen; }
 		HWND handle() const { return m_window_handle; }
 
 	private:
@@ -32,3 +36,5 @@ namespace Maia::Mythology::Win32
 
 	};
 }
+
+#endif

@@ -22,6 +22,7 @@ namespace Maia::Mythology
 
 	namespace Input
 	{
+		class IInput_system;
 		struct Input_state;
 	}
 
@@ -47,11 +48,11 @@ namespace Maia::Mythology
 			std::unique_ptr<Maia::Mythology::D3D12::Load_scene_system> load_scene_system
 		);
 
-		// TODO pass all other systems through the application constructor
+		// TODO pass all other systems that are platform specific through the application constructor or through here
 		void run(
 			Maia::Mythology::D3D12::Render_system& render_system,
 			std::function<bool()> process_events,
-			std::function<Maia::Mythology::Input::Input_state const&()> process_input
+			Maia::Mythology::Input::IInput_system& input_system
 		);
 
 

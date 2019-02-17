@@ -1,6 +1,6 @@
 #include <stdexcept>
 
-#include "Win32_window.hpp"
+#include "Window.hpp"
 
 namespace Maia::Mythology::Win32
 {

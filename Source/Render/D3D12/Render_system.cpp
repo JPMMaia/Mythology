@@ -103,6 +103,14 @@ namespace Maia::Mythology::D3D12
 		m_instance_buffers_heap{ create_buffer_heap(device, m_pipeline_length * D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT) },
 		m_instance_buffer_per_frame{ create_instance_buffers(device, *m_instance_buffers_heap, 0, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT, m_pipeline_length) }
 	{
+		create_swap_chain_rtvs(
+			device,
+			m_swap_chain,
+			DXGI_FORMAT_R8G8B8A8_UNORM,
+			m_frames_resources.rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart(),
+			m_pipeline_length
+		);
+
 		/*m_scene_resources = Maia::Mythology::load(m_entity_manager, *m_render_resources);
 		m_scene_resources.camera.width_by_height_ratio = bounds.Width / bounds.Height;*/
 

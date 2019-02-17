@@ -6,7 +6,8 @@
 #include <Maia/Utilities/glTF/gltf.hpp>
 
 #include "Camera.hpp"
-#include "Input_system.hpp"
+#include "IInput_system.hpp"
+#include "Input_state.hpp"
 #include "Render/D3D12/Render_system.hpp"
 
 #include "Application.hpp"
@@ -27,9 +28,9 @@ namespace
 			{
 				std::int8_t x_direction{ 0 };
 
-				if (is_down(input_state, { VirtualKey::D }))
+				if (input_state.is_down({ VirtualKey::D }))
 					++x_direction;
-				if (is_down(input_state, { VirtualKey::A }))
+				if (input_state.is_down({ VirtualKey::A }))
 					--x_direction;
 
 				return x_direction;
@@ -39,9 +40,9 @@ namespace
 			{
 				std::int8_t z_direction{ 0 };
 
-				if (is_down(input_state, { VirtualKey::W }))
+				if (input_state.is_down({ VirtualKey::W }))
 					++z_direction;
-				if (is_down(input_state, { VirtualKey::S }))
+				if (input_state.is_down({ VirtualKey::S }))
 					--z_direction;
 
 				return z_direction;
@@ -67,7 +68,7 @@ namespace
 
 		Eigen::Vector3f const movement_direction = [&]() -> Eigen::Vector3f
 		{
-			Eigen::Vector2f const delta_mouse_position = get_delta_mouse_position(input_state);
+			Eigen::Vector2f const delta_mouse_position = input_state.delta_mouse_position();
 			return { delta_mouse_position(0), delta_mouse_position(1), 0.0f };
 		}();
 
@@ -89,7 +90,7 @@ namespace
 
 		move(camera.position.value, right_direction, forward_direction, input_state, delta_time);
 
-		if (is_down(input_state, { VirtualKey::Z }))
+		if (input_state.is_down({ VirtualKey::Z }))
 			rotate(camera.rotation.value, forward_direction, input_state, delta_time);
 	}
 }
@@ -151,7 +152,7 @@ namespace Maia::Mythology
 	void Application::run(
 		Maia::Mythology::D3D12::Render_system& render_system,
 		std::function<bool()> process_events,
-		std::function<Maia::Mythology::Input::Input_state const&()> process_input
+		Maia::Mythology::Input::IInput_system& input_system
 	)
 	{
 		using namespace std::chrono;
@@ -172,7 +173,7 @@ namespace Maia::Mythology
 			if (!process_events())
 				break;
 
-			const Input::Input_state& input_state = process_input();
+			const Input::Input_state& input_state = input_system.execute();
 			handle_input(input_state);
 
 
@@ -189,7 +190,7 @@ namespace Maia::Mythology
 	
 	void Application::handle_input(Maia::Mythology::Input::Input_state const& input_state)
 	{
-		if (Maia::Mythology::Input::is_pressed(input_state, { winrt::Windows::System::VirtualKey::L }))
+		if (input_state.is_pressed({ winrt::Windows::System::VirtualKey::L }))
 		{
 			m_scene_being_loaded =
 				std::async(std::launch::async,
