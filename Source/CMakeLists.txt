@@ -42,6 +42,10 @@ target_sources (MaiaMythology
 		"Camera.hpp"
 		"IInput_system.hpp"
 		"Input_state.hpp"
+		"Game_key.hpp"
+		
+		"Move_camera_system.hpp"
+		"Move_camera_system.cpp"
 
 		"Render/Pass_data.hpp"
 		"Render/Shaders/Color_vertex_shader.hlsl"

@@ -11,6 +11,7 @@
 #include "Render/D3D12/Render_system.hpp"
 
 #include "Application.hpp"
+#include "Game_key.hpp"
 
 using Clock = std::chrono::steady_clock;
 
@@ -19,7 +20,7 @@ namespace
 	// TODO convert to system
 	void move(Eigen::Vector3f& position, Eigen::Vector3f const& world_right, Eigen::Vector3f const& world_forward, Maia::Mythology::Input::Input_state const& input_state, Clock::duration const delta_time)
 	{
-		using namespace winrt::Windows::System;
+		using namespace Maia::Mythology;
 		using namespace Maia::Mythology::Input;
 
 		Eigen::Vector3f const direction = [&]() -> Eigen::Vector3f
@@ -28,7 +29,7 @@ namespace
 			{
 				std::int8_t x_direction{ 0 };
 
-				if (input_state.is_down({ VirtualKey::D }))
+				if (input_state.is_down({ Game_key::Move_right }))
 					++x_direction;
 				if (input_state.is_down({ VirtualKey::A }))
 					--x_direction;

@@ -23,6 +23,7 @@ namespace Maia::Mythology::Win32
 		~Window();
 
 		Dimensions dimensions() const { return m_dimensions; }
+		HINSTANCE instance() const { return m_instance; }
 		bool fullscreen() const { return m_fullscreen; }
 		HWND handle() const { return m_window_handle; }
 

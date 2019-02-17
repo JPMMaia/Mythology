@@ -4,6 +4,7 @@
 #include "Application.hpp"
 #include "Win32/Input_system.hpp"
 #include "Render/D3D12/Render_system.hpp"
+#include "Game_key.hpp"
 
 #include <Maia/Renderer/D3D12/Utilities/D3D12_utilities.hpp>
 
@@ -72,6 +73,22 @@ namespace
 		return message.message != WM_QUIT;
 	}
 
+	Maia::Mythology::Win32::Input_system create_input_system(
+		HINSTANCE const instance,
+		HWND const window_handle
+	)
+	{
+		using namespace Maia::Mythology;
+
+		std::array<std::uint8_t, 256> keys_map{};
+		keys_map[DIK_A] = static_cast<std::uint8_t>(Game_key::Move_left);
+		keys_map[DIK_W] = static_cast<std::uint8_t>(Game_key::Move_forward);
+		keys_map[DIK_D] = static_cast<std::uint8_t>(Game_key::Move_right);
+		keys_map[DIK_S] = static_cast<std::uint8_t>(Game_key::Move_back);
+
+		return Maia::Mythology::Win32::Input_system{ instance, window_handle, keys_map };
+	}
+
 	winrt::com_ptr<IDXGISwapChain4> create_swap_chain(
 		Render_resources const& render_resources, 
 		Maia::Mythology::Win32::Window const& window,
@@ -131,7 +148,7 @@ namespace
 
 		App() :
 			m_window{ main_window_process, "Mythology_win32_app", "Mythology", { 0, 0, 800, 600 } },
-			m_input_system{},
+			m_input_system{ create_input_system(m_window.instance(), m_window.handle()) },
 			m_render_resources{ std::make_unique<Render_resources>() },
 			m_swap_chain{ create_swap_chain(*m_render_resources, m_window, 3) },
 			m_render_system{ create_render_system(*m_render_resources, m_window, *m_swap_chain) },

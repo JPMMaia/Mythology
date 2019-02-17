@@ -12,7 +12,7 @@ namespace Maia::Mythology::Input
 {
 	struct Key
 	{
-		 winrt::Windows::System::VirtualKey value{};
+		std::uint8_t value;
 	};
 
 	struct Keys_state
@@ -21,7 +21,7 @@ namespace Maia::Mythology::Input
 
 		bool is_down(Key key) const
 		{
-			return this->value.test(static_cast<std::size_t>(key.value));
+			return this->value.test(key.value);
 		}
 
 		bool is_up(Key key) const
@@ -31,13 +31,14 @@ namespace Maia::Mythology::Input
 
 		void set(Key key, bool value)
 		{
-			this->value.set(static_cast<std::size_t>(key.value), value);
+			this->value.set(key.value, value);
 		}
 	};
 
 	struct Mouse_state
 	{
-		Eigen::Vector2f position{ 0.0f, 0.0f };
+		Eigen::Vector2i position{ 0, 0 };
+		Eigen::Vector2i delta{ 0, 0 };
 	};
 	
 	struct Input_state
