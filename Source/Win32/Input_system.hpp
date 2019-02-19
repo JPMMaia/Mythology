@@ -1,5 +1,5 @@
-#ifndef MAIA_MYTHOLOGY_WIN32_H_INCLUDED
-#define MAIA_MYTHOLOGY_WIN32_H_INCLUDED
+#ifndef MAIA_MYTHOLOGY_WIN32_INPUTSYSTEM_H_INCLUDED
+#define MAIA_MYTHOLOGY_WIN32_INPUTSYSTEM_H_INCLUDED
 
 #define DIRECTINPUT_VERSION 0x0800
 
@@ -7,6 +7,8 @@
 #pragma comment(lib, "dxguid.lib")
 
 #include <dinput.h>
+
+#include <winrt/base.h>
 
 #include <IInput_system.hpp>
 

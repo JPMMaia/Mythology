@@ -85,6 +85,7 @@ namespace
 		keys_map[DIK_W] = static_cast<std::uint8_t>(Game_key::Move_forward);
 		keys_map[DIK_D] = static_cast<std::uint8_t>(Game_key::Move_right);
 		keys_map[DIK_S] = static_cast<std::uint8_t>(Game_key::Move_back);
+		keys_map[DIK_L] = static_cast<std::uint8_t>(Game_key::Load_scene);
 
 		return Maia::Mythology::Win32::Input_system{ instance, window_handle, keys_map };
 	}

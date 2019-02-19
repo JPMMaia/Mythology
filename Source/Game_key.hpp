@@ -12,6 +12,7 @@ namespace Maia::Mythology
 		Move_forward = 2,
 		Move_right = 3,
 		Move_back = 4,
+		Load_scene = 5
 	};
 }
 

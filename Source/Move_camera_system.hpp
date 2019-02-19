@@ -1,9 +1,0 @@
-#ifndef MAIA_MYTHOLOGY_MOVECAMERASYSTEM_H_INCLUDED
-#define MAIA_MYTHOLOGY_MOVECAMERASYSTEM_H_INCLUDED
-
-namespace Maia::Mythology
-{
-
-}
-
-#endif

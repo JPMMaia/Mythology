@@ -2,99 +2,19 @@
 #include <iostream>
 
 #include <Maia/GameEngine/Entity_manager.hpp>
-#include <Maia/GameEngine/Systems/Transform_system.hpp>
 #include <Maia/Utilities/glTF/gltf.hpp>
 
 #include "Camera.hpp"
+#include "Game_clock.hpp"
+#include "Game_key.hpp"
 #include "IInput_system.hpp"
 #include "Input_state.hpp"
+
+#include <Maia/GameEngine/Systems/Transform_system.hpp>
 #include "Render/D3D12/Render_system.hpp"
+#include "Transform_camera_system.hpp"
 
 #include "Application.hpp"
-#include "Game_key.hpp"
-
-using Clock = std::chrono::steady_clock;
-
-namespace
-{
-	// TODO convert to system
-	void move(Eigen::Vector3f& position, Eigen::Vector3f const& world_right, Eigen::Vector3f const& world_forward, Maia::Mythology::Input::Input_state const& input_state, Clock::duration const delta_time)
-	{
-		using namespace Maia::Mythology;
-		using namespace Maia::Mythology::Input;
-
-		Eigen::Vector3f const direction = [&]() -> Eigen::Vector3f
-		{
-			std::int8_t const x_direction = [&]() -> std::int8_t
-			{
-				std::int8_t x_direction{ 0 };
-
-				if (input_state.is_down({ Game_key::Move_right }))
-					++x_direction;
-				if (input_state.is_down({ VirtualKey::A }))
-					--x_direction;
-
-				return x_direction;
-			}();
-
-			std::int8_t const z_direction = [&]() -> std::int8_t
-			{
-				std::int8_t z_direction{ 0 };
-
-				if (input_state.is_down({ VirtualKey::W }))
-					++z_direction;
-				if (input_state.is_down({ VirtualKey::S }))
-					--z_direction;
-
-				return z_direction;
-			}();
-
-			Eigen::Vector3f const direction = x_direction * world_right + z_direction * world_forward;
-			return direction.normalized();
-		}();
-
-		float const speed = 1.0f;
-		float const distance = speed * std::chrono::duration<float>{ delta_time }.count();
-		position += distance * direction;
-	}
-
-	// TODO convert to system
-	void rotate(Eigen::Quaternionf& rotation, Eigen::Vector3f const& world_forward, Maia::Mythology::Input::Input_state const& input_state, Clock::duration const delta_time)
-	{
-		using namespace winrt::Windows::System;
-		using namespace Maia::Mythology::Input;
-
-		float const speed = 0.5f;
-		float const magnitude = speed * std::chrono::duration<float>{ delta_time }.count();
-
-		Eigen::Vector3f const movement_direction = [&]() -> Eigen::Vector3f
-		{
-			Eigen::Vector2f const delta_mouse_position = input_state.delta_mouse_position();
-			return { delta_mouse_position(0), delta_mouse_position(1), 0.0f };
-		}();
-
-		Eigen::Vector3f const new_forward_direction = world_forward + magnitude * movement_direction;
-
-		rotation = Eigen::Quaternionf::FromTwoVectors(world_forward, new_forward_direction) * rotation;
-	}
-
-	// TODO convert to system
-	void update(Maia::Mythology::Camera& camera, Maia::Mythology::Input::Input_state const& input_state, Clock::duration const delta_time)
-	{
-		using namespace Maia::Mythology::Input;
-		using namespace winrt::Windows::System;
-
-		Eigen::Matrix3f const rotation_matrix = camera.rotation.value.toRotationMatrix();
-
-		Eigen::Vector3f const right_direction{ rotation_matrix.col(0) };
-		Eigen::Vector3f const forward_direction{ rotation_matrix.col(2) };
-
-		move(camera.position.value, right_direction, forward_direction, input_state, delta_time);
-
-		if (input_state.is_down({ VirtualKey::Z }))
-			rotate(camera.rotation.value, forward_direction, input_state, delta_time);
-	}
-}
 
 namespace
 {
@@ -158,15 +78,16 @@ namespace Maia::Mythology
 	{
 		using namespace std::chrono;
 		using namespace std::chrono_literals;
+		using namespace Maia::Mythology::Input;
 
-		constexpr Clock::duration fixed_update_duration{ 50ms };
-		Clock::time_point previous_time_point{ Clock::now() };
-		Clock::duration lag{};
+		constexpr Game_clock::duration fixed_update_duration{ 50ms };
+		Game_clock::time_point previous_time_point{ Game_clock::now() };
+		Game_clock::duration lag{};
 
 		while (true)
 		{
-			Clock::time_point const current_time_point{ Clock::now() };
-			Clock::duration const delta_time{ current_time_point - previous_time_point };
+			Game_clock::time_point const current_time_point{ Game_clock::now() };
+			Game_clock::duration const delta_time{ current_time_point - previous_time_point };
 			previous_time_point = current_time_point;
 			lag += delta_time;
 
@@ -174,13 +95,13 @@ namespace Maia::Mythology
 			if (!process_events())
 				break;
 
-			const Input::Input_state& input_state = input_system.execute();
-			handle_input(input_state);
+			const Input_state& input_state = input_system.execute();
+			handle_input_events(Input_events_view{ input_state });
 
 
 			while (lag >= fixed_update_duration)
 			{
-				fixed_update(fixed_update_duration, input_state);
+				fixed_update(fixed_update_duration, Input_state_view{ input_state });
 				lag -= fixed_update_duration;
 			}
 
@@ -188,10 +109,10 @@ namespace Maia::Mythology
 		}
 	}
 
-	
-	void Application::handle_input(Maia::Mythology::Input::Input_state const& input_state)
+
+	void Application::handle_input_events(Maia::Mythology::Input::Input_events_view input_events_view)
 	{
-		if (input_state.is_pressed({ winrt::Windows::System::VirtualKey::L }))
+		if (input_events_view.is_pressed(Game_key::Load_scene))
 		{
 			m_scene_being_loaded =
 				std::async(std::launch::async,
@@ -199,7 +120,7 @@ namespace Maia::Mythology
 		}
 	}
 
-	void Application::fixed_update(Clock::duration delta_time, Maia::Mythology::Input::Input_state const& input_state)
+	void Application::fixed_update(Game_clock::duration delta_time, Maia::Mythology::Input::Input_state_view input_state_view)
 	{
 		if (m_scene_being_loaded)
 		{
@@ -214,8 +135,8 @@ namespace Maia::Mythology
 			}
 		}
 
-		auto& camera = m_scenes_resources[m_current_scenes_index].camera;
-		update(camera, input_state, delta_time);
+		Camera& camera = m_scenes_resources[m_current_scenes_index].camera;
+		Systems::transform_camera(camera, input_state_view, delta_time);
 	}
 
 	void Application::render_update(Maia::Mythology::D3D12::Render_system& render_system, float update_percentage)

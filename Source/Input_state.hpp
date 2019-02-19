@@ -1,37 +1,35 @@
-#ifndef MAIA_MYTHOLOGY_INPUTSYSTEM_H_INCLUDED
-#define MAIA_MYTHOLOGY_INPUTSYSTEM_H_INCLUDED
+#ifndef MAIA_MYTHOLOGY_INPUTSTATE_H_INCLUDED
+#define MAIA_MYTHOLOGY_INPUTSTATE_H_INCLUDED
 
 #include <bitset>
 #include <cstdint>
 
 #include <Eigen/Core>
 
-#include <winrt/Windows.UI.Core.h>
+namespace Maia::Mythology
+{
+	enum class Game_key : std::uint8_t;
+}
 
 namespace Maia::Mythology::Input
 {
-	struct Key
-	{
-		std::uint8_t value;
-	};
-
 	struct Keys_state
 	{
 		std::bitset<256> value{};
 
-		bool is_down(Key key) const
+		bool is_down(Game_key key) const
 		{
-			return this->value.test(key.value);
+			return this->value.test(static_cast<std::size_t>(key));
 		}
 
-		bool is_up(Key key) const
+		bool is_up(Game_key key) const
 		{
 			return !is_down(key);
 		}
 
-		void set(Key key, bool value)
+		void set(Game_key key, bool value)
 		{
-			this->value.set(key.value, value);
+			this->value.set(static_cast<std::size_t>(key), value);
 		}
 	};
 
@@ -48,36 +46,38 @@ namespace Maia::Mythology::Input
 		Mouse_state mouse_previous_state{};
 		Mouse_state mouse_current_state{};
 
-		bool is_down(Key key) const
+
+		bool is_down(Game_key key) const
 		{
 			return this->keys_current_state.is_down(key);
 		}
-		bool is_up(Key key) const
+		bool is_up(Game_key key) const
 		{
 			return this->keys_current_state.is_up(key);
 		}
-		bool is_pressed(Key key) const
+		
+		bool is_pressed(Game_key key) const
 		{
 			return this->keys_current_state.is_down(key) 
 				&& this->keys_previous_state.is_up(key);
 		}
-		bool is_released(Key key) const
+		bool is_released(Game_key key) const
 		{
 			return this->keys_previous_state.is_down(key) 
 				&& this->keys_current_state.is_up(key);
 		}
 
-		Eigen::Vector2f delta_mouse_position() const
+		Eigen::Vector2i delta_mouse_position() const
 		{
 			return this->mouse_current_state.position - this->mouse_previous_state.position;
 		}
 
-		void set(Key key, bool value)
+		void set(Game_key key, bool value)
 		{
 			this->keys_current_state.set(key, value);
 		}
 
-		void set(Eigen::Vector2f mouse_position)
+		void set(Eigen::Vector2i mouse_position)
 		{
 			this->mouse_current_state.position = mouse_position;
 		}
