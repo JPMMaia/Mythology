@@ -10,9 +10,4 @@ namespace Maia::Mythology::D3D12
 		rtv_descriptor_heap{ create_descriptor_heap(device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, pipeline_length, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, 0) }
 	{
 	}
-
-	Render_resources::Render_resources(IDXGIAdapter4& adapter, std::uint8_t const pipeline_length) :
-		device{ create_device(adapter, D3D_FEATURE_LEVEL_11_0) }
-	{
-	}
 }

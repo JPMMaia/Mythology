@@ -12,7 +12,7 @@ using namespace Maia::Renderer::D3D12;
 
 namespace
 {
-	winrt::com_ptr<IDXGIAdapter4> select_adapter(IDXGIFactory6& factory)
+	winrt::com_ptr<IDXGIAdapter4> select_adapter(IDXGIFactory5& factory)
 	{
 		winrt::com_ptr<IDXGIAdapter4> adapter = Maia::Renderer::D3D12::select_adapter(factory, false);
 
@@ -29,9 +29,9 @@ namespace
 
 	struct Render_resources
 	{
-		winrt::com_ptr<IDXGIFactory6> factory;
+		winrt::com_ptr<IDXGIFactory5> factory;
 		winrt::com_ptr<IDXGIAdapter4> adapter;
-		winrt::com_ptr<ID3D12Device5> device;
+		winrt::com_ptr<ID3D12Device> device;
 		winrt::com_ptr<ID3D12CommandQueue> copy_command_queue;
 		winrt::com_ptr<ID3D12CommandQueue> direct_command_queue;
 
@@ -170,8 +170,30 @@ namespace
 
 int main()
 {
+	std::cin.get();
+
 	App app;
 	app.run();
+
+	/*try 
+	{
+		App app;
+		app.run();
+	}
+	catch (const winrt::hresult_error& error)
+	{
+		std::cerr << winrt::to_string(error.message()) << '\n';
+		std::cin.get();
+	}
+	catch (const std::exception& error)
+	{
+		std::cerr << error.what() << '\n';
+		std::cin.get();
+	}
+	catch (...)
+	{
+		std::cin.get();
+	}*/
 
 	return 0;
 }

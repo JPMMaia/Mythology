@@ -24,7 +24,7 @@ namespace Maia::Mythology::D3D12
 {
 	namespace
 	{
-		winrt::com_ptr<ID3D12PipelineState> create_color_pass_pipeline_state(ID3D12Device5& device, ID3D12RootSignature& root_signature, D3D12_SHADER_BYTECODE vertex_shader, D3D12_SHADER_BYTECODE pixel_shader)
+		winrt::com_ptr<ID3D12PipelineState> create_color_pass_pipeline_state(ID3D12Device& device, ID3D12RootSignature& root_signature, D3D12_SHADER_BYTECODE vertex_shader, D3D12_SHADER_BYTECODE pixel_shader)
 		{
 			D3D12_GRAPHICS_PIPELINE_STATE_DESC description{};
 			description.pRootSignature = &root_signature;
@@ -96,7 +96,7 @@ namespace Maia::Mythology::D3D12
 			return pipeline_state;
 		}
 
-		winrt::com_ptr<ID3D12RootSignature> create_color_pass_root_signature(ID3D12Device5& device)
+		winrt::com_ptr<ID3D12RootSignature> create_color_pass_root_signature(ID3D12Device& device)
 		{
 			std::array<CD3DX12_ROOT_PARAMETER1, 1> root_parameters;
 			root_parameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC, D3D12_SHADER_VISIBILITY_ALL);
@@ -106,7 +106,7 @@ namespace Maia::Mythology::D3D12
 	}
 
 	Renderer::Renderer(
-		ID3D12Device5& device, 
+		ID3D12Device& device, 
 		Eigen::Vector2i const viewport_and_scissor_dimensions, 
 		std::uint8_t const pipeline_length
 	) :
@@ -115,8 +115,8 @@ namespace Maia::Mythology::D3D12
 		m_viewport{ 0.0f, 0.0f, static_cast<FLOAT>(viewport_and_scissor_dimensions(0)), static_cast<FLOAT>(viewport_and_scissor_dimensions(1)), D3D12_MIN_DEPTH, D3D12_MAX_DEPTH },
 		m_scissor_rect{ 0, 0, viewport_and_scissor_dimensions(0), viewport_and_scissor_dimensions(1) },
 		m_root_signature{ create_color_pass_root_signature(device) },
-		m_color_vertex_shader{ "Resources/Shaders/Color_vertex_shader.csv" },
-		m_color_pixel_shader{ "Resources/Shaders/Color_pixel_shader.csv" },
+		m_color_vertex_shader{ "Color_vertex_shader.csv" },
+		m_color_pixel_shader{ "Color_pixel_shader.csv" },
 		m_color_pass_pipeline_state{ create_color_pass_pipeline_state(device, *m_root_signature, m_color_vertex_shader.bytecode(), m_color_pixel_shader.bytecode()) }
 	{
 	}

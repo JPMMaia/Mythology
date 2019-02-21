@@ -20,7 +20,7 @@ namespace Maia::Mythology::Win32
 		winrt::com_ptr<IDirectInput8> create_direct_input(HINSTANCE instance)
 		{
 			winrt::com_ptr<IDirectInput8> direct_input;
-			
+
 			winrt::check_hresult(
 				DirectInput8Create(
 					instance,
@@ -97,11 +97,11 @@ namespace Maia::Mythology::Win32
 
 	namespace
 	{
-		std::optional<Keyboard_state> read_keyboard(IDirectInputDevice8& keyboard)
+		Keyboard_state read_keyboard(IDirectInputDevice8& keyboard)
 		{
 			Keyboard_state keyboard_state;
 
-			HRESULT const result = 
+			HRESULT const result =
 				keyboard.GetDeviceState(
 					static_cast<DWORD>(keyboard_state.value.size() * sizeof(decltype(Keyboard_state::value)::value_type)),
 					keyboard_state.value.data()
@@ -124,11 +124,11 @@ namespace Maia::Mythology::Win32
 			return keyboard_state;
 		}
 
-		std::optional<Mouse_state> read_mouse(IDirectInputDevice8& mouse)
+		Mouse_state read_mouse(IDirectInputDevice8& mouse)
 		{
 			Mouse_state mouse_state;
 
-			HRESULT const result = 
+			HRESULT const result =
 				mouse.GetDeviceState(sizeof(mouse_state.value), &mouse_state.value);
 
 			if (FAILED(result))
@@ -154,37 +154,31 @@ namespace Maia::Mythology::Win32
 		m_input_state.overwrite_previous_with_current_state();
 
 		{
-			std::optional<Keyboard_state> const keyboard_state = read_keyboard(*m_keyboard);
+			Keyboard_state const keyboard_state = read_keyboard(*m_keyboard);
 
-			if (keyboard_state)
+			std::bitset<256>& keyboard_bitset_state = m_input_state.keys_current_state.value;
+
+			for (std::size_t index = 0; index < keyboard_state.value.size(); ++index)
 			{
-				std::bitset<256>& keyboard_bitset_state = m_input_state.keys_current_state.value;
+				std::uint8_t const mapped_key = m_keys_map[index];
+				bool const key_state = (keyboard_state.value[index] & 0x80) != 0;
 
-				for (std::size_t index = 0; index < keyboard_state->value.size(); ++index)
-				{
-					std::uint8_t const mapped_key = m_keys_map[index];
-					bool const key_state = (keyboard_state->value[index] & 0x80) != 0;
-
-					keyboard_bitset_state.set(mapped_key, key_state);
-				}
+				keyboard_bitset_state.set(mapped_key, key_state);
 			}
 		}
 
 		{
-			std::optional<Mouse_state> const mouse_state = read_mouse(*m_mouse);
+			Mouse_state const mouse_state = read_mouse(*m_mouse);
 
-			if (mouse_state)
 			{
-				{
-					Eigen::Vector2i& mouse_position = m_input_state.mouse_current_state.position;
-					mouse_position(0) += mouse_state->value.lX;
-					mouse_position(1) += mouse_state->value.lY;
-				}
+				Eigen::Vector2i& mouse_position = m_input_state.mouse_current_state.position;
+				mouse_position(0) += mouse_state.value.lX;
+				mouse_position(1) += mouse_state.value.lY;
+			}
 
-				{
-					Eigen::Vector2i& mouse_delta = m_input_state.mouse_current_state.delta;
-					mouse_delta = { mouse_state->value.lX, mouse_state->value.lY };
-				}
+			{
+				Eigen::Vector2i& mouse_delta = m_input_state.mouse_current_state.delta;
+				mouse_delta = { mouse_state.value.lX, mouse_state.value.lY };
 			}
 		}
 

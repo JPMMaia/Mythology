@@ -3,6 +3,14 @@ project (MaiaMythology VERSION 0.0.1)
 add_executable (MaiaMythology)
 add_executable (Maia::Mythology ALIAS MaiaMythology)
 
+set_target_properties (
+	MaiaMythology
+		PROPERTIES
+			RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/Output"
+			RUNTIME_OUTPUT_NAME "Mythology"
+			VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/Output/${CMAKE_CFG_INTDIR}"
+)
+
 target_compile_features (MaiaMythology 
 	PRIVATE 
 		cxx_std_17
@@ -88,16 +96,16 @@ target_add_hlsl_shader (
 	MaiaMythology
 		"Shaders"
 		"${CMAKE_CURRENT_SOURCE_DIR}/Render/Shaders/Color_vertex_shader.hlsl"
-		"${CMAKE_BINARY_DIR}/${CMAKE_CFG_INTDIR}/AppX/Resources/Shaders/Color_vertex_shader.csv"
-		"main" "vs_5_1" true ""
+		"${CMAKE_BINARY_DIR}/Intermediate/Shaders/Color_vertex_shader.csv"
+		"main" "vs_5_1" ""
 )
 target_add_hlsl_shader (
 	MaiaMythology
 		"Shaders"
 		"${CMAKE_CURRENT_SOURCE_DIR}/Render/Shaders/Color_pixel_shader.hlsl"
-		"${CMAKE_BINARY_DIR}/${CMAKE_CFG_INTDIR}/AppX/Resources/Shaders/Color_pixel_shader.csv"
-		"main" "ps_5_1" true ""
+		"${CMAKE_BINARY_DIR}/Intermediate/Shaders/Color_pixel_shader.csv"
+		"main" "ps_5_1" ""
 )
 
 target_sources (MaiaMythology PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../Resources/box.gltf")
-set_source_files_properties ("${CMAKE_CURRENT_LIST_DIR}/../Resources/box.gltf" PROPERTIES VS_DEPLOYMENT_CONTENT 1)
+set_source_files_properties ("${CMAKE_CURRENT_LIST_DIR}/../Resources/box.gltf" PROPERTIES VS_COPY_TO_OUT_DIR PreserveNewest)

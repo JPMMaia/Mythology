@@ -74,7 +74,7 @@ namespace Maia::Mythology::D3D12
 	}
 
 	Render_system::Render_system(
-		ID3D12Device5& device,
+		ID3D12Device& device,
 		ID3D12CommandQueue& copy_command_queue,
 		ID3D12CommandQueue& direct_command_queue,
 		Swap_chain swap_chain,

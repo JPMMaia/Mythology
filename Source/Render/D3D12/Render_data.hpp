@@ -54,13 +54,6 @@ namespace Maia::Mythology::D3D12
 		std::vector<Submesh_view> submesh_views;
 	};
 
-	struct Render_resources
-	{
-		winrt::com_ptr<ID3D12Device5> device;
-
-		Render_resources(IDXGIAdapter4& adapter, std::uint8_t pipeline_length);
-	};
-
 	struct Frames_resources
 	{
 		winrt::com_ptr<ID3D12DescriptorHeap> rtv_descriptor_heap;
