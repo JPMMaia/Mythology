@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <iostream>
 #include <optional>
 
 #include "Input_system.hpp"
@@ -7,6 +8,19 @@ namespace Maia::Mythology::Win32
 {
 	namespace
 	{
+		void check_hresult(HRESULT result)
+		{
+			if (FAILED(result))
+			{
+				{
+					winrt::hresult_error error{ result };
+					std::cerr << winrt::to_string(error.message()) << '\n';
+				}
+
+				check_hresult(result);
+			}
+		}
+
 		struct Keyboard_state
 		{
 			std::array<std::uint8_t, 256> value;
@@ -21,7 +35,7 @@ namespace Maia::Mythology::Win32
 		{
 			winrt::com_ptr<IDirectInput8> direct_input;
 
-			winrt::check_hresult(
+			check_hresult(
 				DirectInput8Create(
 					instance,
 					DIRECTINPUT_VERSION,
@@ -38,13 +52,13 @@ namespace Maia::Mythology::Win32
 		{
 			winrt::com_ptr<IDirectInputDevice8> keyboard;
 
-			winrt::check_hresult(
+			check_hresult(
 				direct_input.CreateDevice(GUID_SysKeyboard, keyboard.put(), nullptr));
 
-			winrt::check_hresult(
+			check_hresult(
 				keyboard->SetDataFormat(&c_dfDIKeyboard));
 
-			winrt::check_hresult(
+			check_hresult(
 				keyboard->SetCooperativeLevel(window_handle, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE));
 
 			return keyboard;
@@ -54,13 +68,13 @@ namespace Maia::Mythology::Win32
 		{
 			winrt::com_ptr<IDirectInputDevice8> mouse;
 
-			winrt::check_hresult(
+			check_hresult(
 				direct_input.CreateDevice(GUID_SysMouse, mouse.put(), nullptr));
 
-			winrt::check_hresult(
+			check_hresult(
 				mouse->SetDataFormat(&c_dfDIMouse2));
 
-			winrt::check_hresult(
+			check_hresult(
 				mouse->SetCooperativeLevel(window_handle, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE));
 
 			return mouse;
@@ -74,24 +88,19 @@ namespace Maia::Mythology::Win32
 		m_keys_map{ keys_map },
 		m_input_state{}
 	{
-		winrt::check_hresult(
-			m_keyboard->Acquire());
-
-		winrt::check_hresult(
-			m_mouse->Acquire());
+		m_keyboard->Acquire();
+		m_mouse->Acquire();
 	}
 	Input_system::~Input_system()
 	{
 		if (m_mouse)
 		{
-			winrt::check_hresult(
-				m_mouse->Unacquire());
+			m_mouse->Unacquire();
 		}
 
 		if (m_keyboard)
 		{
-			winrt::check_hresult(
-				m_keyboard->Unacquire());
+			m_keyboard->Unacquire();
 		}
 	}
 
@@ -115,7 +124,7 @@ namespace Maia::Mythology::Win32
 				}
 				else
 				{
-					winrt::check_hresult(result);
+					check_hresult(result);
 				}
 
 				return {};
@@ -139,7 +148,7 @@ namespace Maia::Mythology::Win32
 				}
 				else
 				{
-					winrt::check_hresult(result);
+					check_hresult(result);
 				}
 
 				return {};
@@ -151,7 +160,7 @@ namespace Maia::Mythology::Win32
 
 	Maia::Mythology::Input::Input_state const& Input_system::execute()
 	{
-		m_input_state.overwrite_previous_with_current_state();
+		/*m_input_state.overwrite_previous_with_current_state();
 
 		{
 			Keyboard_state const keyboard_state = read_keyboard(*m_keyboard);
@@ -182,6 +191,7 @@ namespace Maia::Mythology::Win32
 			}
 		}
 
-		return m_input_state;
+		return m_input_state;*/
+		return {};
 	}
 }

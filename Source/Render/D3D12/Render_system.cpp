@@ -4,6 +4,7 @@
 #include <Maia/GameEngine/Entity_manager.hpp>
 #include <Maia/GameEngine/Entity_type.hpp>
 
+#include <Maia/Renderer/D3D12/Utilities/Check_hresult.hpp>
 #include <Maia/Renderer/D3D12/Utilities/D3D12_utilities.hpp>
 
 #include <Render/Pass_data.hpp>
@@ -54,14 +55,14 @@ namespace Maia::Mythology::D3D12
 
 			for (std::size_t index = 0; index < count; ++index)
 			{
-				const UINT64 current_heap_offset = heap_offset + 
+				const UINT64 current_heap_offset = heap_offset +
 					index * size;
 
 				instance_buffers.push_back(
 					{
 						create_buffer(
-							device, 
-							heap, current_heap_offset, 
+							device,
+							heap, current_heap_offset,
 							size,
 							D3D12_RESOURCE_STATE_COPY_DEST
 						)
@@ -78,24 +79,26 @@ namespace Maia::Mythology::D3D12
 		ID3D12CommandQueue& copy_command_queue,
 		ID3D12CommandQueue& direct_command_queue,
 		Swap_chain swap_chain,
-		std::uint8_t const pipeline_length
+		std::uint8_t const pipeline_length,
+		bool const vertical_sync
 	) :
 		m_device{ device },
 		m_copy_command_queue{ copy_command_queue },
 		m_direct_command_queue{ direct_command_queue },
 		m_swap_chain{ swap_chain.value },
 		m_pipeline_length{ pipeline_length },
+		m_vertical_sync{ vertical_sync },
 		m_copy_fence_value{ 0 },
 		m_copy_fence{ create_fence(device, m_copy_fence_value, D3D12_FENCE_FLAG_NONE) },
-		
+
 		m_upload_frame_data_system{ device, m_pipeline_length },
 		m_renderer{ device, swap_chain.bounds, m_pipeline_length },
 		m_frames_resources{ device, m_pipeline_length },
 
-		m_fence_value{ 0 },
+		m_fence_value{ m_pipeline_length },
 		m_fence{ create_fence(device, m_fence_value, D3D12_FENCE_FLAG_NONE) },
 		m_fence_event{ ::CreateEvent(nullptr, false, false, nullptr) },
-		m_submitted_frames{ m_pipeline_length },
+		m_submitted_frames{ 0 },
 
 		m_pass_heap{ create_buffer_heap(device, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT) },
 		m_pass_buffer{ create_buffer(device, *m_pass_heap, 0, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT, D3D12_RESOURCE_STATE_COPY_DEST) },
@@ -116,7 +119,7 @@ namespace Maia::Mythology::D3D12
 
 		/*
 		ID3D12GraphicsCommandList& command_list = *render_resources.command_list;
-		winrt::check_hresult(
+		check_hresult(
 			command_list.Close());
 
 		ID3D12CommandQueue& command_queue = *render_resources.direct_command_queue;
@@ -161,6 +164,7 @@ namespace Maia::Mythology::D3D12
 			// TODO check if it is needed to create new instance buffers
 		}
 
+		if (m_submitted_frames >= m_pipeline_length)
 		{
 			// TODO return to do other cpu work instead of waiting
 
@@ -216,11 +220,11 @@ namespace Maia::Mythology::D3D12
 		}
 
 		{
-			IDXGISwapChain4& swap_chain = m_swap_chain;
+			IDXGISwapChain3& swap_chain = m_swap_chain;
 
 			UINT const back_buffer_index = swap_chain.GetCurrentBackBufferIndex();
 			winrt::com_ptr<ID3D12Resource> back_buffer;
-			winrt::check_hresult(
+			check_hresult(
 				swap_chain.GetBuffer(back_buffer_index, __uuidof(back_buffer), back_buffer.put_void()));
 
 			UINT const descriptor_handle_increment_size =
@@ -259,11 +263,25 @@ namespace Maia::Mythology::D3D12
 				UINT64 const frame_finished_value = static_cast<UINT64>(m_submitted_frames);
 
 				m_direct_command_queue.Signal(m_fence.get(), frame_finished_value);
+
 				++m_submitted_frames;
 			}
 
-			winrt::check_hresult(
-				m_swap_chain.Present(1, 0));
+			{
+				UINT const sync_interval =
+					m_vertical_sync ? 1 : 0;
+
+				check_hresult(
+					m_swap_chain.Present(sync_interval, 0));
+			}
+
+			//if (m_submitted_frames >= m_pipeline_length)
+			/*{
+				// TODO return to do other cpu work instead of waiting
+				UINT64 const event_value_to_wait = static_cast<UINT64>(m_submitted_frames - 1);
+				Maia::Renderer::D3D12::wait(
+					m_direct_command_queue, *m_fence, m_fence_event.get(), event_value_to_wait, INFINITE);
+			}*/
 		}
 	}
 

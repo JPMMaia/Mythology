@@ -68,6 +68,13 @@ namespace Maia::Mythology
 		m_scenes_resources{ create_default_scene() },
 		m_current_scenes_index{ 0 }
 	{
+		/*m_scene_being_loaded =
+			std::async(std::launch::deferred,
+				[&]() -> Scenes_resources { return load_scenes(*m_load_scene_system, L"box.gltf"); });
+
+		m_scenes_resources.push_back(m_scene_being_loaded->get());
+		m_scene_being_loaded = {};
+		m_current_scenes_index = m_scenes_resources.size() - 1;*/
 	}
 
 	void Application::run(
@@ -95,7 +102,7 @@ namespace Maia::Mythology
 			if (!process_events())
 				break;
 
-			const Input_state& input_state = input_system.execute();
+			/*const Input_state& input_state = input_system.execute();
 			handle_input_events(Input_events_view{ input_state });
 
 
@@ -103,7 +110,7 @@ namespace Maia::Mythology
 			{
 				fixed_update(fixed_update_duration, Input_state_view{ input_state });
 				lag -= fixed_update_duration;
-			}
+			}*/
 
 			render_update(render_system, duration<float>{ lag } / fixed_update_duration);
 		}

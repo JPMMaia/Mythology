@@ -10,6 +10,7 @@
 #include <Maia/GameEngine/Systems/Transform_system.hpp>
 
 #include <Maia/Renderer/Matrices.hpp>
+#include <Maia/Renderer/D3D12/Utilities/Check_hresult.hpp>
 #include <Maia/Renderer/D3D12/Utilities/D3D12_utilities.hpp>
 #include <Maia/Renderer/D3D12/Utilities/Mapped_memory.hpp>
 
@@ -34,7 +35,8 @@ namespace Maia::Mythology::D3D12
 			description.HS;
 			description.GS;
 			description.StreamOutput;
-			description.BlendState = []() -> D3D12_BLEND_DESC
+			description.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			/*description.BlendState = []() -> D3D12_BLEND_DESC
 			{
 				D3D12_BLEND_DESC blend_state{};
 				blend_state.AlphaToCoverageEnable = false;
@@ -46,9 +48,10 @@ namespace Maia::Mythology::D3D12
 					return render_target_blend_desc;
 				}();
 				return blend_state;
-			}();
+			}();*/
 			description.SampleMask = 0xFFFFFFFF;
-			description.RasterizerState = []() -> D3D12_RASTERIZER_DESC
+			description.RasterizerState = CD3DX12_RASTERIZER_DESC{ D3D12_DEFAULT };
+			/*description.RasterizerState = []() -> D3D12_RASTERIZER_DESC
 			{
 				D3D12_RASTERIZER_DESC rasterizer_state{};
 				rasterizer_state.FillMode = D3D12_FILL_MODE_SOLID;
@@ -63,8 +66,9 @@ namespace Maia::Mythology::D3D12
 				rasterizer_state.ForcedSampleCount = 0;
 				rasterizer_state.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
 				return rasterizer_state;
-			}();
-			description.DepthStencilState;
+			}();*/
+			description.DepthStencilState.DepthEnable = FALSE;
+			description.DepthStencilState.StencilEnable = FALSE;
 
 			std::array<D3D12_INPUT_ELEMENT_DESC, 6> input_layout_elements
 			{
@@ -82,7 +86,7 @@ namespace Maia::Mythology::D3D12
 			description.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
 			description.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 			description.NumRenderTargets = 1;
-			description.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+			description.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 			description.DSVFormat;
 			description.SampleDesc.Count = 1;
 			description.SampleDesc.Quality = 0;
@@ -91,7 +95,7 @@ namespace Maia::Mythology::D3D12
 			description.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
 
 			winrt::com_ptr<ID3D12PipelineState> pipeline_state;
-			winrt::check_hresult(
+			check_hresult(
 				device.CreateGraphicsPipelineState(&description, __uuidof(pipeline_state), pipeline_state.put_void()));
 			return pipeline_state;
 		}
@@ -115,8 +119,8 @@ namespace Maia::Mythology::D3D12
 		m_viewport{ 0.0f, 0.0f, static_cast<FLOAT>(viewport_and_scissor_dimensions(0)), static_cast<FLOAT>(viewport_and_scissor_dimensions(1)), D3D12_MIN_DEPTH, D3D12_MAX_DEPTH },
 		m_scissor_rect{ 0, 0, viewport_and_scissor_dimensions(0), viewport_and_scissor_dimensions(1) },
 		m_root_signature{ create_color_pass_root_signature(device) },
-		m_color_vertex_shader{ "Color_vertex_shader.csv" },
-		m_color_pixel_shader{ "Color_pixel_shader.csv" },
+		m_color_vertex_shader{ "Color_vertex_shader.hlsl", "main", "vs_5_1" },
+		m_color_pixel_shader{ "Color_pixel_shader.hlsl", "main", "ps_5_1" },
 		m_color_pass_pipeline_state{ create_color_pass_pipeline_state(device, *m_root_signature, m_color_vertex_shader.bytecode(), m_color_pixel_shader.bytecode()) }
 	{
 	}
@@ -235,13 +239,13 @@ namespace Maia::Mythology::D3D12
 		ID3D12CommandAllocator& command_allocator = 
 			*m_command_allocators[current_frame_index];
 
-		winrt::check_hresult(
+		check_hresult(
 			command_allocator.Reset());
 
 		{
 			ID3D12GraphicsCommandList& command_list = *m_command_list;
 
-			winrt::check_hresult(
+			check_hresult(
 				command_list.Reset(&command_allocator, m_color_pass_pipeline_state.get()));
 
 			draw(
@@ -254,7 +258,7 @@ namespace Maia::Mythology::D3D12
 				instance_buffer_views
 			);
 
-			winrt::check_hresult(
+			check_hresult(
 				command_list.Close());
 
 			return command_list;

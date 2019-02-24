@@ -59,8 +59,6 @@ target_sources (MaiaMythology
 		"Transform_camera_system.cpp"
 
 		"Render/Pass_data.hpp"
-		"Render/Shaders/Color_vertex_shader.hlsl"
-		"Render/Shaders/Color_pixel_shader.hlsl"
 
 		"Render/D3D12/Load_scene_system.hpp"
 		"Render/D3D12/Load_scene_system.cpp"
@@ -90,22 +88,8 @@ else ()
 	)
 endif()
 
-include ("${maiarenderer_SOURCE_DIR}/CMake/Scripts/target_add_hlsl_shader.cmake")
-
-target_add_hlsl_shader (
-	MaiaMythology
-		"Shaders"
-		"${CMAKE_CURRENT_SOURCE_DIR}/Render/Shaders/Color_vertex_shader.hlsl"
-		"${CMAKE_BINARY_DIR}/Intermediate/Shaders/Color_vertex_shader.csv"
-		"main" "vs_5_1" ""
-)
-target_add_hlsl_shader (
-	MaiaMythology
-		"Shaders"
-		"${CMAKE_CURRENT_SOURCE_DIR}/Render/Shaders/Color_pixel_shader.hlsl"
-		"${CMAKE_BINARY_DIR}/Intermediate/Shaders/Color_pixel_shader.csv"
-		"main" "ps_5_1" ""
-)
+add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/Render/Shaders")
 
 target_sources (MaiaMythology PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../Resources/box.gltf")
 set_source_files_properties ("${CMAKE_CURRENT_LIST_DIR}/../Resources/box.gltf" PROPERTIES VS_COPY_TO_OUT_DIR PreserveNewest)
+

@@ -20,7 +20,7 @@ namespace Maia::Mythology::D3D12
 {
 	struct Swap_chain
 	{
-		IDXGISwapChain4& value;
+		IDXGISwapChain3& value;
 		Eigen::Vector2i bounds;
 	};
 
@@ -33,7 +33,8 @@ namespace Maia::Mythology::D3D12
 			ID3D12CommandQueue& copy_command_queue, 
 			ID3D12CommandQueue& direct_command_queue, 
 			Swap_chain window,
-			std::uint8_t pipeline_length
+			std::uint8_t pipeline_length,
+			bool vertical_sync
 		);
 
 
@@ -54,9 +55,10 @@ namespace Maia::Mythology::D3D12
 		ID3D12Device& m_device;
 		ID3D12CommandQueue& m_copy_command_queue;
 		ID3D12CommandQueue& m_direct_command_queue;
-		IDXGISwapChain4& m_swap_chain;
+		IDXGISwapChain3& m_swap_chain;
 
 		std::uint8_t const m_pipeline_length;
+		bool const m_vertical_sync;
 		UINT64 m_copy_fence_value;
 		winrt::com_ptr<ID3D12Fence> m_copy_fence;
 

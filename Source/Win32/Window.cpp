@@ -12,13 +12,14 @@ namespace Maia::Mythology::Win32
 			LPCSTR const class_name,
 			LPCSTR const window_name,
 			Window::Dimensions const dimensions,
-			DWORD const style_flags = WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_POPUP
+			DWORD const style_flags = WS_OVERLAPPEDWINDOW
 		)
 		{
 			WNDCLASSEX const window_description = [&]() -> WNDCLASSEX
 			{
 				WNDCLASSEX wc;
-				wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
+				wc.cbSize = sizeof(WNDCLASSEX);
+				wc.style = CS_HREDRAW | CS_VREDRAW;
 				wc.lpfnWndProc = window_process;
 				wc.cbClsExtra = 0;
 				wc.cbWndExtra = 0;
@@ -29,20 +30,16 @@ namespace Maia::Mythology::Win32
 				wc.hbrBackground = static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));
 				wc.lpszMenuName = nullptr;
 				wc.lpszClassName = class_name;
-				wc.cbSize = sizeof(WNDCLASSEX);
 				return wc;
 			}();
 
-			if (!RegisterClassEx(&window_description))
+			if (RegisterClassEx(&window_description) == 0)
 			{
 				throw std::runtime_error("RegisterClass failed");
 			}
 
-			// Maybe apply full screen here
-
 			HWND const window_handle =
-				CreateWindowEx(
-					WS_EX_APPWINDOW,
+				CreateWindow(
 					class_name,
 					window_name,
 					style_flags,
@@ -61,8 +58,6 @@ namespace Maia::Mythology::Win32
 			ShowWindow(window_handle, SW_SHOW);
 			SetForegroundWindow(window_handle);
 			SetFocus(window_handle);
-
-			ShowCursor(false);
 
 			return window_handle;
 		}
@@ -108,12 +103,14 @@ namespace Maia::Mythology::Win32
 				ChangeDisplaySettings(&screen_settings, CDS_FULLSCREEN);
 			}
 
+			ShowCursor(false);
+
 			return window_handle;
 		}
 	}
 
-	Window::Window(WNDPROC window_process, LPCSTR class_name, LPCSTR window_name) :
-		m_instance{ GetModuleHandle(nullptr) },
+	Window::Window(HINSTANCE instance, WNDPROC window_process, LPCSTR class_name, LPCSTR window_name) :
+		m_instance{ instance },
 		m_class_name{ class_name },
 		m_dimensions{ calculate_fullscreen_dimensions() },
 		m_window_handle{ create_fullscreen_window(window_process, m_instance, class_name, window_name, m_dimensions) },
@@ -121,8 +118,8 @@ namespace Maia::Mythology::Win32
 	{
 	}
 
-	Window::Window(WNDPROC window_process, LPCSTR class_name, LPCSTR window_name, Dimensions dimensions) :
-		m_instance{ GetModuleHandle(nullptr) },
+	Window::Window(HINSTANCE instance, WNDPROC window_process, LPCSTR class_name, LPCSTR window_name, Dimensions dimensions) :
+		m_instance{ instance },
 		m_class_name{ class_name },
 		m_dimensions{ dimensions },
 		m_window_handle{ create_window(window_process, m_instance, class_name, window_name, dimensions) },
@@ -132,10 +129,10 @@ namespace Maia::Mythology::Win32
 
 	Window::~Window()
 	{
-		ShowCursor(true);
-
 		if (m_fullscreen)
 		{
+			ShowCursor(true);
+
 			ChangeDisplaySettings(nullptr, 0);
 		}
 

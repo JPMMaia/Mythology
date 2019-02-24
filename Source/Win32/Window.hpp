@@ -18,8 +18,8 @@ namespace Maia::Mythology::Win32
 		};
 
 
-		Window(WNDPROC window_process, LPCSTR class_name, LPCSTR window_name);
-		Window(WNDPROC window_process, LPCSTR class_name, LPCSTR window_name, Dimensions dimensions);
+		Window(HINSTANCE instance, WNDPROC window_process, LPCSTR class_name, LPCSTR window_name);
+		Window(HINSTANCE instance, WNDPROC window_process, LPCSTR class_name, LPCSTR window_name, Dimensions dimensions);
 		~Window();
 
 		Dimensions dimensions() const { return m_dimensions; }

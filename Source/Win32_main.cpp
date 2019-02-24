@@ -6,20 +6,21 @@
 #include "Render/D3D12/Render_system.hpp"
 #include "Game_key.hpp"
 
+#include <Maia/Renderer/D3D12/Utilities/Check_hresult.hpp>
 #include <Maia/Renderer/D3D12/Utilities/D3D12_utilities.hpp>
 
 using namespace Maia::Renderer::D3D12;
 
 namespace
 {
-	winrt::com_ptr<IDXGIAdapter4> select_adapter(IDXGIFactory5& factory)
+	winrt::com_ptr<IDXGIAdapter3> select_adapter(IDXGIFactory4& factory)
 	{
-		winrt::com_ptr<IDXGIAdapter4> adapter = Maia::Renderer::D3D12::select_adapter(factory, false);
+		winrt::com_ptr<IDXGIAdapter3> adapter = Maia::Renderer::D3D12::select_adapter(factory, false);
 
 		{
-			DXGI_ADAPTER_DESC3 description;
-			winrt::check_hresult(
-				adapter->GetDesc3(&description));
+			DXGI_ADAPTER_DESC description;
+			check_hresult(
+				adapter->GetDesc(&description));
 
 			std::wcout << std::wstring_view{ description.Description } << '\n';
 		}
@@ -29,8 +30,8 @@ namespace
 
 	struct Render_resources
 	{
-		winrt::com_ptr<IDXGIFactory5> factory;
-		winrt::com_ptr<IDXGIAdapter4> adapter;
+		winrt::com_ptr<IDXGIFactory4> factory;
+		winrt::com_ptr<IDXGIAdapter3> adapter;
 		winrt::com_ptr<ID3D12Device> device;
 		winrt::com_ptr<ID3D12CommandQueue> copy_command_queue;
 		winrt::com_ptr<ID3D12CommandQueue> direct_command_queue;
@@ -68,7 +69,12 @@ namespace
 	{
 		MSG message{};
 
-		PeekMessage(&message, nullptr, 0, 0, PM_REMOVE);
+		//while (PeekMessage(&message, nullptr, 0, 0, PM_REMOVE) != 0)
+		if (PeekMessage(&message, nullptr, 0, 0, PM_REMOVE) != 0)
+		{
+			TranslateMessage(&message);
+			DispatchMessage(&message);
+		}
 
 		return message.message != WM_QUIT;
 	}
@@ -90,27 +96,64 @@ namespace
 		return Maia::Mythology::Win32::Input_system{ instance, window_handle, keys_map };
 	}
 
-	winrt::com_ptr<IDXGISwapChain4> create_swap_chain(
+	winrt::com_ptr<IDXGISwapChain3> create_swap_chain(
 		Render_resources const& render_resources, 
 		Maia::Mythology::Win32::Window const& window,
-		UINT const buffer_count
+		UINT const buffer_count,
+		bool const vertical_sync
 	)
 	{
-		return Maia::Renderer::D3D12::create_swap_chain(
+		using namespace Maia::Mythology::Win32;
+		using namespace Maia::Renderer;
+
+		Window::Dimensions const dimensions = window.dimensions();
+		DXGI_FORMAT const format = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+		DXGI_RATIONAL const refresh_rate = [&]() -> DXGI_RATIONAL
+		{
+			if (vertical_sync)
+			{
+				return D3D12::find_refresh_rate(
+					*render_resources.adapter,
+					0,
+					format,
+					{ static_cast<UINT>(dimensions.width), static_cast<UINT>(dimensions.height) }
+				);
+			}
+			else
+			{
+				return {};
+			}
+		}();
+
+		DXGI_MODE_DESC1 const display_mode = [&]() -> DXGI_MODE_DESC1
+		{
+			DXGI_MODE_DESC1 display_mode{};
+			display_mode.Width = dimensions.width;
+			display_mode.Height = dimensions.height;
+			display_mode.RefreshRate = refresh_rate;
+			display_mode.Format = format;
+			display_mode.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+			display_mode.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
+			display_mode.Stereo = TRUE;
+			return display_mode;
+		}();
+
+		return D3D12::create_swap_chain(
 			*render_resources.factory,
 			*render_resources.direct_command_queue,
 			window.handle(),
-			DXGI_FORMAT_R8G8B8A8_UNORM,
+			display_mode,
 			buffer_count,
-			DXGI_RATIONAL{ 60, 1 },
-			window.fullscreen()
+			window.fullscreen() ? 0 : 1
 		);
 	}
 
 	Maia::Mythology::D3D12::Render_system create_render_system(
 		Render_resources const& render_resources,
 		Maia::Mythology::Win32::Window const& window,
-		IDXGISwapChain4& swap_chain
+		IDXGISwapChain3& swap_chain,
+		bool const vertical_sync
 	)
 	{
 		Eigen::Vector2i const dimensions = [&]() -> Eigen::Vector2i
@@ -125,7 +168,8 @@ namespace
 			*render_resources.copy_command_queue,
 			*render_resources.direct_command_queue,
 			{ swap_chain, dimensions },
-			3
+			3,
+			vertical_sync
 		};
 	}
 
@@ -136,25 +180,31 @@ namespace
 		return Maia::Mythology::Application { std::move(load_scene_system) };
 	}
 
+	bool constexpr c_vertical_sync = false;
+
 	struct App
 	{
 		Maia::Mythology::Win32::Window m_window;
 		Maia::Mythology::Win32::Input_system m_input_system;
 
 		std::unique_ptr<Render_resources> m_render_resources;
-		winrt::com_ptr<IDXGISwapChain4> m_swap_chain;
+		winrt::com_ptr<IDXGISwapChain3> m_swap_chain;
 		Maia::Mythology::D3D12::Render_system m_render_system;
 
 		Maia::Mythology::Application m_application;
-
-		App() :
-			m_window{ main_window_process, "Mythology_win32_app", "Mythology", { 0, 0, 800, 600 } },
+		
+		App(HINSTANCE const instancce) :
+			m_window{ instancce, main_window_process, "Mythology_win32_app", "Mythology", { 0, 0, 800, 600 } },
 			m_input_system{ create_input_system(m_window.instance(), m_window.handle()) },
 			m_render_resources{ std::make_unique<Render_resources>() },
-			m_swap_chain{ create_swap_chain(*m_render_resources, m_window, 3) },
-			m_render_system{ create_render_system(*m_render_resources, m_window, *m_swap_chain) },
+			m_swap_chain{ create_swap_chain(*m_render_resources, m_window, 3, c_vertical_sync) },
+			m_render_system{ create_render_system(*m_render_resources, m_window, *m_swap_chain, c_vertical_sync) },
 			m_application{ create_application(*m_render_resources->device) }
 		{
+		}
+		~App()
+		{
+			m_render_system.wait();
 		}
 
 		void run()
@@ -168,22 +218,21 @@ namespace
 	};
 }
 
-int main()
+int WinMain(
+	HINSTANCE hInstance,
+	HINSTANCE hPrevInstance,
+	LPSTR     lpCmdLine,
+	int       nShowCmd
+)
 {
 	std::cin.get();
 
-	App app;
-	app.run();
+	try
+	{
+		//GetModuleHandle(nullptr)
 
-	/*try 
-	{
-		App app;
+		App app{ hInstance };
 		app.run();
-	}
-	catch (const winrt::hresult_error& error)
-	{
-		std::cerr << winrt::to_string(error.message()) << '\n';
-		std::cin.get();
 	}
 	catch (const std::exception& error)
 	{
@@ -193,7 +242,7 @@ int main()
 	catch (...)
 	{
 		std::cin.get();
-	}*/
+	}
 
 	return 0;
 }

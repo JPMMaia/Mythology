@@ -4,6 +4,7 @@
 #include <Maia/GameEngine/Entity_manager.hpp>
 #include <Maia/GameEngine/Systems/Transform_system.hpp>
 
+#include <Maia/Renderer/D3D12/Utilities/Check_hresult.hpp>
 #include <Maia/Renderer/D3D12/Utilities/D3D12_utilities.hpp>
 #include <Maia/Utilities/glTF/gltf.hpp>
 
@@ -88,10 +89,10 @@ namespace Maia::Mythology::D3D12
 		using namespace Maia::Utilities::glTF;
 
 		{
-			winrt::check_hresult(
+			check_hresult(
 				m_command_allocator->Reset());
 
-			winrt::check_hresult(
+			check_hresult(
 				m_command_list->Reset(m_command_allocator.get(), nullptr));
 		}
 
@@ -280,7 +281,7 @@ namespace Maia::Mythology::D3D12
 		}();
 
 		{
-			winrt::check_hresult(
+			check_hresult(
 				m_command_list->Close());
 
 			std::array<ID3D12CommandList*, 1> command_lists_to_execute

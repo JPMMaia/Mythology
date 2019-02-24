@@ -2,6 +2,7 @@
 #include <Maia/GameEngine/Entity_manager.hpp>
 #include <Maia/GameEngine/Systems/Transform_system.hpp>
 
+#include <Maia/Renderer/D3D12/Utilities/Check_hresult.hpp>
 #include <Maia/Renderer/D3D12/Utilities/D3D12_utilities.hpp>
 #include <Maia/Renderer/Matrices.hpp>
 
@@ -28,10 +29,10 @@ namespace Maia::Mythology::D3D12
 	{
 		ID3D12CommandAllocator& command_allocator = *m_command_allocators[frame_index];
 
-		winrt::check_hresult(
+		check_hresult(
 			command_allocator.Reset());
 
-		winrt::check_hresult(
+		check_hresult(
 			m_command_list->Reset(&command_allocator, nullptr));
 
 		return { frame_index, frame_index * c_upload_buffer_offset_per_frame };
@@ -179,7 +180,7 @@ namespace Maia::Mythology::D3D12
 	{
 		assert(bundle.offset < (bundle.frame_index + 1) * c_upload_buffer_offset_per_frame);
 
-		winrt::check_hresult(
+		check_hresult(
 			m_command_list->Close());
 
 		return *m_command_list;
