@@ -66,10 +66,9 @@ namespace Maia::Mythology::D3D12
 		Maia::Mythology::D3D12::Renderer m_renderer;
 		Maia::Mythology::D3D12::Frames_resources m_frames_resources;
 
-		UINT64 m_fence_value;
+		UINT64 m_submitted_frames;
 		winrt::com_ptr<ID3D12Fence> m_fence;
 		winrt::handle m_fence_event;
-		std::size_t m_submitted_frames;
 
 		winrt::com_ptr<ID3D12Heap> m_pass_heap;
 		winrt::com_ptr<ID3D12Resource> m_pass_buffer;

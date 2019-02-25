@@ -95,10 +95,9 @@ namespace Maia::Mythology::D3D12
 		m_renderer{ device, swap_chain.bounds, m_pipeline_length },
 		m_frames_resources{ device, m_pipeline_length },
 
-		m_fence_value{ m_pipeline_length },
-		m_fence{ create_fence(device, m_fence_value, D3D12_FENCE_FLAG_NONE) },
-		m_fence_event{ ::CreateEvent(nullptr, false, false, nullptr) },
 		m_submitted_frames{ 0 },
+		m_fence{ create_fence(device, m_submitted_frames, D3D12_FENCE_FLAG_NONE) },
+		m_fence_event{ ::CreateEvent(nullptr, false, false, nullptr) },
 
 		m_pass_heap{ create_buffer_heap(device, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT) },
 		m_pass_buffer{ create_buffer(device, *m_pass_heap, 0, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT, D3D12_RESOURCE_STATE_COPY_DEST) },
@@ -168,7 +167,8 @@ namespace Maia::Mythology::D3D12
 		{
 			// TODO return to do other cpu work instead of waiting
 
-			UINT64 const event_value_to_wait = m_submitted_frames - m_pipeline_length;
+			UINT64 const event_value_to_wait = m_submitted_frames - m_pipeline_length + 1;
+
 			Maia::Renderer::D3D12::wait(
 				m_direct_command_queue, *m_fence, m_fence_event.get(), event_value_to_wait, INFINITE);
 		}
@@ -260,11 +260,9 @@ namespace Maia::Mythology::D3D12
 			}
 
 			{
-				UINT64 const frame_finished_value = static_cast<UINT64>(m_submitted_frames);
+				UINT64 const frame_finished_value = ++m_submitted_frames;
 
 				m_direct_command_queue.Signal(m_fence.get(), frame_finished_value);
-
-				++m_submitted_frames;
 			}
 
 			{
@@ -274,14 +272,6 @@ namespace Maia::Mythology::D3D12
 				check_hresult(
 					m_swap_chain.Present(sync_interval, 0));
 			}
-
-			//if (m_submitted_frames >= m_pipeline_length)
-			/*{
-				// TODO return to do other cpu work instead of waiting
-				UINT64 const event_value_to_wait = static_cast<UINT64>(m_submitted_frames - 1);
-				Maia::Renderer::D3D12::wait(
-					m_direct_command_queue, *m_fence, m_fence_event.get(), event_value_to_wait, INFINITE);
-			}*/
 		}
 	}
 
