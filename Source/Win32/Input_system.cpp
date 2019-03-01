@@ -160,7 +160,7 @@ namespace Maia::Mythology::Win32
 
 	Maia::Mythology::Input::Input_state const& Input_system::execute()
 	{
-		/*m_input_state.overwrite_previous_with_current_state();
+		m_input_state.overwrite_previous_with_current_state();
 
 		{
 			Keyboard_state const keyboard_state = read_keyboard(*m_keyboard);
@@ -191,7 +191,6 @@ namespace Maia::Mythology::Win32
 			}
 		}
 
-		return m_input_state;*/
-		return {};
+		return m_input_state;
 	}
 }

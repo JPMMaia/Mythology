@@ -141,7 +141,7 @@ namespace Maia::Mythology::D3D12
 		)
 		{
 			using namespace Maia::Renderer::D3D12;
-
+			
 			Pass_data pass_data;
 			pass_data.view_matrix = Maia::Renderer::create_view_matrix(camera.position.value, camera.rotation.value);
 			pass_data.projection_matrix =

@@ -12,14 +12,14 @@ namespace Maia::Mythology::Win32
 			LPCSTR const class_name,
 			LPCSTR const window_name,
 			Window::Dimensions const dimensions,
-			DWORD const style_flags = WS_OVERLAPPEDWINDOW
+			DWORD const style_flags
 		)
 		{
 			WNDCLASSEX const window_description = [&]() -> WNDCLASSEX
 			{
 				WNDCLASSEX wc;
 				wc.cbSize = sizeof(WNDCLASSEX);
-				wc.style = CS_HREDRAW | CS_VREDRAW;
+				wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
 				wc.lpfnWndProc = window_process;
 				wc.cbClsExtra = 0;
 				wc.cbWndExtra = 0;
@@ -39,7 +39,8 @@ namespace Maia::Mythology::Win32
 			}
 
 			HWND const window_handle =
-				CreateWindow(
+				CreateWindowEx(
+					WS_EX_APPWINDOW,
 					class_name,
 					window_name,
 					style_flags,
@@ -85,7 +86,7 @@ namespace Maia::Mythology::Win32
 				class_name,
 				window_name,
 				dimensions,
-				WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_POPUP | WS_CAPTION
+				WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_POPUP
 			);
 
 			{
@@ -122,7 +123,7 @@ namespace Maia::Mythology::Win32
 		m_instance{ instance },
 		m_class_name{ class_name },
 		m_dimensions{ dimensions },
-		m_window_handle{ create_window(window_process, m_instance, class_name, window_name, dimensions) },
+		m_window_handle{ create_window(window_process, m_instance, class_name, window_name, dimensions, WS_OVERLAPPEDWINDOW) },
 		m_fullscreen{ false }
 	{
 	}

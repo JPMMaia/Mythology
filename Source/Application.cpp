@@ -46,6 +46,16 @@ namespace
 
 		load_scene_system.wait();
 
+		// TODO camera
+		Camera const camera
+		{
+			{},
+			{},
+			static_cast<float>(EIGEN_PI) / 3.0f,
+			800.0f / 600.0f,
+			{ 1.0f, 21.0f }
+		};
+
 		return
 		{
 			std::move(entity_manager),
@@ -53,7 +63,7 @@ namespace
 			scenes_resources.current_scene_index,
 			std::move(scenes_resources.geometry_resources),
 			std::move(scenes_resources.mesh_views),
-			Camera{} // TODO camera
+			camera
 		};
 	}
 }
@@ -102,7 +112,7 @@ namespace Maia::Mythology
 			if (!process_events())
 				break;
 
-			/*const Input_state& input_state = input_system.execute();
+			const Input_state& input_state = input_system.execute();
 			handle_input_events(Input_events_view{ input_state });
 
 
@@ -110,7 +120,7 @@ namespace Maia::Mythology
 			{
 				fixed_update(fixed_update_duration, Input_state_view{ input_state });
 				lag -= fixed_update_duration;
-			}*/
+			}
 
 			render_update(render_system, duration<float>{ lag } / fixed_update_duration);
 		}

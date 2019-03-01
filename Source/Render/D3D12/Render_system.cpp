@@ -64,7 +64,7 @@ namespace Maia::Mythology::D3D12
 							device,
 							heap, current_heap_offset,
 							size,
-							D3D12_RESOURCE_STATE_COPY_DEST
+							D3D12_RESOURCE_STATE_COMMON
 						)
 					}
 				);
@@ -100,7 +100,7 @@ namespace Maia::Mythology::D3D12
 		m_fence_event{ ::CreateEvent(nullptr, false, false, nullptr) },
 
 		m_pass_heap{ create_buffer_heap(device, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT) },
-		m_pass_buffer{ create_buffer(device, *m_pass_heap, 0, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT, D3D12_RESOURCE_STATE_COPY_DEST) },
+		m_pass_buffer{ create_buffer(device, *m_pass_heap, 0, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT, D3D12_RESOURCE_STATE_COMMON) },
 
 		m_instance_buffers_heap{ create_buffer_heap(device, m_pipeline_length * D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT) },
 		m_instance_buffer_per_frame{ create_instance_buffers(device, *m_instance_buffers_heap, 0, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT, m_pipeline_length) }
@@ -260,17 +260,18 @@ namespace Maia::Mythology::D3D12
 			}
 
 			{
-				UINT64 const frame_finished_value = ++m_submitted_frames;
-
-				m_direct_command_queue.Signal(m_fence.get(), frame_finished_value);
-			}
-
-			{
 				UINT const sync_interval =
 					m_vertical_sync ? 1 : 0;
 
 				check_hresult(
 					m_swap_chain.Present(sync_interval, 0));
+			}
+
+			{
+				UINT64 const frame_finished_value = ++m_submitted_frames;
+
+				check_hresult(
+					m_direct_command_queue.Signal(m_fence.get(), frame_finished_value));
 			}
 		}
 	}
