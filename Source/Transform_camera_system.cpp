@@ -63,7 +63,7 @@ namespace Maia::Mythology::Systems
 		{
 			using namespace Maia::Mythology::Input;
 
-			float const speed = 0.5f;
+			float const speed = 1.0f;
 			float const magnitude = speed * std::chrono::duration<float>{ delta_time }.count();
 
 			Eigen::Vector3i const movement_direction = [&]() -> Eigen::Vector3i
@@ -84,6 +84,7 @@ namespace Maia::Mythology::Systems
 		Game_clock::duration const delta_time
 	)
 	{
+		using namespace Maia::Mythology;
 		using namespace Maia::Mythology::Input;
 
 		Eigen::Matrix3f const rotation_matrix = camera.rotation.value.toRotationMatrix();
@@ -92,6 +93,10 @@ namespace Maia::Mythology::Systems
 		Eigen::Vector3f const forward_direction{ rotation_matrix.col(2) };
 
 		move(camera.position.value, right_direction, forward_direction, input_state_view, delta_time);
-		// rotate(camera.rotation.value, forward_direction, input_state, delta_time);
+
+		if (input_state_view.is_down(Game_key::Rotate))
+		{
+			rotate(camera.rotation.value, forward_direction, input_state_view, delta_time);
+		}
 	}
 }

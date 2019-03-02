@@ -1,3 +1,4 @@
+#include <cctype>
 #include <fstream>
 #include <vector>
 
@@ -24,38 +25,44 @@ namespace Maia::Mythology::D3D12
 		m_fence_value{ 0 },
 		m_fence{ create_fence(m_device, m_fence_value, D3D12_FENCE_FLAG_NONE) },
 		m_fence_event{ ::CreateEvent(nullptr, false, false, nullptr) }
-	{		
+	{
 	}
 
 	namespace
 	{
-		std::vector<std::byte> base64_decode(std::string_view input)
+		std::vector<std::byte> base64_decode(std::string_view const input, std::size_t const output_size)
 		{
-			constexpr std::array<std::uint8_t, 80> lookup_table
+			constexpr std::array<std::uint8_t, 128> reverse_table
 			{
-				62,  255, 62,  255, 63,  52,  53, 54, 55, 56, 57, 58, 59, 60, 61, 255,
-				255, 0,   255, 255, 255, 255, 0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
-				10,  11,  12,  13,  14,  15,  16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
-				255, 255, 255, 255, 63,  255, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
-				36,  37,  38,  39,  40,  41,  42, 43, 44, 45, 46, 47, 48, 49, 50, 51
+				64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
+				64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
+				64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 62, 64, 64, 64, 63,
+				52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 64, 64, 64, 64, 64, 64,
+				64,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14,
+				15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 64, 64, 64, 64, 64,
+				64, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+				41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 64, 64, 64, 64, 64
 			};
-			static_assert(sizeof(lookup_table) == 'z' - '+' + 1);
 
 			std::vector<std::byte> output;
-			output.reserve(input.size() * 3 / 4);
+			output.reserve(output_size);
 
 			{
 				std::uint32_t bits{ 0 };
 				std::uint8_t bit_count{ 0 };
 
-				for (char c : input)
+				for (char const c : input)
 				{
-					assert('+' <= c && c <= 'z');
-					assert(lookup_table[c - '+'] < 64);
+					if (std::isspace(c) || c == '=')
+					{
+						continue;
+					}
 
-					c -= '+';
+					assert(c < 128);
+					assert(c > 0);
+					assert(reverse_table[c] < 64);
 
-					bits = (bits << 6) + lookup_table[c];
+					bits = (bits << 6) | reverse_table[c];
 					bit_count += 6;
 
 					if (bit_count >= 8)
@@ -64,9 +71,9 @@ namespace Maia::Mythology::D3D12
 						output.push_back(static_cast<std::byte>((bits >> bit_count) & 0xFF));
 					}
 				}
-
-				assert(bit_count == 0);
 			}
+
+			assert(output.size() == output_size);
 
 			return output;
 		}
@@ -78,9 +85,8 @@ namespace Maia::Mythology::D3D12
 			assert(uri.compare(0, prefix_size, prefix) == 0 && "Uri format not supported");
 
 			std::string_view const data_view{ uri.data() + prefix_size, uri.size() - prefix_size };
-			assert(data_view.size() / 4 * 3 == byte_length && "Data content is ill-formed");
 
-			return base64_decode(data_view);
+			return base64_decode(data_view, byte_length);
 		}
 	}
 
