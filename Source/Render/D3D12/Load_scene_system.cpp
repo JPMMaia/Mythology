@@ -342,7 +342,7 @@ namespace Maia::Mythology::D3D12
 				if (node.mesh_index)
 				{
 					Transform_matrix const transform_matrix =
-						create_transform({ node.translation }, { node.rotation });
+						create_transform({ node.translation }, { node.rotation * Eigen::Quaternionf(0.0f, 1.0f, 0.0f, 0.0f) });
 
 					entity_manager.create_entity(
 						entity_types[*node.mesh_index],

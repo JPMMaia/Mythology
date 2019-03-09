@@ -165,14 +165,14 @@ namespace Maia::Mythology::Win32
 		{
 			Keyboard_state const keyboard_state = read_keyboard(*m_keyboard);
 
-			std::bitset<256>& keyboard_bitset_state = m_input_state.keys_current_state.value;
+			std::bitset<256>& keys_bitset_state = m_input_state.keys_current_state.value;
 
 			for (std::size_t index = 0; index < keyboard_state.value.size(); ++index)
 			{
 				std::uint8_t const mapped_key = m_keys_map[index];
 				bool const key_state = (keyboard_state.value[index] & 0x80) != 0;
 
-				keyboard_bitset_state.set(mapped_key, key_state);
+				keys_bitset_state.set(mapped_key, key_state);
 			}
 		}
 
@@ -188,6 +188,18 @@ namespace Maia::Mythology::Win32
 			{
 				Eigen::Vector2i& mouse_delta = m_input_state.mouse_current_state.delta;
 				mouse_delta = { mouse_state.value.lX, mouse_state.value.lY };
+			}
+
+			{
+				std::bitset<256>& keys_bitset_state = m_input_state.keys_current_state.value;
+
+				for (std::size_t button_index = 0; button_index < 3; ++button_index)
+				{
+					std::uint8_t const mapped_key = m_keys_map[DIK_NUMPAD4 + button_index];
+					bool const key_state = (mouse_state.value.rgbButtons[button_index] & 0x80) != 0;
+
+					keys_bitset_state.set(mapped_key, key_state);
+				}
 			}
 		}
 

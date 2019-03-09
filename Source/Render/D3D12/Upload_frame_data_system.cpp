@@ -122,7 +122,7 @@ namespace Maia::Mythology::D3D12
 
 	namespace
 	{
-		Eigen::Matrix4f create_api_specific_matrix()
+		Eigen::Matrix4f to_api_specific_perspective_matrix(Eigen::Vector2f const z_range)
 		{
 			Eigen::Matrix4f value;
 			value <<
@@ -144,9 +144,11 @@ namespace Maia::Mythology::D3D12
 			
 			Pass_data pass_data;
 			pass_data.view_matrix = Maia::Renderer::create_view_matrix(camera.position.value, camera.rotation.value);
-			pass_data.projection_matrix =
-				create_api_specific_matrix() *
-				Maia::Renderer::create_perspective_projection_matrix(camera.vertical_half_angle_of_view, camera.width_by_height_ratio, camera.zRange);
+			pass_data.projection_matrix = 
+				to_api_specific_perspective_matrix(camera.z_range) *
+				//Maia::Renderer::create_orthographic_projection_matrix({ 10.0f, 10.0f, 10.0f });
+				Maia::Renderer::create_perspective_projection_matrix(camera.vertical_half_angle_of_view, camera.width_by_height_ratio, camera.z_range);
+				//* create_api_specific_matrix();
 
 			upload_buffer_data<Pass_data>(
 				command_list,

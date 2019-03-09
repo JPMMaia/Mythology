@@ -49,7 +49,7 @@ namespace Maia::Mythology::Systems
 				return direction.normalized();
 			}();
 
-			float const speed = 1.0f;
+			float const speed = 3.0f;
 			float const distance = speed * std::chrono::duration<float>{ delta_time }.count();
 			position += distance * direction;
 		}
@@ -63,7 +63,7 @@ namespace Maia::Mythology::Systems
 		{
 			using namespace Maia::Mythology::Input;
 
-			float const speed = 1.0f;
+			float const speed = 3.0f;
 			float const magnitude = speed * std::chrono::duration<float>{ delta_time }.count();
 
 			Eigen::Vector3i const movement_direction = [&]() -> Eigen::Vector3i
