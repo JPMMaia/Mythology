@@ -79,7 +79,8 @@ namespace Maia::Mythology::Systems
 	}
 
 	void transform_camera(
-		Maia::Mythology::Camera& camera,
+		Eigen::Vector3f& position,
+		Eigen::Quaternionf& rotation,
 		Maia::Mythology::Input::Input_state_view const& input_state_view,
 		Game_clock::duration const delta_time
 	)
@@ -87,16 +88,16 @@ namespace Maia::Mythology::Systems
 		using namespace Maia::Mythology;
 		using namespace Maia::Mythology::Input;
 
-		Eigen::Matrix3f const rotation_matrix = camera.rotation.value.toRotationMatrix();
+		Eigen::Matrix3f const rotation_matrix = rotation.toRotationMatrix();
 
 		Eigen::Vector3f const right_direction{ rotation_matrix.col(0) };
 		Eigen::Vector3f const forward_direction{ rotation_matrix.col(2) };
 
-		move(camera.position.value, right_direction, forward_direction, input_state_view, delta_time);
+		move(position, right_direction, forward_direction, input_state_view, delta_time);
 
 		if (input_state_view.is_down(Game_key::Rotate))
 		{
-			rotate(camera.rotation.value, forward_direction, input_state_view, delta_time);
+			rotate(rotation, forward_direction, input_state_view, delta_time);
 		}
 	}
 }

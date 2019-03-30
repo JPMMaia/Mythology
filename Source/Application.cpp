@@ -1,5 +1,6 @@
 #include <array>
 #include <iostream>
+#include <filesystem>
 
 #include <Maia/GameEngine/Entity_manager.hpp>
 #include <Maia/Utilities/glTF/gltf.hpp>
@@ -20,50 +21,52 @@ namespace
 {
 	Maia::Mythology::Scenes_resources create_default_scene()
 	{
-		Maia::Mythology::Scenes_resources scenes_resources;
-		scenes_resources.entity_types_per_scene.emplace_back();
+		Maia::Mythology::Scenes_resources scenes_resources = {};
+		scenes_resources.entity_managers.emplace_back();
+		scenes_resources.scenes_entities.emplace_back();
 		return scenes_resources;
 	}
 
 	Maia::Mythology::Scenes_resources load_scenes(Maia::Mythology::D3D12::Load_scene_system& load_scene_system, std::filesystem::path const& gltf_file_path)
 	{
 		using namespace Maia::Mythology;
+		using namespace Maia::Utilities::glTF;
+
+		Maia::Utilities::glTF::Gltf const gltf = D3D12::read_gltf(gltf_file_path);
 
 		D3D12::Scenes_resources scenes_resources =
-			load_scene_system.load(gltf_file_path);
+			load_scene_system.load(gltf);
 
-		Maia::GameEngine::Entity_manager entity_manager{};
+		std::vector<Maia::GameEngine::Entity_manager> entity_managers;
+		std::vector<Maia::Mythology::D3D12::Scene_entities> scenes_entities;
+		
 
-		std::vector<std::vector<D3D12::Static_entity_type>> entity_types_per_scene;
-		entity_types_per_scene.reserve(scenes_resources.scenes.size());
-
-		for (Maia::Utilities::glTF::Scene const& scene : scenes_resources.scenes)
+		if (gltf.scenes)
 		{
-			entity_types_per_scene.push_back(
-				D3D12::create_entities(scene, scenes_resources.nodes, scenes_resources.mesh_views.size(), entity_manager)
-			);
+			entity_managers.reserve(gltf.scenes->size());
+			scenes_entities.reserve(gltf.scenes->size());
+
+			for (Maia::Utilities::glTF::Scene const& scene : *gltf.scenes)
+			{
+				Maia::GameEngine::Entity_manager entity_manager;
+
+				Maia::Mythology::D3D12::Scene_entities scene_entities =
+					D3D12::create_entities(gltf, scene, entity_manager);
+
+				entity_managers.push_back(std::move(entity_manager));
+				scenes_entities.push_back(std::move(scene_entities));
+			}
 		}
 
 		load_scene_system.wait();
 
-		// TODO camera
-		Camera const camera
-		{
-			{},
-			{},
-			static_cast<float>(EIGEN_PI) / 3.0f,
-			800.0f / 600.0f,
-			{ 1.0f, 21.0f }
-		};
-
 		return
 		{
-			std::move(entity_manager),
-			std::move(entity_types_per_scene),
-			scenes_resources.current_scene_index,
+			std::move(entity_managers),
+			std::move(scenes_entities),
+			0,
 			std::move(scenes_resources.geometry_resources),
-			std::move(scenes_resources.mesh_views),
-			camera
+			std::move(scenes_resources.mesh_views)
 		};
 	}
 }
@@ -152,8 +155,29 @@ namespace Maia::Mythology
 			}
 		}
 
-		Camera& camera = m_scenes_resources[m_current_scenes_index].camera;
-		Systems::transform_camera(camera, input_state_view, delta_time);
+		{
+			using namespace Maia::GameEngine;
+			using namespace Maia::GameEngine::Components;
+
+			Scenes_resources& scene_resources = 
+				m_scenes_resources[m_current_scenes_index];
+
+			Entity_manager& entity_manager =
+				scene_resources.entity_managers[scene_resources.current_scene_index];
+
+			Entity const camera_entity = 
+				scene_resources
+				.scenes_entities[scene_resources.current_scene_index]
+				.cameras[0];
+
+			Local_position camera_position = entity_manager.get_component_data<Local_position>(camera_entity);
+			Local_rotation camera_rotation = entity_manager.get_component_data<Local_rotation>(camera_entity);
+
+			Systems::transform_camera(camera_position.value, camera_rotation.value, input_state_view, delta_time);
+
+			entity_manager.set_component_data(camera_entity, camera_position);
+			entity_manager.set_component_data(camera_entity, camera_rotation);
+		}
 	}
 
 	void Application::render_update(Maia::Mythology::D3D12::Render_system& render_system, float update_percentage)
@@ -162,28 +186,19 @@ namespace Maia::Mythology
 
 		{
 			Scenes_resources& scenes = m_scenes_resources[m_current_scenes_index];
-			Transform_system{}.execute(scenes.entity_manager);
+			Transform_system{}.execute(scenes.entity_managers[scenes.current_scene_index]);
 		}
 
 		{
 			Scenes_resources const& scenes = m_scenes_resources[m_current_scenes_index];
 
-			// TODO move this elsewhere
-			std::vector<Maia::GameEngine::Entity_type_id> entity_types_ids;
-			{
-				gsl::span<Maia::Mythology::D3D12::Static_entity_type const> const entity_types =
-					scenes.entity_types_per_scene[scenes.current_scene_index];
-
-				entity_types_ids.reserve(entity_types.size());
-
-				std::transform(entity_types.begin(), entity_types.end(), std::back_inserter(entity_types_ids),
-					[](Maia::Mythology::D3D12::Static_entity_type entity_type) -> Maia::GameEngine::Entity_type_id { return entity_type.id; });
-			}
+			gsl::span<Maia::GameEngine::Entity_type_id const> const mesh_entity_types_ids =
+				scenes.scenes_entities[scenes.current_scene_index].mesh;
 
 			render_system.render_frame(
-				scenes.camera,
-				scenes.entity_manager,
-				entity_types_ids,
+				scenes.entity_managers[scenes.current_scene_index],
+				scenes.scenes_entities[scenes.current_scene_index].cameras[0],
+				mesh_entity_types_ids,
 				scenes.mesh_views
 			);
 		}

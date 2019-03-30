@@ -16,7 +16,8 @@ namespace Maia::Mythology
 	namespace Systems
 	{
 		void transform_camera(
-			Maia::Mythology::Camera& camera,
+			Eigen::Vector3f& position,
+			Eigen::Quaternionf& rotation,
 			Maia::Mythology::Input::Input_state_view const& input_state_view,
 			Game_clock::duration const delta_time
 		);

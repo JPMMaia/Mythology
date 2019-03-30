@@ -29,13 +29,12 @@ namespace Maia::Mythology
 
 	struct Scenes_resources
 	{
-		Maia::GameEngine::Entity_manager entity_manager{};
-		std::vector<std::vector<Maia::Mythology::D3D12::Static_entity_type>> entity_types_per_scene{};
+		std::vector<Maia::GameEngine::Entity_manager> entity_managers;
+		std::vector<Maia::Mythology::D3D12::Scene_entities> scenes_entities;
 		std::size_t current_scene_index{};
 
 		Maia::Mythology::D3D12::Geometry_resources geometry_resources{};
 		std::vector<Maia::Mythology::D3D12::Mesh_view> mesh_views{};
-		Maia::Mythology::Camera camera{};
 	};
 
 	class Application

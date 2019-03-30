@@ -42,7 +42,7 @@ namespace Maia::Mythology::D3D12
 		
 		void upload_pass_data(
 			Upload_bundle& bundle,
-			Camera camera, 
+			Pass_data const& pass_data,
 			ID3D12Resource& pass_buffer, UINT64 pass_buffer_offset
 		);
 

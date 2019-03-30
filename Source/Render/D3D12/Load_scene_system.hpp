@@ -1,11 +1,11 @@
 #ifndef MAIA_MYTHOLOGY_LOADSCENESYSTEM_H_INCLUDED
 #define MAIA_MYTHOLOGY_LOADSCENESYSTEM_H_INCLUDED
 
-#include <filesystem>
-
 #include <Maia/GameEngine/Systems/Transform_system.hpp>
 
 #include <Maia/Utilities/glTF/gltf.hpp>
+
+#include <Components/Camera_component.hpp>
 
 #include "Render_data.hpp"
 
@@ -18,16 +18,15 @@ namespace Maia::Mythology::D3D12
 		std::vector<UINT64> offsets;
 	};
 
+	// TODO rename
 	struct Scenes_resources
 	{
 		Geometry_resources geometry_resources;
 		std::vector<Mesh_view> mesh_views;
-		std::vector<Maia::Utilities::glTF::Node> nodes;
-		std::vector<Maia::Utilities::glTF::Scene> scenes;
-		std::size_t current_scene_index{ 0 };
 	};
 
-	using Static_entity_type = Maia::GameEngine::Entity_type<Maia::GameEngine::Systems::Transform_matrix>;
+
+	Maia::Utilities::glTF::Gltf read_gltf(std::filesystem::path const& gltf_file_path);
 
 	class Load_scene_system
 	{
@@ -36,7 +35,7 @@ namespace Maia::Mythology::D3D12
 		explicit Load_scene_system(ID3D12Device& device);
 
 
-		Scenes_resources load(std::filesystem::path const& gltf_file_path);
+		Scenes_resources load(Maia::Utilities::glTF::Gltf const& gltf);
 
 		void wait();
 
@@ -54,10 +53,15 @@ namespace Maia::Mythology::D3D12
 
 	};
 
-	std::vector<Static_entity_type> create_entities(
+	struct Scene_entities
+	{
+		std::vector<Maia::GameEngine::Entity_type_id> mesh;
+		std::vector<Maia::GameEngine::Entity> cameras;
+	};
+
+	Scene_entities create_entities(
+		Maia::Utilities::glTF::Gltf const& gltf,
 		Maia::Utilities::glTF::Scene const& scene,
-		gsl::span<Maia::Utilities::glTF::Node const> nodes,
-		std::size_t const mesh_count,
 		Maia::GameEngine::Entity_manager& entity_manager
 	);
 	void destroy_entities(

@@ -6,7 +6,9 @@
 
 #include <Maia/Renderer/D3D12/Utilities/Check_hresult.hpp>
 #include <Maia/Renderer/D3D12/Utilities/D3D12_utilities.hpp>
+#include <Maia/Renderer/Matrices.hpp>
 
+#include <Components/Camera_component.hpp>
 #include <Render/Pass_data.hpp>
 
 #include "Render_system.hpp"
@@ -148,11 +150,22 @@ namespace Maia::Mythology::D3D12
 		{
 			return ((value - 1) | (alignment - 1)) + 1;
 		}
+
+		Eigen::Matrix4f to_api_specific_perspective_matrix()
+		{
+			Eigen::Matrix4f value;
+			value <<
+				1.0f, 0.0f, 0.0f, 0.0f,
+				0.0f, -1.0f, 0.0f, 0.0f,
+				0.0f, 0.0f, 1.0f, 0.0f,
+				0.0f, 0.0f, 0.0f, 1.0f;
+			return value;
+		}
 	}
 
 	void Render_system::render_frame(
-		Camera const& camera,
 		Maia::GameEngine::Entity_manager const& entity_manager,
+		Maia::GameEngine::Entity const camera_entity,
 		gsl::span<Maia::GameEngine::Entity_type_id const> const entity_types_ids,
 		gsl::span<Maia::Mythology::D3D12::Mesh_view const> const mesh_views
 	)
@@ -179,12 +192,53 @@ namespace Maia::Mythology::D3D12
 				m_upload_frame_data_system.reset(current_frame_index);
 
 
-			ID3D12Resource& pass_buffer = *m_pass_buffer;
-			m_upload_frame_data_system.upload_pass_data(
-				bundle,
-				camera,
-				pass_buffer, current_frame_index * align(sizeof(Pass_data), 256)
-			);
+			{
+				using namespace Maia::Renderer;
+				using namespace Maia::Utilities::glTF;
+
+				Maia::Utilities::glTF::Camera const camera =
+					entity_manager.get_component_data<Camera_component>(camera_entity).value;
+
+				Pass_data pass_data;
+				pass_data.view_matrix;
+
+				if (camera.type == Maia::Utilities::glTF::Camera::Type::Orthographic)
+				{
+					const auto& orthographic = std::get<Maia::Utilities::glTF::Camera::Orthographic>(camera.projection);
+
+					pass_data.projection_matrix =
+						to_api_specific_perspective_matrix() *
+						create_orthographic_projection_matrix(
+							orthographic.horizontal_magnification,
+							orthographic.vertical_magnification,
+							orthographic.near_z,
+							orthographic.far_z
+						);
+				}
+				else
+				{
+					const auto& perspective = std::get<Maia::Utilities::glTF::Camera::Perspective>(camera.projection);
+
+					if (perspective.far_z)
+					{
+						// TODO finite perspective
+					}
+					else
+					{
+						// TODO infinite perspective
+					}
+				}
+
+				pass_data.projection_matrix =
+					Maia::Renderer::create_perspective_projection_matrix;
+
+				ID3D12Resource& pass_buffer = *m_pass_buffer;
+				m_upload_frame_data_system.upload_pass_data(
+					bundle,
+					pass_data,
+					pass_buffer, current_frame_index * align(sizeof(Pass_data), 256)
+				);
+			}
 
 
 			Instance_buffer const& instance_buffer =

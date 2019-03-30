@@ -122,33 +122,14 @@ namespace Maia::Mythology::D3D12
 
 	namespace
 	{
-		Eigen::Matrix4f to_api_specific_perspective_matrix(Eigen::Vector2f const z_range)
-		{
-			Eigen::Matrix4f value;
-			value <<
-				1.0f, 0.0f, 0.0f, 0.0f,
-				0.0f, -1.0f, 0.0f, 0.0f,
-				0.0f, 0.0f, 1.0f, 0.0f,
-				0.0f, 0.0f, 0.0f, 1.0f;
-			return value;
-		}
-
 		UINT64 upload_pass_data_impl(
-			Camera const& camera,
+			Pass_data const& pass_data,
 			ID3D12GraphicsCommandList& command_list,
 			ID3D12Resource& destination_buffer, UINT64 const destination_buffer_offset,
 			ID3D12Resource& upload_buffer, UINT64 const upload_buffer_offset
 		)
 		{
 			using namespace Maia::Renderer::D3D12;
-			
-			Pass_data pass_data;
-			pass_data.view_matrix = Maia::Renderer::create_view_matrix(camera.position.value, camera.rotation.value);
-			pass_data.projection_matrix = 
-				to_api_specific_perspective_matrix(camera.z_range) *
-				//Maia::Renderer::create_orthographic_projection_matrix({ 10.0f, 10.0f, 10.0f });
-				Maia::Renderer::create_perspective_projection_matrix(camera.vertical_half_angle_of_view, camera.width_by_height_ratio, camera.z_range);
-				//* create_api_specific_matrix();
 
 			upload_buffer_data<Pass_data>(
 				command_list,
@@ -163,12 +144,12 @@ namespace Maia::Mythology::D3D12
 
 	void Upload_frame_data_system::upload_pass_data(
 		Upload_bundle& bundle,
-		Camera camera, 
+		Pass_data const& pass_data,
 		ID3D12Resource& pass_buffer, UINT64 pass_buffer_offset
 	)
 	{
 		UINT64 const uploaded_size_in_bytes = upload_pass_data_impl(
-			camera,
+			pass_data,
 			*m_command_list,
 			pass_buffer, pass_buffer_offset,
 			*m_upload_buffer, bundle.offset

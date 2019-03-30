@@ -39,8 +39,8 @@ namespace Maia::Mythology::D3D12
 
 
 		void render_frame(
-			Camera const& camera,
 			Maia::GameEngine::Entity_manager const& entity_manager,
+			Maia::GameEngine::Entity const camera_entity,
 			gsl::span<Maia::GameEngine::Entity_type_id const> entity_types_ids,
 			gsl::span<Maia::Mythology::D3D12::Mesh_view const> mesh_views
 		);
