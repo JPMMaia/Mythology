@@ -12,7 +12,7 @@ struct Pixel_shader_output
 Pixel_shader_output main(Pixel_shader_input input)
 {
     Pixel_shader_output output;
-    output.color = input.color;
+    output.color = vec4(0.8f, 0.8f, 0.8f, 1.0f);
 
     return output;
 }

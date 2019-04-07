@@ -29,7 +29,10 @@ endfunction()
 #arget_shader(Shaders "${CMAKE_CURRENT_LIST_DIR}/Color_vertex_shader.hlsl" "main" "vs_5_1" "/all_resources_bound")
 #target_shader(Shaders "${CMAKE_CURRENT_LIST_DIR}/Color_pixel_shader.hlsl" "main" "ps_5_1" "/all_resources_bound")
 
-set(SHADER_FILES "Color_vertex_shader.hlsl" "Color_pixel_shader.hlsl")
+set(
+	SHADER_FILES 
+		"Color_vertex_shader.hlsl" "Color_pixel_shader.hlsl"
+)
 
 target_sources(Shaders PRIVATE "Dummy.cpp")
 

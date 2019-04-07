@@ -1,5 +1,5 @@
-#ifndef MAIA_MYTHOLOGY_TRANSFORMCAMERASYSTEM_H_INCLUDED
-#define MAIA_MYTHOLOGY_TRANSFORMCAMERASYSTEM_H_INCLUDED
+#ifndef MAIA_MYTHOLOGY_TRANSFORMFREELYSYSTEM_H_INCLUDED
+#define MAIA_MYTHOLOGY_TRANSFORMFREELYSYSTEM_H_INCLUDED
 
 #include <Game_clock.hpp>
 
@@ -15,7 +15,7 @@ namespace Maia::Mythology
 
 	namespace Systems
 	{
-		void transform_camera(
+		void transform_freely(
 			Eigen::Vector3f& position,
 			Eigen::Quaternionf& rotation,
 			Maia::Mythology::Input::Input_state_view const& input_state_view,

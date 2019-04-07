@@ -1,6 +1,7 @@
 #include <cctype>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <vector>
 
 #include <Maia/GameEngine/Entity_manager.hpp>
@@ -12,7 +13,12 @@
 
 #include "Load_scene_system.hpp"
 
+using namespace Maia::GameEngine;
+using namespace Maia::GameEngine::Components;
+using namespace Maia::GameEngine::Systems;
+using namespace Maia::Renderer;
 using namespace Maia::Renderer::D3D12;
+using namespace Maia::Utilities::glTF;
 
 namespace Maia::Mythology::D3D12
 {
@@ -95,13 +101,47 @@ namespace Maia::Mythology::D3D12
 
 		std::vector<std::byte> generate_byte_data(std::string_view const uri, std::size_t const byte_length)
 		{
-			char const* const prefix{ "data:application/octet-stream;base64," };
-			std::size_t const prefix_size{ std::strlen(prefix) };
-			assert(uri.compare(0, prefix_size, prefix) == 0 && "Uri format not supported");
+			if (uri.compare(0, 5, "data:") == 0)
+			{
+				char const* const base64_prefix{ "data:application/octet-stream;base64," };
+				std::size_t const base64_prefix_size{ std::strlen(base64_prefix) };
 
-			std::string_view const data_view{ uri.data() + prefix_size, uri.size() - prefix_size };
+				if (uri.compare(0, base64_prefix_size, base64_prefix) == 0)
+				{
+					std::string_view const data_view{ uri.data() + base64_prefix_size, uri.size() - base64_prefix_size };
 
-			return base64_decode(data_view, byte_length);
+					return base64_decode(data_view, byte_length);
+				}
+				else
+				{
+					assert("Uri format not supported");
+				}
+			}
+			else
+			{
+				std::filesystem::path const file_path{ uri };
+				
+				if (std::filesystem::exists(file_path))
+				{
+					assert(std::filesystem::file_size(file_path) == byte_length);
+
+					std::vector<std::byte> file_content;
+					file_content.resize(byte_length);
+
+					{
+						std::basic_ifstream<std::byte> file_stream{ file_path, std::ios::binary };
+						file_stream.read(file_content.data(), byte_length);
+
+						assert(file_stream.good());
+					}
+
+					return file_content;
+				}
+				else
+				{
+					assert("Couldn't open file");
+				}
+			}
 		}
 	}
 
@@ -219,6 +259,12 @@ namespace Maia::Mythology::D3D12
 						{
 							D3D12::Submesh_view submesh_view{};
 
+							// TODO hack
+							if (primitive.attributes.size() == 1)
+							{
+								submesh_view.vertex_buffer_views.push_back({});
+							}
+
 							submesh_view.vertex_buffer_views.reserve(primitive.attributes.size());
 							for (std::pair<const std::string, size_t> const& attribute : primitive.attributes)
 							{
@@ -294,10 +340,17 @@ namespace Maia::Mythology::D3D12
 	{
 		std::vector<Maia::GameEngine::Component_info> create_component_infos(
 			Maia::Utilities::glTF::Node const& node,
-			std::optional<std::size_t> parent
+			bool const has_parent
 		)
 		{
+			using namespace Maia::GameEngine;
+			using namespace Maia::GameEngine::Components;
+			using namespace Maia::GameEngine::Systems;
+
 			std::vector<Maia::GameEngine::Component_info> component_infos;
+			component_infos.push_back(
+				create_component_info<Entity>()
+			);
 
 			if (node.mesh_index)
 			{
@@ -305,43 +358,349 @@ namespace Maia::Mythology::D3D12
 
 			if (node.camera_index)
 			{
-				component_infos.push_back({ Camera_component::ID(), sizeof(Camera_component) });
+				component_infos.push_back(
+					create_component_info<Camera_component>()
+				);
 			}
 
 			{
-				using namespace Maia::GameEngine::Components;
-				using namespace Maia::GameEngine::Systems;
-
-				component_infos.push_back({ Local_position::ID(), sizeof(Local_position) });
-				component_infos.push_back({ Local_rotation::ID(), sizeof(Local_rotation) });
-				component_infos.push_back({ Transform_matrix::ID(), sizeof(Transform_matrix) });
+				component_infos.push_back(
+					create_component_info<Local_position>()
+				);
+				component_infos.push_back(
+					create_component_info<Local_rotation>()
+				);
+				component_infos.push_back(
+					create_component_info<Transform_matrix>()
+				);
 			}
 
-			if (parent)
+			if (has_parent)
 			{
-				using namespace Maia::GameEngine::Components;
-				using namespace Maia::GameEngine::Systems;
-
-				component_infos.push_back({ Transform_root::ID(), sizeof(Transform_root) });
-				component_infos.push_back({ Transform_parent::ID(), sizeof(Transform_parent) });
+				component_infos.push_back(
+					create_component_info<Transform_root>()
+				);
+				component_infos.push_back(
+					create_component_info<Transform_parent>()
+				);
+			}
+			else
+			{
+				component_infos.push_back(
+					create_component_info<Transform_tree_dirty>()
+				);
 			}
 
 			return component_infos;
 		}
 
+		Space create_space(Maia::Utilities::glTF::Node const& node)
+		{
+			if (node.mesh_index)
+			{
+				return { 1000 + *node.mesh_index };
+			}
+			else
+			{
+				return { 0 };
+			}
+		}
+
+		Entity_type_id create_entity_type(
+			Entity_manager& entity_manager,
+			Maia::Utilities::glTF::Node const& node,
+			bool const has_parent
+		)
+		{
+			std::vector<Maia::GameEngine::Component_info> const component_infos =
+				create_component_infos(node, has_parent);
+
+			// TODO
+			std::size_t const capacity_per_chunk = 10;
+			Space const space = create_space(node);
+
+			return entity_manager.create_entity_type(
+				capacity_per_chunk, component_infos, space
+			);
+		}
+
 		// TODO move
-		Maia::GameEngine::Component_types_group create_component_types_group(
+		Maia::GameEngine::Component_group_mask create_component_group_masks(
 			gsl::span<Maia::GameEngine::Component_info const> const component_infos
 		)
 		{
-			Maia::GameEngine::Component_types_group component_types_group = {};
+			Maia::GameEngine::Component_group_mask component_group_mask = {};
 
 			for (Maia::GameEngine::Component_info const& component_info : component_infos)
 			{
-				component_types_group.mask.set(component_info.id.value);
+				component_group_mask.value.set(component_info.id.value);
 			}
 
-			return component_types_group;
+			return component_group_mask;
+		}
+
+		Maia::GameEngine::Entity create_free_camera_entity(Entity_manager& entity_manager)
+		{
+			using namespace Maia::GameEngine::Systems;
+
+			Entity_type_id const entity_type_id = entity_manager.create_entity_type<
+				Camera_component,
+				Local_position,
+				Local_rotation,
+				Transform_matrix,
+				Transform_tree_dirty,
+				Entity
+			>(1, Space{ 0 });
+
+			Entity const camera_entity = entity_manager.create_entity(entity_type_id);
+			entity_manager.set_component_data(camera_entity, Local_position{});
+			entity_manager.set_component_data(camera_entity, Local_rotation{});
+			entity_manager.set_component_data(camera_entity, Transform_matrix{});
+			entity_manager.set_component_data(camera_entity, Transform_tree_dirty{ true });
+
+			{
+				using namespace Maia::Utilities;
+
+				glTF::Camera camera;
+				camera.name = "Default";
+				camera.type = glTF::Camera::Type::Perspective;
+
+				{
+					glTF::Camera::Perspective perspective;
+					perspective.vertical_field_of_view = static_cast<float>(EIGEN_PI) / 3.0f;
+					perspective.near_z = 0.25f;
+					perspective.far_z = 100.0f;
+
+					camera.projection = perspective;
+				}
+
+
+				entity_manager.set_component_data(camera_entity, Camera_component{ camera });
+			}
+
+			return camera_entity;
+		}
+
+		std::pair<Entity_type_id, Entity> create_entity(
+			Entity_manager& entity_manager,
+			gsl::span<Maia::GameEngine::Entity const> const entities,
+			gsl::span<Maia::Utilities::glTF::Camera const> const cameras,
+			Node const& node,
+			std::optional<Entity> const root_entity,
+			std::optional<Entity> const parent_entity
+		)
+		{
+			Entity_type_id const entity_type_id =
+				create_entity_type(entity_manager, node, parent_entity.has_value());
+
+			Entity const entity =
+				entity_manager.create_entity(entity_type_id);
+
+			if (node.mesh_index)
+			{
+			}
+
+			if (node.camera_index)
+			{
+				assert(!node.child_indices && !node.mesh_index && "Camera-only nodes supported at the moment");
+
+				Camera_component const camera_component = { cameras[*node.camera_index] };
+
+				entity_manager.set_component_data(entity, camera_component);
+			}
+
+			{
+				Eigen::Matrix3f to_engine_coordinates = Eigen::Matrix3f::Identity();
+				to_engine_coordinates <<
+					1.0f, 0.0f, 0.0f,
+					0.0f, -1.0f, 0.0f,
+					0.0f, 0.0f, -1.0f;
+
+
+				Local_rotation const local_rotation = [&]() -> Local_rotation
+				{
+					if (node.camera_index)
+					{
+						if (parent_entity)
+						{
+							return { Eigen::Quaternionf{ to_engine_coordinates * node.rotation } };
+						}
+						else
+						{
+							return { Eigen::Quaternionf{ node.rotation } };
+						}
+					}
+					else
+					{
+						if (parent_entity)
+						{
+							return { Eigen::Quaternionf{ node.rotation } };
+						}
+						else
+						{
+							return { Eigen::Quaternionf{ to_engine_coordinates * node.rotation } };
+						}
+					}
+				}();
+
+				entity_manager.set_component_data(entity, local_rotation);
+
+
+				Local_position const local_position = [&]() -> Local_position
+				{
+					if (parent_entity)
+					{
+						return { node.translation };
+					}
+					else
+					{
+						return { to_engine_coordinates * node.translation };
+					}
+				}();
+
+				entity_manager.set_component_data(entity, local_position);
+			}
+
+			if (parent_entity)
+			{
+				{
+					entity_manager.set_components_data(entity, Transform_root{ *root_entity });
+				}
+
+				{
+					entity_manager.set_components_data(entity, Transform_parent{ *parent_entity });
+				}
+			}
+			else
+			{
+				entity_manager.set_components_data(entity, Transform_tree_dirty{ true });
+			}
+
+			return { entity_type_id, entity };
+		}
+
+		void create_entities_of_tree_hierarchy(
+			Scene_entities& scene_entities,
+			Entity_manager& entity_manager,
+			std::vector<Maia::GameEngine::Entity>& entities,
+			gsl::span<Maia::Utilities::glTF::Camera const> const cameras,
+			gsl::span<Maia::Utilities::glTF::Node const> const nodes,
+			std::size_t const node_index,
+			std::optional<Entity> const root_entity,
+			std::optional<Entity> const parent_entity
+		)
+		{
+			Node const& node = nodes[node_index];
+
+			std::pair<Entity_type_id, Entity> const entity = create_entity(
+				entity_manager, entities, cameras,
+				node, root_entity, parent_entity
+			);
+
+			{
+				std::cout << "Node_index: " << node_index;
+				std::cout << "| Entity type " << entity.first.value;
+				std::cout << "| Entity " << entity.second.value;
+				
+				if (entity_manager.has_component<Transform_root>(entity.second))
+				{
+					Transform_root const root =
+						entity_manager.get_component_data<Transform_root>(entity.second);
+
+					std::cout << " | Root " << root.entity.value;
+				}
+
+				if (entity_manager.has_component<Transform_parent>(entity.second))
+				{
+					Transform_parent const parent = 
+						entity_manager.get_component_data<Transform_parent>(entity.second);
+
+					std::cout << " | Parent " << parent.entity.value;
+				}
+
+				std::cout << std::endl;
+			}
+			
+			
+
+			entities.push_back(entity.second);
+
+			if (node.mesh_index)
+			{
+			}
+
+			if (node.camera_index)
+			{
+				scene_entities.cameras.push_back(entity.second);
+			}
+
+			if (node.child_indices)
+			{
+				for (std::size_t const child_index : *node.child_indices)
+				{
+					create_entities_of_tree_hierarchy(
+						scene_entities,
+						entity_manager,
+						entities,
+						cameras,
+						nodes,
+						child_index,
+						root_entity ? root_entity : entity.second,
+						entity.second
+					);
+				}
+			}
+		}
+
+		std::pair<std::vector<Entity_type_id>, std::vector<Mesh_ID>> create_entity_type_to_mesh(
+			Entity_manager& entity_manager,
+			gsl::span<Maia::Utilities::glTF::Node const> const nodes,
+			gsl::span<std::optional<std::size_t> const> const parents
+		)
+		{
+			assert(nodes.size() == parents.size());
+
+			std::unordered_map<Entity_type_id, Mesh_ID> entity_type_to_mesh;
+
+			for (std::ptrdiff_t index = 0; index < nodes.size(); ++index)
+			{
+				Node const& node = nodes[index];
+
+				if (node.mesh_index)
+				{
+					std::optional<std::size_t> const& parent = parents[index];
+
+					Entity_type_id const entity_type_id =
+						create_entity_type(entity_manager, node, parent.has_value());
+
+					auto const mesh_location = entity_type_to_mesh.find(entity_type_id);
+
+					if (mesh_location == entity_type_to_mesh.end())
+					{
+						entity_type_to_mesh[entity_type_id] = { gsl::narrow_cast<std::uint16_t>(*node.mesh_index) };
+					}
+					else
+					{
+						assert(entity_type_to_mesh.at(entity_type_id).value == *node.mesh_index);
+					}
+				}
+			}
+
+			{
+				std::vector<Entity_type_id> entity_types_with_mesh;
+				entity_types_with_mesh.reserve(entity_type_to_mesh.size());
+
+				std::vector<Mesh_ID> entity_types_mesh_indices;
+				entity_types_mesh_indices.reserve(entity_type_to_mesh.size());
+
+				for (std::pair<const Entity_type_id, Mesh_ID> const entity_type_mesh : entity_type_to_mesh)
+				{
+					entity_types_with_mesh.push_back(entity_type_mesh.first);
+					entity_types_mesh_indices.push_back(entity_type_mesh.second);
+				}
+
+				return { std::move(entity_types_with_mesh), std::move(entity_types_mesh_indices) };
+			}
 		}
 	}
 
@@ -362,111 +721,63 @@ namespace Maia::Mythology::D3D12
 
 		std::vector<Maia::GameEngine::Entity> entities;
 
-		if (scene.nodes)
 		{
-			entities.reserve(scene.nodes->size());
+			/*scene_entities.cameras.push_back(
+				create_free_camera_entity(entity_manager)
+			);*/
+		}
 
+		{
+			std::vector<std::optional<std::size_t>> parents(nodes.size(), std::optional<std::size_t>{});
 			{
-				std::vector<std::optional<std::size_t>> parents{ scene.nodes->size(), {} };
-				{
-					for (std::size_t const node_index : *scene.nodes)
-					{
-						Node const& node = nodes[node_index];
-
-						if (node.child_indices)
-						{
-							for (std::size_t const child_index : *node.child_indices)
-							{
-								parents[child_index] = node_index;
-							}
-						}
-					}
-				}
-
-				std::vector<std::size_t> roots{ scene.nodes->size(), {} };
-				{
-					for (std::size_t const node_index : *scene.nodes)
-					{
-						std::size_t current_node_index = node_index;
-
-						while (parents[current_node_index])
-						{
-							current_node_index = *parents[current_node_index];
-						}
-
-						roots[node_index] = current_node_index;
-					}
-				}
-
-				for (std::size_t const node_index : *scene.nodes)
+				for (std::size_t node_index = 0; node_index < nodes.size(); ++node_index)
 				{
 					Node const& node = nodes[node_index];
-					std::optional<std::size_t> const parent = parents[node_index];
 
-					std::vector<Maia::GameEngine::Component_info> const component_infos = 
-						create_component_infos(node, parent);
-
-					// TODO
-					std::size_t const capacity_per_chunk = 10;
-					Space const space = [&node]() -> Space
+					if (node.child_indices)
 					{
-						if (node.mesh_index)
+						for (std::size_t const child_index : *node.child_indices)
 						{
-							return { 1000 + *node.mesh_index };
+							parents[child_index] = node_index;
 						}
-						else
-						{
-							return { 0 };
-						}
-					}();
-
-					Entity_type_id const entity_type_id = entity_manager.create_entity_type(
-						capacity_per_chunk, component_infos, space
-					);
-
-					Entity const entity = entity_manager.create_entity(entity_type_id);
-
-					if (node.mesh_index)
-					{
-					}
-
-					if (node.camera_index)
-					{
-						Camera_component const camera_component = { cameras[*node.camera_index] };
-
-						entity_manager.set_component_data(entity, camera_component);
-					}
-
-					{
-						entity_manager.set_component_data(entity, Local_position{ node.translation });
-						entity_manager.set_component_data(entity, Local_rotation{ node.rotation });
-					}
-
-					if (parent)
-					{
-						{
-							Entity const root_entity = entities[roots[node_index]];
-							entity_manager.set_components_data(entity, Transform_root{ root_entity });
-						}
-
-						{
-							Entity const parent_entity = entities[*parent];
-							entity_manager.set_components_data(entity, Transform_parent{ parent_entity });
-						}
-					}
-
-					entities.push_back(entity);
-
-					if (node.mesh_index)
-					{
-						scene_entities.mesh.push_back(entity_type_id);
-					}
-
-					if (node.camera_index)
-					{
-						scene_entities.cameras.push_back(entity);
 					}
 				}
+			}
+
+			std::pair<std::vector<Entity_type_id>, std::vector<Mesh_ID>> entity_type_to_mesh =
+				create_entity_type_to_mesh(
+					entity_manager, nodes, parents
+				);
+
+			for (std::size_t i = 0; i < entity_type_to_mesh.first.size(); ++i)
+			{
+				Entity_type_id const entity_type = entity_type_to_mesh.first[i];
+				Mesh_ID const mesh = entity_type_to_mesh.second[i];
+
+				std::cout << "Entity type " << entity_type.value << " -> " << "Mesh " << mesh.value << "\n";
+			}
+
+			scene_entities.entity_types_with_mesh = std::move(entity_type_to_mesh.first);
+			scene_entities.entity_types_mesh_indices = std::move(entity_type_to_mesh.second);
+		}
+
+		// TODO check
+		if (scene.nodes)
+		{
+			entities.reserve(nodes.size());
+
+			for (std::size_t const node_index : *scene.nodes)
+			{
+				create_entities_of_tree_hierarchy(
+					scene_entities,
+					entity_manager,
+					entities,
+					cameras,
+					nodes,
+					node_index,
+					{},
+					{}
+				);
 			}
 		}
 

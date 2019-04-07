@@ -1,6 +1,10 @@
 #ifndef MAIA_MYTHOLOGY_LOADSCENESYSTEM_H_INCLUDED
 #define MAIA_MYTHOLOGY_LOADSCENESYSTEM_H_INCLUDED
 
+#include <filesystem>
+#include <utility>
+#include <vector>
+
 #include <Maia/GameEngine/Systems/Transform_system.hpp>
 
 #include <Maia/Utilities/glTF/gltf.hpp>
@@ -8,6 +12,7 @@
 #include <Components/Camera_component.hpp>
 
 #include "Render_data.hpp"
+#include "Components/Mesh_ID.hpp"
 
 namespace Maia::Mythology::D3D12
 {
@@ -53,10 +58,13 @@ namespace Maia::Mythology::D3D12
 
 	};
 
+
 	struct Scene_entities
 	{
-		std::vector<Maia::GameEngine::Entity_type_id> mesh;
 		std::vector<Maia::GameEngine::Entity> cameras;
+
+		std::vector<Maia::GameEngine::Entity_type_id> entity_types_with_mesh;
+		std::vector<Maia::Mythology::Mesh_ID> entity_types_mesh_indices;
 	};
 
 	Scene_entities create_entities(

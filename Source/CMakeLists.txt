@@ -55,8 +55,8 @@ target_sources (MaiaMythology
 		"Game_key.hpp"
 		"Game_clock.hpp"
 		
-		"Transform_camera_system.hpp"
-		"Transform_camera_system.cpp"
+		"Transform_freely_system.hpp"
+		"Transform_freely_system.cpp"
 
 		"Render/Pass_data.hpp"
 
@@ -75,6 +75,8 @@ target_sources (MaiaMythology
 
 		"Components/Camera_component.hpp"
 		"Components/Camera_component.cpp"
+		"Components/Mesh_ID.hpp"
+		"Components/Mesh_ID.cpp"
 )
 
 if (WINDOWS_STORE)

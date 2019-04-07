@@ -15,6 +15,11 @@ namespace Maia::Utilities::glTF
 	class GlTF;
 }
 
+namespace Maia::Mythology
+{
+	struct Pass_data;
+}
+
 namespace Maia::Mythology::D3D12
 {
 	struct Upload_bundle
@@ -35,7 +40,7 @@ namespace Maia::Mythology::D3D12
 
 		std::vector<D3D12_VERTEX_BUFFER_VIEW> upload_instance_data(
 			Upload_bundle& bundle,
-			Instance_buffer const& instance_buffer,
+			Instance_buffer const& instance_buffer, UINT64 instance_buffer_offset,
 			Maia::GameEngine::Entity_manager const& entity_manager,
 			gsl::span<Maia::GameEngine::Entity_type_id const> entity_types_ids
 		);

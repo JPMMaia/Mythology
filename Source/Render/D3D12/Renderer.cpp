@@ -51,6 +51,7 @@ namespace Maia::Mythology::D3D12
 			}();*/
 			description.SampleMask = 0xFFFFFFFF;
 			description.RasterizerState = CD3DX12_RASTERIZER_DESC{ D3D12_DEFAULT };
+			description.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 			/*description.RasterizerState = []() -> D3D12_RASTERIZER_DESC
 			{
 				D3D12_RASTERIZER_DESC rasterizer_state{};
@@ -141,11 +142,12 @@ namespace Maia::Mythology::D3D12
 			ID3D12Resource& render_target, D3D12_CPU_DESCRIPTOR_HANDLE render_target_descriptor_handle,
 			ID3D12RootSignature& root_signature,
 			D3D12_GPU_VIRTUAL_ADDRESS const pass_data_constant_buffer_address,
-			gsl::span<Mesh_view const> const mesh_views,
-			gsl::span<D3D12_VERTEX_BUFFER_VIEW const> const instance_buffer_views
+			gsl::span<D3D12_VERTEX_BUFFER_VIEW const> const instance_buffer_views,
+			gsl::span<Mesh_ID const> const instance_buffer_mesh_indices,
+			gsl::span<Mesh_view const> const mesh_views
 		)
 		{
-			assert(mesh_views.size() == instance_buffer_views.size());
+			assert(instance_buffer_views.size() == instance_buffer_mesh_indices.size());
 
 			command_list.RSSetViewports(1, &viewport);
 			command_list.RSSetScissorRects(1, &scissor_rect);
@@ -175,14 +177,15 @@ namespace Maia::Mythology::D3D12
 
 			command_list.IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-			for (std::ptrdiff_t mesh_index = 0; mesh_index < mesh_views.size(); ++mesh_index)
+			for (std::ptrdiff_t instance_buffer_index = 0; instance_buffer_index < instance_buffer_views.size(); ++instance_buffer_index)
 			{
-				D3D12_VERTEX_BUFFER_VIEW const& instance_buffer_view = instance_buffer_views[mesh_index];
+				D3D12_VERTEX_BUFFER_VIEW const& instance_buffer_view = instance_buffer_views[instance_buffer_index];
 				UINT const instance_count = instance_buffer_view.SizeInBytes / instance_buffer_view.StrideInBytes;
 
 				if (instance_count > 0)
 				{
-					Mesh_view const& mesh_view = mesh_views[mesh_index];
+				 	Mesh_ID const mesh_index = instance_buffer_mesh_indices[instance_buffer_index];
+					Mesh_view const& mesh_view = mesh_views[mesh_index.value];
 					
 					for (Submesh_view const& submesh_view : mesh_view.submesh_views)
 					{
@@ -231,11 +234,14 @@ namespace Maia::Mythology::D3D12
 		std::uint8_t const current_frame_index,
 		ID3D12Resource& render_target,
 		D3D12_CPU_DESCRIPTOR_HANDLE const render_target_descriptor_handle,
-		gsl::span<Mesh_view const> const mesh_views,
 		gsl::span<D3D12_VERTEX_BUFFER_VIEW const> const instance_buffer_views,
+		gsl::span<Mesh_ID const> const instance_buffer_mesh_indices,
+		gsl::span<Mesh_view const> const mesh_views,
 		D3D12_GPU_VIRTUAL_ADDRESS const pass_data_buffer_address
 	)
 	{
+		assert(instance_buffer_views.size() == instance_buffer_mesh_indices.size());
+
 		ID3D12CommandAllocator& command_allocator = 
 			*m_command_allocators[current_frame_index];
 
@@ -254,8 +260,9 @@ namespace Maia::Mythology::D3D12
 				render_target, render_target_descriptor_handle,
 				*m_root_signature,
 				pass_data_buffer_address,
-				mesh_views,
-				instance_buffer_views
+				instance_buffer_views,
+				instance_buffer_mesh_indices,
+				mesh_views
 			);
 
 			check_hresult(

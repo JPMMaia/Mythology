@@ -3,6 +3,7 @@
 #include <filesystem>
 
 #include <Maia/GameEngine/Entity_manager.hpp>
+#include <Maia/GameEngine/Systems/Transform_system.hpp>
 #include <Maia/Utilities/glTF/gltf.hpp>
 
 #include "Camera.hpp"
@@ -13,17 +14,118 @@
 
 #include <Maia/GameEngine/Systems/Transform_system.hpp>
 #include "Render/D3D12/Render_system.hpp"
-#include "Transform_camera_system.hpp"
+#include "Transform_freely_system.hpp"
+#include <Components/Camera_component.hpp>
 
 #include "Application.hpp"
 
+using namespace Maia::GameEngine;
+using namespace Maia::GameEngine::Systems;
+using namespace Maia::Mythology;
+
 namespace
 {
+	Maia::GameEngine::Entity create_camera_entity(Entity_manager& entity_manager)
+	{
+		Entity_type_id const entity_type_id = entity_manager.create_entity_type<
+			Camera_component,
+			Local_position,
+			Local_rotation,
+			Transform_matrix,
+			Transform_tree_dirty,
+			Entity
+		>(1, Space{ 0 });
+
+		Entity const camera_entity = entity_manager.create_entity(entity_type_id);
+		entity_manager.set_component_data(camera_entity, Local_position{});
+		entity_manager.set_component_data(camera_entity, Local_rotation{});
+		entity_manager.set_component_data(camera_entity, Transform_matrix{});
+		entity_manager.set_component_data(camera_entity, Transform_tree_dirty{ true });
+
+		{
+			using namespace Maia::Utilities;
+
+			glTF::Camera camera;
+			camera.name = "Default";
+			camera.type = glTF::Camera::Type::Perspective;
+
+			{
+				glTF::Camera::Perspective perspective;
+				perspective.vertical_field_of_view = static_cast<float>(EIGEN_PI) / 3.0f;
+				perspective.near_z = 0.25f;
+				perspective.far_z = 100.0f;
+
+				camera.projection = perspective;
+			}
+
+
+			entity_manager.set_component_data(camera_entity, Camera_component{ camera });
+		}
+
+		return camera_entity;
+	}
+
 	Maia::Mythology::Scenes_resources create_default_scene()
 	{
+		using namespace Maia::GameEngine;
+		using namespace Maia::GameEngine::Systems;
+		using namespace Maia::Mythology;
+
 		Maia::Mythology::Scenes_resources scenes_resources = {};
+
 		scenes_resources.entity_managers.emplace_back();
+
 		scenes_resources.scenes_entities.emplace_back();
+
+		{
+			scenes_resources.scenes_entities.back().cameras.push_back(
+				create_camera_entity(
+					scenes_resources.entity_managers.back()
+				)
+			);
+		}
+
+		{
+			Entity_manager& entity_manager = scenes_resources.entity_managers.back();
+
+			Entity_type_id const entity_type_id = entity_manager.create_entity_type<
+				Camera_component, 
+				Local_position,
+				Local_rotation,
+				Transform_matrix,
+				Transform_tree_dirty,
+				Entity
+			>(1, Space{ 0 });
+
+			Entity const camera_entity = entity_manager.create_entity(entity_type_id);
+			entity_manager.set_component_data(camera_entity, Local_position{});
+			entity_manager.set_component_data(camera_entity, Local_rotation{});
+			entity_manager.set_component_data(camera_entity, Transform_matrix{});
+			entity_manager.set_component_data(camera_entity, Transform_tree_dirty{ true });
+
+			{
+				using namespace Maia::Utilities;
+
+				glTF::Camera camera;
+				camera.name = "Default";
+				camera.type = glTF::Camera::Type::Perspective;
+
+				{
+					glTF::Camera::Perspective perspective;
+					perspective.vertical_field_of_view = static_cast<float>(EIGEN_PI) / 3.0f;
+					perspective.near_z = 0.25f;
+					perspective.far_z = 100.0f;
+
+					camera.projection = perspective;
+				}
+				
+
+				entity_manager.set_component_data(camera_entity, Camera_component{ camera });
+			}
+			
+			scenes_resources.scenes_entities.back().cameras.push_back(camera_entity);
+		}
+		
 		return scenes_resources;
 	}
 
@@ -158,6 +260,7 @@ namespace Maia::Mythology
 		{
 			using namespace Maia::GameEngine;
 			using namespace Maia::GameEngine::Components;
+			using namespace Maia::GameEngine::Systems;
 
 			Scenes_resources& scene_resources = 
 				m_scenes_resources[m_current_scenes_index];
@@ -165,18 +268,41 @@ namespace Maia::Mythology
 			Entity_manager& entity_manager =
 				scene_resources.entity_managers[scene_resources.current_scene_index];
 
-			Entity const camera_entity = 
-				scene_resources
-				.scenes_entities[scene_resources.current_scene_index]
-				.cameras[0];
+			Entity const entity_to_move = [&]() -> Entity
+			{
+				Entity const camera_entity =
+					scene_resources
+					.scenes_entities[scene_resources.current_scene_index]
+					.cameras[0];
 
-			Local_position camera_position = entity_manager.get_component_data<Local_position>(camera_entity);
-			Local_rotation camera_rotation = entity_manager.get_component_data<Local_rotation>(camera_entity);
+				if (entity_manager.has_component<Transform_root>(camera_entity))
+				{
+					return entity_manager.get_component_data<Transform_root>(camera_entity).entity;
+				}
+				else
+				{
+					return camera_entity;
+				}
+			}();
 
-			Systems::transform_camera(camera_position.value, camera_rotation.value, input_state_view, delta_time);
+			Local_position position = entity_manager.get_component_data<Local_position>(entity_to_move);
+			Local_rotation rotation = entity_manager.get_component_data<Local_rotation>(entity_to_move);
 
-			entity_manager.set_component_data(camera_entity, camera_position);
-			entity_manager.set_component_data(camera_entity, camera_rotation);
+			Systems::transform_freely(position.value, rotation.value, input_state_view, delta_time);
+
+			entity_manager.set_component_data(entity_to_move, position);
+			entity_manager.set_component_data(entity_to_move, rotation);
+
+			// TODO only when moved
+			if (entity_manager.has_component<Transform_root>(entity_to_move))
+			{
+				Transform_root const root = entity_manager.get_component_data<Transform_root>(entity_to_move);
+				entity_manager.set_component_data(root.entity, Transform_tree_dirty{ true });
+			}
+			else
+			{
+				entity_manager.set_component_data(entity_to_move, Transform_tree_dirty{ true }); // TODO only when moved
+			}
 		}
 	}
 
@@ -192,13 +318,14 @@ namespace Maia::Mythology
 		{
 			Scenes_resources const& scenes = m_scenes_resources[m_current_scenes_index];
 
-			gsl::span<Maia::GameEngine::Entity_type_id const> const mesh_entity_types_ids =
-				scenes.scenes_entities[scenes.current_scene_index].mesh;
+
+			D3D12::Scene_entities const& scene_entities = scenes.scenes_entities[scenes.current_scene_index];
 
 			render_system.render_frame(
 				scenes.entity_managers[scenes.current_scene_index],
-				scenes.scenes_entities[scenes.current_scene_index].cameras[0],
-				mesh_entity_types_ids,
+				scene_entities.cameras[0],
+				scene_entities.entity_types_with_mesh,
+				scene_entities.entity_types_mesh_indices,
 				scenes.mesh_views
 			);
 		}

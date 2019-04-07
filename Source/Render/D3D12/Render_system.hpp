@@ -3,6 +3,7 @@
 
 #include "Render_data.hpp"
 #include "Renderer.hpp"
+#include "Components/Mesh_ID.hpp"
 
 #include "Upload_frame_data_system.hpp"
 
@@ -41,7 +42,8 @@ namespace Maia::Mythology::D3D12
 		void render_frame(
 			Maia::GameEngine::Entity_manager const& entity_manager,
 			Maia::GameEngine::Entity const camera_entity,
-			gsl::span<Maia::GameEngine::Entity_type_id const> entity_types_ids,
+			gsl::span<Maia::GameEngine::Entity_type_id const> entity_types_with_mesh,
+			gsl::span<Mesh_ID const> entity_type_mesh_indices,
 			gsl::span<Maia::Mythology::D3D12::Mesh_view const> mesh_views
 		);
 
@@ -59,6 +61,7 @@ namespace Maia::Mythology::D3D12
 
 		std::uint8_t const m_pipeline_length;
 		bool const m_vertical_sync;
+		Eigen::Vector2i m_window_size;
 		UINT64 m_copy_fence_value;
 		winrt::com_ptr<ID3D12Fence> m_copy_fence;
 

@@ -91,7 +91,12 @@ namespace
 		keys_map[DIK_W] = static_cast<std::uint8_t>(Game_key::Move_forward);
 		keys_map[DIK_D] = static_cast<std::uint8_t>(Game_key::Move_right);
 		keys_map[DIK_S] = static_cast<std::uint8_t>(Game_key::Move_back);
-		keys_map[DIK_NUMPAD6] = static_cast<std::uint8_t>(Game_key::Rotate);
+		keys_map[DIK_UPARROW] = static_cast<std::uint8_t>(Game_key::Rotate_positive_pitch);
+		keys_map[DIK_DOWNARROW] = static_cast<std::uint8_t>(Game_key::Rotate_negative_pitch);
+		keys_map[DIK_RIGHTARROW] = static_cast<std::uint8_t>(Game_key::Rotate_positive_yaw);
+		keys_map[DIK_LEFTARROW] = static_cast<std::uint8_t>(Game_key::Rotate_negative_yaw);
+		keys_map[DIK_E] = static_cast<std::uint8_t>(Game_key::Rotate_positive_roll);
+		keys_map[DIK_Q] = static_cast<std::uint8_t>(Game_key::Rotate_negative_roll);
 		keys_map[DIK_L] = static_cast<std::uint8_t>(Game_key::Load_scene);
 
 		return Maia::Mythology::Win32::Input_system{ instance, window_handle, keys_map };

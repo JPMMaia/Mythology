@@ -12,6 +12,7 @@
 #include <Render/Pass_data.hpp>
 
 #include "Render_system.hpp"
+#include <Maia/GameEngine/Systems/Transform_system.hpp>
 
 
 using namespace Maia::Renderer::D3D12;
@@ -88,8 +89,10 @@ namespace Maia::Mythology::D3D12
 		m_copy_command_queue{ copy_command_queue },
 		m_direct_command_queue{ direct_command_queue },
 		m_swap_chain{ swap_chain.value },
+		
 		m_pipeline_length{ pipeline_length },
 		m_vertical_sync{ vertical_sync },
+		m_window_size{ swap_chain.bounds },
 		m_copy_fence_value{ 0 },
 		m_copy_fence{ create_fence(device, m_copy_fence_value, D3D12_FENCE_FLAG_NONE) },
 
@@ -166,10 +169,13 @@ namespace Maia::Mythology::D3D12
 	void Render_system::render_frame(
 		Maia::GameEngine::Entity_manager const& entity_manager,
 		Maia::GameEngine::Entity const camera_entity,
-		gsl::span<Maia::GameEngine::Entity_type_id const> const entity_types_ids,
+		gsl::span<Maia::GameEngine::Entity_type_id const> const entity_types_with_mesh,
+		gsl::span<Mesh_ID const> const entity_types_mesh_indices,
 		gsl::span<Maia::Mythology::D3D12::Mesh_view const> const mesh_views
 	)
 	{
+		assert(entity_types_with_mesh.size() == entity_types_mesh_indices.size());
+
 		std::uint8_t const current_frame_index{ m_submitted_frames % m_pipeline_length };
 
 		{
@@ -193,44 +199,79 @@ namespace Maia::Mythology::D3D12
 
 
 			{
+				using namespace Maia::GameEngine::Systems;
 				using namespace Maia::Renderer;
 				using namespace Maia::Utilities::glTF;
 
-				Maia::Utilities::glTF::Camera const camera =
-					entity_manager.get_component_data<Camera_component>(camera_entity).value;
+				
 
 				Pass_data pass_data;
-				pass_data.view_matrix;
 
-				if (camera.type == Maia::Utilities::glTF::Camera::Type::Orthographic)
 				{
-					const auto& orthographic = std::get<Maia::Utilities::glTF::Camera::Orthographic>(camera.projection);
+					// TODO problem with camera. Upside down.
 
-					pass_data.projection_matrix =
-						to_api_specific_perspective_matrix() *
-						create_orthographic_projection_matrix(
-							orthographic.horizontal_magnification,
-							orthographic.vertical_magnification,
-							orthographic.near_z,
-							orthographic.far_z
-						);
+					Transform_matrix const camera_transform =
+						entity_manager.get_component_data<Transform_matrix>(camera_entity);
+
+					pass_data.view_matrix = camera_transform.value.inverse();
 				}
-				else
-				{
-					const auto& perspective = std::get<Maia::Utilities::glTF::Camera::Perspective>(camera.projection);
 
-					if (perspective.far_z)
+				{
+					Maia::Utilities::glTF::Camera const camera =
+						entity_manager.get_component_data<Camera_component>(camera_entity).value;
+
+					if (camera.type == Maia::Utilities::glTF::Camera::Type::Orthographic)
 					{
-						// TODO finite perspective
+						const auto& orthographic = std::get<Maia::Utilities::glTF::Camera::Orthographic>(camera.projection);
+
+						pass_data.projection_matrix =
+							to_api_specific_perspective_matrix() *
+							create_orthographic_projection_matrix(
+								orthographic.horizontal_magnification,
+								orthographic.vertical_magnification,
+								orthographic.near_z,
+								orthographic.far_z
+							);
 					}
 					else
 					{
-						// TODO infinite perspective
+						const auto& perspective = std::get<Maia::Utilities::glTF::Camera::Perspective>(camera.projection);
+
+						float const aspect_ratio = [this, &perspective]() -> float
+						{
+							if (perspective.aspect_ratio)
+							{
+								return *perspective.aspect_ratio;
+							}
+							else
+							{
+								return static_cast<float>(m_window_size(0)) / m_window_size(1);
+							}
+						}();
+
+						if (perspective.far_z)
+						{
+							pass_data.projection_matrix =
+								to_api_specific_perspective_matrix() *
+								create_finite_perspective_projection_matrix(
+									aspect_ratio,
+									perspective.vertical_field_of_view,
+									perspective.near_z,
+									*perspective.far_z
+								);
+						}
+						else
+						{
+							pass_data.projection_matrix =
+								to_api_specific_perspective_matrix() *
+								create_infinite_perspective_projection_matrix(
+									aspect_ratio,
+									perspective.vertical_field_of_view,
+									perspective.near_z
+								);
+						}
 					}
 				}
-
-				pass_data.projection_matrix =
-					Maia::Renderer::create_perspective_projection_matrix;
 
 				ID3D12Resource& pass_buffer = *m_pass_buffer;
 				m_upload_frame_data_system.upload_pass_data(
@@ -247,9 +288,9 @@ namespace Maia::Mythology::D3D12
 			instance_buffer_views =
 				m_upload_frame_data_system.upload_instance_data(
 					bundle,
-					instance_buffer,
+					instance_buffer, 0,
 					entity_manager,
-					entity_types_ids
+					entity_types_with_mesh
 				);
 
 			{
@@ -298,8 +339,9 @@ namespace Maia::Mythology::D3D12
 					m_renderer.render(
 						current_frame_index,
 						*back_buffer, render_target_descriptor_handle,
-						mesh_views,
 						instance_buffer_views,
+						entity_types_mesh_indices,
+						mesh_views,
 						pass_data_buffer_address
 					);
 
@@ -355,6 +397,8 @@ namespace Maia::Mythology::D3D12
 				m_frames_resources.rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart()
 			);
 		}
+
+		m_window_size = new_size;
 
 		m_renderer.resize_viewport_and_scissor_rects(new_size);
 

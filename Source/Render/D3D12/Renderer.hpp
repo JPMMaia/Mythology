@@ -10,6 +10,7 @@
 #include <d3d12.h>
 
 #include <Maia/Renderer/D3D12/Utilities/Shader.hpp>
+#include "Components/Mesh_ID.hpp"
 
 namespace Maia::Mythology::D3D12
 {
@@ -30,8 +31,9 @@ namespace Maia::Mythology::D3D12
 			std::uint8_t current_frame_index,
 			ID3D12Resource& render_target,
 			D3D12_CPU_DESCRIPTOR_HANDLE render_target_descriptor_handle,
-			gsl::span<Mesh_view const> mesh_views,
 			gsl::span<D3D12_VERTEX_BUFFER_VIEW const> instance_buffer_views,
+			gsl::span<Mesh_ID const> instance_buffer_mesh_indices,
+			gsl::span<Mesh_view const> mesh_views,
 			D3D12_GPU_VIRTUAL_ADDRESS pass_data_buffer_address
 		);
 

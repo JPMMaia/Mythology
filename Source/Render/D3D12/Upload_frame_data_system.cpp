@@ -42,7 +42,7 @@ namespace Maia::Mythology::D3D12
 	namespace
 	{
 		std::vector<D3D12_VERTEX_BUFFER_VIEW> upload_instance_data_impl(
-			Instance_buffer const& instance_buffer,
+			Instance_buffer const& instance_buffer, UINT64 const instance_buffer_offset,
 			Maia::GameEngine::Entity_manager const& entity_manager,
 			gsl::span<Maia::GameEngine::Entity_type_id const> entity_types_ids,
 			ID3D12GraphicsCommandList& command_list,
@@ -56,7 +56,7 @@ namespace Maia::Mythology::D3D12
 			std::vector<D3D12_VERTEX_BUFFER_VIEW> instance_buffer_views;
 			instance_buffer_views.reserve(entity_types_ids.size());
 
-			UINT64 instance_buffer_offset_in_bytes{ 0 };
+			UINT64 current_size_in_bytes{ 0 };
 
 			for (Entity_type_id const entity_type_id : entity_types_ids)
 			{
@@ -73,8 +73,8 @@ namespace Maia::Mythology::D3D12
 
 					upload_buffer_data(
 						command_list,
-						*instance_buffer.value, instance_buffer_offset_in_bytes + size_in_bytes,
-						upload_buffer, upload_buffer_offset_in_bytes + instance_buffer_offset_in_bytes + size_in_bytes,
+						*instance_buffer.value, instance_buffer_offset + current_size_in_bytes + size_in_bytes,
+						upload_buffer, upload_buffer_offset_in_bytes + current_size_in_bytes + size_in_bytes,
 						transform_matrices
 					);
 
@@ -84,15 +84,15 @@ namespace Maia::Mythology::D3D12
 				D3D12_VERTEX_BUFFER_VIEW instance_buffer_view;
 				instance_buffer_view.BufferLocation =
 					instance_buffer.value->GetGPUVirtualAddress() +
-					instance_buffer_offset_in_bytes;
+					instance_buffer_offset + current_size_in_bytes;
 				instance_buffer_view.SizeInBytes = static_cast<UINT>(size_in_bytes);
 				instance_buffer_view.StrideInBytes = sizeof(Instance_data);
 				instance_buffer_views.push_back(instance_buffer_view);
 
-				instance_buffer_offset_in_bytes += size_in_bytes;
+				current_size_in_bytes += size_in_bytes;
 			}
 
-			uploaded_size_in_bytes = instance_buffer_offset_in_bytes;
+			uploaded_size_in_bytes = current_size_in_bytes;
 
 			return instance_buffer_views;
 		}
@@ -100,7 +100,7 @@ namespace Maia::Mythology::D3D12
 
 	std::vector<D3D12_VERTEX_BUFFER_VIEW> Upload_frame_data_system::upload_instance_data(
 		Upload_bundle& bundle,
-		Instance_buffer const& instance_buffer,
+		Instance_buffer const& instance_buffer, UINT64 const instance_buffer_offset,
 		Maia::GameEngine::Entity_manager const& entity_manager,
 		gsl::span<Maia::GameEngine::Entity_type_id const> const entity_types_ids
 	)
@@ -108,7 +108,7 @@ namespace Maia::Mythology::D3D12
 		UINT64 uploaded_size_in_bytes;
 
 		std::vector<D3D12_VERTEX_BUFFER_VIEW> vertex_buffer_views = upload_instance_data_impl(
-			instance_buffer,
+			instance_buffer, instance_buffer_offset,
 			entity_manager, entity_types_ids,
 			*m_command_list,
 			*m_upload_buffer, bundle.offset,

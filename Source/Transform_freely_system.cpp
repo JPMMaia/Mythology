@@ -3,7 +3,7 @@
 #include <Game_key.hpp>
 #include <Input_state_views.hpp>
 
-#include "Transform_camera_system.hpp"
+#include "Transform_freely_system.hpp"
 
 namespace Maia::Mythology::Systems
 {
@@ -63,22 +63,44 @@ namespace Maia::Mythology::Systems
 		{
 			using namespace Maia::Mythology::Input;
 
-			float const speed = 3.0f;
+			float const speed = 1.0f;
 			float const magnitude = speed * std::chrono::duration<float>{ delta_time }.count();
 
-			Eigen::Vector3i const movement_direction = [&]() -> Eigen::Vector3i
+			auto const calculate_direction = [](Maia::Mythology::Input::Input_state_view const& input_state_view, Game_key const positive_key, Game_key const negative_key) -> float
 			{
-				Eigen::Vector2i const delta_mouse_position = input_state_view.delta_mouse_position();
-				return { delta_mouse_position(0), delta_mouse_position(1), 0 };
-			}();
+				bool const positive = input_state_view.is_down(positive_key);
+				bool const negative = input_state_view.is_down(negative_key);
 
-			Eigen::Vector3f const new_forward_direction = world_forward + magnitude * movement_direction.cast<float>();
+				if (positive == negative)
+					return 0.0f;
 
-			rotation = Eigen::Quaternionf::FromTwoVectors(world_forward, new_forward_direction) * rotation;
+				else if (positive)
+					return 1.0f;
+
+				else
+					return -1.0f;
+			};
+
+			float const yaw = calculate_direction(input_state_view, Game_key::Rotate_positive_yaw, Game_key::Rotate_negative_yaw);
+			float const pitch = calculate_direction(input_state_view, Game_key::Rotate_positive_pitch, Game_key::Rotate_negative_pitch);
+			float const roll = calculate_direction(input_state_view, Game_key::Rotate_positive_roll, Game_key::Rotate_negative_roll);
+
+			if (yaw != 0.0f || pitch != 0.0f || roll != 0.0f)
+			{
+				Eigen::Quaternionf small_rotation;
+				small_rotation =
+					Eigen::AngleAxisf{ magnitude * pitch, Eigen::Vector3f { 1.0f, 0.0f, 0.0f } } *
+					Eigen::AngleAxisf{ magnitude * yaw, Eigen::Vector3f { 0.0f, 1.0f, 0.0f } } *
+					Eigen::AngleAxisf{ magnitude * roll, Eigen::Vector3f { 0.0f, 0.0f, 1.0f } };
+				small_rotation.normalize();
+
+				rotation = rotation * small_rotation;
+				rotation.normalize();
+			}
 		}
 	}
 
-	void transform_camera(
+	void transform_freely(
 		Eigen::Vector3f& position,
 		Eigen::Quaternionf& rotation,
 		Maia::Mythology::Input::Input_state_view const& input_state_view,
@@ -94,10 +116,6 @@ namespace Maia::Mythology::Systems
 		Eigen::Vector3f const forward_direction{ rotation_matrix.col(2) };
 
 		move(position, right_direction, forward_direction, input_state_view, delta_time);
-
-		if (input_state_view.is_down(Game_key::Rotate))
-		{
-			rotate(rotation, forward_direction, input_state_view, delta_time);
-		}
+		rotate(rotation, forward_direction, input_state_view, delta_time);
 	}
 }
