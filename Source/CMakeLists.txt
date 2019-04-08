@@ -3,6 +3,14 @@ project (MaiaMythology VERSION 0.0.1)
 add_executable (MaiaMythology)
 add_executable (Maia::Mythology ALIAS MaiaMythology)
 
+set_target_properties (
+	MaiaMythology
+		PROPERTIES
+			RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/Output"
+			RUNTIME_OUTPUT_NAME "Mythology"
+			VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/Output/${CMAKE_CFG_INTDIR}"
+)
+
 target_compile_features (MaiaMythology 
 	PRIVATE 
 		cxx_std_17
@@ -36,38 +44,57 @@ target_link_libraries (MaiaMythology
 
 target_sources (MaiaMythology 
 	PRIVATE
-		"App.cpp"
-		"Scene.hpp"
-		"Scene.cpp"
+		"Application.hpp"
+		"Application.cpp"
 
 		"Camera.hpp"
-		"Input_system.hpp"
+		"IInput_system.hpp"
+		"Input_state.hpp"
+		"Input_state_views.hpp"
+		"Input_state_views.cpp"
+		"Game_key.hpp"
+		"Game_clock.hpp"
+		
+		"Transform_freely_system.hpp"
+		"Transform_freely_system.cpp"
 
-		"Renderer/Pass_data.hpp"
-		"Renderer/D3D12/Renderer.hpp"
-		"Renderer/D3D12/Renderer.cpp"
-		"Renderer/D3D12/Render_data.hpp"
-		"Renderer/D3D12/Render_data.cpp"
-		"Renderer/D3D12/Window_swap_chain.hpp"
-		"Renderer/D3D12/Window_swap_chain.cpp"
+		"Render/Pass_data.hpp"
 
-		"Renderer/Shaders/Color_vertex_shader.hlsl"
-		"Renderer/Shaders/Color_pixel_shader.hlsl"
+		"Render/D3D12/Load_scene_system.hpp"
+		"Render/D3D12/Load_scene_system.cpp"
+		#"Render/D3D12/Scene.hpp"
+		#"Render/D3D12/Scene.cpp"
+		"Render/D3D12/Render_system.hpp"
+		"Render/D3D12/Render_system.cpp"
+		"Render/D3D12/Render_data.hpp"
+		"Render/D3D12/Render_data.cpp"
+		"Render/D3D12/Renderer.hpp"
+		"Render/D3D12/Renderer.cpp"
+		"Render/D3D12/Upload_frame_data_system.hpp"
+		"Render/D3D12/Upload_frame_data_system.cpp"
+
+		"Components/Camera_component.hpp"
+		"Components/Camera_component.cpp"
+		"Components/Mesh_ID.hpp"
+		"Components/Mesh_ID.cpp"
 )
 
-include ("${maiarenderer_SOURCE_DIR}/CMake/Scripts/target_add_hlsl_shader.cmake")
+if (WINDOWS_STORE)
+	target_sources (MaiaMythology PRIVATE "Core_window_main.cpp")
+else ()
+	target_sources (
+		MaiaMythology 
+			PRIVATE 
+				"Win32_main.cpp"
+				"Win32/Window.hpp"
+				"Win32/Window.cpp"
+				"Win32/Input_system.hpp"
+				"Win32/Input_system.cpp"
+	)
+endif()
 
-target_add_hlsl_shader (
-	MaiaMythology
-		"Shaders"
-		"${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/Color_vertex_shader.hlsl"
-		"${CMAKE_BINARY_DIR}/${CMAKE_CFG_INTDIR}/AppX/Resources/Shaders/Color_vertex_shader.csv"
-		"main" "vs_5_1" true ""
-)
-target_add_hlsl_shader (
-	MaiaMythology
-		"Shaders"
-		"${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/Color_pixel_shader.hlsl"
-		"${CMAKE_BINARY_DIR}/${CMAKE_CFG_INTDIR}/AppX/Resources/Shaders/Color_pixel_shader.csv"
-		"main" "ps_5_1" true ""
-)
+add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/Render/Shaders")
+
+target_sources (MaiaMythology PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../Resources/box.gltf")
+set_source_files_properties ("${CMAKE_CURRENT_LIST_DIR}/../Resources/box.gltf" PROPERTIES VS_COPY_TO_OUT_DIR PreserveNewest)
+

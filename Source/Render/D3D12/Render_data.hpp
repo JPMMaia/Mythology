@@ -17,35 +17,41 @@ namespace Maia::Mythology::D3D12
 		winrt::com_ptr<ID3D12Resource> value;
 	};
 
+	struct Geometry_buffer
+	{
+		winrt::com_ptr<ID3D12Resource> value;
+	};
+
+	struct Instance_buffer
+	{
+		winrt::com_ptr<ID3D12Resource> value;
+	};
+
 	struct Instance_count
 	{
 		UINT value;
 	};
 
-	struct Render_primitive
+	struct Instance_data
+	{
+		Eigen::Matrix4f world_matrix;
+	};
+
+	struct Pbr_material
+	{
+	};
+
+	struct Submesh_view
 	{
 		std::vector<D3D12_VERTEX_BUFFER_VIEW> vertex_buffer_views;
 		D3D12_INDEX_BUFFER_VIEW index_buffer_view;
 		UINT index_count;
-		UINT instance_count;
+		Pbr_material material;
 	};
 
-	struct Render_resources
+	struct Mesh_view
 	{
-		winrt::com_ptr<ID3D12Device5> device;
-
-		winrt::com_ptr<ID3D12CommandQueue> direct_command_queue;
-		std::vector<winrt::com_ptr<ID3D12CommandAllocator>> command_allocators;
-		winrt::com_ptr<ID3D12GraphicsCommandList> command_list;
-
-		winrt::com_ptr<ID3D12Heap> upload_heap;
-		winrt::com_ptr<ID3D12Resource> upload_buffer;
-		UINT64 upload_buffer_offset;
-		winrt::com_ptr<ID3D12Heap> buffers_heap;
-		UINT64 buffers_heap_offset;
-
-
-		Render_resources(IDXGIAdapter4& adapter, std::uint8_t pipeline_length);
+		std::vector<Submesh_view> submesh_views;
 	};
 
 	struct Frames_resources
@@ -61,7 +67,12 @@ namespace Maia::Mythology::D3D12
 		Camera camera;
 		std::vector<winrt::com_ptr<ID3D12Resource>> constant_buffers;
 		std::vector<Geometry_and_instances_buffer> geometry_and_instances_buffers;
-		std::vector<Render_primitive> primitives;
+		std::vector<Geometry_buffer> geometry_buffers;
+		
+		std::vector<Mesh_view> mesh_views;
+		std::vector<Instance_buffer> instance_buffers;
+		std::vector<bool> dirty_instance_buffers;
+		std::vector<UINT> instances_count;
 	};
 }
 

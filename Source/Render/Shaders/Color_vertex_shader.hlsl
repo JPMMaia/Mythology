@@ -1,6 +1,6 @@
 struct World_position
 {
-	float4 value : POSITION;
+	float3 value : POSITION;
 };
 
 struct Color
@@ -32,7 +32,7 @@ Vertex_shader_output main(World_position world_position, Color color, Instance_d
 {
     Vertex_shader_output output;
 	
-	const float4 positionW = mul(instance_data.world_matrix, world_position.value);
+	const float4 positionW = mul(instance_data.world_matrix, float4(world_position.value, 1.0f));
 	const float4 positionV = mul(g_pass_data.view_matrix, positionW);
 	output.positionH = mul(g_pass_data.projection_matrix, positionV);
     
