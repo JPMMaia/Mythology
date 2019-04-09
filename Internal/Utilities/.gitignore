@@ -1,0 +1,7 @@
+/.vs
+
+/Build
+/Install
+
+/CMakeSettings.json
+/launch.vs.json
