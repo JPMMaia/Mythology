@@ -21,10 +21,10 @@ target_include_directories (MaiaUtilities
 find_package (Eigen3 3.3 NO_MODULE REQUIRED)
 target_link_libraries (MaiaUtilities PUBLIC Eigen3::Eigen)
 
-find_package (GSL REQUIRED)
-target_link_libraries (MaiaUtilities PUBLIC GSL::GSL)
+find_package (MicrosoftGSL 2.0 REQUIRED)
+target_link_libraries (MaiaUtilities PUBLIC MicrosoftGSL::MicrosoftGSL)
 
-find_package (nlohmann_json 3.5.0 REQUIRED)
+find_package (nlohmann_json 3.5 CONFIG REQUIRED)
 target_link_libraries (MaiaUtilities PUBLIC nlohmann_json::nlohmann_json)
 
 target_sources(MaiaUtilities 

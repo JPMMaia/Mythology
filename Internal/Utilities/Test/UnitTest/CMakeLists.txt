@@ -12,7 +12,7 @@ target_include_directories(MaiaUtilitiesUnitTest
 
 target_link_libraries (MaiaUtilitiesUnitTest PRIVATE Maia::Utilities)
 
-find_package (Catch2 REQUIRED)
+find_package (Catch2 CONFIG REQUIRED)
 target_link_libraries (MaiaUtilitiesUnitTest PRIVATE Catch2::Catch2)
 
 target_sources (MaiaUtilitiesUnitTest 

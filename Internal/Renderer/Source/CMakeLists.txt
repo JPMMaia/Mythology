@@ -23,23 +23,11 @@ target_include_directories (MaiaRenderer
 		$<INSTALL_INTERFACE:include/Maia/Renderer>
 )
 
-target_link_libraries (MaiaRenderer 
-	PRIVATE
-		DXGI
-		D3D12
-		WindowsApp
-)
- 
- target_link_libraries (MaiaRenderer PRIVATE Maia::Utilities)
+target_link_libraries (MaiaRenderer PRIVATE Maia::Utilities)
 
-#find_package (D3D12RaytracingFallback REQUIRED)
-#target_link_libraries (MaiaRenderer PUBLIC D3D12::RaytracingFallback)
-#[[add_custom_command (TARGET MaiaRenderer POST_BUILD COMMAND ${CMAKE_COMMAND} -E 
-    copy_directory
-        "$<TARGET_PROPERTY:D3D12::RaytracingFallback,RUNTIME_DIRECTORY>" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
-)]]#
+target_link_libraries (MaiaRenderer PUBLIC D3D12 DXGI WindowsApp)
 
-find_package (Eigen3 3.3 NO_MODULE REQUIRED)
+find_package (Eigen3 3.3.7 CONFIG REQUIRED)
 target_link_libraries (MaiaRenderer PUBLIC Eigen3::Eigen)
 
 find_package (D3DX12 REQUIRED)

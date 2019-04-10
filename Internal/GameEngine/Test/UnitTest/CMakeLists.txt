@@ -9,7 +9,7 @@ target_include_directories(MaiaGameEngineUnitTest PRIVATE ${CMAKE_CURRENT_LIST_D
 
 target_link_libraries (MaiaGameEngineUnitTest PRIVATE Maia::GameEngine)
 
-find_package (Catch2 REQUIRED)
+find_package (Catch2 CONFIG REQUIRED)
 target_link_libraries (MaiaGameEngineUnitTest PRIVATE Catch2::Catch2)
 
 target_sources (MaiaGameEngineUnitTest 

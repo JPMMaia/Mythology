@@ -7,7 +7,7 @@ target_compile_features (MaiaRendererUnitTest PRIVATE cxx_std_17)
 
 target_link_libraries (MaiaRendererUnitTest PRIVATE Maia::Renderer)
 
-find_package (Catch2 REQUIRED)
+find_package (Catch2 CONFIG REQUIRED)
 target_link_libraries (MaiaRendererUnitTest PRIVATE Catch2::Catch2)
 
 target_sources (MaiaRendererUnitTest 
