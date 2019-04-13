@@ -93,7 +93,6 @@ else ()
 	)
 endif()
 
-add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/Render/Shaders")
 
 target_sources (MaiaMythology PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../Resources/box.gltf")
 set_source_files_properties ("${CMAKE_CURRENT_LIST_DIR}/../Resources/box.gltf" PROPERTIES VS_COPY_TO_OUT_DIR PreserveNewest)
