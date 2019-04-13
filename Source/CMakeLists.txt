@@ -6,9 +6,7 @@ add_executable (Maia::Mythology ALIAS MaiaMythology)
 set_target_properties (
 	MaiaMythology
 		PROPERTIES
-			RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/Output"
-			RUNTIME_OUTPUT_NAME "Mythology"
-			VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/Output/${CMAKE_CFG_INTDIR}"
+			VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Output/${CMAKE_CFG_INTDIR}"
 )
 
 target_compile_features (MaiaMythology 
