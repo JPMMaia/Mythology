@@ -15,6 +15,11 @@ find_package (DirectXShaderCompiler REQUIRED)
 target_link_libraries (CompileShaders PRIVATE DirectXShaderCompiler::Dxc)
 
 
+add_library (Shaders INTERFACE)
+add_library (Maia::Shaders ALIAS Shaders)
+target_link_libraries (Shaders INTERFACE CompileShaders)
+
+
 
 include (target_shader)
 
