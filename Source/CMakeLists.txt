@@ -37,6 +37,7 @@ target_link_libraries (MaiaMythology
 	PRIVATE
 		Maia::GameEngine
 		Maia::Renderer
+		Maia::Resources
 		Maia::Shaders
 		Maia::Utilities
 )
@@ -91,8 +92,3 @@ else ()
 				"Win32/Input_system.cpp"
 	)
 endif()
-
-
-target_sources (MaiaMythology PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../Resources/box.gltf")
-set_source_files_properties ("${CMAKE_CURRENT_LIST_DIR}/../Resources/box.gltf" PROPERTIES VS_COPY_TO_OUT_DIR PreserveNewest)
-
