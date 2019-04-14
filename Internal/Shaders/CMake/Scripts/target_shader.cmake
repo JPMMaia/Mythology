@@ -89,8 +89,7 @@ function (target_shader copy_target compile_target)
 
     set (shader_binary_outputs ${intermediate_lists})
     list (TRANSFORM shader_binary_outputs PREPEND "${SHADER_BINARY_OUTPUT_DIRECTORY}/")
-    #list (TRANSFORM shader_binary_outputs REPLACE "\\.[^.]*$" ".cso")
-    list (TRANSFORM shader_binary_outputs APPEND ".cso")
+    list (TRANSFORM shader_binary_outputs REPLACE "\\.[^.]*$" ".cso")
 
     target_sources (${copy_target}
         PRIVATE
