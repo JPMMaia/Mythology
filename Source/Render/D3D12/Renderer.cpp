@@ -120,8 +120,8 @@ namespace Maia::Mythology::D3D12
 		m_viewport{ 0.0f, 0.0f, static_cast<FLOAT>(viewport_and_scissor_dimensions(0)), static_cast<FLOAT>(viewport_and_scissor_dimensions(1)), D3D12_MIN_DEPTH, D3D12_MAX_DEPTH },
 		m_scissor_rect{ 0, 0, viewport_and_scissor_dimensions(0), viewport_and_scissor_dimensions(1) },
 		m_root_signature{ create_color_pass_root_signature(device) },
-		m_color_vertex_shader{ "Color_vertex_shader.hlsl", "main", "vs_5_1" },
-		m_color_pixel_shader{ "Color_pixel_shader.hlsl", "main", "ps_5_1" },
+		m_color_vertex_shader{ "Shaders/Color_vertex_shader.cso" },
+		m_color_pixel_shader{ "Shaders/Color_pixel_shader.cso" },
 		m_color_pass_pipeline_state{ create_color_pass_pipeline_state(device, *m_root_signature, m_color_vertex_shader.bytecode(), m_color_pixel_shader.bytecode()) }
 	{
 	}

@@ -27,11 +27,11 @@ include (target_shader)
 target_shader (CopyShaders CompileShaders
     INPUT "Color_vertex_shader.hlsl"
     TYPE "Vertex"
-    INTERMEDIATE "Color_vertex_shader.hlsl"
+    INTERMEDIATE "Color_vertex_shader.hlsl" MODEL 5.1
 )
 
 target_shader (CopyShaders CompileShaders
     INPUT "Color_pixel_shader.hlsl"
     TYPE "Pixel"
-    INTERMEDIATE "Color_pixel_shader.hlsl"
+    INTERMEDIATE "Color_pixel_shader.hlsl" MODEL 5.1
 )
