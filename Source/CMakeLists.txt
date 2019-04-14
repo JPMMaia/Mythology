@@ -6,7 +6,7 @@ add_executable (Maia::Mythology ALIAS MaiaMythology)
 set_target_properties (
 	MaiaMythology
 		PROPERTIES
-			VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Output/${CMAKE_CFG_INTDIR}"
+			VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_CFG_INTDIR}"
 )
 
 target_compile_features (MaiaMythology 
@@ -37,6 +37,7 @@ target_link_libraries (MaiaMythology
 	PRIVATE
 		Maia::GameEngine
 		Maia::Renderer
+		Maia::Shaders
 		Maia::Utilities
 )
 
