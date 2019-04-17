@@ -21,6 +21,15 @@ target_link_libraries (Shaders INTERFACE CompileShaders)
 
 
 
+include (target_shader_header)
+
+target_shader_header (CopyShaders CompileShaders
+    INPUTS
+        "Common/Static_samplers.hlsli"
+)
+
+
+
 include (target_shader)
 
 
@@ -34,4 +43,17 @@ target_shader (CopyShaders CompileShaders
     INPUT "Color_pixel_shader.hlsl"
     TYPE "Pixel"
     INTERMEDIATE "Color_pixel_shader.hlsl" MODEL 5.1
+)
+
+
+target_shader (CopyShaders CompileShaders
+    INPUT "User_interface_vertex_shader.hlsl"
+    TYPE "Vertex"
+    INTERMEDIATE "User_interface_vertex_shader.hlsl" MODEL 5.1
+)
+
+target_shader (CopyShaders CompileShaders
+    INPUT "User_interface_pixel_shader.hlsl"
+    TYPE "Pixel"
+    INTERMEDIATE "User_interface_pixel_shader.hlsl" MODEL 5.1
 )
