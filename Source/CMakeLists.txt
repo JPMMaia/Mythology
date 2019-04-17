@@ -42,6 +42,9 @@ target_link_libraries (MaiaMythology
 		Maia::Utilities
 )
 
+find_package (imgui CONFIG REQUIRED)
+target_link_libraries (MaiaMythology PRIVATE imgui::imgui)
+
 target_sources (MaiaMythology 
 	PRIVATE
 		"Application.hpp"
