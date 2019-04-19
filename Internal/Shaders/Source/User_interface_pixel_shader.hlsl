@@ -12,7 +12,7 @@ struct Pixel_shader_output
 	float4 color : SV_Target;
 };
 
-Texture2D g_texture : register(t0);
+Texture2D g_texture : register(t0, space1);
 
 Pixel_shader_output main(Pixel_shader_input input)
 {
