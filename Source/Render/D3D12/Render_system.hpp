@@ -1,6 +1,8 @@
 #ifndef MAIA_MYTHOLOGY_D3D12_RENDERSYSTEM_H_INCLUDED
 #define MAIA_MYTHOLOGY_D3D12_RENDERSYSTEM_H_INCLUDED
 
+#include <Maia/Renderer/D3D12/Utilities/Shader.hpp>
+
 #include "Render_data.hpp"
 #include "Renderer.hpp"
 #include "Components/Mesh_ID.hpp"
@@ -30,7 +32,7 @@ namespace Maia::Mythology::D3D12
 	public:
 
 		Render_system(
-			ID3D12Device& device, 
+			ID3D12Device2& device,
 			ID3D12CommandQueue& copy_command_queue, 
 			ID3D12CommandQueue& direct_command_queue, 
 			Swap_chain window,
@@ -78,6 +80,10 @@ namespace Maia::Mythology::D3D12
 
 		winrt::com_ptr<ID3D12Heap> m_instance_buffers_heap;
 		std::vector<Instance_buffer> m_instance_buffer_per_frame;
+
+		std::vector<Maia::Renderer::D3D12::Shader> m_shaders;
+		std::vector<winrt::com_ptr<ID3D12RootSignature>> m_root_signatures;
+		std::vector<winrt::com_ptr<ID3D12PipelineState>> m_pipeline_states;
 	};
 }
 

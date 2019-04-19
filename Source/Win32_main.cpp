@@ -32,7 +32,7 @@ namespace
 	{
 		winrt::com_ptr<IDXGIFactory4> factory;
 		winrt::com_ptr<IDXGIAdapter3> adapter;
-		winrt::com_ptr<ID3D12Device> device;
+		winrt::com_ptr<ID3D12Device2> device;
 		winrt::com_ptr<ID3D12CommandQueue> copy_command_queue;
 		winrt::com_ptr<ID3D12CommandQueue> direct_command_queue;
 
@@ -158,7 +158,7 @@ namespace
 	}
 
 	Maia::Mythology::D3D12::Render_system create_render_system(
-		ID3D12Device& device,
+		ID3D12Device2& device,
 		ID3D12CommandQueue& copy_command_queue,
 		ID3D12CommandQueue& direct_command_queue,
 		Maia::Mythology::Win32::Window const& window,

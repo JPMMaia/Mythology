@@ -6,6 +6,7 @@
 
 #include <Maia/Renderer/D3D12/Utilities/Check_hresult.hpp>
 #include <Maia/Renderer/D3D12/Utilities/D3D12_utilities.hpp>
+#include <Maia/Renderer/D3D12/Utilities/Samplers.hpp>
 #include <Maia/Renderer/Matrices.hpp>
 
 #include <Components/Camera_component.hpp>
@@ -13,6 +14,8 @@
 
 #include "Render_system.hpp"
 #include <Maia/GameEngine/Systems/Transform_system.hpp>
+
+#include <d3dx12.h>
 
 
 using namespace Maia::Renderer::D3D12;
@@ -75,10 +78,130 @@ namespace Maia::Mythology::D3D12
 
 			return instance_buffers;
 		}
+
+		struct Shader_index
+		{
+			enum Value : std::uint8_t
+			{
+				User_interface_vertex_shader = 0,
+				User_interface_pixel_shader,
+			};
+		};
+
+		std::vector<Maia::Renderer::D3D12::Shader> create_shaders()
+		{
+			std::vector<Maia::Renderer::D3D12::Shader> shaders;
+			shaders.reserve(2);
+
+			shaders.emplace_back(L"Shaders/User_interface_vertex_shader.cso");
+			shaders.emplace_back(L"Shaders/User_interface_pixel_shader.cso");
+
+			return shaders;
+		}
+
+		std::vector<winrt::com_ptr<ID3D12RootSignature>> create_root_signatures(ID3D12Device& device)
+		{
+			std::vector<winrt::com_ptr<ID3D12RootSignature>> root_signatures;
+			root_signatures.reserve(1);
+
+			std::array<CD3DX12_STATIC_SAMPLER_DESC, 6> const static_samplers = create_static_samplers();
+
+			{
+				std::array<CD3DX12_ROOT_PARAMETER1, 1> root_parameters;
+				root_parameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC, D3D12_SHADER_VISIBILITY_ALL);
+
+				root_signatures.push_back(
+					create_root_signature(device, root_parameters, {}, 0)
+				);
+			}
+
+			{
+				std::array<CD3DX12_ROOT_PARAMETER1, 2> root_parameters;
+				root_parameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC, D3D12_SHADER_VISIBILITY_ALL);
+				
+				std::array<D3D12_DESCRIPTOR_RANGE1, 1> descriptor_ranges;
+				descriptor_ranges[0] = CD3DX12_DESCRIPTOR_RANGE1{ D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC, 0 };
+
+				root_parameters[1].InitAsDescriptorTable(
+					static_cast<UINT>(descriptor_ranges.size()), descriptor_ranges.data(),
+					D3D12_SHADER_VISIBILITY_PIXEL
+				);
+
+				root_signatures.push_back(
+					create_root_signature(device, root_parameters, static_samplers, 0)
+				);
+			}
+
+			return root_signatures;
+		}
+
+		CD3DX12_PIPELINE_STATE_STREAM1 create_default_pipeline_state_stream()
+		{
+			D3D12_GRAPHICS_PIPELINE_STATE_DESC description{};
+			description.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			description.SampleMask = 0xFFFFFFFF;
+			description.RasterizerState = CD3DX12_RASTERIZER_DESC{ D3D12_DEFAULT };
+			description.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+			description.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC1{ D3D12_DEFAULT };
+			description.DepthStencilState.DepthEnable = FALSE;
+			description.DepthStencilState.StencilEnable = FALSE;
+			description.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
+			description.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+			description.NumRenderTargets = 1;
+			description.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+			description.DSVFormat;
+			description.SampleDesc.Count = 1;
+			description.SampleDesc.Quality = 0;
+			description.NodeMask;
+			description.CachedPSO;
+			description.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+
+			return { description };
+		}
+
+		std::vector<winrt::com_ptr<ID3D12PipelineState>> create_pipeline_states(
+			ID3D12Device2& device,
+			gsl::span<Maia::Renderer::D3D12::Shader const> const shaders,
+			gsl::span<winrt::com_ptr<ID3D12RootSignature> const> const root_signatures
+		)
+		{
+			std::vector<winrt::com_ptr<ID3D12PipelineState>> pipeline_states;
+			pipeline_states.reserve(1);
+
+			CD3DX12_PIPELINE_STATE_STREAM1 const default_pipeline_state_stream =
+				create_default_pipeline_state_stream();
+
+			{
+				D3D12_GRAPHICS_PIPELINE_STATE_DESC description = 
+					default_pipeline_state_stream.GraphicsDescV0();
+
+				description.pRootSignature = root_signatures[1].get();
+				description.VS = shaders[Shader_index::User_interface_vertex_shader].bytecode();
+				description.PS = shaders[Shader_index::User_interface_pixel_shader].bytecode();
+
+				std::array<D3D12_INPUT_ELEMENT_DESC, 3> input_layout_elements
+				{
+					{
+						{ "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+						{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+						{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+					}
+				};
+				description.InputLayout = { input_layout_elements.data(), static_cast<UINT>(input_layout_elements.size()) };
+
+				winrt::com_ptr<ID3D12PipelineState> pipeline_state;
+				winrt::check_hresult(
+					device.CreateGraphicsPipelineState(&description, __uuidof(ID3D12PipelineState), pipeline_state.put_void()));
+
+				pipeline_states.push_back(pipeline_state);
+			}
+
+			return pipeline_states;
+		}
 	}
 
 	Render_system::Render_system(
-		ID3D12Device& device,
+		ID3D12Device2& device,
 		ID3D12CommandQueue& copy_command_queue,
 		ID3D12CommandQueue& direct_command_queue,
 		Swap_chain swap_chain,
@@ -108,7 +231,11 @@ namespace Maia::Mythology::D3D12
 		m_pass_buffer{ create_buffer(device, *m_pass_heap, 0, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT, D3D12_RESOURCE_STATE_COMMON) },
 
 		m_instance_buffers_heap{ create_buffer_heap(device, m_pipeline_length * D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT) },
-		m_instance_buffer_per_frame{ create_instance_buffers(device, *m_instance_buffers_heap, 0, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT, m_pipeline_length) }
+		m_instance_buffer_per_frame{ create_instance_buffers(device, *m_instance_buffers_heap, 0, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT, m_pipeline_length) },
+
+		m_shaders{ create_shaders() },
+		m_root_signatures{ create_root_signatures(device) },
+		m_pipeline_states{ create_pipeline_states(device, m_shaders, m_root_signatures) }
 	{
 		create_swap_chain_rtvs(
 			device,
