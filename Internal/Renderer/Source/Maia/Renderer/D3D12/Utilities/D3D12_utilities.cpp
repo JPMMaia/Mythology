@@ -53,9 +53,9 @@ namespace Maia::Renderer::D3D12
 		}
 	}
 
-	winrt::com_ptr<ID3D12Device> create_device(IDXGIAdapter& adapter, D3D_FEATURE_LEVEL const minimum_feature_level)
+	winrt::com_ptr<ID3D12Device2> create_device(IDXGIAdapter& adapter, D3D_FEATURE_LEVEL const minimum_feature_level)
 	{
-		winrt::com_ptr<ID3D12Device> device;
+		winrt::com_ptr<ID3D12Device2> device;
 		check_hresult(
 			D3D12CreateDevice(&adapter, minimum_feature_level, __uuidof(device), device.put_void()));
 

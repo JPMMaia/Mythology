@@ -18,7 +18,7 @@ namespace Maia::Renderer::D3D12
 {
 	[[nodiscard]] winrt::com_ptr<IDXGIFactory4> create_factory(UINT flags);
 	[[nodiscard]] winrt::com_ptr<IDXGIAdapter3> select_adapter(IDXGIFactory4& factory, bool select_WARP_adapter);
-	[[nodiscard]] winrt::com_ptr<ID3D12Device> create_device(IDXGIAdapter& adapter, D3D_FEATURE_LEVEL minimum_feature_level);
+	[[nodiscard]] winrt::com_ptr<ID3D12Device2> create_device(IDXGIAdapter& adapter, D3D_FEATURE_LEVEL minimum_feature_level);
 	[[nodiscard]] winrt::com_ptr<ID3D12CommandQueue> create_command_queue(ID3D12Device& device, D3D12_COMMAND_LIST_TYPE type, INT priority, D3D12_COMMAND_QUEUE_FLAGS flags, UINT node_mask);
 	[[nodiscard]] winrt::com_ptr<ID3D12CommandAllocator> create_command_allocator(ID3D12Device& device, D3D12_COMMAND_LIST_TYPE type);
 	[[nodiscard]] std::vector<winrt::com_ptr<ID3D12CommandAllocator>> create_command_allocators(ID3D12Device& device, D3D12_COMMAND_LIST_TYPE type, std::size_t count);
