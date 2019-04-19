@@ -1,8 +1,6 @@
 #include <fstream>
 #include <iostream>
 
-#include <winrt/base.h>
-
 #include <d3dcompiler.h>
 
 #include "Check_hresult.hpp"

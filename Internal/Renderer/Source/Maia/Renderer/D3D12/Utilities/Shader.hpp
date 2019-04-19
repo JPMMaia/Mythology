@@ -6,6 +6,8 @@
 
 #include <d3d12.h>
 
+#include <winrt/base.h>
+
 namespace Maia::Renderer::D3D12
 {
 	struct Shader
