@@ -44,6 +44,8 @@ target_sources (MaiaRenderer
 		"Maia/Renderer/D3D12/Utilities/D3D12_utilities.cpp"
 		"Maia/Renderer/D3D12/Utilities/Mapped_memory.hpp"
 		"Maia/Renderer/D3D12/Utilities/Mapped_memory.cpp"
+		"Maia/Renderer/D3D12/Utilities/Samplers.hpp"
+		"Maia/Renderer/D3D12/Utilities/Samplers.cpp"
 		"Maia/Renderer/D3D12/Utilities/Shader.hpp"
 		"Maia/Renderer/D3D12/Utilities/Shader.cpp"
 )
