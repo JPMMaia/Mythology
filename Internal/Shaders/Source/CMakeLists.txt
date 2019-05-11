@@ -34,6 +34,19 @@ include (target_shader)
 
 
 target_shader (CopyShaders CompileShaders
+    INPUT "Position_vertex_shader.hlsl"
+    TYPE "Vertex"
+    INTERMEDIATE "Position_vertex_shader.hlsl" MODEL 5.1
+)
+
+target_shader (CopyShaders CompileShaders
+    INPUT "Position_pixel_shader.hlsl"
+    TYPE "Pixel"
+    INTERMEDIATE "Position_pixel_shader.hlsl" MODEL 5.1
+)
+
+
+target_shader (CopyShaders CompileShaders
     INPUT "Color_vertex_shader.hlsl"
     TYPE "Vertex"
     INTERMEDIATE "Color_vertex_shader.hlsl" MODEL 5.1
