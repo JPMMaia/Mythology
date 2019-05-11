@@ -57,6 +57,7 @@ namespace Maia::Mythology::D3D12
 	struct Frames_resources
 	{
 		winrt::com_ptr<ID3D12DescriptorHeap> rtv_descriptor_heap;
+		winrt::com_ptr<ID3D12DescriptorHeap> dsv_descriptor_heap;
 
 
 		Frames_resources(ID3D12Device& device, UINT pipeline_length);

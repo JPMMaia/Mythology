@@ -261,6 +261,22 @@ namespace Maia::Renderer::D3D12
 		);
 	}
 
+	void create_depth_stencil_view(
+		ID3D12Device& device,
+		ID3D12Resource& resource,
+		DXGI_FORMAT const format,
+		D3D12_CPU_DESCRIPTOR_HANDLE const destination_descriptor
+	)
+	{
+		D3D12_DEPTH_STENCIL_VIEW_DESC description = {};
+		description.Format = format;
+		description.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+		description.Flags = D3D12_DSV_FLAG_READ_ONLY_DEPTH;
+		description.Texture2D.MipSlice = 0;
+
+		device.CreateDepthStencilView(&resource, &description, destination_descriptor);
+	}
+
 	winrt::com_ptr<ID3D12RootSignature> create_root_signature(
 		ID3D12Device& device,
 		gsl::span<D3D12_ROOT_PARAMETER1 const> root_parameters,

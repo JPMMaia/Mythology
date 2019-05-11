@@ -114,6 +114,7 @@ namespace Maia::Mythology::D3D12
 				}
 				else
 				{
+					std::cerr << "Uri format not supported" << std::endl;
 					assert("Uri format not supported");
 				}
 			}
@@ -139,9 +140,12 @@ namespace Maia::Mythology::D3D12
 				}
 				else
 				{
+					std::cerr << "Couldn't open file" << std::endl;
 					assert("Couldn't open file");
 				}
 			}
+
+			return {};
 		}
 	}
 
@@ -260,10 +264,10 @@ namespace Maia::Mythology::D3D12
 							D3D12::Submesh_view submesh_view{};
 
 							// TODO hack
-							if (primitive.attributes.size() == 1)
+							/*if (primitive.attributes.size() == 1)
 							{
 								submesh_view.vertex_buffer_views.push_back({});
-							}
+							}*/
 
 							submesh_view.vertex_buffer_views.reserve(primitive.attributes.size());
 							for (std::pair<const std::string, size_t> const& attribute : primitive.attributes)

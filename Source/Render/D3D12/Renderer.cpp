@@ -139,7 +139,8 @@ namespace Maia::Mythology::D3D12
 		void draw(
 			ID3D12GraphicsCommandList& command_list,
 			D3D12_VIEWPORT const& viewport, D3D12_RECT const& scissor_rect,
-			ID3D12Resource& render_target, D3D12_CPU_DESCRIPTOR_HANDLE render_target_descriptor_handle,
+			ID3D12Resource& render_target, D3D12_CPU_DESCRIPTOR_HANDLE const render_target_descriptor_handle,
+			D3D12_CPU_DESCRIPTOR_HANDLE const depth_stencil_descriptor_handle,
 			ID3D12RootSignature& root_signature,
 			D3D12_GPU_VIRTUAL_ADDRESS const pass_data_constant_buffer_address,
 			gsl::span<D3D12_VERTEX_BUFFER_VIEW const> const instance_buffer_views,
@@ -164,7 +165,7 @@ namespace Maia::Mythology::D3D12
 			}
 
 			{
-				command_list.OMSetRenderTargets(1, &render_target_descriptor_handle, true, nullptr);
+				command_list.OMSetRenderTargets(1, &render_target_descriptor_handle, true, &depth_stencil_descriptor_handle);
 
 				std::array<FLOAT, 4> clear_color{ 0.0f, 0.0f, 0.0f, 1.0f };
 				command_list.ClearRenderTargetView(render_target_descriptor_handle, clear_color.data(), 0, nullptr);
@@ -234,6 +235,7 @@ namespace Maia::Mythology::D3D12
 		std::uint8_t const current_frame_index,
 		ID3D12Resource& render_target,
 		D3D12_CPU_DESCRIPTOR_HANDLE const render_target_descriptor_handle,
+		D3D12_CPU_DESCRIPTOR_HANDLE const depth_stencil_descriptor_handle,
 		gsl::span<D3D12_VERTEX_BUFFER_VIEW const> const instance_buffer_views,
 		gsl::span<Mesh_ID const> const instance_buffer_mesh_indices,
 		gsl::span<Mesh_view const> const mesh_views,
@@ -257,7 +259,9 @@ namespace Maia::Mythology::D3D12
 			draw(
 				command_list,
 				m_viewport, m_scissor_rect,
-				render_target, render_target_descriptor_handle,
+				render_target, 
+				render_target_descriptor_handle,
+				depth_stencil_descriptor_handle,
 				*m_root_signature,
 				pass_data_buffer_address,
 				instance_buffer_views,

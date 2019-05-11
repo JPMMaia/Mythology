@@ -36,6 +36,13 @@ namespace Maia::Renderer::D3D12
 
 	void resize_swap_chain_buffers_and_recreate_rtvs(IDXGISwapChain3& swap_chain, gsl::span<UINT> create_node_masks, gsl::span<IUnknown*> command_queues, Eigen::Vector2i dimensions, ID3D12Device& device, D3D12_CPU_DESCRIPTOR_HANDLE start_destination_descriptor);
 
+	void create_depth_stencil_view(
+		ID3D12Device& device,
+		ID3D12Resource& resource,
+		DXGI_FORMAT const format,
+		D3D12_CPU_DESCRIPTOR_HANDLE const destination_descriptor
+	);
+
 	[[nodiscard]] winrt::com_ptr<ID3D12RootSignature> create_root_signature(
 		ID3D12Device& device,
 		gsl::span<D3D12_ROOT_PARAMETER1 const> root_parameters,
