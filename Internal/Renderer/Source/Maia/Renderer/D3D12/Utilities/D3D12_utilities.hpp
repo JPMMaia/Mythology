@@ -12,7 +12,9 @@
 #include <d3d12.h>
 #include <dxgi1_6.h>
 
+#include <Maia/Renderer/D3D12/Utilities/Buffer_view.hpp>
 #include <Maia/Renderer/D3D12/Utilities/Mapped_memory.hpp>
+#include <Maia/Renderer/D3D12/Utilities/Upload_buffer_view.hpp>
 
 namespace Maia::Renderer::D3D12
 {
@@ -62,6 +64,26 @@ namespace Maia::Renderer::D3D12
 			destination_buffer_offset,
 			&upload_buffer,
 			upload_buffer_offset,
+			data.size_bytes()
+		);
+	}
+
+	template <class T>
+	void upload_buffer_data(
+		ID3D12GraphicsCommandList& command_list,
+		Buffer_view const destination_buffer_view,
+		Upload_buffer_view const upload_buffer_view,
+		gsl::span<T const> data
+	)
+	{
+		Maia::Renderer::D3D12::Mapped_memory mapped_memory{ upload_buffer_view.resource(), 0, {} };
+		mapped_memory.write(data.data(), data.size_bytes(), upload_buffer_view.offset());
+
+		command_list.CopyBufferRegion(
+			&destination_buffer_view.resource(),
+			destination_buffer_view.offset(),
+			&upload_buffer_view.resource(),
+			upload_buffer_view.offset(),
 			data.size_bytes()
 		);
 	}

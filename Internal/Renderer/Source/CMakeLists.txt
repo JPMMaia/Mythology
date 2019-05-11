@@ -38,6 +38,8 @@ target_sources (MaiaRenderer
 		"Maia/Renderer/Matrices.hpp"
 		"Maia/Renderer/Matrices.cpp"
 
+		"Maia/Renderer/D3D12/Utilities/Buffer_view.hpp"
+		"Maia/Renderer/D3D12/Utilities/Buffer_view.cpp"
 		"Maia/Renderer/D3D12/Utilities/Check_hresult.hpp"
 		"Maia/Renderer/D3D12/Utilities/Check_hresult.cpp"
 		"Maia/Renderer/D3D12/Utilities/D3D12_utilities.hpp"
@@ -48,6 +50,10 @@ target_sources (MaiaRenderer
 		"Maia/Renderer/D3D12/Utilities/Samplers.cpp"
 		"Maia/Renderer/D3D12/Utilities/Shader.hpp"
 		"Maia/Renderer/D3D12/Utilities/Shader.cpp"
+		"Maia/Renderer/D3D12/Utilities/Upload_buffer.hpp"
+		"Maia/Renderer/D3D12/Utilities/Upload_buffer.cpp"
+		"Maia/Renderer/D3D12/Utilities/Upload_buffer_view.hpp"
+		"Maia/Renderer/D3D12/Utilities/Upload_buffer_view.cpp"
 )
 
 
