@@ -238,7 +238,7 @@ namespace Maia::Mythology
 		{
 			m_scene_being_loaded =
 				std::async(std::launch::async,
-					[&]() -> Scenes_resources { return load_scenes(*m_load_scene_system, L"Resources/gizmo.gltf"); });
+					[&]() -> Scenes_resources { return load_scenes(*m_load_scene_system, L"Resources/Cameras.gltf"); });
 		}
 	}
 

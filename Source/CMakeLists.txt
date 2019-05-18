@@ -75,6 +75,8 @@ target_sources (MaiaMythology
 		"Render/D3D12/Renderer.cpp"
 		"Render/D3D12/Upload_frame_data_system.hpp"
 		"Render/D3D12/Upload_frame_data_system.cpp"
+		"Render/D3D12/User_interface_pass.hpp"
+		"Render/D3D12/User_interface_pass.cpp"
 
 		"Components/Camera_component.hpp"
 		"Components/Camera_component.cpp"

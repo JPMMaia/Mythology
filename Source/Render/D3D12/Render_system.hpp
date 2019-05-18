@@ -10,6 +10,7 @@
 #include "Components/Mesh_ID.hpp"
 
 #include "Upload_frame_data_system.hpp"
+#include "User_interface_pass.hpp"
 
 namespace Maia::GameEngine
 {
@@ -101,6 +102,8 @@ namespace Maia::Mythology::D3D12
 		winrt::com_ptr<ID3D12GraphicsCommandList4> m_copy_command_list;
 		std::vector<winrt::com_ptr<ID3D12CommandAllocator>> m_direct_command_allocators;
 		winrt::com_ptr<ID3D12GraphicsCommandList4> m_direct_command_list;
+		Maia::Mythology::User_interface_pass m_user_interface_pass;
+
 	};
 }
 

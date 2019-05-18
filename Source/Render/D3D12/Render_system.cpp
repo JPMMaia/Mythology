@@ -12,6 +12,7 @@
 
 #include <Components/Camera_component.hpp>
 #include <Render/Pass_data.hpp>
+#include <Render/D3D12/User_interface_pass.hpp>
 
 #include "Render_system.hpp"
 #include <Maia/GameEngine/Systems/Transform_system.hpp>
@@ -345,7 +346,7 @@ namespace Maia::Mythology::D3D12
 
 		m_depth_stencil_buffer{ create_depth_stencil_buffer(device, static_cast<UINT64>(swap_chain.bounds(0)), static_cast<UINT>(swap_chain.bounds(1)), 1, 1) },
 
-		m_global_upload_buffer{ device, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT },
+		m_global_upload_buffer{ device, 3 * D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT },
 
 		m_pass_heap{ create_buffer_heap(device, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT) },
 		m_pass_buffer{ create_buffer(device, *m_pass_heap, 0, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT, D3D12_RESOURCE_STATE_COMMON) },
@@ -364,8 +365,12 @@ namespace Maia::Mythology::D3D12
 		m_copy_command_allocators{ create_command_allocators(device, D3D12_COMMAND_LIST_TYPE_COPY, m_pipeline_length) },
 		m_copy_command_list{ create_closed_graphics_command_list(device, 0, D3D12_COMMAND_LIST_TYPE_COPY, *m_copy_command_allocators.front(), nullptr).as<ID3D12GraphicsCommandList4>() },
 		m_direct_command_allocators{ create_command_allocators(device, D3D12_COMMAND_LIST_TYPE_DIRECT, m_pipeline_length) },
-		m_direct_command_list{ create_closed_graphics_command_list(device, 0, D3D12_COMMAND_LIST_TYPE_DIRECT, *m_direct_command_allocators.front(), nullptr).as<ID3D12GraphicsCommandList4>() }
+		m_direct_command_list{ create_opened_graphics_command_list(device, 0, D3D12_COMMAND_LIST_TYPE_DIRECT, *m_direct_command_allocators.front(), nullptr).as<ID3D12GraphicsCommandList4>() },
+
+		m_user_interface_pass{ device, *m_direct_command_list, m_global_upload_buffer.view(0, 3 * D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT), { static_cast<float>(swap_chain.bounds(0)), static_cast<float>(swap_chain.bounds(1)) } }
 	{
+		// TODO upload user interface
+
 		create_swap_chain_rtvs(
 			device,
 			m_swap_chain,
@@ -873,6 +878,9 @@ namespace Maia::Mythology::D3D12
 				direct_command_list.RSSetViewports(1, &m_viewport);
 				direct_command_list.RSSetScissorRects(1, &m_scissor_rect);
 
+				direct_command_list.SetPipelineState(m_pipeline_states[0].get());
+				direct_command_list.SetGraphicsRootSignature(m_root_signatures[0].get());
+
 				bind_pass_data(
 					direct_command_list,
 					*m_pass_buffer,
@@ -889,8 +897,6 @@ namespace Maia::Mythology::D3D12
 					direct_command_list.ResourceBarrier(1, &barrier);
 				}
 
-				direct_command_list.SetPipelineState(m_pipeline_states[0].get());
-				direct_command_list.SetGraphicsRootSignature(m_root_signatures[0].get());
 				execute_color_pass(
 					direct_command_list,
 					render_targets, &depth,
@@ -901,8 +907,8 @@ namespace Maia::Mythology::D3D12
 				);
 
 
-				/*upload_user_interface_data();
-				execute_user_interface_pass();*/
+				m_user_interface_pass.upload_user_interface_data();
+				m_user_interface_pass.execute_user_interface_pass();
 
 				{
 					const CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
