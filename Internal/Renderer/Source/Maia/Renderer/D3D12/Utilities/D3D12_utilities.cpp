@@ -332,7 +332,7 @@ namespace Maia::Renderer::D3D12
 		return root_signature;
 	}
 
-	winrt::com_ptr<ID3D12Heap> create_upload_heap(ID3D12Device& device, UINT64 size_in_bytes)
+	winrt::com_ptr<ID3D12Heap> create_upload_heap(ID3D12Device& device, UINT64 const size_in_bytes)
 	{
 		assert(size_in_bytes % D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT == 0);
 
@@ -343,36 +343,29 @@ namespace Maia::Renderer::D3D12
 			device.CreateHeap(&description, __uuidof(upload_heap), upload_heap.put_void()));
 		return upload_heap;
 	}
-	winrt::com_ptr<ID3D12Heap> create_buffer_heap(ID3D12Device& device, UINT64 size_in_bytes)
+	winrt::com_ptr<ID3D12Heap> create_buffer_heap(ID3D12Device& device, UINT64 const size_in_bytes)
 	{
 		assert(size_in_bytes % D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT == 0);
 
 		CD3DX12_HEAP_PROPERTIES const properties{ D3D12_HEAP_TYPE_DEFAULT };
 		CD3DX12_HEAP_DESC const description{ size_in_bytes, properties, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT, D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS };
 
-		winrt::com_ptr<ID3D12Heap> upload_heap;
+		winrt::com_ptr<ID3D12Heap> heap;
 		check_hresult(
-			device.CreateHeap(&description, __uuidof(upload_heap), upload_heap.put_void()));
-		return upload_heap;
+			device.CreateHeap(&description, __uuidof(heap), heap.put_void()));
+		return heap;
 	}
-	winrt::com_ptr<ID3D12Resource> create_buffer(ID3D12Device& device, ID3D12Heap& heap, UINT64 heap_offset, UINT64 width, D3D12_RESOURCE_STATES initial_state)
+	winrt::com_ptr<ID3D12Heap> create_image_heap(ID3D12Device& device, UINT64 const size_in_bytes)
 	{
-		CD3DX12_RESOURCE_DESC const description = CD3DX12_RESOURCE_DESC::Buffer(width);
+		assert(size_in_bytes % D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT == 0);
 
-		winrt::com_ptr<ID3D12Resource> buffer;
+		CD3DX12_HEAP_PROPERTIES const properties{ D3D12_HEAP_TYPE_DEFAULT };
+		CD3DX12_HEAP_DESC const description{ size_in_bytes, properties, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT, D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES };
+
+		winrt::com_ptr<ID3D12Heap> heap;
 		check_hresult(
-			device.CreatePlacedResource(
-				&heap,
-				heap_offset,
-				&description,
-				initial_state,
-				nullptr,
-				__uuidof(buffer),
-				buffer.put_void()
-			)
-		);
-
-		return buffer;
+			device.CreateHeap(&description, __uuidof(heap), heap.put_void()));
+		return heap;
 	}
 
 	void wait(

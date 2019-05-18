@@ -53,7 +53,6 @@ namespace Maia::Renderer::D3D12
 
 	[[nodiscard]] winrt::com_ptr<ID3D12Heap> create_upload_heap(ID3D12Device& device, UINT64 size_in_bytes = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
 	[[nodiscard]] winrt::com_ptr<ID3D12Heap> create_buffer_heap(ID3D12Device& device, UINT64 size_in_bytes = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
-	[[nodiscard]] winrt::com_ptr<ID3D12Resource> create_buffer(ID3D12Device& device, ID3D12Heap& heap, UINT64 heap_offset, UINT64 width, D3D12_RESOURCE_STATES initial_state = D3D12_RESOURCE_STATE_COPY_DEST);
 
 	template <class T>
 	void upload_buffer_data(
@@ -129,6 +128,12 @@ namespace Maia::Renderer::D3D12
 		UINT64 event_value_to_signal_and_wait,
 		DWORD maximum_time_to_wait = INFINITE
 	);
+
+	template <class T, class U>
+	T align(T value, U alignment)
+	{
+		return ((value - 1) | (alignment - 1)) + 1;
+	}
 }
 
 #endif
