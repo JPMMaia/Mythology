@@ -38,6 +38,10 @@ target_sources (MaiaRenderer
 		"Maia/Renderer/Matrices.hpp"
 		"Maia/Renderer/Matrices.cpp"
 
+		"Maia/Renderer/D3D12/Descriptor_heap.hpp"
+		"Maia/Renderer/D3D12/Descriptor_heap.cpp"
+		"Maia/Renderer/D3D12/Descriptor_heap_view.hpp"
+		"Maia/Renderer/D3D12/Descriptor_heap_view.cpp"
 		"Maia/Renderer/D3D12/Heap.hpp"
 		"Maia/Renderer/D3D12/Heap.cpp"
 		"Maia/Renderer/D3D12/Heap_view.hpp"

@@ -114,20 +114,6 @@ namespace Maia::Renderer::D3D12
 
 		return command_list;
 	}
-	winrt::com_ptr<ID3D12DescriptorHeap> create_descriptor_heap(ID3D12Device& device, D3D12_DESCRIPTOR_HEAP_TYPE const type, UINT const num_descriptors, D3D12_DESCRIPTOR_HEAP_FLAGS const flags, UINT const node_mask)
-	{
-		D3D12_DESCRIPTOR_HEAP_DESC description;
-		description.Type = type;
-		description.NumDescriptors = num_descriptors;
-		description.Flags = flags;
-		description.NodeMask = node_mask;
-
-		winrt::com_ptr<ID3D12DescriptorHeap> descriptor_heap;
-		check_hresult(
-			device.CreateDescriptorHeap(&description, __uuidof(descriptor_heap), descriptor_heap.put_void()));
-
-		return descriptor_heap;
-	}
 	winrt::com_ptr<ID3D12Fence> create_fence(ID3D12Device& device, UINT64 const initial_value, D3D12_FENCE_FLAGS const flags)
 	{
 		winrt::com_ptr<ID3D12Fence> fence;
