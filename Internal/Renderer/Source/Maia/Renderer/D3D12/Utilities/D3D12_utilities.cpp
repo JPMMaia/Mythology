@@ -263,61 +263,6 @@ namespace Maia::Renderer::D3D12
 		device.CreateDepthStencilView(&resource, &description, destination_descriptor);
 	}
 
-	winrt::com_ptr<ID3D12RootSignature> create_root_signature(
-		ID3D12Device& device,
-		gsl::span<D3D12_ROOT_PARAMETER1 const> root_parameters,
-		gsl::span<D3D12_STATIC_SAMPLER_DESC const> static_samplers,
-		UINT node_mask,
-		D3D12_ROOT_SIGNATURE_FLAGS flags
-	)
-	{
-		D3D12_VERSIONED_ROOT_SIGNATURE_DESC versioned_description;
-		versioned_description.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
-		versioned_description.Desc_1_1 = [&]() -> D3D12_ROOT_SIGNATURE_DESC1
-		{
-			D3D12_ROOT_SIGNATURE_DESC1 description{};
-			description.NumParameters = static_cast<UINT>(root_parameters.size());
-			description.pParameters = root_parameters.data();
-			description.NumStaticSamplers = static_cast<UINT>(static_samplers.size());
-			description.pStaticSamplers = static_samplers.data();
-			description.Flags = flags;
-			return description;
-		}();
-
-		winrt::com_ptr<ID3DBlob> root_signature_blob;
-		winrt::com_ptr<ID3DBlob> error_blob;
-		{
-			HRESULT const result = D3D12SerializeVersionedRootSignature(&versioned_description, root_signature_blob.put(), error_blob.put());
-
-			if (FAILED(result))
-			{
-				if (error_blob)
-				{
-					std::wstring_view error_messages
-					{
-						reinterpret_cast<wchar_t*>(error_blob->GetBufferPointer()),
-						static_cast<std::size_t>(error_blob->GetBufferSize())
-					};
-
-					std::cerr << error_messages.data();
-				}
-
-				check_hresult(result);
-			}
-		}
-
-		winrt::com_ptr<ID3D12RootSignature> root_signature;
-		check_hresult(
-			device.CreateRootSignature(
-				node_mask,
-				root_signature_blob->GetBufferPointer(), root_signature_blob->GetBufferSize(),
-				__uuidof(root_signature), root_signature.put_void()
-			)
-		);
-
-		return root_signature;
-	}
-
 	winrt::com_ptr<ID3D12Heap> create_upload_heap(ID3D12Device& device, UINT64 const size_in_bytes)
 	{
 		assert(size_in_bytes % D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT == 0);

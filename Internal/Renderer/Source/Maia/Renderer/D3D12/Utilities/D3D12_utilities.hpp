@@ -42,13 +42,7 @@ namespace Maia::Renderer::D3D12
 		D3D12_CPU_DESCRIPTOR_HANDLE const destination_descriptor
 	);
 
-	[[nodiscard]] winrt::com_ptr<ID3D12RootSignature> create_root_signature(
-		ID3D12Device& device,
-		gsl::span<D3D12_ROOT_PARAMETER1 const> root_parameters,
-		gsl::span<D3D12_STATIC_SAMPLER_DESC const> static_samplers,
-		UINT node_mask,
-		D3D12_ROOT_SIGNATURE_FLAGS flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT
-	);
+	
 
 	[[nodiscard]] winrt::com_ptr<ID3D12Heap> create_upload_heap(ID3D12Device& device, UINT64 size_in_bytes = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
 	[[nodiscard]] winrt::com_ptr<ID3D12Heap> create_buffer_heap(ID3D12Device& device, UINT64 size_in_bytes = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
