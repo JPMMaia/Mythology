@@ -7,9 +7,13 @@
 
 #include <winrt/base.h>
 
-#include <Maia/Renderer/D3D12/Heaps/Image_heap.hpp>
-#include <Maia/Renderer/D3D12/Utilities/Sampled_image.hpp>
-#include <Maia/Renderer/D3D12/Utilities/Upload_buffer.hpp>
+#include <imgui.h>
+
+#include <Maia/Renderer/D3D12/Descriptor_heap.hpp>
+#include <Maia/Renderer/D3D12/Heap.hpp>
+#include <Maia/Renderer/D3D12/Resource.hpp>
+#include <Maia/Renderer/D3D12/Resource_view.hpp>
+#include <Maia/Renderer/D3D12/Root_signature.hpp>
 
 namespace Maia::Mythology
 {
@@ -26,12 +30,19 @@ namespace Maia::Mythology
 
 		void upload_user_interface_data() noexcept;
 
-		void execute_user_interface_pass() noexcept;
+		void execute_user_interface_pass(
+			ID3D12GraphicsCommandList& command_list
+		) noexcept;
 
 
 	private:
 
-		std::pair<Maia::Renderer::D3D12::Image_heap, Maia::Renderer::D3D12::Sampled_image> m_font_texture;
+		ImGuiContext* m_context;
+		Maia::Renderer::D3D12::Non_rt_ds_image_heap m_image_heap;
+		Maia::Renderer::D3D12::Sampled_image_2d m_font_texture;
+		Maia::Renderer::D3D12::Cbv_srv_uav_descriptor_heap m_descriptor_heap;
+		Maia::Renderer::D3D12::Root_signature m_root_signature;
+
 	};
 }
 
