@@ -31,8 +31,8 @@ namespace Maia::Renderer::D3D12
 		Mip_levels mip_levels;
 	};
 
-	struct Sampled_image_view : public Image_view<Image> {};
-	struct Sampled_image_2d_view : public Image_view<Image_2d> {};
+	struct Shader_resource_image_view : public Image_view<Image> {};
+	struct Shader_resource_image_2d_view : public Image_view<Image_2d> {};
 	
 	struct Unordered_access_image_view : public Image_view<Unordered_access_image> {};
 	struct Unordered_access_image_2d_view : public Image_view<Unordered_access_image_2d> {};
