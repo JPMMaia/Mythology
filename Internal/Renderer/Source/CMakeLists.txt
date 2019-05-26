@@ -52,6 +52,10 @@ target_sources (MaiaRenderer
 		"Maia/Renderer/D3D12/Resource.cpp"
 		"Maia/Renderer/D3D12/Resource_view.hpp"
 		"Maia/Renderer/D3D12/Resource_view.cpp"
+		"Maia/Renderer/D3D12/Root_signature.hpp"
+		"Maia/Renderer/D3D12/Root_signature.cpp"
+		"Maia/Renderer/D3D12/Static_samplers.hpp"
+		"Maia/Renderer/D3D12/Static_samplers.cpp"
 
 		"Maia/Renderer/D3D12/Utilities/Check_hresult.hpp"
 		"Maia/Renderer/D3D12/Utilities/Check_hresult.cpp"
@@ -59,8 +63,6 @@ target_sources (MaiaRenderer
 		"Maia/Renderer/D3D12/Utilities/D3D12_utilities.cpp"
 		"Maia/Renderer/D3D12/Utilities/Mapped_memory.hpp"
 		"Maia/Renderer/D3D12/Utilities/Mapped_memory.cpp"
-		"Maia/Renderer/D3D12/Utilities/Samplers.hpp"
-		"Maia/Renderer/D3D12/Utilities/Samplers.cpp"
 		"Maia/Renderer/D3D12/Utilities/Shader.hpp"
 		"Maia/Renderer/D3D12/Utilities/Shader.cpp"
 )
