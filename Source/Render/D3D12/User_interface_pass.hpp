@@ -9,6 +9,7 @@
 
 #include <imgui.h>
 
+#include <Maia/Renderer/D3D12/Descriptor.hpp>
 #include <Maia/Renderer/D3D12/Descriptor_heap.hpp>
 #include <Maia/Renderer/D3D12/Heap.hpp>
 #include <Maia/Renderer/D3D12/Resource.hpp>
@@ -42,6 +43,7 @@ namespace Maia::Mythology
 		Maia::Renderer::D3D12::Sampled_image_2d m_font_texture;
 		Maia::Renderer::D3D12::Cbv_srv_uav_descriptor_heap m_descriptor_heap;
 		Maia::Renderer::D3D12::Root_signature m_root_signature;
+		Maia::Renderer::D3D12::Cbv_srv_uav_descriptor_table m_texture_descriptor_table;
 
 	};
 }

@@ -133,6 +133,24 @@ namespace Maia::Mythology
 				D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT
 			};
 		}
+
+		Cbv_srv_uav_descriptor_table create_texture_descriptor_table(
+			ID3D12Device& device,
+			Cbv_srv_uav_descriptor_heap_view const descriptor_heap_view,
+			Shader_resource_image_2d_view const font_texture_view
+		) noexcept
+		{
+			return Cbv_srv_uav_descriptor_table
+			{
+				device,
+				Descriptor_table_base_cpu_descriptor{ descriptor_heap_view.descriptor_heap.value->GetCPUDescriptorHandleForHeapStart() },
+				Descriptor_table_base_gpu_descriptor{ descriptor_heap_view.descriptor_heap.value->GetGPUDescriptorHandleForHeapStart() },
+				Cbv_srv_uav_descriptor_handle_increment_size{ device },
+				std::make_tuple(
+					Shader_resource_2d_descriptor{ font_texture_view, DXGI_FORMAT_R8_UNORM }
+				)
+			};
+		}
 	}
 
 	User_interface_pass::User_interface_pass(
@@ -145,7 +163,8 @@ namespace Maia::Mythology
 		m_image_heap{ device, Heap_size{ 3 * D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT } },
 		m_font_texture{ create_font_image(device, { m_image_heap, Heap_offset{ 0 }, Heap_size{ 3 * D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT }  }, command_list, upload_buffer_view) },
 		m_descriptor_heap{ device, Descriptor_heap_size{ 1 } },
-		m_root_signature{ create_root_signature(device) }
+		m_root_signature{ create_root_signature(device) },
+		m_texture_descriptor_table{ create_texture_descriptor_table(device, { m_descriptor_heap, Descriptor_heap_offset{0}, Descriptor_heap_size{1} }, { m_font_texture, First_mip_level{ 0 }, Mip_levels{ 1 } }) }
 	{
 		{
 			ImGuiIO& io = ImGui::GetIO();
@@ -154,20 +173,6 @@ namespace Maia::Mythology
 			io.DisplaySize.x = display_size.first;
 			io.DisplaySize.y = display_size.second;
 		}
-
-		// TODO create font texture view
-		// TODO set texture id handle
-
-		Cbv_srv_uav_descriptor_table descriptor_table
-		{
-			device,
-			Descriptor_table_base_cpu_descriptor{ m_descriptor_heap.value->GetCPUDescriptorHandleForHeapStart() },
-			Descriptor_table_base_gpu_descriptor{ m_descriptor_heap.value->GetGPUDescriptorHandleForHeapStart() },
-			Cbv_srv_uav_descriptor_handle_increment_size{ device },
-			std::make_tuple(
-				Shader_resource_2d_descriptor{ { m_font_texture, First_mip_level{ 0 }, Mip_levels{ 1 } }, DXGI_FORMAT_R8_UNORM }
-			)
-		};
 	}
 
 	void User_interface_pass::upload_user_interface_data() noexcept
@@ -251,7 +256,7 @@ namespace Maia::Mythology
 							command_list.RSSetScissorRects(1, &scissor_rect);
 						}
 
-						command_list.SetGraphicsRootDescriptorTable(1, *(D3D12_GPU_DESCRIPTOR_HANDLE*)& draw_command.TextureId); // TODO
+						command_list.SetGraphicsRootDescriptorTable(1, m_texture_descriptor_table.base_gpu_descriptor.value);
 						
 						command_list.DrawIndexedInstanced(draw_command.ElemCount, 1, start_index_location, base_vertex_location, 0);
 					}
