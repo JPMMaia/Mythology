@@ -196,7 +196,8 @@ namespace Maia::Mythology
 	}
 
 	void User_interface_pass::execute_user_interface_pass(
-		ID3D12GraphicsCommandList& command_list
+		ID3D12GraphicsCommandList& command_list,
+		Constant_buffer_view const pass_buffer_view
 	) noexcept
 	{
 		// TODO set pipeline state
@@ -223,8 +224,8 @@ namespace Maia::Mythology
 		}
 
 		{
-			// TODO set pass data 
-			//command_list.SetGraphicsRootConstantBufferView();
+			D3D12_GPU_VIRTUAL_ADDRESS const buffer_location = pass_buffer_view.buffer.value->GetGPUVirtualAddress() + pass_buffer_view.offset.value;
+			command_list.SetGraphicsRootConstantBufferView(0, buffer_location);
 		}
 
 		{

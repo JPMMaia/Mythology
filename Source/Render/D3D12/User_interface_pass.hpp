@@ -32,7 +32,8 @@ namespace Maia::Mythology
 		void upload_user_interface_data() noexcept;
 
 		void execute_user_interface_pass(
-			ID3D12GraphicsCommandList& command_list
+			ID3D12GraphicsCommandList& command_list,
+			Maia::Renderer::D3D12::Constant_buffer_view const pass_buffer_view
 		) noexcept;
 
 
