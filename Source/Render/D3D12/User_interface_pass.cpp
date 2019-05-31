@@ -195,38 +195,81 @@ namespace Maia::Mythology
 		}
 	}
 
+	namespace
+	{
+		void reset_render_state(
+			ID3D12GraphicsCommandList& command_list,
+			ID3D12PipelineState& pipeline_state,
+			Root_signature const& root_signature,
+			Constant_buffer_view const pass_buffer_view,
+			std::pair<FLOAT, FLOAT> const viewport_size,
+			Dynamic_vertex_buffer_view const vertex_buffer_view,
+			Dynamic_index_buffer_view const index_buffer_view
+		) noexcept
+		{
+			command_list.SetPipelineState(&pipeline_state);
+
+			{
+				command_list.SetGraphicsRootSignature(root_signature.value.get());
+
+				{
+					// TODO
+					D3D12_GPU_VIRTUAL_ADDRESS const buffer_location = pass_buffer_view.buffer.value->GetGPUVirtualAddress() + pass_buffer_view.offset.value;
+					command_list.SetGraphicsRootConstantBufferView(0, buffer_location);
+				}
+			}
+
+			{
+				{
+					UINT64 constexpr stride = sizeof(ImDrawVert);
+
+					D3D12_VERTEX_BUFFER_VIEW view;
+					view.BufferLocation = vertex_buffer_view.buffer.value->GetGPUVirtualAddress() + vertex_buffer_view.offset.value;
+					view.SizeInBytes = vertex_buffer_view.size.value;
+					view.StrideInBytes = stride;
+
+					command_list.IASetVertexBuffers(0, 1, &view);
+				}
+
+				{
+					DXGI_FORMAT constexpr format = sizeof(ImDrawIdx) == 2 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
+
+					D3D12_INDEX_BUFFER_VIEW view;
+					view.BufferLocation = index_buffer_view.buffer.value->GetGPUVirtualAddress() + index_buffer_view.offset.value;
+					view.SizeInBytes = index_buffer_view.size.value;
+					view.Format = format;
+
+					command_list.IASetIndexBuffer(&view);
+				}
+
+				command_list.IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			}
+
+			{
+				D3D12_VIEWPORT viewport;
+				viewport.TopLeftX = 0.0f;
+				viewport.TopLeftY = 0.0f;
+				viewport.Width = viewport_size.first;
+				viewport.Height = viewport_size.second;
+				viewport.MinDepth = 0.0f;
+				viewport.MaxDepth = 1.0f;
+
+				command_list.RSSetViewports(1, &viewport);
+			}
+
+			{
+				FLOAT const blend_factor[4] = { 0.f, 0.f, 0.f, 0.f };
+				command_list.OMSetBlendFactor(blend_factor);
+			}
+		}
+	}
+
 	void User_interface_pass::execute_user_interface_pass(
 		ID3D12GraphicsCommandList& command_list,
 		Constant_buffer_view const pass_buffer_view
 	) noexcept
 	{
-		// TODO set pipeline state
-
-		command_list.SetGraphicsRootSignature(m_root_signature.value.get());
-
-		{
-			ImDrawData const& draw_data = *ImGui::GetDrawData();
-
-			D3D12_VIEWPORT viewport;
-			viewport.TopLeftX = 0.0f;
-			viewport.TopLeftY = 0.0f;
-			viewport.Width = draw_data.DisplaySize.x;
-			viewport.Height = draw_data.DisplaySize.y;
-			viewport.MinDepth = 0.0f;
-			viewport.MaxDepth = 1.0f;
-			
-			command_list.RSSetViewports(1, &viewport);
-		}
-
-		{
-			FLOAT const blend_factor[4] = { 0.f, 0.f, 0.f, 0.f };
-			command_list.OMSetBlendFactor(blend_factor);
-		}
-
-		{
-			D3D12_GPU_VIRTUAL_ADDRESS const buffer_location = pass_buffer_view.buffer.value->GetGPUVirtualAddress() + pass_buffer_view.offset.value;
-			command_list.SetGraphicsRootConstantBufferView(0, buffer_location);
-		}
+		// reset_render_state(command_list, pipeline_state, root_signature, pass_buffer_view, { draw_data.DisplaySize.x, draw_data.DisplaySize.y }, {}, {});
 
 		{
 			ImDrawData const& draw_data = *ImGui::GetDrawData();
@@ -241,9 +284,20 @@ namespace Maia::Mythology
 
 				for (int command_index = 0; command_index < draw_list.CmdBuffer.Size; command_index++)
 				{
-					ImDrawCmd const& draw_command = draw_list.CmdBuffer[command_index];					
-					assert(draw_command.UserCallback == nullptr);
+					ImDrawCmd const& draw_command = draw_list.CmdBuffer[command_index];			
 
+					if (draw_command.UserCallback != NULL)
+					{
+						if (draw_command.UserCallback == ImDrawCallback_ResetRenderState)
+						{
+							//reset_render_state(command_list, pipeline_state, root_signature, pass_buffer_view, { draw_data.DisplaySize.x, draw_data.DisplaySize.y }, {}, {});
+						}
+						else
+						{
+							draw_command.UserCallback(&draw_list, &draw_command);
+						}
+					}
+					else
 					{
 						{
 							D3D12_RECT const scissor_rect

@@ -91,6 +91,22 @@ namespace Maia::Renderer::D3D12
 		) noexcept;
 	};
 
+	struct Dynamic_geometry_buffer : public Buffer
+	{
+		Dynamic_geometry_buffer(
+			ID3D12Device& device,
+			Upload_buffer_heap_view heap_view
+		) noexcept;
+	};
+
+	struct Non_dynamic_geometry_buffer : public Buffer
+	{
+		Non_dynamic_geometry_buffer(
+			ID3D12Device& device,
+			Upload_buffer_heap_view heap_view
+		) noexcept;
+	};
+
 
 
 	struct Image : public Resource {};
