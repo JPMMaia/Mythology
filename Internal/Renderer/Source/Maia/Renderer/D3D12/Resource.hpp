@@ -103,7 +103,7 @@ namespace Maia::Renderer::D3D12
 	{
 		Non_dynamic_geometry_buffer(
 			ID3D12Device& device,
-			Upload_buffer_heap_view heap_view
+			Default_buffer_heap_view heap_view
 		) noexcept;
 	};
 

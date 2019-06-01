@@ -62,6 +62,22 @@ namespace Maia::Renderer::D3D12
 	{
 	}
 
+	Dynamic_geometry_buffer::Dynamic_geometry_buffer(
+		ID3D12Device& device,
+		Upload_buffer_heap_view heap_view
+	) noexcept :
+		Buffer{ create_buffer(device, heap_view, D3D12_RESOURCE_STATE_GENERIC_READ) }
+	{
+	}
+
+	Non_dynamic_geometry_buffer::Non_dynamic_geometry_buffer(
+		ID3D12Device& device,
+		Default_buffer_heap_view heap_view
+	) noexcept :
+		Buffer{ create_buffer(device, heap_view, D3D12_RESOURCE_STATE_COPY_DEST ) }
+	{
+	}
+
 
 	namespace
 	{

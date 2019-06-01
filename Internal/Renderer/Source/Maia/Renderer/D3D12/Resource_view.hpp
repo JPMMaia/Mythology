@@ -21,10 +21,12 @@ namespace Maia::Renderer::D3D12
 	struct Unordered_access_buffer_view : public Buffer_view<Default_buffer> {};
 	struct Readback_buffer_view : public Buffer_view<Readback_buffer> {};
 	struct Upload_buffer_view : public Buffer_view<Upload_buffer> {};
-	struct Non_dynamic_vertex_buffer_view : public Buffer_view<Default_buffer> {};
-	struct Non_dynamic_index_buffer_view : public Buffer_view<Default_buffer> {};
-	struct Dynamic_vertex_buffer_view : public Buffer_view<Upload_buffer> {};
-	struct Dynamic_index_buffer_view : public Buffer_view<Upload_buffer> {};
+	struct Dynamic_geometry_buffer_view : public Buffer_view<Dynamic_geometry_buffer> {};
+	struct Dynamic_vertex_buffer_view : public Dynamic_geometry_buffer_view {};
+	struct Dynamic_index_buffer_view : public Dynamic_geometry_buffer_view {};
+	struct Non_dynamic_geometry_buffer_view : public Buffer_view<Non_dynamic_geometry_buffer> {};
+	struct Non_dynamic_vertex_buffer_view : public Non_dynamic_geometry_buffer_view {};
+	struct Non_dynamic_index_buffer_view : public Non_dynamic_geometry_buffer_view {};
 
 
 	template <class Image>
