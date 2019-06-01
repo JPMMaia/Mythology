@@ -1,6 +1,7 @@
 #include "User_interface_pass.hpp"
 
 #include <array>
+#include <Eigen/Core>
 
 #include <d3dx12.h>
 
@@ -119,18 +120,24 @@ namespace Maia::Mythology
 
 			std::array<Root_signature_parameter, 2> constexpr root_parameters
 			{
-				Constant_buffer_view_root_descriptor_root_signature_parameter{ Shader_register{ 0 }, Shader_register_space{1}, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC, D3D12_SHADER_VISIBILITY_VERTEX },
+				Root_32_bits_constant_root_signature_parameter{ Shader_register{ 0 }, Shader_register_space{ 0 },  Num_32_bits_values{ 16 }, D3D12_SHADER_VISIBILITY_VERTEX },
 				Cbv_srv_uav_descriptor_table_root_signature_parameter{ descriptor_ranges, D3D12_SHADER_VISIBILITY_PIXEL }
 			};
 
 			std::array<Static_sampler, 6> const static_samplers{ create_static_samplers() };
+
+			D3D12_ROOT_SIGNATURE_FLAGS constexpr flags =
+				D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+				D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS | 
+				D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
+				D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
 
 			return Root_signature
 			{
 				device,
 				root_parameters,
 				static_samplers,
-				D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT
+				flags
 			};
 		}
 
@@ -180,6 +187,11 @@ namespace Maia::Mythology
 
 	namespace
 	{
+		struct Pass_data
+		{
+			Eigen::Matrix4f projection_matrix;
+		};
+
 		void upload_vertex_buffer_data(
 			Dynamic_vertex_buffer_view const vertex_buffer_view,
 			ImDrawData const& draw_data
@@ -239,32 +251,26 @@ namespace Maia::Mythology
 			// TODO Draw
 		}
 
-		{
-			// TODO upload pass data
-		}
+		ImGui::Render();
+		ImDrawData const& draw_data = *ImGui::GetDrawData();
 
 		{
-			ImGui::Render();
-			ImDrawData const& draw_data = *ImGui::GetDrawData();
+			Dynamic_geometry_buffer_view const geometry_buffer_view{ m_geometry_buffer, Buffer_offset{ frame_index.value * static_cast<UINT64>(D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT) }, Buffer_size{ static_cast<UINT64>(D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT) } };
 
 			{
-				Dynamic_geometry_buffer_view const geometry_buffer_view{ m_geometry_buffer, Buffer_offset{ frame_index.value * static_cast<UINT64>(D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT) }, Buffer_size{ static_cast<UINT64>(D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT) } };
+				std::uint64_t const required_vertex_buffer_size = static_cast<std::size_t>(draw_data.TotalVtxCount) * sizeof(ImDrawVert);
+				std::uint64_t const required_index_buffer_size = static_cast<std::size_t>(draw_data.TotalIdxCount) * sizeof(ImDrawIdx);
+				assert(required_vertex_buffer_size + required_index_buffer_size < geometry_buffer_view.size.value);
 
 				{
-					std::uint64_t const required_vertex_buffer_size = static_cast<std::size_t>(draw_data.TotalVtxCount) * sizeof(ImDrawVert);
-					std::uint64_t const required_index_buffer_size = static_cast<std::size_t>(draw_data.TotalIdxCount) * sizeof(ImDrawIdx);
-					assert(required_vertex_buffer_size + required_index_buffer_size < geometry_buffer_view.size.value);
+					Dynamic_vertex_buffer_view const vertex_buffer_view{ geometry_buffer_view.buffer, geometry_buffer_view.offset, Buffer_size{ required_vertex_buffer_size } };
+					upload_vertex_buffer_data(vertex_buffer_view, draw_data);
+				}
 
-					{
-						Dynamic_vertex_buffer_view const vertex_buffer_view{ geometry_buffer_view.buffer, geometry_buffer_view.offset, Buffer_size{ required_vertex_buffer_size } };
-						upload_vertex_buffer_data(vertex_buffer_view, draw_data);
-					}
-					
-					{
-						Dynamic_index_buffer_view const index_buffer_view{ geometry_buffer_view.buffer, Buffer_offset{ geometry_buffer_view.offset.value + required_vertex_buffer_size }, Buffer_size{ required_index_buffer_size } };
-						upload_index_buffer_data(index_buffer_view, draw_data);
-					}
-				}				
+				{
+					Dynamic_index_buffer_view const index_buffer_view{ geometry_buffer_view.buffer, Buffer_offset{ geometry_buffer_view.offset.value + required_vertex_buffer_size }, Buffer_size{ required_index_buffer_size } };
+					upload_index_buffer_data(index_buffer_view, draw_data);
+				}
 			}
 		}
 	}
@@ -275,8 +281,8 @@ namespace Maia::Mythology
 			ID3D12GraphicsCommandList& command_list,
 			ID3D12PipelineState& pipeline_state,
 			Root_signature const& root_signature,
-			Constant_buffer_view const pass_buffer_view,
-			std::pair<FLOAT, FLOAT> const viewport_size,
+			std::pair<float, float> const display_position,
+			std::pair<float, float> const display_size,
 			Dynamic_vertex_buffer_view const vertex_buffer_view,
 			Dynamic_index_buffer_view const index_buffer_view
 		) noexcept
@@ -287,9 +293,19 @@ namespace Maia::Mythology
 				command_list.SetGraphicsRootSignature(root_signature.value.get());
 
 				{
-					// TODO
-					D3D12_GPU_VIRTUAL_ADDRESS const buffer_location = pass_buffer_view.buffer.value->GetGPUVirtualAddress() + pass_buffer_view.offset.value;
-					command_list.SetGraphicsRootConstantBufferView(0, buffer_location);
+					float const left = display_position.first;
+					float const right = display_position.first + display_size.first;
+					float const top = display_position.second;
+					float const bottom = display_position.second + display_size.second;
+
+					Pass_data pass_data;
+					pass_data.projection_matrix <<
+						2.0f / (right - left), 0.0f, 0.0f, 0.0f,
+						0.0f, 2.0f / (top - bottom), 0.0f, 0.0f,
+						0.0f, 0.0f, 0.5f, 0.0f,
+						(right + left) / (left - right), (top + bottom) / (bottom - top), 0.5f, 1.0f;
+
+					command_list.SetGraphicsRoot32BitConstants(0, 16, &pass_data, 0);
 				}
 			}
 
@@ -323,8 +339,8 @@ namespace Maia::Mythology
 				D3D12_VIEWPORT viewport;
 				viewport.TopLeftX = 0.0f;
 				viewport.TopLeftY = 0.0f;
-				viewport.Width = viewport_size.first;
-				viewport.Height = viewport_size.second;
+				viewport.Width = display_size.first;
+				viewport.Height = display_size.second;
 				viewport.MinDepth = 0.0f;
 				viewport.MaxDepth = 1.0f;
 
@@ -343,7 +359,7 @@ namespace Maia::Mythology
 		Constant_buffer_view const pass_buffer_view
 	) noexcept
 	{
-		// reset_render_state(command_list, pipeline_state, root_signature, pass_buffer_view, { draw_data.DisplaySize.x, draw_data.DisplaySize.y }, {}, {});
+		// reset_render_state(command_list, pipeline_state, root_signature, { draw_data.DisplayPos.x, draw_data.DisplayPos.y }, { draw_data.DisplaySize.x, draw_data.DisplaySize.y }, {}, {});
 
 		{
 			ImDrawData const& draw_data = *ImGui::GetDrawData();
