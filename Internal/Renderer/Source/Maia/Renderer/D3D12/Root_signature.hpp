@@ -19,9 +19,30 @@ namespace Maia::Renderer::D3D12
 		UINT value;
 	};
 
+	struct Num_32_bits_values
+	{
+		UINT value;
+	};
+
 
 	struct Root_signature_parameter : public D3D12_ROOT_PARAMETER1
 	{
+	};
+
+	struct Root_32_bits_constant_root_signature_parameter : public Root_signature_parameter
+	{
+		constexpr Root_32_bits_constant_root_signature_parameter(
+			Shader_register const shader_register,
+			Shader_register_space const shader_register_space,
+			Num_32_bits_values const num_32_bits_values,
+			D3D12_SHADER_VISIBILITY const shader_visibility
+		) noexcept :
+			Root_signature_parameter{}
+		{
+			this->ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+			this->Constants = { shader_register.value, shader_register_space.value, num_32_bits_values.value };
+			this->ShaderVisibility = shader_visibility;
+		}
 	};
 
 	struct Root_descriptor_root_signature_parameter : public Root_signature_parameter
