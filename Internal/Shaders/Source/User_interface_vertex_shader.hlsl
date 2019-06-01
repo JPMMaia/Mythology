@@ -15,7 +15,6 @@ struct Texture_coordinate
 
 struct Pass_data
 {
-	float4x4 view_matrix : VIEW;
 	float4x4 projection_matrix : PROJECTION;
 };
 
