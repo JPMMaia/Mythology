@@ -18,6 +18,11 @@
 
 namespace Maia::Mythology
 {
+	struct Frame_index
+	{
+		std::uint8_t value;
+	};
+
 	class User_interface_pass
 	{
 	public:
@@ -29,7 +34,9 @@ namespace Maia::Mythology
 			std::pair<float, float> display_size
 		) noexcept;
 
-		void upload_user_interface_data() noexcept;
+		void upload_user_interface_data(
+			Frame_index const frame_index
+		) noexcept;
 
 		void execute_user_interface_pass(
 			ID3D12GraphicsCommandList& command_list,
@@ -45,6 +52,8 @@ namespace Maia::Mythology
 		Maia::Renderer::D3D12::Cbv_srv_uav_descriptor_heap m_descriptor_heap;
 		Maia::Renderer::D3D12::Root_signature m_root_signature;
 		Maia::Renderer::D3D12::Cbv_srv_uav_descriptor_table m_texture_descriptor_table;
+		Maia::Renderer::D3D12::Upload_buffer_heap m_geometry_buffer_heap;
+		Maia::Renderer::D3D12::Dynamic_geometry_buffer m_geometry_buffer;
 
 	};
 }

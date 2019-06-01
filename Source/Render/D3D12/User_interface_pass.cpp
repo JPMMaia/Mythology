@@ -72,7 +72,7 @@ namespace Maia::Mythology
 
 				for (UINT y = 0; y < image_layout.Footprint.Height; y++)
 				{
-					SIZE_T const upload_buffer_offset = upload_buffer_view.offset.value + image_layout.Offset + y * image_layout.Footprint.RowPitch;
+					SIZE_T const upload_buffer_offset = upload_buffer_view.offset.value + image_layout.Offset + static_cast<UINT64>(y) * static_cast<UINT64>(image_layout.Footprint.RowPitch);
 					unsigned char const* const source_data = &pixels[y * image_layout.Footprint.Width];
 					std::size_t const data_size = sizeof(DWORD) * image_layout.Footprint.Width;
 
@@ -164,7 +164,9 @@ namespace Maia::Mythology
 		m_font_texture{ create_font_image(device, { m_image_heap, Heap_offset{ 0 }, Heap_size{ 3 * D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT }  }, command_list, upload_buffer_view) },
 		m_descriptor_heap{ device, Descriptor_heap_size{ 1 } },
 		m_root_signature{ create_root_signature(device) },
-		m_texture_descriptor_table{ create_texture_descriptor_table(device, { m_descriptor_heap, Descriptor_heap_offset{0}, Descriptor_heap_size{1} }, { m_font_texture, First_mip_level{ 0 }, Mip_levels{ 1 } }) }
+		m_texture_descriptor_table{ create_texture_descriptor_table(device, { m_descriptor_heap, Descriptor_heap_offset{0}, Descriptor_heap_size{1} }, { m_font_texture, First_mip_level{ 0 }, Mip_levels{ 1 } }) },
+		m_geometry_buffer_heap{ device, Heap_size{ 3 * D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT } },
+		m_geometry_buffer{ device, { m_geometry_buffer_heap, 0, 3 * D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT } }
 	{
 		{
 			ImGuiIO& io = ImGui::GetIO();
@@ -175,7 +177,61 @@ namespace Maia::Mythology
 		}
 	}
 
-	void User_interface_pass::upload_user_interface_data() noexcept
+
+	namespace
+	{
+		void upload_vertex_buffer_data(
+			Dynamic_vertex_buffer_view const vertex_buffer_view,
+			ImDrawData const& draw_data
+		) noexcept
+		{
+			assert(draw_data.TotalVtxCount * sizeof(ImDrawVert) < vertex_buffer_view.size.value);
+
+			Mapped_memory mapped_memory{ *vertex_buffer_view.buffer.value, 0, {} };
+
+			{
+				Buffer_offset offset = vertex_buffer_view.offset;
+
+				for (int command_list_index = 0; command_list_index < draw_data.CmdListsCount; ++command_list_index)
+				{
+					ImDrawList const& command_list = *draw_data.CmdLists[command_list_index];
+
+					std::size_t const size = command_list.VtxBuffer.Size * sizeof(ImDrawVert);
+					mapped_memory.write(command_list.VtxBuffer.Data, size, offset.value);
+
+					offset.value += size;
+				}
+			}
+		}
+
+		void upload_index_buffer_data(
+			Dynamic_index_buffer_view const index_buffer_view,
+			ImDrawData const& draw_data
+		) noexcept
+		{
+			assert(draw_data.TotalIdxCount * sizeof(ImDrawIdx) < index_buffer_view.size.value);
+
+			Mapped_memory mapped_memory{ *index_buffer_view.buffer.value, 0, {} };
+
+			{
+				Buffer_offset offset = index_buffer_view.offset;
+
+				for (int command_list_index = 0; command_list_index < draw_data.CmdListsCount; ++command_list_index)
+				{
+					ImDrawList const& command_list = *draw_data.CmdLists[command_list_index];
+
+					std::size_t const size = command_list.IdxBuffer.Size * sizeof(ImDrawIdx);
+					mapped_memory.write(command_list.IdxBuffer.Data, size, offset.value);
+
+					offset.value += size;
+				}
+			}
+		}
+	}
+
+	void User_interface_pass::upload_user_interface_data(
+		Frame_index const frame_index
+	) noexcept
 	{
 		// TODO move this to another place
 		{
@@ -189,9 +245,27 @@ namespace Maia::Mythology
 
 		{
 			ImGui::Render();
-			ImDrawData const* const draw_data = ImGui::GetDrawData();
+			ImDrawData const& draw_data = *ImGui::GetDrawData();
 
-			// TODO upload data
+			{
+				Dynamic_geometry_buffer_view const geometry_buffer_view{ m_geometry_buffer, Buffer_offset{ frame_index.value * static_cast<UINT64>(D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT) }, Buffer_size{ static_cast<UINT64>(D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT) } };
+
+				{
+					std::uint64_t const required_vertex_buffer_size = static_cast<std::size_t>(draw_data.TotalVtxCount) * sizeof(ImDrawVert);
+					std::uint64_t const required_index_buffer_size = static_cast<std::size_t>(draw_data.TotalIdxCount) * sizeof(ImDrawIdx);
+					assert(required_vertex_buffer_size + required_index_buffer_size < geometry_buffer_view.size.value);
+
+					{
+						Dynamic_vertex_buffer_view const vertex_buffer_view{ geometry_buffer_view.buffer, geometry_buffer_view.offset, Buffer_size{ required_vertex_buffer_size } };
+						upload_vertex_buffer_data(vertex_buffer_view, draw_data);
+					}
+					
+					{
+						Dynamic_index_buffer_view const index_buffer_view{ geometry_buffer_view.buffer, Buffer_offset{ geometry_buffer_view.offset.value + required_vertex_buffer_size }, Buffer_size{ required_index_buffer_size } };
+						upload_index_buffer_data(index_buffer_view, draw_data);
+					}
+				}				
+			}
 		}
 	}
 
@@ -225,7 +299,7 @@ namespace Maia::Mythology
 
 					D3D12_VERTEX_BUFFER_VIEW view;
 					view.BufferLocation = vertex_buffer_view.buffer.value->GetGPUVirtualAddress() + vertex_buffer_view.offset.value;
-					view.SizeInBytes = vertex_buffer_view.size.value;
+					view.SizeInBytes = static_cast<UINT>(vertex_buffer_view.size.value);
 					view.StrideInBytes = stride;
 
 					command_list.IASetVertexBuffers(0, 1, &view);
@@ -236,7 +310,7 @@ namespace Maia::Mythology
 
 					D3D12_INDEX_BUFFER_VIEW view;
 					view.BufferLocation = index_buffer_view.buffer.value->GetGPUVirtualAddress() + index_buffer_view.offset.value;
-					view.SizeInBytes = index_buffer_view.size.value;
+					view.SizeInBytes = static_cast<UINT>(index_buffer_view.size.value);
 					view.Format = format;
 
 					command_list.IASetIndexBuffer(&view);
