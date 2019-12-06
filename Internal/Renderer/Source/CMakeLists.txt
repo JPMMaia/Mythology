@@ -25,51 +25,24 @@ target_include_directories (MaiaRenderer
 
 target_link_libraries (MaiaRenderer PRIVATE Maia::Utilities)
 
-target_link_libraries (MaiaRenderer PUBLIC D3D12 DXGI WindowsApp)
+if (MaiaRenderer_build_d3d12)
+	add_subdirectory ("D3D12")
+	target_link_libraries (MaiaRenderer PRIVATE Maia::Renderer::D3D12)
+endif ()
+
+if (MaiaRenderer_build_vulkan)
+	add_subdirectory ("Vulkan")
+	target_link_libraries (MaiaRenderer PRIVATE Maia::Renderer::Vulkan)
+endif ()
 
 find_package (Eigen3 3.3.7 CONFIG REQUIRED)
 target_link_libraries (MaiaRenderer PUBLIC Eigen3::Eigen)
 
-find_package (D3DX12 REQUIRED)
-target_link_libraries (MaiaRenderer PUBLIC D3D12::D3DX12)
+find_package (MicrosoftGSL REQUIRED)
+target_link_libraries (MaiaRenderer PRIVATE MicrosoftGSL::MicrosoftGSL)
 
 target_sources (MaiaRenderer 
-	PRIVATE
-		"Maia/Renderer/Matrices.hpp"
-		"Maia/Renderer/Matrices.cpp"
-
-		"Maia/Renderer/D3D12/Utilities/Check_hresult.hpp"
-		"Maia/Renderer/D3D12/Utilities/Check_hresult.cpp"
-		"Maia/Renderer/D3D12/Utilities/D3D12_utilities.hpp"
-		"Maia/Renderer/D3D12/Utilities/D3D12_utilities.cpp"
-		"Maia/Renderer/D3D12/Utilities/Mapped_memory.hpp"
-		"Maia/Renderer/D3D12/Utilities/Mapped_memory.cpp"
-		"Maia/Renderer/D3D12/Utilities/Shader.hpp"
-		"Maia/Renderer/D3D12/Utilities/Shader.cpp"
-)
-
-
-install (TARGETS MaiaRenderer EXPORT MaiaRendererTargets
-	LIBRARY DESTINATION "lib"
-	ARCHIVE DESTINATION "lib"
-	RUNTIME DESTINATION "bin"
-	INCLUDES DESTINATION "include"
-)
-install (DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/Maia"
-		DESTINATION "include"
-        FILES_MATCHING PATTERN "*.hpp"
-)
-install (EXPORT MaiaRendererTargets
-	FILE "MaiaRendererTargets.cmake"
-	NAMESPACE Maia::
-	DESTINATION "lib/cmake/Maia/Renderer"
-)
-
-include (CMakePackageConfigHelpers)
-write_basic_package_version_file ("${CMAKE_CURRENT_BINARY_DIR}/MaiaRendererConfigVersion.cmake"
-	VERSION ${MaiaRenderer_VERSION}
-	COMPATIBILITY SameMajorVersion
-)
-install (FILES "MaiaRendererConfig.cmake" "${CMAKE_CURRENT_BINARY_DIR}/MaiaRendererConfigVersion.cmake"
-	DESTINATION "lib/cmake/Maia/Renderer"
+	PRIVATE 
+		"Matrices.hpp"
+		"Matrices.cpp"
 )
