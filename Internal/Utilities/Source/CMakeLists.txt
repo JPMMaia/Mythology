@@ -43,8 +43,8 @@ target_sources(MaiaUtilities
 		
 		"Maia/Utilities/Helpers/Helpers.hpp"
 
-		"Maia/Utilities/glTF/glTF.hpp"
-		"Maia/Utilities/glTF/glTF.cpp"
+		"Maia/Utilities/glTF/gltf.hpp"
+		"Maia/Utilities/glTF/gltf.cpp"
 
 		"Maia/Utilities/Math/MathHelpers.hpp"
 
