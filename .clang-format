@@ -1,0 +1,11 @@
+---
+Language:        Cpp
+BasedOnStyle:  Microsoft
+
+AlignAfterOpenBracket: AlwaysBreak
+AllowAllParametersOfDeclarationOnNextLine: false
+BinPackParameters: false
+FixNamespaceComments: false
+NamespaceIndentation: All
+PointerAlignment: Left
+...
