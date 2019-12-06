@@ -1,5 +1,6 @@
-Build
-Assets
-Binaries
+[Bb]uild
 /CMakeSettings.json
 .vs
+.clangd
+.vscode
+compile_commands.json
