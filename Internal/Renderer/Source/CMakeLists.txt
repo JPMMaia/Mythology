@@ -1,26 +1,15 @@
 project (MaiaRenderer VERSION 0.0.1)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../../Utilities/CMake/Modules")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../../Utilities/CMake/Scripts")
+
 add_library (MaiaRenderer)
 add_library (Maia::Renderer ALIAS MaiaRenderer)
 
 set_target_properties (MaiaRenderer PROPERTIES 
 	LINKER_LANGUAGE "CXX"
-)
-
-target_compile_definitions(MaiaRenderer
-	PRIVATE	
-		"NOMINMAX"
-)
-
-target_compile_features (MaiaRenderer 
-	PRIVATE 
-		cxx_std_17
-)
-
-target_include_directories (MaiaRenderer 
-	PUBLIC
-		$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
-		$<INSTALL_INTERFACE:include/Maia/Renderer>
+	CXX_STANDARD 20
+	CXX_STANDARD_REQUIRED ON
 )
 
 target_link_libraries (MaiaRenderer PRIVATE Maia::Utilities)
