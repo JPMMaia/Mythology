@@ -1,0 +1,25 @@
+find_path (standard_library_root "vector" PATHS ${CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES})
+
+if (NOT standard_library_root)
+    message (FATAL_ERROR "Could not find c++ standard library include path. Please check CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES.")
+endif ()
+
+add_library (Standard_library)
+
+set_target_properties (Standard_library PROPERTIES LINKER_LANGUAGE CXX)
+
+target_header (Standard_library "algorithm" "${standard_library_root}/algorithm")
+target_header (Standard_library "array" "${standard_library_root}/array")
+target_header (Standard_library "cassert" "${standard_library_root}/cassert")
+target_header (Standard_library "cstddef" "${standard_library_root}/cstddef")
+target_header (Standard_library "cstdint" "${standard_library_root}/cstdint")
+target_header (Standard_library "cstring" "${standard_library_root}/cstring")
+target_header (Standard_library "fstream" "${standard_library_root}/fstream")
+target_header (Standard_library "iosfwd" "${standard_library_root}/iosfwd")
+target_header (Standard_library "iostream" "${standard_library_root}/iostream")
+target_header (Standard_library "memory" "${standard_library_root}/memory")
+target_header (Standard_library "memory_resource" "${standard_library_root}/memory_resource")
+target_header (Standard_library "ostream" "${standard_library_root}/ostream")
+target_header (Standard_library "span" "${standard_library_root}/span")
+target_header (Standard_library "type_traits" "${standard_library_root}/type_traits")
+target_header (Standard_library "vector" "${standard_library_root}/vector")
