@@ -1,24 +1,14 @@
-function (create_header_cmi output_command output_cmi module_name header)
-
-    set (${output_command}
-        "${CMAKE_CXX_COMPILER}" "${CMAKE_CXX_FLAGS}" "-std=c++2a" "-fretain-comments-from-system-headers"
-        "-fmodule-name=${module_name}"
-        "-x" "c++-header" "${header}"
-        "-Xclang" "-emit-header-module" "-o" "${output_cmi}"
-        PARENT_SCOPE
-    )
-
-endfunction ()
-
 function (target_header _target _module_name _header)
 
     set (_header_cmi "${CMAKE_BINARY_DIR}/cmi/${_module_name}.pcm")
 
-    create_header_cmi (_generate_header_cmi_command "${_header_cmi}" "${_module_name}" "${_header}")
-
     add_custom_command (
         OUTPUT "${_header_cmi}"
-        COMMAND ${_generate_header_cmi_command}
+        COMMAND 
+            "${CMAKE_CXX_COMPILER}" "${CMAKE_CXX_FLAGS}" "-std=c++2a" "-fretain-comments-from-system-headers"
+            "-fmodule-name=${_module_name}"
+            "-x" "c++-header" "${_header}"
+            "-Xclang" "-emit-header-module" "-o" "${_header_cmi}"
         MAIN_DEPENDENCY "${_header}"
     )
 
@@ -41,41 +31,6 @@ function (target_header _target _module_name _header)
     endif ()
     list (APPEND _header_cmi_list "${_header_cmi}")
     set_target_properties (${_target} PROPERTIES HEADER_CMI_LIST "${_header_cmi_list}")
-
-endfunction ()
-
-function (generate_depends_header_cmi_command _target_dependencies_list _output_command)
-
-    set(_command)
-
-    foreach (_target_dependency IN LISTS _target_dependencies_list)
-
-        if (TARGET ${_target_dependency})
-            get_target_property (_header_cmi_list ${_target_dependency} HEADER_CMI_LIST)
-
-            foreach (_header_cmi IN LISTS _header_cmi_list)
-                list(APPEND _command "-fmodule-file=${_header_cmi}")
-            endforeach ()
-        else ()
-            list(APPEND _command "-fmodule-file=${CMAKE_BINARY_DIR}/cmi/${_target_dependency}.pcm")
-        endif ()
-
-    endforeach ()
-
-    set (${_output_command} ${_command} PARENT_SCOPE)
-    
-endfunction ()
-
-function (create_cmi output_command output_cmi source prebuilt_module_path)
-
-    set (_command
-        "${CMAKE_CXX_COMPILER}" "${CMAKE_CXX_FLAGS}" "-std=c++2a" "-stdlib=libstdc++"
-        "-fimplicit-modules" "-fimplicit-module-maps" "-fprebuilt-module-path=${prebuilt_module_path}"
-        "-x" "c++" "${source}" "-c" 
-        "-Xclang" "-emit-module-interface" "-o" "${output_cmi}"
-    )
-    
-    set (${output_command} ${_command} PARENT_SCOPE)
 
 endfunction ()
 
@@ -105,25 +60,6 @@ function (create_module_options _output_command _module_dependencies _prebuilt_m
 
 endfunction ()
 
-function (create_o output_command output_o source module_dependencies prebuilt_module_path)
-
-    set (_command)
-    list (APPEND _command 
-        "${CMAKE_CXX_COMPILER}" "${CMAKE_CXX_FLAGS}" "-std=c++2a" "-stdlib=libstdc++"
-    )
-
-    create_module_options (_module_options "${module_dependencies}" "${prebuilt_module_path}")
-    list (APPEND _command ${_module_options})
-
-    list (APPEND _command 
-        "-x" "c++" "${source}" "-c" 
-        "-o" "${output_o}"
-    )
-
-    set (${output_command} ${_command} PARENT_SCOPE)
-
-endfunction ()
-
 function (target_module _target _module_name)
 
     set (options)
@@ -141,33 +77,6 @@ function (target_module _target _module_name)
         set (_module_implementation_unit_object "${CMAKE_CURRENT_BINARY_DIR}/objects/${ARG_IMPLEMENTATION}.o")
         set (_module_implementation_unit_dependencies "${ARG_IMPLEMENTATION_DEPENDS}")
     endif ()
-
-    #[[
-    create_cmi (
-        _generate_cmi_command "${_module_cmi}"
-        "${_module_interface_unit}" "${_prebuilt_module_path}"
-    )
-
-    create_o (
-        _generate_interface_object_command "${_module_interface_unit_object}" 
-        "${_module_interface_unit}"
-        ""
-        "${_prebuilt_module_path}"
-    )
-
-    generate_depends_header_cmi_command (
-        "${_module_interface_unit_dependencies}"
-        _interface_depends_header_cmi_command
-    )
-
-    add_custom_command (
-        OUTPUT "${_module_cmi}" "${_module_interface_unit_object}"
-        COMMAND ${_generate_cmi_command} ${_interface_depends_header_cmi_command}
-        COMMAND ${_generate_interface_object_command} ${_interface_depends_header_cmi_command}
-        MAIN_DEPENDENCY "${_module_interface_unit}"
-        DEPENDS "${_module_interface_unit_dependencies}"
-    )
-    #]]
 
 
     create_module_options (_module_interface_options "${_module_interface_unit_dependencies}" "${_prebuilt_module_path}")
@@ -207,31 +116,10 @@ function (target_module _target _module_name)
     endforeach ()
 
     target_sources (${_target} PRIVATE "${_module_interface_unit}")
-
-    #create_module_options (_module_interface_options "${_module_interface_unit_dependencies}" "${_prebuilt_module_path}")
     set_source_files_properties("${_module_interface_unit}" PROPERTIES COMPILE_OPTIONS "${_module_interface_options}")
 
 
     if (_module_implementation_unit)
-#[[
-        create_o (
-            _generate_implementation_object_command "${_module_implementation_unit_object}"
-            "${_module_implementation_unit}"
-            "${_module_cmi}"
-            "${_prebuilt_module_path}"
-        )
-
-        generate_depends_header_cmi_command (
-            "${_module_implementation_unit_dependencies}"
-            _implementation_depends_header_cmi_command
-        )
-
-        add_custom_command (
-            OUTPUT "${_module_implementation_unit_object}"
-            COMMAND ${_generate_implementation_object_command} ${_implementation_depends_header_cmi_command}
-            MAIN_DEPENDENCY "${_module_implementation_unit}"
-            DEPENDS "${_module_cmi}" "${_module_implementation_unit_dependencies}"
-        )#]]
 
         target_sources (${_target} PRIVATE "${_module_implementation_unit}")
 
@@ -241,26 +129,6 @@ function (target_module _target _module_name)
 
     endif ()
 
-#[[
-    set (_dependency_list)
-    list (APPEND _dependency_list "${_module_cmi}" "${_module_interface_unit_object}")
-    if (_module_implementation_unit)
-        #list (APPEND _dependency_list "${_module_implementation_unit_object}")
-    endif ()
-
-    add_custom_target (
-        "build_module_${_module_name}"
-        DEPENDS ${_dependency_list}
-    )
-
-    
-    target_sources ("${_target}" PRIVATE "${_module_interface_unit_object}")
-    if (_module_implementation_unit)
-        #target_sources ("${_target}" PRIVATE "${_module_implementation_unit_object}")
-    endif ()
-    
-    add_dependencies ("${_target}" "build_module_${_module_name}")
-#]]
 endfunction ()
 
 function (add_module_compile_options _target)
