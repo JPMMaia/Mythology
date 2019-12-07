@@ -9,6 +9,7 @@ import <vulkan/vulkan.h>;
 
 import <cstdint>;
 import <memory_resource>;
+import <optional>;
 import <ostream>;
 import <sstream>;
 import <vector>;
@@ -130,6 +131,53 @@ namespace Maia::Renderer::Vulkan
         vkGetPhysicalDeviceMemoryProperties(physical_device.value, &memory_properties.value);
         return memory_properties;
     }
+
+
+    std::optional<Memory_type_index> find_memory_type(
+        Physical_device_memory_properties const& memory_properties,
+        std::uint32_t const memory_type_bits_requirement,
+        VkMemoryPropertyFlags const required_properties
+    ) noexcept
+    {
+        std::uint32_t const memory_count = memory_properties.value.memoryTypeCount;
+
+        for (std::uint32_t memory_index = 0; memory_index < memory_count; ++memory_index)
+        {
+            std::uint32_t const memory_type_bits = (1 << memory_index);
+            bool const is_required_memory_type = memory_type_bits_requirement & memory_type_bits;
+
+            VkMemoryPropertyFlags const properties =
+                memory_properties.value.memoryTypes[memory_index].propertyFlags;
+            bool const has_required_properties =
+                (properties & required_properties) == required_properties;
+
+            if (is_required_memory_type && has_required_properties)
+                return {{memory_index}};
+        }
+
+        return {};
+    }
+
+    std::optional<Memory_type_index> find_memory_type(
+        Physical_device_memory_properties const& memory_properties,
+        std::uint32_t const memory_type_bits_requirement,
+        VkMemoryPropertyFlags const required_properties,
+        VkMemoryPropertyFlags const optimal_properties
+    ) noexcept
+    {
+        std::optional<Memory_type_index> const memory_type_index =
+            find_memory_type(memory_properties, memory_type_bits_requirement, optimal_properties);
+
+        if (memory_type_index.has_value())
+        {
+            return memory_type_index;
+        }
+        else 
+        {
+            return find_memory_type(memory_properties, memory_type_bits_requirement, required_properties);
+        }
+    }
+
 
     Device_memory allocate_memory(Device const device, VkDeviceSize const allocation_size, std::uint32_t const memory_type_index, Allocation_callbacks const allocator) noexcept
     {
