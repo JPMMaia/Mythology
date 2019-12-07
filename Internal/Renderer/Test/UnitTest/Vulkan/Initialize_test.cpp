@@ -69,6 +69,8 @@ namespace Maia::Renderer::Vulkan::Unit_test
 			}();
 
 			Device const device = create_device(physical_device, queue_create_infos, {});
+
+			
 		}
 	}
 }

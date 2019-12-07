@@ -11,8 +11,17 @@ add_library (Maia::CompileShaders ALIAS CompileShaders)
 set_target_properties (CompileShaders PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries (CompileShaders PRIVATE CopyShaders)
 
-find_package (DirectXShaderCompiler REQUIRED)
-target_link_libraries (CompileShaders PRIVATE DirectXShaderCompiler::Dxc)
+find_package(directx-shader-compiler CONFIG REQUIRED)
+
+add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/spirv_bin_file.spirv"
+                   COMMAND directx-shader-compiler::dxc -spirv -T vs_6_0 -E main "${CMAKE_CURRENT_LIST_DIR}/Color_vertex_shader.hlsl" -Fo "${CMAKE_CURRENT_BINARY_DIR}/spirv_bin_file"
+                   MAIN_DEPENDENCY "${CMAKE_CURRENT_LIST_DIR}/Color_vertex_shader.hlsl"
+)
+add_custom_target(hlsl-to-spirv
+                  DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/spirv_bin_file.spirv"
+                  VERBATIM
+)
+
 
 
 add_library (Shaders INTERFACE)

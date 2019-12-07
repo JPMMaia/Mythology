@@ -20,6 +20,6 @@ set_target_properties (Catch2_runner PROPERTIES LINKER_LANGUAGE CXX)
 
 target_module(Catch2_runner 
     "catch2.runner"
-    INTERFACE "runner.ixx"
-    IMPLEMENTATION "runner.mxx"
+    INTERFACE "runner.cxx"
+    IMPLEMENTATION "runner.cpp"
 )
