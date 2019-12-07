@@ -60,7 +60,7 @@ target_module (
     MaiaRendererVulkan
     "maia.renderer.vulkan.device_memory"
     INTERFACE "Device_memory.cxx"
-    INTERFACE_DEPENDS "Standard_library" "Vulkan"
+    INTERFACE_DEPENDS "Standard_library" "Vulkan" "maia.renderer.vulkan.physical_device"
     IMPLEMENTATION "Device_memory.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" 
         "maia.renderer.vulkan.check"

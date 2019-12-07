@@ -1,4 +1,5 @@
 import maia.renderer.vulkan.device;
+import maia.renderer.vulkan.device_memory;
 import maia.renderer.vulkan.physical_device;
 import maia.renderer.vulkan.instance;
 
@@ -24,7 +25,6 @@ namespace Maia::Renderer::Vulkan::Unit_test
 		std::for_each(std::begin(layer_properties), std::end(layer_properties), 
 			[](VkLayerProperties const properties) -> void { std::cout << properties << '\n'; });
 		std::cout << '\n';
-
 
 		std::array<char const*, 1> const enabled_layers { "VK_LAYER_KHRONOS_validation" };
 		Instance const instance = create_instance(enabled_layers, {});
@@ -69,8 +69,12 @@ namespace Maia::Renderer::Vulkan::Unit_test
 			}();
 
 			Device const device = create_device(physical_device, queue_create_infos, {});
+			Physical_device_memory_properties const physical_device_memory_properties =
+				get_phisical_device_memory_properties(physical_device);
 
-			
+			std::cout << "Physical device memory properties:\n\n";
+			std::cout << physical_device_memory_properties;
+			std::cout << '\n';
 		}
 	}
 }
