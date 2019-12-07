@@ -1,3 +1,5 @@
+import maia.renderer.vulkan.allocation_callbacks;
+import maia.renderer.vulkan.buffer;
 import maia.renderer.vulkan.device;
 import maia.renderer.vulkan.device_memory;
 import maia.renderer.vulkan.physical_device;
@@ -69,12 +71,18 @@ namespace Maia::Renderer::Vulkan::Unit_test
 			}();
 
 			Device const device = create_device(physical_device, queue_create_infos, {});
+			
 			Physical_device_memory_properties const physical_device_memory_properties =
 				get_phisical_device_memory_properties(physical_device);
 
 			std::cout << "Physical device memory properties:\n\n";
 			std::cout << physical_device_memory_properties;
 			std::cout << '\n';
+
+			Buffer const vertex_buffer = create_non_mappable_vertex_buffer(
+				device, {}, VkDeviceSize{1024*64}
+			);
+			
 		}
 	}
 }
