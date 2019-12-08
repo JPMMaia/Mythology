@@ -18,17 +18,17 @@ namespace Maia::Renderer::Vulkan
     export Image create_image(
         Device device,
         Allocation_callbacks allocation_callbacks,
-        VkImageCreateFlags flags,
         VkImageType image_type,
         VkFormat format,
         VkExtent3D extent,
         std::uint32_t mip_levels,
         std::uint32_t array_layers,
-        VkSampleCountFlagBits samples,
-        VkImageTiling tiling,
         VkImageUsageFlags usage,
-        VkSharingMode sharing_mode,
-        std::span<std::uint32_t const> queue_family_indices,
-        VkImageLayout initial_layout
+        VkImageLayout initial_layout,
+        VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT,
+        VkImageCreateFlags flags = {},
+        VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL,
+        VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE,
+        std::span<std::uint32_t const> queue_family_indices = {}
     ) noexcept;
 }
