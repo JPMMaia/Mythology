@@ -1,8 +1,10 @@
 module maia.renderer.vulkan.device_memory;
 
-import maia.renderer.vulkan.check;
 import maia.renderer.vulkan.allocation_callbacks;
+import maia.renderer.vulkan.buffer;
+import maia.renderer.vulkan.check;
 import maia.renderer.vulkan.device;
+import maia.renderer.vulkan.image;
 import maia.renderer.vulkan.physical_device;
 
 import <vulkan/vulkan.h>;
@@ -16,6 +18,35 @@ import <vector>;
 
 namespace Maia::Renderer::Vulkan
 {
+    Memory_requirements get_memory_requirements(
+        Device const device,
+        Buffer const buffer
+    ) noexcept
+    {
+        VkMemoryRequirements memory_requirements = {};
+        vkGetBufferMemoryRequirements(device.value, buffer.value, &memory_requirements);
+        return {memory_requirements};
+    }
+
+    Memory_requirements get_memory_requirements(
+        Device const device,
+        Image const image
+    ) noexcept
+    {
+        VkMemoryRequirements memory_requirements = {};
+        vkGetImageMemoryRequirements(device.value, image.value, &memory_requirements);
+        return {memory_requirements};
+    }
+
+
+    Memory_type_bits get_memory_type_bits(
+        Memory_requirements memory_requirements
+    ) noexcept
+    {
+        return {memory_requirements.value.memoryTypeBits};
+    }
+
+
     namespace 
     {
         std::string to_string(VkMemoryPropertyFlagBits const flag) noexcept
@@ -135,7 +166,7 @@ namespace Maia::Renderer::Vulkan
 
     std::optional<Memory_type_index> find_memory_type(
         Physical_device_memory_properties const& memory_properties,
-        std::uint32_t const memory_type_bits_requirement,
+        Memory_type_bits const memory_type_bits_requirement,
         VkMemoryPropertyFlags const required_properties
     ) noexcept
     {
@@ -144,7 +175,7 @@ namespace Maia::Renderer::Vulkan
         for (std::uint32_t memory_index = 0; memory_index < memory_count; ++memory_index)
         {
             std::uint32_t const memory_type_bits = (1 << memory_index);
-            bool const is_required_memory_type = memory_type_bits_requirement & memory_type_bits;
+            bool const is_required_memory_type = memory_type_bits_requirement.value & memory_type_bits;
 
             VkMemoryPropertyFlags const properties =
                 memory_properties.value.memoryTypes[memory_index].propertyFlags;
@@ -160,7 +191,7 @@ namespace Maia::Renderer::Vulkan
 
     std::optional<Memory_type_index> find_memory_type(
         Physical_device_memory_properties const& memory_properties,
-        std::uint32_t const memory_type_bits_requirement,
+        Memory_type_bits const memory_type_bits_requirement,
         VkMemoryPropertyFlags const required_properties,
         VkMemoryPropertyFlags const optimal_properties
     ) noexcept
@@ -179,14 +210,19 @@ namespace Maia::Renderer::Vulkan
     }
 
 
-    Device_memory allocate_memory(Device const device, VkDeviceSize const allocation_size, std::uint32_t const memory_type_index, Allocation_callbacks const allocator) noexcept
+    Device_memory allocate_memory(
+        Device const device, 
+        VkDeviceSize const allocation_size, 
+        Memory_type_index const memory_type_index, 
+        Allocation_callbacks const allocator
+    ) noexcept
     {
         VkMemoryAllocateInfo const info
         {
             .sType = VkStructureType::VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
             .pNext = nullptr,
             .allocationSize = allocation_size,
-            .memoryTypeIndex = memory_type_index
+            .memoryTypeIndex = memory_type_index.value
         };
 
         VkDeviceMemory memory = {};
