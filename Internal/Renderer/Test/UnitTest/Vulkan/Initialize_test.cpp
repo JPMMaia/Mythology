@@ -1,7 +1,7 @@
 import maia.renderer.vulkan.allocation_callbacks;
-import maia.renderer.vulkan.buffer;
 import maia.renderer.vulkan.device;
 import maia.renderer.vulkan.device_memory;
+import maia.renderer.vulkan.image;
 import maia.renderer.vulkan.physical_device;
 import maia.renderer.vulkan.instance;
 
@@ -15,6 +15,7 @@ import <cstdint>;
 import <iostream>;
 import <memory_resource>;
 import <span>;
+import <unordered_map>;
 import <vector>;
 
 namespace Maia::Renderer::Vulkan::Unit_test
@@ -79,10 +80,31 @@ namespace Maia::Renderer::Vulkan::Unit_test
 			std::cout << physical_device_memory_properties;
 			std::cout << '\n';
 
-			Buffer const vertex_buffer = create_non_mappable_vertex_buffer(
-				device, {}, VkDeviceSize{1024*64}
+
+			Image const color_image = create_image(
+				device,
+				{},
+				VK_IMAGE_TYPE_2D,
+				VK_FORMAT_R8G8B8A8_UNORM,
+				VkExtent3D{ 800, 600, 1 },
+				Mip_level_count{1},
+				Array_layer_count{1},
+				VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+				VK_IMAGE_LAYOUT_UNDEFINED
 			);
-			
+
+			Memory_requirements const color_image_memory_requirements = get_memory_requirements(device, color_image);
+			Memory_type_bits const color_image_memory_type_bits = get_memory_type_bits(color_image_memory_requirements);
+			std::optional<Memory_type_index> const memory_type_index = find_memory_type(
+				physical_device_memory_properties, 
+				color_image_memory_type_bits,
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+			);
+
+			REQUIRE(memory_type_index.has_value());
+
+			Device_memory const device_memory =
+				allocate_memory(device, color_image_memory_requirements.value.size, *memory_type_index, {});
 		}
 	}
 }
