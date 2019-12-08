@@ -25,7 +25,17 @@ namespace Maia::Renderer::Vulkan
         std::span<std::uint32_t const> queue_family_indices = {}
     ) noexcept;
 
+
     export Buffer create_transfer_source_buffer(
+        Device device, 
+        Allocation_callbacks allocation_callbacks,
+        VkDeviceSize size,
+        VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE,
+        std::span<std::uint32_t const> queue_family_indices = {}
+    ) noexcept;
+
+
+    export Buffer create_mappable_vertex_buffer(
         Device device, 
         Allocation_callbacks allocation_callbacks,
         VkDeviceSize size,
@@ -41,6 +51,15 @@ namespace Maia::Renderer::Vulkan
         std::span<std::uint32_t const> queue_family_indices = {}
     ) noexcept;
 
+
+    export Buffer create_mappable_index_buffer(
+        Device device, 
+        Allocation_callbacks allocation_callbacks,
+        VkDeviceSize size,
+        VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE,
+        std::span<std::uint32_t const> queue_family_indices = {}
+    ) noexcept;
+
     export Buffer create_non_mappable_index_buffer(
         Device device, 
         Allocation_callbacks allocation_callbacks,
@@ -49,7 +68,25 @@ namespace Maia::Renderer::Vulkan
         std::span<std::uint32_t const> queue_family_indices = {}
     ) noexcept;
 
+
+    export Buffer create_mappable_uniform_buffer(
+        Device device, 
+        Allocation_callbacks allocation_callbacks,
+        VkDeviceSize size,
+        VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE,
+        std::span<std::uint32_t const> queue_family_indices = {}
+    ) noexcept;
+
     export Buffer create_non_mappable_uniform_buffer(
+        Device device, 
+        Allocation_callbacks allocation_callbacks,
+        VkDeviceSize size,
+        VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE,
+        std::span<std::uint32_t const> queue_family_indices = {}
+    ) noexcept;
+
+
+    export Buffer create_mappable_storage_buffer(
         Device device, 
         Allocation_callbacks allocation_callbacks,
         VkDeviceSize size,
