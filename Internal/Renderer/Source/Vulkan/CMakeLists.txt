@@ -58,19 +58,6 @@ target_module (
 
 target_module (
     MaiaRendererVulkan
-    "maia.renderer.vulkan.device_memory"
-    INTERFACE "Device_memory.cxx"
-    INTERFACE_DEPENDS "Standard_library" "Vulkan" "maia.renderer.vulkan.physical_device"
-    IMPLEMENTATION "Device_memory.cpp"
-    IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" 
-        "maia.renderer.vulkan.check"
-        "maia.renderer.vulkan.allocation_callbacks"
-        "maia.renderer.vulkan.device"
-        "maia.renderer.vulkan.physical_device"
-)
-
-target_module (
-    MaiaRendererVulkan
     "maia.renderer.vulkan.buffer"
     INTERFACE "Buffer.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
@@ -81,6 +68,40 @@ target_module (
         "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.check"
         "maia.renderer.vulkan.device"
+)
+
+target_module (
+    MaiaRendererVulkan
+    "maia.renderer.vulkan.image"
+    INTERFACE "Image.cxx"
+    INTERFACE_DEPENDS "Standard_library" "Vulkan"
+        "maia.renderer.vulkan.allocation_callbacks"
+        "maia.renderer.vulkan.device"
+    IMPLEMENTATION "Image.cpp"
+    IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan"
+        "maia.renderer.vulkan.allocation_callbacks"
+        "maia.renderer.vulkan.check"
+        "maia.renderer.vulkan.device"
+)
+
+target_module (
+    MaiaRendererVulkan
+    "maia.renderer.vulkan.device_memory"
+    INTERFACE "Device_memory.cxx"
+    INTERFACE_DEPENDS "Standard_library" "Vulkan"
+        "maia.renderer.vulkan.allocation_callbacks"
+        "maia.renderer.vulkan.buffer"
+        "maia.renderer.vulkan.device"
+        "maia.renderer.vulkan.image"
+        "maia.renderer.vulkan.physical_device"
+    IMPLEMENTATION "Device_memory.cpp"
+    IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" 
+        "maia.renderer.vulkan.allocation_callbacks"
+        "maia.renderer.vulkan.buffer"
+        "maia.renderer.vulkan.check"
+        "maia.renderer.vulkan.device"
+        "maia.renderer.vulkan.image"
+        "maia.renderer.vulkan.physical_device"
 )
 
 target_module (
