@@ -7,13 +7,14 @@ import maia.renderer.vulkan.device;
 import <vulkan/vulkan.h>;
 
 import <cstdint>;
+import <optional>;
 import <span>;
 
 namespace Maia::Renderer::Vulkan
 {
     Buffer create_buffer(
         Device const device, 
-        Allocation_callbacks const allocation_callbacks,
+        std::optional<Allocation_callbacks> const allocator,
         VkBufferCreateFlags const flags,
         VkDeviceSize const size,
         VkBufferUsageFlags const usage,
@@ -35,14 +36,20 @@ namespace Maia::Renderer::Vulkan
 
         VkBuffer buffer = {};
         check_result(
-            vkCreateBuffer(device.value, &info, &allocation_callbacks.value, &buffer));
+            vkCreateBuffer(
+                device.value, 
+                &info, 
+                allocator.has_value() ? &allocator->value : nullptr,
+                &buffer
+            )
+        );
         
         return {buffer};
     }
 
     Buffer create_transfer_source_buffer(
         Device const device, 
-        Allocation_callbacks const allocation_callbacks,
+        std::optional<Allocation_callbacks> const allocator,
         VkDeviceSize const size,
         VkSharingMode const sharing_mode,
         std::span<std::uint32_t const> const queue_family_indices
@@ -50,7 +57,7 @@ namespace Maia::Renderer::Vulkan
     {
         return create_buffer(
             device, 
-            allocation_callbacks, 
+            allocator, 
             {}, 
             size, 
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
@@ -62,7 +69,7 @@ namespace Maia::Renderer::Vulkan
 
     Buffer create_mappable_vertex_buffer(
         Device const device, 
-        Allocation_callbacks const allocation_callbacks,
+        std::optional<Allocation_callbacks> const allocator,
         VkDeviceSize const size,
         VkSharingMode const sharing_mode,
         std::span<std::uint32_t const> const queue_family_indices
@@ -70,7 +77,7 @@ namespace Maia::Renderer::Vulkan
     {
         return create_buffer(
             device, 
-            allocation_callbacks, 
+            allocator, 
             {}, 
             size, 
             VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
@@ -81,7 +88,7 @@ namespace Maia::Renderer::Vulkan
 
     Buffer create_non_mappable_vertex_buffer(
         Device const device, 
-        Allocation_callbacks const allocation_callbacks,
+        std::optional<Allocation_callbacks> const allocator,
         VkDeviceSize const size,
         VkSharingMode const sharing_mode,
         std::span<std::uint32_t const> const queue_family_indices
@@ -89,7 +96,7 @@ namespace Maia::Renderer::Vulkan
     {
         return create_buffer(
             device, 
-            allocation_callbacks, 
+            allocator, 
             {}, 
             size, 
             VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -101,7 +108,7 @@ namespace Maia::Renderer::Vulkan
 
     Buffer create_mappable_index_buffer(
         Device const device, 
-        Allocation_callbacks const allocation_callbacks,
+        std::optional<Allocation_callbacks> const allocator,
         VkDeviceSize const size,
         VkSharingMode const sharing_mode,
         std::span<std::uint32_t const> const queue_family_indices
@@ -109,7 +116,7 @@ namespace Maia::Renderer::Vulkan
     {
         return create_buffer(
             device, 
-            allocation_callbacks, 
+            allocator, 
             {}, 
             size, 
             VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
@@ -120,7 +127,7 @@ namespace Maia::Renderer::Vulkan
 
     Buffer create_non_mappable_index_buffer(
         Device const device, 
-        Allocation_callbacks const allocation_callbacks,
+        std::optional<Allocation_callbacks> const allocator,
         VkDeviceSize const size,
         VkSharingMode const sharing_mode,
         std::span<std::uint32_t const> const queue_family_indices
@@ -128,7 +135,7 @@ namespace Maia::Renderer::Vulkan
     {
         return create_buffer(
             device, 
-            allocation_callbacks, 
+            allocator, 
             {}, 
             size, 
             VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -140,7 +147,7 @@ namespace Maia::Renderer::Vulkan
 
     Buffer create_mappable_uniform_buffer(
         Device const device, 
-        Allocation_callbacks const allocation_callbacks,
+        std::optional<Allocation_callbacks> const allocator,
         VkDeviceSize const size,
         VkSharingMode const sharing_mode,
         std::span<std::uint32_t const> const queue_family_indices
@@ -148,7 +155,7 @@ namespace Maia::Renderer::Vulkan
     {
         return create_buffer(
             device, 
-            allocation_callbacks, 
+            allocator, 
             {}, 
             size, 
             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -159,7 +166,7 @@ namespace Maia::Renderer::Vulkan
 
     Buffer create_non_mappable_uniform_buffer(
         Device const device, 
-        Allocation_callbacks const allocation_callbacks,
+        std::optional<Allocation_callbacks> const allocator,
         VkDeviceSize const size,
         VkSharingMode const sharing_mode,
         std::span<std::uint32_t const> const queue_family_indices
@@ -167,7 +174,7 @@ namespace Maia::Renderer::Vulkan
     {
         return create_buffer(
             device, 
-            allocation_callbacks, 
+            allocator, 
             {}, 
             size, 
             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -179,7 +186,7 @@ namespace Maia::Renderer::Vulkan
 
     Buffer create_mappable_storage_buffer(
         Device const device, 
-        Allocation_callbacks const allocation_callbacks,
+        std::optional<Allocation_callbacks> const allocator,
         VkDeviceSize const size,
         VkSharingMode const sharing_mode,
         std::span<std::uint32_t const> const queue_family_indices
@@ -187,7 +194,7 @@ namespace Maia::Renderer::Vulkan
     {
         return create_buffer(
             device, 
-            allocation_callbacks, 
+            allocator, 
             {}, 
             size, 
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
@@ -198,7 +205,7 @@ namespace Maia::Renderer::Vulkan
 
     Buffer create_non_mappable_storage_buffer(
         Device const device, 
-        Allocation_callbacks const allocation_callbacks,
+        std::optional<Allocation_callbacks> const allocator,
         VkDeviceSize const size,
         VkSharingMode const sharing_mode,
         std::span<std::uint32_t const> const queue_family_indices
@@ -206,7 +213,7 @@ namespace Maia::Renderer::Vulkan
     {
         return create_buffer(
             device, 
-            allocation_callbacks, 
+            allocator, 
             {}, 
             size, 
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,

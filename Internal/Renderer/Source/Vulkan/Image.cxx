@@ -6,6 +6,7 @@ import maia.renderer.vulkan.device;
 import <vulkan/vulkan.h>;
 
 import <cstdint>;
+import <optional>;
 import <span>;
 
 namespace Maia::Renderer::Vulkan
@@ -17,7 +18,7 @@ namespace Maia::Renderer::Vulkan
 
     export Image create_image(
         Device device,
-        Allocation_callbacks allocation_callbacks,
+        std::optional<Allocation_callbacks> allocator,
         VkImageType image_type,
         VkFormat format,
         VkExtent3D extent,

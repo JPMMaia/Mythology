@@ -6,6 +6,7 @@ import maia.renderer.vulkan.device;
 import <vulkan/vulkan.h>;
 
 import <cstdint>;
+import <optional>;
 import <span>;
 
 namespace Maia::Renderer::Vulkan
@@ -17,7 +18,7 @@ namespace Maia::Renderer::Vulkan
 
     export Buffer create_buffer(
         Device device, 
-        Allocation_callbacks allocation_callbacks,
+        std::optional<Allocation_callbacks> allocator,
         VkBufferCreateFlags flags,
         VkDeviceSize size,
         VkBufferUsageFlags usage,
@@ -28,7 +29,7 @@ namespace Maia::Renderer::Vulkan
 
     export Buffer create_transfer_source_buffer(
         Device device, 
-        Allocation_callbacks allocation_callbacks,
+        std::optional<Allocation_callbacks> allocator,
         VkDeviceSize size,
         VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE,
         std::span<std::uint32_t const> queue_family_indices = {}
@@ -37,7 +38,7 @@ namespace Maia::Renderer::Vulkan
 
     export Buffer create_mappable_vertex_buffer(
         Device device, 
-        Allocation_callbacks allocation_callbacks,
+        std::optional<Allocation_callbacks> allocator,
         VkDeviceSize size,
         VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE,
         std::span<std::uint32_t const> queue_family_indices = {}
@@ -45,7 +46,7 @@ namespace Maia::Renderer::Vulkan
 
     export Buffer create_non_mappable_vertex_buffer(
         Device device, 
-        Allocation_callbacks allocation_callbacks,
+        std::optional<Allocation_callbacks> allocator,
         VkDeviceSize size,
         VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE,
         std::span<std::uint32_t const> queue_family_indices = {}
@@ -54,7 +55,7 @@ namespace Maia::Renderer::Vulkan
 
     export Buffer create_mappable_index_buffer(
         Device device, 
-        Allocation_callbacks allocation_callbacks,
+        std::optional<Allocation_callbacks> allocator,
         VkDeviceSize size,
         VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE,
         std::span<std::uint32_t const> queue_family_indices = {}
@@ -62,7 +63,7 @@ namespace Maia::Renderer::Vulkan
 
     export Buffer create_non_mappable_index_buffer(
         Device device, 
-        Allocation_callbacks allocation_callbacks,
+        std::optional<Allocation_callbacks> allocator,
         VkDeviceSize size,
         VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE,
         std::span<std::uint32_t const> queue_family_indices = {}
@@ -71,7 +72,7 @@ namespace Maia::Renderer::Vulkan
 
     export Buffer create_mappable_uniform_buffer(
         Device device, 
-        Allocation_callbacks allocation_callbacks,
+        std::optional<Allocation_callbacks> allocator,
         VkDeviceSize size,
         VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE,
         std::span<std::uint32_t const> queue_family_indices = {}
@@ -79,7 +80,7 @@ namespace Maia::Renderer::Vulkan
 
     export Buffer create_non_mappable_uniform_buffer(
         Device device, 
-        Allocation_callbacks allocation_callbacks,
+        std::optional<Allocation_callbacks> allocator,
         VkDeviceSize size,
         VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE,
         std::span<std::uint32_t const> queue_family_indices = {}
@@ -88,7 +89,7 @@ namespace Maia::Renderer::Vulkan
 
     export Buffer create_mappable_storage_buffer(
         Device device, 
-        Allocation_callbacks allocation_callbacks,
+        std::optional<Allocation_callbacks> allocator,
         VkDeviceSize size,
         VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE,
         std::span<std::uint32_t const> queue_family_indices = {}
@@ -96,7 +97,7 @@ namespace Maia::Renderer::Vulkan
 
     export Buffer create_non_mappable_storage_buffer(
         Device device, 
-        Allocation_callbacks allocation_callbacks,
+        std::optional<Allocation_callbacks> allocator,
         VkDeviceSize size,
         VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE,
         std::span<std::uint32_t const> queue_family_indices = {}

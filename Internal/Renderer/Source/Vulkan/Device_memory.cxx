@@ -83,6 +83,6 @@ namespace Maia::Renderer::Vulkan
         Device device, 
         VkDeviceSize allocation_size, 
         Memory_type_index memory_type_index, 
-        Allocation_callbacks allocator
+        std::optional<Allocation_callbacks> allocator
     ) noexcept;
 }

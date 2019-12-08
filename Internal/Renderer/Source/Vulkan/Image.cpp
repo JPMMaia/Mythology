@@ -7,13 +7,14 @@ import maia.renderer.vulkan.device;
 import <vulkan/vulkan.h>;
 
 import <cstdint>;
+import <optional>;
 import <span>;
 
 namespace Maia::Renderer::Vulkan
 {
     Image create_image(
         Device const device,
-        Allocation_callbacks const allocation_callbacks,
+        std::optional<Allocation_callbacks> const allocator,
         VkImageType const image_type,
         VkFormat const format,
         VkExtent3D const extent,
@@ -49,7 +50,13 @@ namespace Maia::Renderer::Vulkan
 
         VkImage image = {};
         check_result(
-            vkCreateImage(device.value, &create_info, &allocation_callbacks.value, &image));
+            vkCreateImage(
+                device.value, 
+                &create_info, 
+                allocator.has_value() ? &allocator->value : nullptr, 
+                &image
+            )
+        );
 
         return {image};
     }

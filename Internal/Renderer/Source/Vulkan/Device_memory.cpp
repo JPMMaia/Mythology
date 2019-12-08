@@ -214,7 +214,7 @@ namespace Maia::Renderer::Vulkan
         Device const device, 
         VkDeviceSize const allocation_size, 
         Memory_type_index const memory_type_index, 
-        Allocation_callbacks const allocator
+        std::optional<Allocation_callbacks> const allocator
     ) noexcept
     {
         VkMemoryAllocateInfo const info
@@ -227,7 +227,13 @@ namespace Maia::Renderer::Vulkan
 
         VkDeviceMemory memory = {};
         check_result(
-            vkAllocateMemory(device.value, &info, &allocator.value, &memory));
+            vkAllocateMemory(
+                device.value, 
+                &info, 
+                allocator.has_value() ? &allocator->value : nullptr,
+                &memory
+            )
+        );
 
         return {memory};
     }
