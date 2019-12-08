@@ -11,6 +11,17 @@ import <span>;
 
 namespace Maia::Renderer::Vulkan
 {
+    export struct Mip_level_count
+    {
+        std::uint32_t value;
+    };
+
+    export struct Array_layer_count
+    {
+        std::uint32_t value;
+    };
+
+
     export struct Image
     {
         VkImage value;
@@ -22,10 +33,10 @@ namespace Maia::Renderer::Vulkan
         VkImageType image_type,
         VkFormat format,
         VkExtent3D extent,
-        std::uint32_t mip_levels,
-        std::uint32_t array_layers,
+        Mip_level_count mip_levels,
+        Array_layer_count array_layers,
         VkImageUsageFlags usage,
-        VkImageLayout initial_layout,
+        VkImageLayout initial_layout = VK_IMAGE_LAYOUT_UNDEFINED,
         VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT,
         VkImageCreateFlags flags = {},
         VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL,
