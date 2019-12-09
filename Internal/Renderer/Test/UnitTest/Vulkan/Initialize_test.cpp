@@ -1,4 +1,5 @@
 import maia.renderer.vulkan.allocation_callbacks;
+import maia.renderer.vulkan.command_pool;
 import maia.renderer.vulkan.device;
 import maia.renderer.vulkan.device_memory;
 import maia.renderer.vulkan.image;
@@ -107,6 +108,22 @@ namespace Maia::Renderer::Vulkan::Unit_test
 				allocate_memory(device, color_image_memory_requirements.value.size, *memory_type_index, {});
 
 			bind_memory(device, color_image, device_memory, 0);
+
+			{
+				std::optional<Queue_family_index> const queue_family_index = find_queue_family_with_capabilities(
+					queue_family_properties,
+					[](Queue_family_properties const& properties) -> bool { return has_graphics_capabilities(properties); }
+				);
+
+				REQUIRE(queue_family_index.has_value());
+				
+				Command_pool const command_pool = create_command_pool(
+					device, 
+					VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+					*queue_family_index,
+					{}
+				);
+			}
 		}
 	}
 }
