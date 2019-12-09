@@ -85,4 +85,19 @@ namespace Maia::Renderer::Vulkan
         Memory_type_index memory_type_index, 
         std::optional<Allocation_callbacks> allocator
     ) noexcept;
+
+
+    export void bind_memory(
+        Device device,
+        Buffer buffer,
+        Device_memory memory,
+        VkDeviceSize memory_offset
+    ) noexcept;
+
+    export void bind_memory(
+        Device device,
+        Image image,
+        Device_memory memory,
+        VkDeviceSize memory_offset
+    ) noexcept;
 }

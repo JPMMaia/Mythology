@@ -105,6 +105,8 @@ namespace Maia::Renderer::Vulkan::Unit_test
 
 			Device_memory const device_memory =
 				allocate_memory(device, color_image_memory_requirements.value.size, *memory_type_index, {});
+
+			bind_memory(device, color_image, device_memory, 0);
 		}
 	}
 }
