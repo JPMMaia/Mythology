@@ -4,6 +4,7 @@ import maia.renderer.vulkan.physical_device;
 
 import <vulkan/vulkan.h>;
 
+import <algorithm>;
 import <cstdint>;
 import <memory_resource>;
 import <span>;
@@ -21,6 +22,36 @@ namespace Maia::Renderer::Vulkan
     export bool has_graphics_capabilities(Queue_family_properties const& queue_family_properties) noexcept;
     export bool has_compute_capabilities(Queue_family_properties const& queue_family_properties) noexcept;
     export bool has_transfer_capabilities(Queue_family_properties const& queue_family_properties) noexcept;
+
+
+    export struct Queue_family_index
+    {
+        std::uint32_t value;
+    };
+
+    
+    export template <class Function>
+    std::optional<Queue_family_index> find_queue_family_with_capabilities(
+        std::span<Queue_family_properties const> const queue_family_properties,
+        Function has_capabilities
+    ) noexcept
+    {
+        auto const iterator = std::find_if(
+            queue_family_properties.begin(), 
+            queue_family_properties.end(),
+            has_capabilities
+        );
+
+        if (iterator != queue_family_properties.end())
+        {
+            auto const index = std::distance(queue_family_properties.begin(), iterator);
+            return {{static_cast<std::uint32_t>(index)}};
+        }
+        else 
+        {
+            return {};
+        }
+    }
 
 
     export struct Device_queue_create_info
