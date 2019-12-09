@@ -1,4 +1,5 @@
 import maia.renderer.vulkan.allocation_callbacks;
+import maia.renderer.vulkan.command_buffer;
 import maia.renderer.vulkan.command_pool;
 import maia.renderer.vulkan.device;
 import maia.renderer.vulkan.device_memory;
@@ -87,7 +88,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 				{},
 				VK_IMAGE_TYPE_2D,
 				VK_FORMAT_R8G8B8A8_UNORM,
-				VkExtent3D{ 800, 600, 1 },
+				VkExtent3D{800, 600, 1},
 				Mip_level_count{1},
 				Array_layer_count{1},
 				VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
@@ -123,6 +124,15 @@ namespace Maia::Renderer::Vulkan::Unit_test
 					*queue_family_index,
 					{}
 				);
+
+				std::pmr::vector<Command_buffer> const command_buffers = 
+					allocate_command_buffers(
+						device,
+						command_pool,
+						VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+						1,
+						{}
+					);
 			}
 		}
 	}

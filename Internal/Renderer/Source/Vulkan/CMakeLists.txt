@@ -120,6 +120,22 @@ target_module (
 
 target_module (
     MaiaRendererVulkan
+    "maia.renderer.vulkan.command_buffer"
+    INTERFACE "Command_buffer.cxx"
+    INTERFACE_DEPENDS "Standard_library" "Vulkan"
+        "maia.renderer.vulkan.allocation_callbacks"
+        "maia.renderer.vulkan.command_pool"
+        "maia.renderer.vulkan.device"
+    IMPLEMENTATION "Command_buffer.cpp"
+    IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" 
+        "maia.renderer.vulkan.allocation_callbacks"
+        "maia.renderer.vulkan.check"
+        "maia.renderer.vulkan.command_pool"
+        "maia.renderer.vulkan.device"
+)
+
+target_module (
+    MaiaRendererVulkan
     "maia.renderer.vulkan"
     INTERFACE "Module.cxx"
     INTERFACE_DEPENDS
