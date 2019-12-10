@@ -38,4 +38,21 @@ namespace Maia::Renderer::Vulkan
         Command_pool command_pool,
         std::span<Command_buffer const> command_buffers
     ) noexcept;
+
+    
+    export void begin_command_buffer(
+        Command_buffer command_buffer,
+        VkCommandBufferUsageFlags flags,
+        std::optional<VkCommandBufferInheritanceInfo> inheritance_info
+    ) noexcept;
+
+    export void begin_command_buffer(
+        Command_buffer command_buffer,
+        VkCommandBufferUsageFlags flags,
+        std::optional<VkCommandBufferInheritanceInfo> inheritance_info
+    ) noexcept;
+
+    export void end_command_buffer(
+        Command_buffer command_buffer
+    ) noexcept;
 }

@@ -133,6 +133,12 @@ namespace Maia::Renderer::Vulkan::Unit_test
 						1,
 						{}
 					);
+
+				REQUIRE(command_buffers.size() == 1);
+				Command_buffer const command_buffer = command_buffers.front();
+
+				begin_command_buffer(command_buffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, {});
+				end_command_buffer(command_buffer);
 			}
 		}
 	}

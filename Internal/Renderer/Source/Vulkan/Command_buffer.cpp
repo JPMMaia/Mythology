@@ -74,4 +74,36 @@ namespace Maia::Renderer::Vulkan
             reinterpret_cast<VkCommandBuffer const*>(command_buffers.data())
         );
     }
+
+
+    void begin_command_buffer(
+        Command_buffer const command_buffer,
+        VkCommandBufferUsageFlags const flags,
+        std::optional<VkCommandBufferInheritanceInfo> const inheritance_info
+    ) noexcept
+    {
+        VkCommandBufferBeginInfo const begin_info
+        {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .pNext = nullptr,
+            .flags = flags,
+            .pInheritanceInfo = inheritance_info.has_value() ? &inheritance_info.value() : nullptr
+        };
+
+        check_result(
+            vkBeginCommandBuffer(
+                command_buffer.value,
+                &begin_info
+            )
+        );
+    }
+
+    void end_command_buffer(
+        Command_buffer command_buffer
+    ) noexcept
+    {
+        check_result(
+            vkEndCommandBuffer(command_buffer.value)
+        );
+    }
 }
