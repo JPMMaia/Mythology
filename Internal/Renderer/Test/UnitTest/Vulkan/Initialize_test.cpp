@@ -3,9 +3,12 @@ import maia.renderer.vulkan.command_buffer;
 import maia.renderer.vulkan.command_pool;
 import maia.renderer.vulkan.device;
 import maia.renderer.vulkan.device_memory;
+import maia.renderer.vulkan.fence;
 import maia.renderer.vulkan.image;
-import maia.renderer.vulkan.physical_device;
 import maia.renderer.vulkan.instance;
+import maia.renderer.vulkan.physical_device;
+import maia.renderer.vulkan.queue;
+
 
 import <catch2/catch.hpp>;
 import <vulkan/vulkan.h>;
@@ -139,6 +142,9 @@ namespace Maia::Renderer::Vulkan::Unit_test
 
 				begin_command_buffer(command_buffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, {});
 				end_command_buffer(command_buffer);
+
+				Queue const queue = get_device_queue(device, *queue_family_index, 0);
+				queue_submit(queue, {}, {}, {&command_buffer, 1}, {}, {});
 			}
 		}
 	}
