@@ -49,6 +49,15 @@ target_module (
 
 target_module (
     MaiaRendererVulkan
+    "maia.renderer.vulkan.fence"
+    INTERFACE "Fence.cxx"
+    INTERFACE_DEPENDS "Standard_library" "Vulkan"
+    IMPLEMENTATION "Fence.cpp"
+    IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan"
+)
+
+target_module (
+    MaiaRendererVulkan
     "maia.renderer.vulkan.queue"
     INTERFACE "Queue.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
