@@ -58,6 +58,15 @@ target_module (
 
 target_module (
     MaiaRendererVulkan
+    "maia.renderer.vulkan.semaphore"
+    INTERFACE "Semaphore.cxx"
+    INTERFACE_DEPENDS "Standard_library" "Vulkan"
+    IMPLEMENTATION "Semaphore.cpp"
+    IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan"
+)
+
+target_module (
+    MaiaRendererVulkan
     "maia.renderer.vulkan.queue"
     INTERFACE "Queue.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
