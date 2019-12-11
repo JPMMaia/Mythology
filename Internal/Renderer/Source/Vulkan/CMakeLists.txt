@@ -52,8 +52,13 @@ target_module (
     "maia.renderer.vulkan.fence"
     INTERFACE "Fence.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
+        "maia.renderer.vulkan.allocation_callbacks"
+        "maia.renderer.vulkan.device"
     IMPLEMENTATION "Fence.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan"
+        "maia.renderer.vulkan.allocation_callbacks"
+        "maia.renderer.vulkan.check"
+        "maia.renderer.vulkan.device"
 )
 
 target_module (

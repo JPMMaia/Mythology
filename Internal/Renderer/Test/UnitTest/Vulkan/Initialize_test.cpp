@@ -143,8 +143,14 @@ namespace Maia::Renderer::Vulkan::Unit_test
 				begin_command_buffer(command_buffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, {});
 				end_command_buffer(command_buffer);
 
+				Fence const fence = create_fence(device, {}, {});
+
 				Queue const queue = get_device_queue(device, *queue_family_index, 0);
-				queue_submit(queue, {}, {}, {&command_buffer, 1}, {}, {});
+				queue_submit(queue, {}, {}, {&command_buffer, 1}, {}, fence);
+
+				REQUIRE(
+					wait_for_all_fences(device, {&fence, 1}, Timeout_nanoseconds{1000}) == VK_SUCCESS
+				);
 			}
 		}
 	}
