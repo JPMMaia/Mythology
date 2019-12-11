@@ -66,8 +66,13 @@ target_module (
     "maia.renderer.vulkan.semaphore"
     INTERFACE "Semaphore.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
+        "maia.renderer.vulkan.allocation_callbacks"
+        "maia.renderer.vulkan.device"
     IMPLEMENTATION "Semaphore.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan"
+        "maia.renderer.vulkan.allocation_callbacks"
+        "maia.renderer.vulkan.check"
+        "maia.renderer.vulkan.device"
 )
 
 target_module (
