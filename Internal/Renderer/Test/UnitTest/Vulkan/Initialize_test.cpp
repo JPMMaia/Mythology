@@ -8,7 +8,7 @@ import maia.renderer.vulkan.image;
 import maia.renderer.vulkan.instance;
 import maia.renderer.vulkan.physical_device;
 import maia.renderer.vulkan.queue;
-
+import maia.renderer.vulkan.render_pass;
 
 import <catch2/catch.hpp>;
 import <vulkan/vulkan.h>;
@@ -25,6 +25,64 @@ import <vector>;
 
 namespace Maia::Renderer::Vulkan::Unit_test
 {
+	namespace
+	{
+		Render_pass create_render_pass(Device const device) noexcept
+		{
+			VkAttachmentDescription const color_attachment_description
+			{
+				.flags = {},
+				.format = VK_FORMAT_R8G8B8A8_UNORM,
+				.samples = VK_SAMPLE_COUNT_1_BIT,
+				.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+				.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+				.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+				.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+				.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+				.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			};
+
+			VkAttachmentReference const color_attachment_reference
+			{
+				0,
+				VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+			};
+
+			VkSubpassDescription const subpass_description
+			{
+				.flags = {},
+				.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+				.inputAttachmentCount = 0,
+				.pInputAttachments = nullptr,
+				.colorAttachmentCount = 1,
+				.pColorAttachments = &color_attachment_reference,
+				.pResolveAttachments = nullptr,
+				.pDepthStencilAttachment = nullptr,
+				.preserveAttachmentCount = 0,
+				.pPreserveAttachments = nullptr,
+			};
+
+			VkSubpassDependency const subpass_dependency
+			{
+				.srcSubpass = VK_SUBPASS_EXTERNAL,
+				.dstSubpass = {},
+				.srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+				.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+				.srcAccessMask = {},
+				.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+				.dependencyFlags = {}
+			};
+
+			return create_render_pass(
+				device,
+				{&color_attachment_description, 1},
+				{&subpass_description, 1},
+				{&subpass_dependency, 1},
+				{}
+			);
+		}
+	}
+
 	SCENARIO("Initialize")
 	{
 		std::pmr::vector<VkLayerProperties> const layer_properties = enumerate_instance_layer_properties();
@@ -113,6 +171,30 @@ namespace Maia::Renderer::Vulkan::Unit_test
 
 			bind_memory(device, color_image, device_memory, 0);
 
+			Image_view const color_image_view = create_image_view(
+				device,
+				{},
+				color_image,
+				VK_IMAGE_VIEW_TYPE_2D,
+				VK_FORMAT_R8G8B8A8_UNORM,
+				{},
+				{VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1},
+				{}
+			);
+
+			Render_pass const render_pass = create_render_pass(
+				device
+			);
+
+			Framebuffer const framebuffer = create_framebuffer(
+				device,
+				{},
+				render_pass,
+				{&color_image_view.value, 1},
+				Framebuffer_dimensions{800, 600, 1},
+				{}
+			);
+
 			{
 				std::optional<Queue_family_index> const queue_family_index = find_queue_family_with_capabilities(
 					queue_family_properties,
@@ -141,6 +223,27 @@ namespace Maia::Renderer::Vulkan::Unit_test
 				Command_buffer const command_buffer = command_buffers.front();
 
 				begin_command_buffer(command_buffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, {});
+				{
+					VkClearValue const clear_value
+					{
+						.color = {
+							.float32 =  {1.0f, 0.0f, 0.0f, 1.0f}
+						}
+					};
+
+					begin_render_pass(
+						command_buffer,
+						render_pass,
+						framebuffer,
+						{800, 600},
+						{&clear_value, 1},
+						VK_SUBPASS_CONTENTS_INLINE
+					);
+
+					end_render_pass(
+						command_buffer
+					);
+				}
 				end_command_buffer(command_buffer);
 
 				Fence const fence = create_fence(device, {}, {});
