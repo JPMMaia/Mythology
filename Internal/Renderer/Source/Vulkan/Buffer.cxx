@@ -26,6 +26,12 @@ namespace Maia::Renderer::Vulkan
         std::span<std::uint32_t const> queue_family_indices = {}
     ) noexcept;
 
+    export void destroy_buffer(
+        Device device,
+        Buffer buffer,
+        std::optional<Allocation_callbacks> allocator
+    ) noexcept;
+
 
     export Buffer create_transfer_source_buffer(
         Device device, 

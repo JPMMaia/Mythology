@@ -47,6 +47,19 @@ namespace Maia::Renderer::Vulkan
         return {buffer};
     }
 
+    void destroy_buffer(
+        Device const device,
+        Buffer const buffer,
+        std::optional<Allocation_callbacks> const allocator
+    ) noexcept
+    {
+        vkDestroyBuffer(
+            device.value,
+            buffer.value,
+            allocator.has_value() ? &allocator->value : nullptr
+        );
+    }
+
     Buffer create_transfer_source_buffer(
         Device const device, 
         std::optional<Allocation_callbacks> const allocator,
