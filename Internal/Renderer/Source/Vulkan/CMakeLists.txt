@@ -143,6 +143,20 @@ target_module (
 
 target_module (
     MaiaRendererVulkan
+    "maia.renderer.vulkan.render_pass"
+    INTERFACE "Render_pass.cxx"
+    INTERFACE_DEPENDS "Standard_library" "Vulkan"
+        "maia.renderer.vulkan.allocation_callbacks"
+        "maia.renderer.vulkan.device"
+    IMPLEMENTATION "Render_pass.cpp"
+    IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" 
+        "maia.renderer.vulkan.allocation_callbacks"
+        "maia.renderer.vulkan.check"
+        "maia.renderer.vulkan.device"
+)
+
+target_module (
+    MaiaRendererVulkan
     "maia.renderer.vulkan.command_pool"
     INTERFACE "Command_pool.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
