@@ -73,4 +73,54 @@ namespace Maia::Renderer::Vulkan
             allocator.has_value() ? &allocator->value : nullptr
         );
     }
+
+
+    Image_view create_image_view(
+        Device const device,
+        VkImageViewCreateFlags const flags,
+        Image const image,
+        VkImageViewType const view_type,
+        VkFormat const format,
+        Component_mapping const components,
+        VkImageSubresourceRange const subresource_range,
+        std::optional<Allocation_callbacks> const allocator
+    ) noexcept
+    {
+        VkImageViewCreateInfo const create_info
+        {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = flags,
+            .image = image.value,
+            .viewType = view_type,
+            .format = format,
+            .components = components.value,
+            .subresourceRange = subresource_range,
+        };
+
+        VkImageView image_view = {};
+        check_result(
+            vkCreateImageView(
+                device.value,
+                &create_info,
+                allocator.has_value() ? &allocator->value : nullptr,
+                &image_view
+            )
+        );
+
+        return {image_view};
+    }
+
+    void destroy_image_view(
+        Device const device,
+        Image_view const image_view,
+        std::optional<Allocation_callbacks> const allocator
+    ) noexcept
+    {
+        vkDestroyImageView(
+            device.value,
+            image_view.value,
+            allocator.has_value() ? &allocator->value : nullptr
+        );
+    }
 }

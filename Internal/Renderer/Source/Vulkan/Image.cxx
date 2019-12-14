@@ -50,4 +50,37 @@ namespace Maia::Renderer::Vulkan
         std::optional<Allocation_callbacks> allocator
     ) noexcept;
 
+
+    export struct Image_view
+    {
+        VkImageView value;
+    };
+
+    export struct Component_mapping
+    {
+        VkComponentMapping value = 
+        {
+            VK_COMPONENT_SWIZZLE_IDENTITY,
+            VK_COMPONENT_SWIZZLE_IDENTITY,
+            VK_COMPONENT_SWIZZLE_IDENTITY,
+            VK_COMPONENT_SWIZZLE_IDENTITY
+        };
+    };
+
+    export Image_view create_image_view(
+        Device device,
+        VkImageViewCreateFlags flags,
+        Image image,
+        VkImageViewType view_type,
+        VkFormat format,
+        Component_mapping components,
+        VkImageSubresourceRange subresource_range,
+        std::optional<Allocation_callbacks> allocator
+    ) noexcept;
+
+    export void destroy_image_view(
+        Device device,
+        Image_view image_view,
+        std::optional<Allocation_callbacks> allocator
+    ) noexcept;
 }
