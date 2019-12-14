@@ -3,6 +3,7 @@ export module maia.renderer.vulkan.command_buffer;
 import maia.renderer.vulkan.allocation_callbacks;
 import maia.renderer.vulkan.command_pool;
 import maia.renderer.vulkan.device;
+import maia.renderer.vulkan.render_pass;
 
 import <vulkan/vulkan.h>;
 
@@ -53,6 +54,25 @@ namespace Maia::Renderer::Vulkan
     ) noexcept;
 
     export void end_command_buffer(
+        Command_buffer command_buffer
+    ) noexcept;
+
+
+    export void begin_render_pass(
+        Command_buffer command_buffer,
+        Render_pass render_pass,
+        Framebuffer framebuffer,
+        VkRect2D render_area,
+        std::span<VkClearValue const> clear_values,
+        VkSubpassContents subpass_contents
+    ) noexcept;
+
+    export void next_subpass(
+        Command_buffer command_buffer,
+        VkSubpassContents subpass_contents
+    ) noexcept;
+
+    export void end_render_pass(
         Command_buffer command_buffer
     ) noexcept;
 }

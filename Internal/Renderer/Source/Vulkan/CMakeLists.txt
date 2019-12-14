@@ -177,12 +177,14 @@ target_module (
         "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.command_pool"
         "maia.renderer.vulkan.device"
+        "maia.renderer.vulkan.render_pass"
     IMPLEMENTATION "Command_buffer.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" 
         "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.check"
         "maia.renderer.vulkan.command_pool"
         "maia.renderer.vulkan.device"
+        "maia.renderer.vulkan.render_pass"
 )
 
 target_module (

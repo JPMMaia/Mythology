@@ -4,6 +4,7 @@ import maia.renderer.vulkan.allocation_callbacks;
 import maia.renderer.vulkan.check;
 import maia.renderer.vulkan.command_pool;
 import maia.renderer.vulkan.device;
+import maia.renderer.vulkan.render_pass;
 
 import <vulkan/vulkan.h>;
 
@@ -104,6 +105,54 @@ namespace Maia::Renderer::Vulkan
     {
         check_result(
             vkEndCommandBuffer(command_buffer.value)
+        );
+    }
+
+
+    void begin_render_pass(
+        Command_buffer const command_buffer,
+        Render_pass const render_pass,
+        Framebuffer const framebuffer,
+        VkRect2D const render_area,
+        std::span<VkClearValue const> const clear_values,
+        VkSubpassContents const subpass_contents
+    ) noexcept
+    {
+        VkRenderPassBeginInfo const render_pass_begin
+        {
+            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+            .pNext = nullptr,
+            .renderPass = render_pass.value,
+            .framebuffer = framebuffer.value,
+            .renderArea = render_area,
+            .clearValueCount = static_cast<uint32_t>(clear_values.size()),
+            .pClearValues = clear_values.data(),
+        };
+
+        vkCmdBeginRenderPass(
+            command_buffer.value, 
+            &render_pass_begin,
+            subpass_contents
+        );
+    }
+
+    void next_subpass(
+        Command_buffer const command_buffer,
+        VkSubpassContents const subpass_contents
+    ) noexcept
+    {
+        vkCmdNextSubpass(
+            command_buffer.value,
+            subpass_contents
+        );
+    }
+
+    void end_render_pass(
+        Command_buffer const command_buffer
+    ) noexcept
+    {
+        vkCmdEndRenderPass(
+            command_buffer.value
         );
     }
 }
