@@ -43,4 +43,11 @@ namespace Maia::Renderer::Vulkan
         VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE,
         std::span<std::uint32_t const> queue_family_indices = {}
     ) noexcept;
+
+    export void destroy_image(
+        Device device,
+        Image image,
+        std::optional<Allocation_callbacks> allocator
+    ) noexcept;
+
 }

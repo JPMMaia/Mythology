@@ -60,4 +60,17 @@ namespace Maia::Renderer::Vulkan
 
         return {image};
     }
+
+    void destroy_image(
+        Device const device,
+        Image const image,
+        std::optional<Allocation_callbacks> const allocator
+    ) noexcept
+    {
+        vkDestroyImage(
+            device.value,
+            image.value,
+            allocator.has_value() ? &allocator->value : nullptr
+        );
+    }
 }
