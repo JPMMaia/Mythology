@@ -259,4 +259,38 @@ namespace Maia::Renderer::Vulkan
         check_result(
             vkBindImageMemory(device.value, image.value, memory.value, memory_offset));
     }
+
+
+    void* map_memory(
+        Device const device,
+        Device_memory const device_memory,
+        VkDeviceSize const offset,
+        VkDeviceSize const size,
+        VkMemoryMapFlags const flags
+    ) noexcept
+    {
+        void* data = nullptr;
+        check_result(
+            vkMapMemory(
+                device.value,
+                device_memory.value,
+                offset,
+                size,
+                flags,
+                &data
+            )
+        );
+        return data;
+    }
+
+    void unmap_memory(
+        Device const device,
+        Device_memory const device_memory
+    ) noexcept
+    {
+        vkUnmapMemory(
+            device.value,
+            device_memory.value
+        );
+    }
 }

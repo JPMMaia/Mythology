@@ -100,4 +100,18 @@ namespace Maia::Renderer::Vulkan
         Device_memory memory,
         VkDeviceSize memory_offset
     ) noexcept;
+
+
+    export void* map_memory(
+        Device device,
+        Device_memory device_memory,
+        VkDeviceSize offset,
+        VkDeviceSize size,
+        VkMemoryMapFlags flags = {}
+    ) noexcept;
+
+    export void unmap_memory(
+        Device device,
+        Device_memory device_memory
+    ) noexcept;
 }
