@@ -227,22 +227,79 @@ namespace Maia::Renderer::Vulkan::Unit_test
 					VkClearValue const clear_value
 					{
 						.color = {
-							.float32 =  {1.0f, 0.0f, 0.0f, 1.0f}
+							.uint32 =  {0, 0, 128, 255}
 						}
 					};
 
-					begin_render_pass(
+					{
+						VkImageSubresourceRange const color_image_subresource_range
+						{
+							.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, 
+							.baseMipLevel = 0,
+							.levelCount = 1, 
+							.baseArrayLayer = 0,
+							.layerCount = 1
+						};
+
+						{
+							VkImageMemoryBarrier const image_memory_barrier
+							{
+								.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+								.pNext = nullptr,
+								.srcAccessMask = {},
+								.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+								.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+								.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+								.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+								.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+								.image = color_image.value,
+								.subresourceRange = color_image_subresource_range
+							};
+
+							vkCmdPipelineBarrier(
+								command_buffer.value,
+								VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 
+								VK_PIPELINE_STAGE_TRANSFER_BIT,
+								{},
+								0,
+								nullptr,
+								0,
+								nullptr,
+								1,
+								&image_memory_barrier
+							);
+						}
+
+						vkCmdClearColorImage(
+							command_buffer.value,
+							color_image.value,
+							VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+							&clear_value.color, 
+							1,
+							&color_image_subresource_range
+						);
+						
+							
+					}
+
+					/*vkCmdClearColorImage(
+						command_buffer.value,
+						color_image.value,
+						VK_IMAGE_, const VkClearColorValue *pColor, uint32_t rangeCount, const VkImageSubresourceRange *pRanges)
+					*/
+
+					/*begin_render_pass(
 						command_buffer,
 						render_pass,
 						framebuffer,
-						{800, 600},
+						{static_cast<int32_t>(color_image_extent.width), static_cast<int32_t>(color_image_extent.height)},
 						{&clear_value, 1},
 						VK_SUBPASS_CONTENTS_INLINE
 					);
 
 					end_render_pass(
 						command_buffer
-					);
+					);*/
 				}
 				end_command_buffer(command_buffer);
 
