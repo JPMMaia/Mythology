@@ -204,6 +204,30 @@ target_module (
 
 target_module (
     MaiaRendererVulkan
+    "maia.renderer.vulkan.swapchain"
+    INTERFACE "Swapchain.cxx"
+    INTERFACE_DEPENDS "Standard_library" "Vulkan"
+        "maia.renderer.vulkan.allocation_callbacks"
+        "maia.renderer.vulkan.device"
+        "maia.renderer.vulkan.fence"
+        "maia.renderer.vulkan.image"
+        "maia.renderer.vulkan.queue"
+        "maia.renderer.vulkan.semaphore"
+        "maia.renderer.vulkan.surface"
+    IMPLEMENTATION "Swapchain.cpp"
+    IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" 
+        "maia.renderer.vulkan.allocation_callbacks"
+        "maia.renderer.vulkan.check"
+        "maia.renderer.vulkan.device"
+        "maia.renderer.vulkan.fence"
+        "maia.renderer.vulkan.image"
+        "maia.renderer.vulkan.queue"
+        "maia.renderer.vulkan.semaphore"
+        "maia.renderer.vulkan.surface"
+)
+
+target_module (
+    MaiaRendererVulkan
     "maia.renderer.vulkan"
     INTERFACE "Module.cxx"
     INTERFACE_DEPENDS
