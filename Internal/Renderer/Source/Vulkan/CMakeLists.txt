@@ -187,6 +187,21 @@ target_module (
         "maia.renderer.vulkan.render_pass"
 )
 
+
+target_module (
+    MaiaRendererVulkan
+    "maia.renderer.vulkan.surface"
+    INTERFACE "Surface.cxx"
+    INTERFACE_DEPENDS "Standard_library" "Vulkan"
+        "maia.renderer.vulkan.device"
+        "maia.renderer.vulkan.physical_device"
+    IMPLEMENTATION "Surface.cpp"
+    IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" 
+        "maia.renderer.vulkan.check"
+        "maia.renderer.vulkan.device"
+        "maia.renderer.vulkan.physical_device"
+)
+
 target_module (
     MaiaRendererVulkan
     "maia.renderer.vulkan"
