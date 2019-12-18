@@ -17,6 +17,8 @@ import <algorithm>;
 import <array>;
 import <cassert>;
 import <cstdint>;
+import <cstring>;
+import <fstream>;
 import <iostream>;
 import <memory_resource>;
 import <span>;
@@ -27,12 +29,12 @@ namespace Maia::Renderer::Vulkan::Unit_test
 {
 	namespace
 	{
-		Render_pass create_render_pass(Device const device) noexcept
+		Render_pass create_render_pass(Device const device, VkFormat const color_image_format) noexcept
 		{
 			VkAttachmentDescription const color_attachment_description
 			{
 				.flags = {},
-				.format = VK_FORMAT_R8G8B8A8_UNORM,
+				.format = color_image_format,
 				.samples = VK_SAMPLE_COUNT_1_BIT,
 				.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
 				.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -144,16 +146,21 @@ namespace Maia::Renderer::Vulkan::Unit_test
 			std::cout << '\n';
 
 
+			VkFormat const color_image_format = VK_FORMAT_R8G8B8A8_UINT; 
+			VkExtent3D const color_image_extent {16, 16, 1};
 			Image const color_image = create_image(
 				device,
 				{},
 				VK_IMAGE_TYPE_2D,
-				VK_FORMAT_R8G8B8A8_UNORM,
-				VkExtent3D{800, 600, 1},
+				color_image_format,
+				color_image_extent,
 				Mip_level_count{1},
 				Array_layer_count{1},
-				VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-				VK_IMAGE_LAYOUT_UNDEFINED
+				VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+				VK_IMAGE_LAYOUT_UNDEFINED,
+				VK_SAMPLE_COUNT_1_BIT,
+				{},
+				VK_IMAGE_TILING_LINEAR
 			);
 
 			Memory_requirements const color_image_memory_requirements = get_memory_requirements(device, color_image);
@@ -176,14 +183,15 @@ namespace Maia::Renderer::Vulkan::Unit_test
 				{},
 				color_image,
 				VK_IMAGE_VIEW_TYPE_2D,
-				VK_FORMAT_R8G8B8A8_UNORM,
+				color_image_format,
 				{},
 				{VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1},
 				{}
 			);
 
 			Render_pass const render_pass = create_render_pass(
-				device
+				device,
+				color_image_format
 			);
 
 			Framebuffer const framebuffer = create_framebuffer(
@@ -191,7 +199,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 				{},
 				render_pass,
 				{&color_image_view.value, 1},
-				Framebuffer_dimensions{800, 600, 1},
+				Framebuffer_dimensions{color_image_extent.width, color_image_extent.height, 1},
 				{}
 			);
 
@@ -309,8 +317,57 @@ namespace Maia::Renderer::Vulkan::Unit_test
 				queue_submit(queue, {}, {}, {&command_buffer, 1}, {}, fence);
 
 				REQUIRE(
-					wait_for_all_fences(device, {&fence, 1}, Timeout_nanoseconds{1000}) == VK_SUCCESS
+					wait_for_all_fences(device, {&fence, 1}, Timeout_nanoseconds{100000}) == VK_SUCCESS
 				);
+
+				{
+					VkSubresourceLayout const color_image_layout = get_subresource_layout(
+						device,
+						color_image,
+						{.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .mipLevel = 0, .arrayLayer = 0}
+					);
+
+					{
+						void* const data = map_memory(
+							device,
+							device_memory,
+							color_image_layout.offset,
+							color_image_layout.size
+						);
+
+						{
+							std::ofstream output_stream{"test_image.ppm"};
+
+							output_stream << "P3\n";
+							output_stream << color_image_extent.width << ' ' << color_image_extent.height << '\n';
+							output_stream << "255\n";
+
+							for (std::uint32_t row_index = 0; row_index < color_image_extent.height; ++row_index)
+							{
+								for (std::uint32_t column_index = 0; column_index < color_image_extent.width; ++column_index)
+								{
+									std::uint64_t const texel_data_offset =
+										row_index * color_image_layout.rowPitch + 4 * column_index;
+									void const* const texel_data = static_cast<std::byte*>(data) + texel_data_offset;
+
+									std::array<char8_t, 4> color = {};
+									std::memcpy(color.data(), texel_data, sizeof(decltype(color)::value_type) * color.size());
+
+									output_stream << color[0] << ' ';
+									output_stream << color[1] << ' ';
+									output_stream << color[2] << "  ";
+								}
+								output_stream << '\n';
+							}
+						}
+
+						vkUnmapMemory(
+							device.value,
+							device_memory.value
+						);
+					}
+				}
+				
 			}
 		}
 	}
