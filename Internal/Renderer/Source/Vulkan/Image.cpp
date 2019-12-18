@@ -75,6 +75,23 @@ namespace Maia::Renderer::Vulkan
     }
 
 
+    VkSubresourceLayout get_subresource_layout(
+        Device const device,
+        Image const image,
+        VkImageSubresource const subresource
+    ) noexcept
+    {
+        VkSubresourceLayout subresource_layout = {};
+        vkGetImageSubresourceLayout(
+            device.value,
+            image.value,
+            &subresource,
+            &subresource_layout
+        );
+        return subresource_layout;
+    }
+
+
     Image_view create_image_view(
         Device const device,
         VkImageViewCreateFlags const flags,

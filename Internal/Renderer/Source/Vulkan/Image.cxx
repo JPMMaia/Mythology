@@ -50,6 +50,13 @@ namespace Maia::Renderer::Vulkan
         std::optional<Allocation_callbacks> allocator
     ) noexcept;
 
+    
+    export VkSubresourceLayout get_subresource_layout(
+        Device device,
+        Image image,
+        VkImageSubresource subresource
+    ) noexcept;
+
 
     export struct Image_view
     {
