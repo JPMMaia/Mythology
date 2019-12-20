@@ -3,7 +3,7 @@ project (MaiaECSUnitTest)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../../..//Utilities/CMake/Modules")
 
 add_executable (MaiaECSUnitTest)
-add_executable (Maia::GameEngine::UnitTest ALIAS MaiaECSUnitTest)
+add_executable (Maia::ECS::UnitTest ALIAS MaiaECSUnitTest)
 
 target_compile_features (MaiaECSUnitTest PRIVATE cxx_std_20)
 
