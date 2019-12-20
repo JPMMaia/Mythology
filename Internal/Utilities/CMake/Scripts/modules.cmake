@@ -34,6 +34,20 @@ function (target_header _target _module_name _header)
 
 endfunction ()
 
+function (get_target_include_directories _target _output_include_directories)
+    set (_include_directories)
+    get_target_property (_target_dependencies ${_target} LINK_LIBRARIES)
+    foreach (_target_dependency IN LISTS _target_dependencies)
+        if (TARGET ${_target_dependency})
+            get_target_property (_dependency_include_directories ${_target_dependency} INTERFACE_INCLUDE_DIRECTORIES)
+            if (_dependency_include_directories)
+                list (APPEND _include_directories ${_dependency_include_directories})
+            endif ()
+        endif ()
+    endforeach ()
+    set (${_output_include_directories} "${_include_directories}" PARENT_SCOPE)
+endfunction ()
+
 function (create_module_options _output_command _module_dependencies _prebuilt_module_path)
 
     set (_command)
@@ -90,6 +104,8 @@ function (target_module _target _module_name)
         endif ()
     endforeach ()
     
+    get_target_include_directories (${_target} _include_directories)
+    list (TRANSFORM _include_directories PREPEND "-I")
 
     add_custom_command (
         OUTPUT "${_module_cmi}"
@@ -98,6 +114,7 @@ function (target_module _target _module_name)
             ${_module_interface_options}
             "-x" "c++" "${_module_interface_unit}" "-c"
             "-Xclang" "-emit-module-interface" "-o" "${_module_cmi}"
+            ${_include_directories}
         DEPENDS "${_module_interface_unit}" "${_module_interfacec_unit_cmi_dependencies}"
     )
 
