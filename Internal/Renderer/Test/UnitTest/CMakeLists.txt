@@ -8,10 +8,11 @@ add_executable (Maia::Renderer::UnitTest ALIAS MaiaRendererUnitTest)
 add_module_compile_options (MaiaRendererUnitTest)
 
 target_link_libraries (MaiaRendererUnitTest PRIVATE Catch2_header Catch2_runner)
-
 add_module_dependency (MaiaRendererUnitTest "catch2.catch")
 
 target_link_libraries (MaiaRendererUnitTest PRIVATE Maia::Renderer::Vulkan)
+
+target_link_libraries (MaiaRendererUnitTest PRIVATE Standard_library)
 
 target_sources (MaiaRendererUnitTest 
 	PRIVATE
