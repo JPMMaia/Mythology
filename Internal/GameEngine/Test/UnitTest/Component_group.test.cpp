@@ -1,18 +1,28 @@
-#include <optional>
+import maia.ecs.component;
+import maia.ecs.component_group;
+import maia.ecs.components_chunk;
+import maia.ecs.entity;
+import maia.ecs.components.local_position;
+import maia.ecs.components.local_rotation;
 
-#include <catch2/catch.hpp>
+import <catch2/catch.hpp>;
 
-#include <Test_components.hpp>
+import <Eigen/Geometry>;
 
-#include <Maia/GameEngine/Component_group.hpp>
+import <array>;
+import <memory_resource>;
+import <optional>;
+import <span>;
 
-namespace Maia::GameEngine::Test
+namespace Maia::ECS::Test
 {
+	using namespace Maia::ECS::Components;
+
 	SCENARIO("Create a component group, add, remove and set components", "[Component_group]")
 	{
-		GIVEN("A component group consisting of Position and Rotation components and capacity per chunk equals 2 elements")
+		GIVEN("A component group consisting of Local_position and Local_rotation components and capacity per chunk equals 2 elements")
 		{
-			Component_group component_group{ make_component_group<Entity, Position, Rotation>(2) };
+			Component_group component_group{ make_component_group<Entity, Local_position, Local_rotation>(2) };
 
 			THEN("The component group has an initial size of 0")
 			{
@@ -24,11 +34,11 @@ namespace Maia::GameEngine::Test
 				CHECK(component_group.capacity() == 0);
 			}
 
-			WHEN("Pushing back components Position { 2.0f, 0.5f, -1.0f } and Rotation { 0.1f, 0.2f, 0.3f, 1.0f }")
+			WHEN("Pushing back components Local_position { 2.0f, 0.5f, -1.0f } and Local_rotation { 0.1f, 0.2f, 0.3f, 1.0f }")
 			{
 				Entity const original_entity{ 1 };
-				Position const original_position{ 2.0f, 0.5f, -1.0f };
-				Rotation const original_rotation{ 0.1f, 0.2f, 0.3f, 1.0f };
+				Local_position const original_position{ { 2.0f, 0.5f, -1.0f } };
+				Local_rotation const original_rotation{ { 0.1f, 0.2f, 0.3f, 1.0f } };
 
 				Component_group::Index const index = component_group.push_back(original_entity, original_position, original_rotation);
 
@@ -44,10 +54,10 @@ namespace Maia::GameEngine::Test
 
 				AND_WHEN("Getting components of element at index 0")
 				{
-					std::tuple<Entity, Position, Rotation> const components = component_group.get_components_data<Entity, Position, Rotation>(index);
+					std::tuple<Entity, Local_position, Local_rotation> const components = component_group.get_components_data<Entity, Local_position, Local_rotation>(index);
 					Entity const& current_entity = std::get<0>(components);
-					Position const& current_position = std::get<1>(components);
-					Rotation const& current_rotation = std::get<2>(components);
+					Local_position const& current_position = std::get<1>(components);
+					Local_rotation const& current_rotation = std::get<2>(components);
 
 					THEN("The entity, position and rotation components should have the same value that was pushed back")
 					{
@@ -57,20 +67,20 @@ namespace Maia::GameEngine::Test
 					}
 				}
 
-				AND_WHEN("Setting element at index 0 given Entity { 3 } Position {-1.0f, 2.0f, 3.0f } and Rotation { 0.5f, 0.5f, 0.0f, 0.5f }")
+				AND_WHEN("Setting element at index 0 given Entity { 3 } Local_position {-1.0f, 2.0f, 3.0f } and Local_rotation { 0.5f, 0.5f, 0.0f, 0.5f }")
 				{
 					Entity const new_entity{ 3 };
-					Position const new_position{ -1.0f, 2.0f, 3.0f };
-					Rotation const new_rotation{ 0.5f, 0.5f, 0.0f, 0.5f };
+					Local_position const new_position{ { -1.0f, 2.0f, 3.0f } };
+					Local_rotation const new_rotation{ { 0.5f, 0.5f, 0.0f, 0.5f } };
 
 					component_group.set_components_data(index, new_entity, new_position, new_rotation);
 
 					AND_WHEN("Getting components of element at index 0")
 					{
-						std::tuple<Entity, Position, Rotation> const components = component_group.get_components_data<Entity, Position, Rotation>(index);
+						std::tuple<Entity, Local_position, Local_rotation> const components = component_group.get_components_data<Entity, Local_position, Local_rotation>(index);
 						Entity const& current_entity = std::get<0>(components);
-						Position const& current_position = std::get<1>(components);
-						Rotation const& current_rotation = std::get<2>(components);
+						Local_position const& current_position = std::get<1>(components);
+						Local_rotation const& current_rotation = std::get<2>(components);
 
 						THEN("The position and rotation components should have the same value that was set")
 						{
@@ -81,15 +91,16 @@ namespace Maia::GameEngine::Test
 					}
 				}
 
-				AND_WHEN("Setting element at index 0 given Position { 1.0f, 4.0f, 2.0f  }")
+				AND_WHEN("Setting element at index 0 given Local_position { 1.0f, 4.0f, 2.0f  }")
 				{
-					Position new_position{ 1.0f, 4.0f, 2.0f };
+					Local_position new_position{ { 1.0f, 4.0f, 2.0f } };
 
 					component_group.set_component_data(index, new_position);
 
 					AND_WHEN("Getting position of element at index 0")
 					{
-						Position const current_position = component_group.get_component_data<Position>(index);
+						Local_position const current_position = 
+							component_group.get_component_data<Local_position>(index).get();
 
 						THEN("The position component should have the same value that was set")
 						{
@@ -98,15 +109,16 @@ namespace Maia::GameEngine::Test
 					}
 				}
 
-				AND_WHEN("Setting element at index 0 given Rotation { 1.0f, 2.0f, 3.0f, 4.0f }")
+				AND_WHEN("Setting element at index 0 given Local_rotation { 1.0f, 2.0f, 3.0f, 4.0f }")
 				{
-					Rotation new_rotation{ 1.0f, 2.0f, 3.0f, 4.0f };
+					Local_rotation new_rotation{ { 1.0f, 2.0f, 3.0f, 4.0f } };
 
 					component_group.set_component_data(index, new_rotation);
 
 					AND_WHEN("Getting rotation of element at index 0")
 					{
-						Rotation const current_rotation = component_group.get_component_data<Rotation>(index);
+						Local_rotation const current_rotation = 
+							component_group.get_component_data<Local_rotation>(index).get();
 
 						THEN("The rotation component should have the same value that was set")
 						{
@@ -117,10 +129,10 @@ namespace Maia::GameEngine::Test
 
 				AND_WHEN("Popping back")
 				{
-					std::tuple<Entity, Position, Rotation> const components = component_group.back<Entity, Position, Rotation>();
+					std::tuple<Entity, Local_position, Local_rotation> const components = component_group.back<Entity, Local_position, Local_rotation>();
 					Entity const& current_entity = std::get<0>(components);
-					Position const& current_position = std::get<1>(components);
-					Rotation const& current_rotation = std::get<2>(components);
+					Local_position const& current_position = std::get<1>(components);
+					Local_rotation const& current_rotation = std::get<2>(components);
 					component_group.pop_back();
 
 					THEN("The entity, position and rotation components should have the same value that was pushed back")
@@ -149,8 +161,8 @@ namespace Maia::GameEngine::Test
 				AND_WHEN("An element is pushed to the component group")
 				{
 					Entity const entity0{ 0 };
-					Position const position0{ 1.0f, 2.0f, 3.0f };
-					Rotation const rotation0{ 4.0f, 5.0f, 6.0f, 7.0f };
+					Local_position const position0{ { 1.0f, 2.0f, 3.0f } };
+					Local_rotation const rotation0{ { 4.0f, 5.0f, 6.0f, 7.0f } };
 					component_group.push_back(entity0, position0, rotation0);
 
 					THEN("The component group size is 1")
@@ -196,13 +208,13 @@ namespace Maia::GameEngine::Test
 					AND_WHEN("Two more elements are added")
 					{
 						Entity const entity1{ 1 };
-						Position const position1{ 8.0f, 9.0f, 10.0f };
-						Rotation const rotation1{ 11.0f, 12.0f, 13.0f, 14.0f };
+						Local_position const position1{ { 8.0f, 9.0f, 10.0f } };
+						Local_rotation const rotation1{ { 11.0f, 12.0f, 13.0f, 14.0f } };
 						component_group.push_back(entity1, position1, rotation1);
 
 						Entity const entity2{ 2 };
-						Position const position2{ 15.0f, 16.0f, 17.0f };
-						Rotation const rotation2{ 18.0f, 19.0f, 20.0f, 21.0f };
+						Local_position const position2{ { 15.0f, 16.0f, 17.0f } };
+						Local_rotation const rotation2{ { 18.0f, 19.0f, 20.0f, 21.0f } };
 						component_group.push_back(entity2, position2, rotation2);
 
 						THEN("The component group size is 3")
@@ -224,7 +236,7 @@ namespace Maia::GameEngine::Test
 								REQUIRE(entity_moved_data.has_value());
 								CHECK(entity_moved_data.value().entity == entity2);
 
-								auto[entity, position, rotation] = component_group.get_components_data<Entity, Position, Rotation>({ 0 });
+								auto[entity, position, rotation] = component_group.get_components_data<Entity, Local_position, Local_rotation>({ 0 });
 								CHECK(entity == entity2);
 								CHECK(position == position2);
 								CHECK(rotation == rotation2);
@@ -265,7 +277,6 @@ namespace Maia::GameEngine::Test
 									CHECK(entity_moved_data_1.has_value());
 									CHECK(!entity_moved_data_2.has_value());
 								}
-
 							}
 						}
 					}

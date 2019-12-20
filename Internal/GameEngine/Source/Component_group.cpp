@@ -1,17 +1,22 @@
-#include "Component_group.hpp"
+module maia.ecs.component_group;
 
-#include <cassert>
-#include <optional>
+import maia.ecs.component;
+import maia.ecs.components_chunk;
+import maia.ecs.entity;
 
-#include <gsl/span>
+import <cassert>;
+import <cstddef>;
+import <cstring>;
+import <memory_resource>;
+import <optional>;
+import <span>;
+import <vector>;
 
-#include <Maia/GameEngine/Components_chunk.hpp>
-
-namespace Maia::GameEngine
+namespace Maia::ECS
 {
 	namespace
 	{
-		std::size_t calculate_size_of_single_element(gsl::span<Component_info const> const component_infos)
+		std::size_t calculate_size_of_single_element(std::span<Component_info const> const component_infos) noexcept
 		{
 			std::size_t size_of_single_element{ 0 };
 
@@ -23,19 +28,20 @@ namespace Maia::GameEngine
 			return size_of_single_element;
 		}
 
-		std::vector<Component_type_info> create_component_type_infos(
-			gsl::span<Component_info const> const component_infos, 
-			std::size_t const capacity_per_chunk
-		)
+		std::pmr::vector<Component_type_info> create_component_type_infos(
+			std::span<Component_info const> const component_infos, 
+			std::size_t const capacity_per_chunk,
+			std::pmr::polymorphic_allocator<Component_type_info> type_infos_allocator
+		) noexcept
 		{
-			std::vector<Component_type_info> type_infos;
+			std::pmr::vector<Component_type_info> type_infos{std::move(type_infos_allocator)};
 			type_infos.reserve(component_infos.size());
 
 			std::size_t current_offset{ 0 };
 
 			for (Component_info const& component_info : component_infos)
 			{
-				type_infos.push_back({ component_info.id, { current_offset }, component_info.size });
+				type_infos.push_back({ component_info.id, current_offset, component_info.size });
 
 				current_offset += capacity_per_chunk * component_info.size.value;
 			}
@@ -45,30 +51,32 @@ namespace Maia::GameEngine
 	}
 
 	Component_group::Component_group(
-		gsl::span<Component_info const> const component_infos,
-		std::size_t const capacity_per_chunk
-	) :
+		std::span<Component_info const> const component_infos,
+		std::size_t const capacity_per_chunk,
+		std::pmr::polymorphic_allocator<Components_chunk> chunks_allocator,
+		std::pmr::polymorphic_allocator<Component_type_info> type_infos_allocator
+	) noexcept :
 		m_size{ 0 },
 		m_size_of_single_element{ calculate_size_of_single_element(component_infos) },
 		m_capacity_per_chunk{ capacity_per_chunk },
-		m_chunks{},
-		m_component_type_infos{ create_component_type_infos(component_infos, m_capacity_per_chunk) }
+		m_chunks{std::move(chunks_allocator)},
+		m_component_type_infos{ create_component_type_infos(component_infos, m_capacity_per_chunk, std::move(type_infos_allocator)) }
 	{
 	}
 
 
 
-	std::size_t Component_group::size() const
+	std::size_t Component_group::size() const noexcept
 	{
 		return m_size;
 	}
 
-	std::size_t Component_group::num_chunks() const
+	std::size_t Component_group::num_chunks() const noexcept
 	{
 		return m_chunks.size();
 	}
 
-	void Component_group::reserve(std::size_t const new_capacity)
+	void Component_group::reserve(std::size_t const new_capacity) noexcept
 	{
 		std::size_t const number_of_chunks = new_capacity / m_capacity_per_chunk
 			+ (new_capacity % m_capacity_per_chunk > 0 ? 1 : 0);
@@ -82,12 +90,12 @@ namespace Maia::GameEngine
 		}
 	}
 
-	std::size_t Component_group::capacity() const
+	std::size_t Component_group::capacity() const noexcept
 	{
 		return m_chunks.size() * m_capacity_per_chunk;
 	}
 
-	void Component_group::shrink_to_fit()
+	void Component_group::shrink_to_fit() noexcept
 	{
 		std::size_t const ideal_number_of_chunks = size() / m_capacity_per_chunk
 			+ (size() % m_capacity_per_chunk > 0 ? 1 : 0);
@@ -99,7 +107,7 @@ namespace Maia::GameEngine
 
 
 
-	std::optional<Component_group_entity_moved> Component_group::erase(Index index)
+	std::optional<Component_group_entity_moved> Component_group::erase(Index const index) noexcept
 	{
 		if (index.value < m_size - 1)
 		{
@@ -127,10 +135,10 @@ namespace Maia::GameEngine
 
 			decrement_size();
 
-			Entity const entity =
+			Component_view<Entity const> const entity_view =
 				get_component_data<Entity>(index);
 
-			return Element_moved{ entity };
+			return Element_moved{ entity_view.get() };
 		}
 
 		else
@@ -141,7 +149,7 @@ namespace Maia::GameEngine
 		}
 	}
 
-	Component_group::Index Component_group::push_back()
+	Component_group::Index Component_group::push_back() noexcept
 	{
 		if (size() == capacity())
 		{
@@ -155,14 +163,14 @@ namespace Maia::GameEngine
 		return index;
 	}
 
-	void Component_group::pop_back()
+	void Component_group::pop_back() noexcept
 	{
 		decrement_size();
 	}
 
 
 
-	std::byte const* Component_group::get_component_data_impl(Component_ID const component_id, Index index) const
+	std::byte const* Component_group::get_component_data_impl(Component_ID const component_id, Index const index) const noexcept
 	{
 		Components_chunk const& chunk = get_entity_chunk(index);
 
@@ -172,7 +180,7 @@ namespace Maia::GameEngine
 		return chunk.data() + type_info.offset + entity_index * type_info.size.value;
 	}
 
-	std::byte* Component_group::get_component_data_impl(Component_ID const component_id, Index index)
+	std::byte* Component_group::get_component_data_impl(Component_ID const component_id, Index const index) noexcept
 	{
 		Components_chunk& chunk = get_entity_chunk(index);
 
@@ -188,41 +196,41 @@ namespace Maia::GameEngine
 	
 
 
-	void Component_group::increment_size()
+	void Component_group::increment_size() noexcept
 	{
 		++m_size;
 	}
-	void Component_group::decrement_size()
+	void Component_group::decrement_size() noexcept
 	{
 		assert(m_size > 0);
 		--m_size;
 	}
 
-	Components_chunk const& Component_group::get_entity_chunk(Component_group_entity_index component_group_index) const
+	Components_chunk const& Component_group::get_entity_chunk(Component_group_entity_index const component_group_index) const noexcept
 	{
 		return m_chunks[component_group_index.value / m_capacity_per_chunk];
 	}
-	Components_chunk& Component_group::get_entity_chunk(Component_group_entity_index component_group_index)
+	Components_chunk& Component_group::get_entity_chunk(Component_group_entity_index const component_group_index) noexcept
 	{
 		return m_chunks[component_group_index.value / m_capacity_per_chunk];
 	}
 
-	std::size_t Component_group::calculate_entity_index(Component_group_entity_index component_group_index)  const
+	std::size_t Component_group::calculate_entity_index(Component_group_entity_index const component_group_index) const noexcept
 	{
 		return component_group_index.value % m_capacity_per_chunk;
 	}
 
-	std::size_t Component_group::get_component_offset(Component_ID const component_id) const
+	std::size_t Component_group::get_component_offset(Component_ID const component_id) const noexcept
 	{
-		auto component_offset_and_size = std::find_if(m_component_type_infos.begin(), m_component_type_infos.end(),
+		auto const component_offset_and_size = std::find_if(m_component_type_infos.begin(), m_component_type_infos.end(),
 			[&](Component_type_info const& type_info) -> bool {  return type_info.id == component_id; });
 
 		return component_offset_and_size->offset;
 	}
 
-	Component_type_info Component_group::get_component_type_info(Component_ID const component_id) const
+	Component_type_info Component_group::get_component_type_info(Component_ID const component_id) const noexcept
 	{
-		auto component_offset_and_size = std::find_if(m_component_type_infos.begin(), m_component_type_infos.end(),
+		auto const component_offset_and_size = std::find_if(m_component_type_infos.begin(), m_component_type_infos.end(),
 			[&](Component_type_info const& type_info) -> bool {  return type_info.id == component_id; });
 
 		return *component_offset_and_size;

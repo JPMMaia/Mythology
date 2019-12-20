@@ -1,41 +1,45 @@
-#ifndef MAIA_GAMEENGINE_ENTITYMANAGER_H_INCLUDED
-#define MAIA_GAMEENGINE_ENTITYMANAGER_H_INCLUDED
+export module maia.ecs.entity_manager;
 
-#include <algorithm>
-#include <cassert>
-#include <cstddef>
-#include <vector>
+import maia.ecs.component;
+import maia.ecs.component_group;
+import maia.ecs.component_group_mask;
+import maia.ecs.components_chunk;
+import maia.ecs.entity;
+import maia.ecs.entity_type;
 
-#include <Maia/GameEngine/Component_group.hpp>
-#include <Maia/GameEngine/Component_group_mask.hpp>
-#include <Maia/GameEngine/Entity.hpp>
-#include <Maia/GameEngine/Entity_type.hpp>
+import <array>;
+import <algorithm>;
+import <cassert>;
+import <cstddef>;
+import <memory_resource>;
+import <span>;
+import <vector>;
 
-namespace Maia::GameEngine
+namespace Maia::ECS
 {
-	struct Entity_type_index
+	export struct Entity_type_index
 	{
 		std::size_t value;
 	};
 
 
-	struct Space
+	export struct Space
 	{
 		std::size_t value;
 	};
 
-	inline bool operator==(Space const& lhs, Space const& rhs)
+	export inline bool operator==(Space const& lhs, Space const& rhs) noexcept
 	{
 		return lhs.value == rhs.value;
 	}
 	
-	inline bool operator!=(Space const& lhs, Space const& rhs)
+	export inline bool operator!=(Space const& lhs, Space const& rhs) noexcept
 	{
 		return !(lhs == rhs);
 	}
 
 
-	class Entity_manager
+	export class Entity_manager
 	{
 	public:
 
@@ -45,18 +49,17 @@ namespace Maia::GameEngine
 
 		Entity_type_id create_entity_type(
 			std::size_t capacity_per_chunk,
-			gsl::span<Component_info const> component_infos,
+			std::span<Component_info const> component_infos,
 			Space space
-		);
+		) noexcept;
 
 		template <typename... Components>
 		Entity_type_id create_entity_type(
 			std::size_t const capacity_per_chunk,
 			Space const space
-		)
+		) noexcept
 		{
-			// TODO replace by std::array
-			std::vector<Maia::GameEngine::Component_info> component_infos
+			std::array<Maia::ECS::Component_info, sizeof...(Components)> component_infos
 			{
 				create_component_info<Components>()...
 			};
@@ -65,10 +68,10 @@ namespace Maia::GameEngine
 		}
 		
 
-		Entity create_entity(Entity_type_id entity_type_id);
+		Entity create_entity(Entity_type_id entity_type_id) noexcept;
 
 		template <typename... Components>
-		Entity create_entity(Entity_type_id entity_type_id, Components&&... components)
+		Entity create_entity(Entity_type_id entity_type_id, Components&&... components) noexcept
 		{
 			Entity const entity = create_entity(entity_type_id);
 			set_components_data(entity, std::forward<Components>(components)...);
@@ -76,7 +79,7 @@ namespace Maia::GameEngine
 		}
 
 		template <typename... Components>
-		std::vector<Entity> create_entities(std::size_t count, Entity_type_id entity_type_id, Components&&... components)
+		std::pmr::vector<Entity> create_entities(std::size_t count, Entity_type_id entity_type_id, Components&&... components) noexcept
 		{
 			assert(m_entity_type_indices.size() + count <= std::numeric_limits<Entity::Integral_type>::max());
 
@@ -89,7 +92,7 @@ namespace Maia::GameEngine
 
 			Component_group& component_group = m_component_groups[entity_type_index.value];
 
-			std::vector<Entity> entities;
+			std::pmr::vector<Entity> entities;
 			entities.reserve(count);
 
 			for (std::size_t i = 0; i < count; ++i)
@@ -128,7 +131,7 @@ namespace Maia::GameEngine
 		}
 
 		template <std::size_t Count, typename... Components>
-		std::array<Entity, Count> create_entities(Entity_type_id entity_type_id, Components&&... components)
+		std::array<Entity, Count> create_entities(Entity_type_id entity_type_id, Components&&... components) noexcept
 		{
 			// TODO refactor
 
@@ -180,13 +183,13 @@ namespace Maia::GameEngine
 			return entities;
 		}
 
-		void destroy_entity(Entity entity);
+		void destroy_entity(Entity entity) noexcept;
 
-		bool exists(Entity entity) const;
+		bool exists(Entity entity) const noexcept;
 
 
 		template <typename Component>
-		bool has_component(Entity entity) const
+		bool has_component(Entity entity) const noexcept
 		{
 			Entity_type_index const entity_type_index = m_entity_type_indices[entity.value];
 
@@ -195,7 +198,7 @@ namespace Maia::GameEngine
 
 
 		template <typename Component>
-		Component get_component_data(Entity entity) const
+		Component_view<Component const> get_component_data(Entity entity) const noexcept
 		{
 			assert(m_component_group_masks[m_entity_type_indices[entity.value].value].contains<Component>());
 
@@ -207,7 +210,7 @@ namespace Maia::GameEngine
 		}
 
 		template <typename Component>
-		void set_component_data(Entity entity, Component&& data)
+		void set_component_data(Entity entity, Component&& data) noexcept
 		{
 			assert(m_component_group_masks[m_entity_type_indices[entity.value].value].contains<Component>() && "Missing component!");
 
@@ -220,7 +223,7 @@ namespace Maia::GameEngine
 
 
 		template <typename... Components>
-		std::tuple<Components...> get_components_data(Entity entity) const
+		std::tuple<Components...> get_components_data(Entity entity) const noexcept
 		{
 			Entity_type_index entity_type_index = m_entity_type_indices[entity.value];
 			Component_group const& component_group = m_component_groups[entity_type_index.value];
@@ -230,7 +233,7 @@ namespace Maia::GameEngine
 		}
 
 		template <typename... Components>
-		void set_components_data(Entity entity, Components&&... data)
+		void set_components_data(Entity entity, Components&&... data) noexcept
 		{
 			Entity_type_index entity_type_index = m_entity_type_indices[entity.value];
 			Component_group& component_group = m_component_groups[entity_type_index.value];
@@ -239,7 +242,7 @@ namespace Maia::GameEngine
 			component_group.set_components_data<Components...>(component_group_index, std::forward<Components>(data)...);
 		}
 
-		Component_group const& get_component_group(Entity_type_id const entity_type_id) const
+		Component_group const& get_component_group(Entity_type_id const entity_type_id) const noexcept
 		{
 			assert(entity_type_id.value == m_entity_type_ids[entity_type_id.value].value);
 
@@ -247,7 +250,7 @@ namespace Maia::GameEngine
 
 			return m_component_groups[entity_type_index.value];
 		}
-		Component_group& get_component_group(Entity_type_id const entity_type_id)
+		Component_group& get_component_group(Entity_type_id const entity_type_id) noexcept
 		{
 			assert(entity_type_id.value == m_entity_type_ids[entity_type_id.value].value);
 
@@ -257,45 +260,43 @@ namespace Maia::GameEngine
 		}
 
 
-		gsl::span<const Component_group_mask> get_component_types_groups() const
+		std::span<const Component_group_mask> get_component_types_groups() const noexcept
 		{
 			return m_component_group_masks;
 		}
 
-		gsl::span<Component_group_mask> get_component_types_groups()
+		std::span<Component_group_mask> get_component_types_groups() noexcept
 		{
 			return m_component_group_masks;
 		}
 
 
-		gsl::span<const Component_group> get_component_groups() const
+		std::span<const Component_group> get_component_groups() const noexcept
 		{
 			return m_component_groups;
 		}
 
-		gsl::span<Component_group> get_component_groups()
+		std::span<Component_group> get_component_groups() noexcept
 		{
 			return m_component_groups;
 		}
 
 
-	private:
+	private: 
 
 
 		// Indexed by Entity_type_index
-		std::vector<Entity_type_id> m_entity_type_ids;
-		std::vector<Space> m_component_types_spaces;
-		std::vector<Component_group_mask> m_component_group_masks;
-		std::vector<Component_group> m_component_groups;
+		std::pmr::vector<Entity_type_id> m_entity_type_ids;
+		std::pmr::vector<Space> m_component_types_spaces;
+		std::pmr::vector<Component_group_mask> m_component_group_masks;
+		std::pmr::vector<Component_group> m_component_groups;
 
 		// Indexed by Entity.id
-		std::vector<Entity_type_index> m_entity_type_indices;
-		std::vector<Component_group_entity_index> m_component_group_indices;
-		std::vector<bool> m_entities_existence;
-		std::vector<Entity> m_deleted_entities;
+		std::pmr::vector<Entity_type_index> m_entity_type_indices;
+		std::pmr::vector<Component_group_entity_index> m_component_group_indices;
+		std::pmr::vector<bool> m_entities_existence;
+		std::pmr::vector<Entity> m_deleted_entities;
 
 
 	};
 }
-
-#endif

@@ -1,30 +1,46 @@
-#include "Entity_manager.hpp"
+module maia.ecs.entity_manager;
 
-#include <optional>
+import maia.ecs.component;
+import maia.ecs.component_group;
+import maia.ecs.component_group_mask;
+import maia.ecs.components_chunk;
+import maia.ecs.entity;
+import maia.ecs.entity_type;
 
-namespace Maia::GameEngine
+import <cassert>;
+import <cstddef>;
+import <limits>;
+import <memory_resource>;
+import <optional>;
+import <span>;
+import <vector>;
+
+namespace Maia::ECS
 {
 	Entity_type_id Entity_manager::create_entity_type(
 		std::size_t const capacity_per_chunk,
-		gsl::span<Component_info const> const component_infos,
+		std::span<Component_info const> const component_infos,
 		Space const space
-	)
+	) noexcept
 	{
-		Component_group_mask const component_types_mask = [&component_infos]() -> Component_group_mask
+		auto const create_component_group_mask = [](
+			std::span<Component_info const> const component_infos
+		) noexcept -> Component_group_mask
 		{
 			Component_group_mask component_types_mask = {};
 
-			for (Maia::GameEngine::Component_info const& component_info : component_infos)
+			for (Maia::ECS::Component_info const& component_info : component_infos)
 			{
-				component_types_mask.value.set(component_info.id.value);
+				component_types_mask.value |= (1 << component_info.id.value);
 			}
 
 			return component_types_mask;
-		}();
-
+		};
+		
+		Component_group_mask const component_types_mask = create_component_group_mask(component_infos);
 		assert(component_types_mask.contains<Entity>());
 
-		std::optional<std::size_t> const match_index = [this, &space, &component_types_mask]() -> std::optional<std::size_t>
+		std::optional<std::size_t> const match_index = [this, space, component_types_mask]() -> std::optional<std::size_t>
 		{
 			for (std::size_t index = 0; index < m_entity_type_ids.size(); ++index)
 			{
@@ -55,7 +71,7 @@ namespace Maia::GameEngine
 			return entity_type_id;
 		}
 	}
-	Entity Entity_manager::create_entity(Entity_type_id entity_type_id)
+	Entity Entity_manager::create_entity(Entity_type_id const entity_type_id) noexcept
 	{
 		assert(m_entity_type_indices.size() < std::numeric_limits<Entity::Integral_type>::max());
 
@@ -98,7 +114,7 @@ namespace Maia::GameEngine
 		}
 	}
 
-	void Entity_manager::destroy_entity(Entity entity)
+	void Entity_manager::destroy_entity(Entity const entity) noexcept
 	{
 		m_entities_existence[entity.value] = false;
 		m_deleted_entities.push_back(entity);
@@ -112,7 +128,7 @@ namespace Maia::GameEngine
 		}
 	}
 
-	bool Entity_manager::exists(Entity entity) const
+	bool Entity_manager::exists(Entity const entity) const noexcept
 	{
 		return m_entities_existence[entity.value];
 	}

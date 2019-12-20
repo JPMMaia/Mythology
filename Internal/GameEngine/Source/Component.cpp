@@ -1,10 +1,11 @@
-#include "Component.hpp"
+module maia.ecs.component;
 
-#include <mutex>
+import <cstdint>;
+import <mutex>;
 
-namespace Maia::GameEngine
+namespace Maia::ECS
 {
-	Component_ID Component_ID::create_component_id()
+	Component_ID Component_ID::create_component_id() noexcept
 	{
 		static std::uint16_t component_type_count = 0;
 		static std::mutex mutex;

@@ -10,7 +10,7 @@ include("Internal/Utilities/CMake/Scripts/modules.cmake")
 
 add_subdirectory("Internal/Utilities")
 add_subdirectory("Internal/Renderer")
-#add_subdirectory("Internal/GameEngine")
+add_subdirectory("Internal/GameEngine")
 #add_subdirectory("Internal/Shaders")
 #add_subdirectory("Internal/Resources")
 #add_subdirectory("Source")

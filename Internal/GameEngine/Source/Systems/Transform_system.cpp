@@ -1,10 +1,29 @@
-#include <Maia/GameEngine/Systems/Transform_system.hpp>
+module maia.ecs.systems.transform_system;
 
-#include <iostream>
+import maia.ecs.component;
+import maia.ecs.component_group;
+import maia.ecs.component_group_mask;
+import maia.ecs.components_chunk;
+import maia.ecs.entity;
+import maia.ecs.entity_manager;
+import maia.ecs.components.local_position;
+import maia.ecs.components.local_rotation;
 
-namespace Maia::GameEngine::Systems
+import <Eigen/Core>;
+import <Eigen/Geometry>;
+
+import <iostream>;
+import <memory_resource>;
+import <span>;
+import <unordered_map>;
+import <vector>;
+
+namespace Maia::ECS::Systems
 {
-	Transform_matrix create_transform(Local_position const& position, Local_rotation const& rotation)
+	Transform_matrix create_transform(
+		Local_position const& position,
+		Local_rotation const& rotation
+	) noexcept
 	{
 		Eigen::Vector3f const& translation = position.value;
 		Eigen::Matrix3f const rotation_matrix = rotation.value.matrix();
@@ -21,15 +40,15 @@ namespace Maia::GameEngine::Systems
 
 	Transforms_tree create_transforms_tree(
 		Entity_manager const& entity_manager,
-		Entity root_transform_entity
-	)
+		Entity const root_transform_entity
+	) noexcept
 	{
 		Transforms_tree transforms_tree;
 
-		gsl::span<Component_group_mask const> const component_types_groups =
+		std::span<Component_group_mask const> const component_types_groups =
 			entity_manager.get_component_types_groups();
 
-		gsl::span<Component_group const> const component_groups =
+		std::span<Component_group const> const component_groups =
 			entity_manager.get_component_groups();
 
 		for (std::ptrdiff_t component_group_index = 0; component_group_index < component_groups.size(); ++component_group_index)
@@ -42,15 +61,15 @@ namespace Maia::GameEngine::Systems
 
 				for (std::size_t chunk_index = 0; chunk_index < component_group.num_chunks(); ++chunk_index)
 				{
-					gsl::span<Transform_root const> roots = component_group.components<Transform_root>(chunk_index);
-					gsl::span<Transform_parent const> parents = component_group.components<Transform_parent>(chunk_index);
-					gsl::span<Entity const> entities = component_group.components<Entity>(chunk_index);
+					Component_range_view<Transform_root const> roots = component_group.components<Transform_root>(chunk_index);
+					Component_range_view<Transform_parent const> parents = component_group.components<Transform_parent>(chunk_index);
+					Component_range_view<Entity const> entities = component_group.components<Entity>(chunk_index);
 
 					for (std::ptrdiff_t component_index = 0; component_index < roots.size(); ++component_index)
 					{
-						if (roots[component_index].entity == root_transform_entity)
+						if (roots.get(component_index).entity == root_transform_entity)
 						{
-							transforms_tree.insert(std::make_pair(parents[component_index], entities[component_index]));
+							transforms_tree.insert(std::make_pair(parents.get(component_index), entities.get(component_index)));
 						}
 					}
 				}
@@ -62,15 +81,15 @@ namespace Maia::GameEngine::Systems
 
 	namespace
 	{
-		using transforms_tree_iterator = std::unordered_multimap<Transform_parent, Entity>::const_iterator;
+		using transforms_tree_iterator = std::pmr::unordered_multimap<Transform_parent, Entity>::const_iterator;
 
 		void update_child_transforms_aux(
 			Entity_manager& entity_manager,
 			Transforms_tree const& transforms_tree,
-			Entity root_transform_entity,
+			Entity const root_transform_entity,
 			Transform_matrix const& root_transform_matrix,
-			std::pair<transforms_tree_iterator, transforms_tree_iterator> children_range
-		)
+			std::pair<transforms_tree_iterator, transforms_tree_iterator> const children_range
+		) noexcept
 		{
 			for (auto it = children_range.first; it != children_range.second; ++it)
 			{
@@ -92,9 +111,9 @@ namespace Maia::GameEngine::Systems
 	void update_child_transforms(
 		Entity_manager& entity_manager,
 		Transforms_tree const& transforms_tree,
-		Entity root_transform_entity,
+		Entity const root_transform_entity,
 		Transform_matrix const& root_transform_matrix
-	)
+	) noexcept
 	{
 		auto const children_range = transforms_tree.equal_range({ root_transform_entity });
 		update_child_transforms_aux(entity_manager, transforms_tree, root_transform_entity, root_transform_matrix, children_range);
@@ -102,7 +121,12 @@ namespace Maia::GameEngine::Systems
 
 	namespace
 	{
-		void update_transform_tree(Entity_manager& entity_manager, Entity const root_entity, Local_position const root_position, Local_rotation const root_rotation)
+		void update_transform_tree(
+			Entity_manager& entity_manager,
+			Entity const root_entity,
+			Local_position const root_position,
+			Local_rotation const root_rotation
+		) noexcept
 		{
 			Transform_matrix const root_transform = create_transform(root_position, root_rotation);
 			entity_manager.set_component_data(root_entity, root_transform);
@@ -112,12 +136,14 @@ namespace Maia::GameEngine::Systems
 			update_child_transforms(entity_manager, transforms_tree, root_entity, root_transform);
 		}
 	}
-	void Transform_system::execute(Entity_manager& entity_manager)
+	void Transform_system::execute(
+		Entity_manager& entity_manager
+	) noexcept
 	{
-		gsl::span<Component_group_mask const> const component_types_groups =
+		std::span<Component_group_mask const> const component_types_groups =
 			entity_manager.get_component_types_groups();
 
-		gsl::span<Component_group> const component_groups =
+		std::span<Component_group> const component_groups =
 			entity_manager.get_component_groups();
 
 		for (std::ptrdiff_t component_group_index = 0; component_group_index < component_groups.size(); ++component_group_index)
@@ -130,28 +156,28 @@ namespace Maia::GameEngine::Systems
 
 				for (std::size_t chunk_index = 0; chunk_index < component_group.num_chunks(); ++chunk_index)
 				{
-					gsl::span<Entity const> entities
+					Component_range_view<Entity const> entities
 						= component_group.components<Entity>(chunk_index);
 
-					gsl::span<Local_position const> positions
+					Component_range_view<Local_position const> positions
 						= component_group.components<Local_position>(chunk_index);
 
-					gsl::span<Local_rotation const> rotations
+					Component_range_view<Local_rotation const> rotations
 						= component_group.components<Local_rotation>(chunk_index);
 
-					gsl::span<Transform_tree_dirty> transform_trees_dirty 
+					Component_range_view<Transform_tree_dirty> transform_trees_dirty 
 						= component_group.components<Transform_tree_dirty>(chunk_index);
 
 					for (std::ptrdiff_t component_index = 0; component_index < transform_trees_dirty.size(); ++component_index)
 					{
-						if (transform_trees_dirty[component_index].value)
+						if (transform_trees_dirty.get(component_index).value)
 						{
 							// TODO Create a new thread
 							{
-								update_transform_tree(entity_manager, entities[component_index], positions[component_index], rotations[component_index]);
+								update_transform_tree(entity_manager, entities.get(component_index), positions.get(component_index), rotations.get(component_index));
 							}
 
-							transform_trees_dirty[component_index].value = false;
+							transform_trees_dirty.set(component_index, {false});
 						}
 					}
 				}

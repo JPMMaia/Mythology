@@ -1,20 +1,20 @@
-#ifndef MAIA_GAMEENGINE_COMPONENT_H_INCLUDED
-#define MAIA_GAMEENGINE_COMPONENT_H_INCLUDED
+export module maia.ecs.component;
 
-#include <cstdint>
+import <cstdint>;
+import <type_traits>;
 
-namespace Maia::GameEngine
+namespace Maia::ECS
 {
-	struct Component_ID
+	export struct Component_ID
 	{
 		std::uint16_t value;
 
 	private:
 
-		static Component_ID create_component_id();
+		static Component_ID create_component_id() noexcept;
 
 		template <class Component>
-		static Component_ID get_impl()
+		static Component_ID get_impl() noexcept
 		{
 			static Component_ID id = create_component_id();
 
@@ -24,7 +24,7 @@ namespace Maia::GameEngine
 	public:
 
 		template <class Component>
-		static Component_ID get()
+		static Component_ID get() noexcept
 		{
 			using Raw_component = typename std::remove_cv_t<typename std::remove_reference_t<Component>>;
 
@@ -32,31 +32,31 @@ namespace Maia::GameEngine
 		}
 	};
 
-	inline bool operator==(Component_ID lhs, Component_ID rhs)
+	export inline bool operator==(Component_ID const lhs, Component_ID const rhs) noexcept
 	{
 		return lhs.value == rhs.value;
 	}
 
-	inline bool operator!=(Component_ID lhs, Component_ID rhs)
+	export inline bool operator!=(Component_ID const lhs, Component_ID const rhs) noexcept
 	{
 		return !(lhs == rhs);
 	}
 
 
-	struct Component_size
+	export struct Component_size
 	{
 		std::uint16_t value;
 	};
 
 
-	struct Component_info
+	export struct Component_info
 	{
 		Component_ID id;
 		Component_size size;
 	};
 
-	template <class Component>
-	Component_info create_component_info()
+	export template <class Component>
+	Component_info create_component_info() noexcept
 	{
 		return 
 		{
@@ -65,5 +65,3 @@ namespace Maia::GameEngine
 		};
 	}
 }
-
-#endif
