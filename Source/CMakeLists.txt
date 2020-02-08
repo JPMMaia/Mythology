@@ -33,15 +33,26 @@ target_include_directories (MaiaMythology
 		$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
 )
 
+add_module_compile_options (MaiaMythology)
+
+find_package (docopt REQUIRED CONFIG)
+target_link_libraries (MaiaMythology PRIVATE docopt)
+
+target_link_libraries (MaiaMythology PRIVATE Standard_library)
+
 target_link_libraries (MaiaMythology
 	PRIVATE
-		Maia::GameEngine
+		Maia::ECS
 		Maia::Renderer
-		Maia::Resources
-		Maia::Shaders
-		Maia::Utilities
+		#Maia::Resources
+		#Maia::Shaders
+		#Maia::Utilities
 )
 
+
+target_sources (MaiaMythology PRIVATE "main.cpp")
+
+#[[
 target_sources (MaiaMythology 
 	PRIVATE
 		"Application.hpp"
@@ -92,3 +103,4 @@ else ()
 				"Win32/Input_system.cpp"
 	)
 endif()
+]]#
