@@ -1,5 +1,11 @@
 function (target_header _target _module_name _header)
 
+    set (options)
+    set (oneValueArgs)
+    set (multiValueArgs COMPILE_OPTIONS)
+    cmake_parse_arguments (ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    set (_compile_options ${ARG_COMPILE_OPTIONS})
     set (_header_cmi "${CMAKE_BINARY_DIR}/cmi/${_module_name}.pcm")
 
     add_custom_command (
@@ -8,6 +14,7 @@ function (target_header _target _module_name _header)
             "${CMAKE_CXX_COMPILER}" "${CMAKE_CXX_FLAGS}" "-std=c++2a" "-fretain-comments-from-system-headers"
             "-fmodule-name=${_module_name}"
             "-x" "c++-header" "${_header}"
+            ${_compile_options}
             "-Xclang" "-emit-header-module" "-o" "${_header_cmi}"
         MAIN_DEPENDENCY "${_header}"
     )
