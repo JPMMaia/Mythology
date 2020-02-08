@@ -231,8 +231,16 @@ target_module (
     "maia.renderer.vulkan"
     INTERFACE "Module.cxx"
     INTERFACE_DEPENDS
+        "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.check"
+        "maia.renderer.vulkan.command_buffer"
+        "maia.renderer.vulkan.command_pool"
         "maia.renderer.vulkan.device"
+        "maia.renderer.vulkan.device_memory"
+        "maia.renderer.vulkan.fence"
+        "maia.renderer.vulkan.image"
         "maia.renderer.vulkan.instance"
         "maia.renderer.vulkan.physical_device"
+        "maia.renderer.vulkan.queue"
+        "maia.renderer.vulkan.render_pass"
 )
