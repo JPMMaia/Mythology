@@ -49,6 +49,12 @@ target_link_libraries (MaiaMythology
 		#Maia::Utilities
 )
 
+if (MaiaMythology_use_SDL)
+
+	add_subdirectory ("SDL")
+	target_link_libraries (MaiaMythology PRIVATE Maia::Mythology::SDL)
+	
+endif()
 
 target_sources (MaiaMythology PRIVATE "main.cpp")
 

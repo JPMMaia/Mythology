@@ -1,0 +1,27 @@
+add_library (MaiaMythologySDL)
+add_library (Maia::Mythology::SDL ALIAS MaiaMythologySDL)
+
+target_link_libraries (MaiaMythologySDL PRIVATE Maia::SDL2)
+
+target_link_libraries (MaiaMythologySDL PRIVATE Standard_library)
+target_link_libraries (MaiaMythologySDL PRIVATE Vulkan)
+
+target_module (
+    MaiaMythologySDL
+    "mythology.sdl.application"
+    INTERFACE "Application.cxx"
+    INTERFACE_DEPENDS "Standard_library"
+    IMPLEMENTATION "Application.cpp"
+    IMPLEMENTATION_DEPENDS "Standard_library"
+)
+
+if (MaiaRenderer_build_vulkan)
+    target_module (
+        MaiaMythologySDL
+        "maia.sdl.vulkan"
+        INTERFACE "Vulkan_SDL.cxx"
+        INTERFACE_DEPENDS "SDL" "Standard_library" "Vulkan"
+        IMPLEMENTATION "Vulkan_SDL.cpp"
+        IMPLEMENTATION_DEPENDS "SDL" "SDL_vulkan" "Standard_library" "Vulkan"
+    )
+endif ()
