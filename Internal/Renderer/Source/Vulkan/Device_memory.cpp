@@ -14,6 +14,7 @@ import <memory_resource>;
 import <optional>;
 import <ostream>;
 import <sstream>;
+import <utility>;
 import <vector>;
 
 namespace Maia::Renderer::Vulkan
@@ -292,5 +293,46 @@ namespace Maia::Renderer::Vulkan
             device.value,
             device_memory.value
         );
+    }
+
+
+    Mapped_memory::Mapped_memory(
+        Device const device,
+        Device_memory const device_memory,
+        VkDeviceSize const offset,
+        VkDeviceSize const size,
+        VkMemoryMapFlags const flags
+    ) noexcept :
+        m_device{device},
+        m_device_memory{device_memory},
+        m_mapped_memory{map_memory(device, device_memory, offset, size, flags)}
+    {
+    }
+    Mapped_memory::Mapped_memory(Mapped_memory&& other) noexcept :
+        m_device{std::exchange(other.m_device, {})},
+        m_device_memory{std::exchange(other.m_device_memory, {})},
+        m_mapped_memory{std::exchange(other.m_mapped_memory, nullptr)}
+    {
+    }
+    Mapped_memory::~Mapped_memory() noexcept
+    {
+        if (m_mapped_memory != nullptr)
+        {
+            unmap_memory(m_device, m_device_memory);
+        }
+    }
+
+    Mapped_memory& Mapped_memory::operator=(Mapped_memory&& other) noexcept
+    {
+        m_device = std::exchange(other.m_device, {});
+        m_device_memory = std::exchange(other.m_device_memory, {});
+        m_mapped_memory = std::exchange(other.m_mapped_memory, nullptr);
+        
+        return *this;
+    }
+
+    void* Mapped_memory::data() const noexcept
+    {
+        return m_mapped_memory;
     }
 }

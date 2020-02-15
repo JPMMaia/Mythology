@@ -114,4 +114,31 @@ namespace Maia::Renderer::Vulkan
         Device device,
         Device_memory device_memory
     ) noexcept;
+
+    class Mapped_memory
+    {
+    public:
+
+        Mapped_memory(
+            Device device,
+            Device_memory device_memory,
+            VkDeviceSize offset,
+            VkDeviceSize size,
+            VkMemoryMapFlags flags = {}
+        ) noexcept;
+        Mapped_memory(Mapped_memory const&) noexcept = delete;
+        Mapped_memory(Mapped_memory&& other) noexcept;
+        ~Mapped_memory() noexcept;
+
+        Mapped_memory& operator=(Mapped_memory const&) noexcept = delete;
+        Mapped_memory& operator=(Mapped_memory&& other) noexcept;
+
+        void* data() const noexcept;
+
+    private:
+
+        Device m_device = {};
+        Device_memory m_device_memory = {};
+        void* m_mapped_memory = nullptr;
+    };
 }
