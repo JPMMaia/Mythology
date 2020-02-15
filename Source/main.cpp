@@ -1,6 +1,7 @@
 //#include <docopt.h>
 
-import mythology.sdl.application;
+//import mythology.sdl.application;
+import mythology.windowless;
 
 import <filesystem>;
 
@@ -34,7 +35,7 @@ int main(int const argc, const char* const* const argv) noexcept
         std::cout << arg.first <<  arg.second << std::endl;
     }*/
 
-    Mythology::SDL::render_frame("output.ppm");
+    Mythology::Windowless::render_frame("output.ppm");
 
     return 0;
 }
