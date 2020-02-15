@@ -49,6 +49,7 @@ target_link_libraries (MaiaMythology
 		#Maia::Utilities
 )
 
+add_subdirectory ("Core")
 if (MaiaMythology_use_SDL)
 
 	add_subdirectory ("SDL")
