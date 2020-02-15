@@ -87,28 +87,21 @@ namespace Mythology::Core::Vulkan
             return std::strcmp(properties.layerName, "VK_LAYER_KHRONOS_validation") == 0;
         };
 
-        std::pmr::vector<VkLayerProperties> layers_to_enable_properties;
-        layers_to_enable_properties.reserve(1);
-        std::copy_if(
-            layer_properties.begin(),
-            layer_properties.end(),
-            std::back_inserter(layers_to_enable_properties),
-            is_layer_to_enable
-        );
-
-        auto const get_layer_name = [](VkLayerProperties const& properties) -> char const*
+        auto const get_layer_name = [](VkLayerProperties const& properties)
         {
             return properties.layerName;
         };
 
         std::pmr::vector<char const*> layers_to_enable;
-        layers_to_enable.resize(layers_to_enable_properties.size());
-        std::transform(
-            layers_to_enable_properties.begin(),
-            layers_to_enable_properties.end(),
-            layers_to_enable.begin(),
-            get_layer_name
-        );
+        layers_to_enable.reserve(1);
+        for (std::size_t layer_index = 0; layer_index < layer_properties.size(); ++layer_index)
+        {
+            if (is_layer_to_enable(layer_properties[layer_index]))
+            {
+                layers_to_enable.push_back(
+                    layer_properties[layer_index].layerName);
+            }
+        }
 
         return Maia::Renderer::Vulkan::create_instance(layers_to_enable, {});
     }
