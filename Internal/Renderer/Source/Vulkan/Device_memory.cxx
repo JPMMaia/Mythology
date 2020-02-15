@@ -115,7 +115,7 @@ namespace Maia::Renderer::Vulkan
         Device_memory device_memory
     ) noexcept;
 
-    class Mapped_memory
+    export class Mapped_memory
     {
     public:
 
