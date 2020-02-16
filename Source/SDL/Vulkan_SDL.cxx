@@ -9,9 +9,9 @@ import <vector>;
 
 namespace Maia::SDL::Vulkan
 {
-    export std::pmr::vector<const char*> get_sdl_required_instance_extensions(
+    export std::pmr::vector<char const*> get_sdl_required_instance_extensions(
         SDL_Window& window,
-        std::pmr::polymorphic_allocator<const char*> allocator = {}
+        std::pmr::polymorphic_allocator<char const*> allocator = {}
     ) noexcept;
 
     export struct Surface_extent

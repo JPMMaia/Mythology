@@ -25,16 +25,16 @@ namespace Maia::SDL::Vulkan
         }
     }
 
-    std::pmr::vector<const char*> get_sdl_required_instance_extensions(
+    std::pmr::vector<char const*> get_sdl_required_instance_extensions(
         SDL_Window& window,
-        std::pmr::polymorphic_allocator<const char*> allocator
+        std::pmr::polymorphic_allocator<char const*> allocator
     ) noexcept
     {
         unsigned int count = 0;
         check(
             SDL_Vulkan_GetInstanceExtensions(&window, &count, nullptr));
 
-        std::pmr::vector<const char*> instance_extensions{allocator};
+        std::pmr::vector<char const*> instance_extensions{allocator};
         instance_extensions.resize(count);
 
         check(
