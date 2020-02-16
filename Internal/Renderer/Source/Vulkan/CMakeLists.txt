@@ -243,4 +243,7 @@ target_module (
         "maia.renderer.vulkan.physical_device"
         "maia.renderer.vulkan.queue"
         "maia.renderer.vulkan.render_pass"
+        "maia.renderer.vulkan.semaphore"
+        "maia.renderer.vulkan.surface"
+        "maia.renderer.vulkan.swapchain"
 )
