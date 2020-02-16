@@ -6,6 +6,7 @@ import <vulkan/vulkan.h>;
 
 import <cstddef>;
 import <fstream>;
+import <functional>;
 import <memory_resource>;
 import <span>;
 import <vector>;
@@ -18,7 +19,7 @@ namespace Mythology::Core::Vulkan
     
     export Physical_device select_physical_device(Instance instance) noexcept;
     
-    export Device create_device(Physical_device physical_device) noexcept;
+    export Device create_device(Physical_device physical_device, std::function<bool(VkExtensionProperties)> const& is_extension_to_enable = {}) noexcept;
 
     export Queue_family_index find_graphics_queue_family_index(
         Physical_device physical_device

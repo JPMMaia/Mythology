@@ -10,6 +10,7 @@ import <cassert>;
 import <cstring>;
 import <filesystem>;
 import <fstream>;
+import <functional>;
 import <memory_resource>;
 import <optional>;
 import <span>;
@@ -117,7 +118,32 @@ namespace Mythology::Core::Vulkan
         return physical_devices[0];
     }
 
-    Device create_device(Physical_device const physical_device) noexcept
+    namespace
+    {
+        std::pmr::vector<char const*> select_device_extensions(
+            Physical_device const physical_device,
+            std::function<bool(VkExtensionProperties)> const& is_extension_to_enable
+        ) noexcept
+        {
+            std::pmr::vector<VkExtensionProperties> const extensions_properties = 
+                enumerate_physical_device_extension_properties(physical_device, {});
+
+            std::pmr::vector<char const*> selected_extensions_properties;
+            selected_extensions_properties.reserve(1);
+
+            for (VkExtensionProperties const& properties : extensions_properties)
+            {
+                if (is_extension_to_enable(properties))
+                {
+                    selected_extensions_properties.push_back(properties.extensionName);
+                }
+            }
+
+            return selected_extensions_properties;
+        }
+    }
+
+    Device create_device(Physical_device const physical_device, std::function<bool(VkExtensionProperties)> const& is_extension_to_enable) noexcept
     {
         std::pmr::vector<Queue_family_properties> const queue_family_properties = 
             get_physical_device_queue_family_properties(physical_device);
@@ -144,7 +170,10 @@ namespace Mythology::Core::Vulkan
             return queue_create_infos;
         }();
 
-        return create_device(physical_device, queue_create_infos, {});
+        std::pmr::vector<char const*> const extensions_to_enable = 
+            select_device_extensions(physical_device, is_extension_to_enable);
+
+        return create_device(physical_device, queue_create_infos, extensions_to_enable);
     }
 
     struct Memory_type_info
