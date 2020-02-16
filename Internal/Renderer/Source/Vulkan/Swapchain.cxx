@@ -20,12 +20,12 @@ namespace Maia::Renderer::Vulkan
 {
     export struct Swapchain
     {
-        VkSwapchainKHR value;
+        VkSwapchainKHR value = VK_NULL_HANDLE;
     };
 
     export struct Min_image_count
     {
-        std::uint32_t value;
+        std::uint32_t value = 1;
     };
 
     export Swapchain create_swapchain(
@@ -64,7 +64,7 @@ namespace Maia::Renderer::Vulkan
 
     export struct Swapchain_image_index
     {
-        std::uint32_t value;
+        std::uint32_t value = 0;
     };
 
     export Swapchain_image_index acquire_next_image(
