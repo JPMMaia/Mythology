@@ -6,6 +6,7 @@ import <vulkan/vulkan.h>;
 
 import <iosfwd>;
 import <memory_resource>;
+import <optional>;
 import <vector>;
 
 namespace Maia::Renderer::Vulkan
@@ -29,4 +30,10 @@ namespace Maia::Renderer::Vulkan
     };
 
     export Physical_device_features get_physical_device_properties(Physical_device physical_device) noexcept;
+
+    export std::pmr::vector<VkExtensionProperties> enumerate_physical_device_extension_properties(
+        Physical_device physical_device,
+        std::optional<char const*> layer_name,
+        std::pmr::polymorphic_allocator<Physical_device> const& allocator = {}
+    ) noexcept;
 }

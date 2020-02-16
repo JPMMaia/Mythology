@@ -6,6 +6,7 @@ import maia.renderer.vulkan.instance;
 import <vulkan/vulkan.h>;
 
 import <memory_resource>;
+import <optional>;
 import <ostream>;
 import <type_traits>;
 import <vector>;
@@ -62,5 +63,34 @@ namespace Maia::Renderer::Vulkan
         vkGetPhysicalDeviceFeatures(physical_device.value, &features);
 
         return { features };
+    }
+
+    std::pmr::vector<VkExtensionProperties> enumerate_physical_device_extension_properties(
+        Physical_device const physical_device,
+        std::optional<char const*> const layer_name,
+        std::pmr::polymorphic_allocator<Physical_device> const& allocator
+    ) noexcept
+    {
+        std::uint32_t property_count = 0;
+        check_result(
+            vkEnumerateDeviceExtensionProperties(
+                physical_device.value,
+                layer_name.has_value() ? *layer_name : nullptr,
+                &property_count,
+                nullptr
+            )
+        );
+
+        std::pmr::vector<VkExtensionProperties> properties{property_count, allocator};
+        check_result(
+            vkEnumerateDeviceExtensionProperties(
+                physical_device.value,
+                layer_name.has_value() ? *layer_name : nullptr,
+                &property_count,
+                properties.data()
+            )
+        );
+
+        return properties;
     }
 }
