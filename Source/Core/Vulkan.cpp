@@ -86,7 +86,9 @@ namespace Mythology::Core::Vulkan
 
         auto const is_layer_to_enable = [](VkLayerProperties const& properties) -> bool
         {
-            return std::strcmp(properties.layerName, "VK_LAYER_KHRONOS_validation") == 0;
+            return 
+                std::strcmp(properties.layerName, "VK_LAYER_KHRONOS_validation") == 0 ||
+                std::strcmp(properties.layerName, "VK_LAYER_LUNARG_standard_validation") == 0;
         };
 
         auto const get_layer_name = [](VkLayerProperties const& properties)
