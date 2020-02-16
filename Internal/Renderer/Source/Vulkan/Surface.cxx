@@ -27,7 +27,7 @@ namespace Maia::Renderer::Vulkan
         Surface surface
     ) noexcept;
 
-    export std::pmr::vector<VkSurfaceFormatKHR> get_surface_capabilities(
+    export std::pmr::vector<VkSurfaceFormatKHR> get_surface_formats(
         Physical_device physical_device,
         Surface surface,
         std::pmr::polymorphic_allocator<VkSurfaceFormatKHR> allocator = {}

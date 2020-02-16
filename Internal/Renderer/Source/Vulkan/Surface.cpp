@@ -48,7 +48,7 @@ namespace Maia::Renderer::Vulkan
         return surface_capabilities;
     }
 
-    std::pmr::vector<VkSurfaceFormatKHR> get_surface_capabilities(
+    std::pmr::vector<VkSurfaceFormatKHR> get_surface_formats(
         Physical_device const physical_device,
         Surface const surface,
         std::pmr::polymorphic_allocator<VkSurfaceFormatKHR> const allocator
