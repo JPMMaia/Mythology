@@ -14,7 +14,7 @@ using namespace Maia::Renderer::Vulkan;
 
 namespace Mythology::Core::Vulkan
 {
-    export Instance create_instance() noexcept;
+    export Instance create_instance(std::span<char const* const> required_extensions = {}) noexcept;
     
     export Physical_device select_physical_device(Instance instance) noexcept;
     

@@ -78,7 +78,9 @@ namespace Mythology::Core::Vulkan
         }
     }
 
-    Instance create_instance() noexcept
+    Instance create_instance(
+        std::span<char const* const> const required_extensions
+    ) noexcept
     {
         std::pmr::vector<VkLayerProperties> const layer_properties = enumerate_instance_layer_properties();
 
@@ -103,7 +105,7 @@ namespace Mythology::Core::Vulkan
             }
         }
 
-        return Maia::Renderer::Vulkan::create_instance(layers_to_enable, {});
+        return Maia::Renderer::Vulkan::create_instance(layers_to_enable, required_extensions);
     }
 
     Physical_device select_physical_device(Instance const instance) noexcept
