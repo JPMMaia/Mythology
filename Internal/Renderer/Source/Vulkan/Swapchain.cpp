@@ -129,7 +129,7 @@ namespace Maia::Renderer::Vulkan
     }
 
 
-    Swapchain_image_index acquire_next_image(
+    std::optional<Swapchain_image_index> acquire_next_image(
         Device const device,
         Swapchain const swapchain,
         std::uint64_t const timeout,
@@ -138,18 +138,25 @@ namespace Maia::Renderer::Vulkan
     ) noexcept
     {
         std::uint32_t swapchain_image_index = 0;
-        check_result(
-            vkAcquireNextImageKHR(
-                device.value,
-                swapchain.value,
-                timeout,
-                semaphore.has_value() ? semaphore->value : VK_NULL_HANDLE,
-                fence.has_value() ? fence->value : VK_NULL_HANDLE,
-                &swapchain_image_index
-            )
+
+        VkResult const status = vkAcquireNextImageKHR(
+            device.value,
+            swapchain.value,
+            timeout,
+            semaphore.has_value() ? semaphore->value : VK_NULL_HANDLE,
+            fence.has_value() ? fence->value : VK_NULL_HANDLE,
+            &swapchain_image_index
         );
 
-        return {swapchain_image_index};
+        if (status == VK_NOT_READY || status == VK_TIMEOUT)
+        {
+            return {};
+        }
+        else
+        {
+            check_result(status);
+            return {{swapchain_image_index}};
+        }
     }
 
     void queue_present(

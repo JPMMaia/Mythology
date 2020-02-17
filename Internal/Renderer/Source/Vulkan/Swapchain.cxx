@@ -67,7 +67,7 @@ namespace Maia::Renderer::Vulkan
         std::uint32_t value = 0;
     };
 
-    export Swapchain_image_index acquire_next_image(
+    export std::optional<Swapchain_image_index> acquire_next_image(
         Device device,
         Swapchain swapchain,
         std::uint64_t timeout,
