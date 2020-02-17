@@ -32,4 +32,10 @@ namespace Maia::Renderer::Vulkan
         Surface surface,
         std::pmr::polymorphic_allocator<VkSurfaceFormatKHR> allocator = {}
     ) noexcept;
+
+    export std::pmr::vector<VkPresentModeKHR> get_surface_present_modes(
+        Physical_device physical_device,
+        Surface surface,
+        std::pmr::polymorphic_allocator<VkPresentModeKHR> allocator = {}
+    ) noexcept;
 }

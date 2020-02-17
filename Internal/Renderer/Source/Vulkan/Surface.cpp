@@ -84,4 +84,41 @@ namespace Maia::Renderer::Vulkan
             return {};
         }
     }
+
+    std::pmr::vector<VkPresentModeKHR> get_surface_present_modes(
+        Physical_device const physical_device,
+        Surface const surface,
+        std::pmr::polymorphic_allocator<VkPresentModeKHR> const allocator
+    ) noexcept
+    {
+        std::uint32_t present_modes_count = 0;
+        check_result(
+            vkGetPhysicalDeviceSurfacePresentModesKHR(
+                physical_device.value,
+                surface.value,
+                &present_modes_count,
+                nullptr
+            )
+        );
+
+        if (present_modes_count > 0)
+        {
+            std::pmr::vector<VkPresentModeKHR> present_modes{present_modes_count, allocator};
+
+            check_result(
+                vkGetPhysicalDeviceSurfacePresentModesKHR(
+                    physical_device.value,
+                    surface.value,
+                    &present_modes_count,
+                    present_modes.data()
+                )
+            );
+
+            return present_modes;
+        }
+        else
+        {
+            return {};
+        }
+    }
 }
