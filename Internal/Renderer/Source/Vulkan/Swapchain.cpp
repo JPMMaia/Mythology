@@ -116,7 +116,7 @@ namespace Maia::Renderer::Vulkan
                     device.value,
                     swapchain.value,
                     &swapchain_image_count,
-                    nullptr
+                    swapchain_images.data()
                 )
             );
 
