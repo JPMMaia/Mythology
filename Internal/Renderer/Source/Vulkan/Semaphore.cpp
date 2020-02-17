@@ -13,14 +13,24 @@ namespace Maia::Renderer::Vulkan
 {
     Semaphore create_semaphore(
         Device const device,
+        VkSemaphoreType const semaphore_type,
+        Semaphore_value const initial_value,
         VkSemaphoreCreateFlags const flags,
         std::optional<Allocation_callbacks> const allocator
     ) noexcept
     {
+        VkSemaphoreTypeCreateInfo const type_create_info
+        {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+            .pNext = nullptr,
+            .semaphoreType = semaphore_type,
+            .initialValue = initial_value.value
+        };
+
         VkSemaphoreCreateInfo const create_info
         {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-            .pNext = nullptr,
+            .pNext = &type_create_info,
             .flags = flags
         };
 

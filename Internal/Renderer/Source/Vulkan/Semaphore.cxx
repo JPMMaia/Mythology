@@ -15,10 +15,17 @@ namespace Maia::Renderer::Vulkan
         VkSemaphore value;
     };
 
+    export struct Semaphore_value
+    {
+        std::uint64_t value;
+    };
+
     export Semaphore create_semaphore(
         Device device,
-        VkSemaphoreCreateFlags flags,
-        std::optional<Allocation_callbacks> allocator
+        VkSemaphoreType semaphore_type,
+        Semaphore_value initial_value,
+        VkSemaphoreCreateFlags flags = {},
+        std::optional<Allocation_callbacks> allocator = {}
     ) noexcept;
 
     export void destroy_semaphore(
