@@ -6,8 +6,10 @@ import maia.renderer.vulkan.device;
 
 import <vulkan/vulkan.h>;
 
+import <memory_resource>;
 import <optional>;
 import <span>;
+import <vector>;
 
 namespace Maia::Renderer::Vulkan
 {
@@ -35,6 +37,26 @@ namespace Maia::Renderer::Vulkan
         );
 
         return {fence};
+    }
+
+    std::pmr::vector<Fence> create_fences(
+        std::size_t const count,
+        Device const device,
+        VkFenceCreateFlags const flags,
+        std::optional<Allocation_callbacks> const vulkan_allocator,
+        std::pmr::polymorphic_allocator<Fence> vector_allocator
+    )
+    {
+        std::pmr::vector<Fence> fences{std::move(vector_allocator)};
+        fences.resize(count);
+
+        for (std::size_t index = 0; index < count; ++index)
+        {
+            fences[index] = 
+                create_fence(device, flags, vulkan_allocator);
+        }
+
+        return fences;
     }
 
     void destroy_fence(
