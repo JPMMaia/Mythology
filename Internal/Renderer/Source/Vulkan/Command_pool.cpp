@@ -21,8 +21,8 @@ namespace Maia::Renderer::Vulkan
         {
             .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
             .pNext = nullptr,
-            .flags = {},
-            .queueFamilyIndex = {}
+            .flags = flags,
+            .queueFamilyIndex = queue_family_index.value
         };
 
         VkCommandPool command_pool = {};
