@@ -206,6 +206,11 @@ namespace Mythology::SDL
 
             return image_views;
         }
+
+        struct Frame_index
+        {
+            std::uint8_t value = 0;
+        };
     }
 
     void run() noexcept
@@ -249,12 +254,8 @@ namespace Mythology::SDL
         Physical_device const physical_device = select_physical_device(instance);
         Device const device = create_device(physical_device, is_extension_to_enable);
         Queue_family_index const graphics_queue_family_index = find_graphics_queue_family_index(physical_device);
-        Command_pool const command_pool = create_command_pool(device, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT, graphics_queue_family_index, {});
+        Command_pool const command_pool = create_command_pool(device, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, graphics_queue_family_index, {});
         Queue const queue = get_device_queue(device, graphics_queue_family_index, 0);
-        // TODO create a graphics queue
-        // TODO create a present queue
-        Fence const fence = create_fence(device, {}, {});
-        Semaphore const semaphore = create_semaphore(device, VK_SEMAPHORE_TYPE_BINARY, {0});
 
         /*VkExtent3D constexpr color_image_extent{16, 16, 1};
         Device_memory_and_color_image const device_memory_and_color_image = 
@@ -264,6 +265,7 @@ namespace Mythology::SDL
         Surface const surface = {create_surface(*window.get(), instance.value)};
         if (!is_surface_supported(physical_device, graphics_queue_family_index, surface))
         {
+            // TODO find suitable present queue
             std::cerr << "Surface is not supported by physical device and queue.\n";
             std::exit(EXIT_FAILURE);
         }
@@ -272,18 +274,21 @@ namespace Mythology::SDL
         std::pmr::vector<VkImage> const swapchain_images = get_swapchain_images(device, swapchain);
         //std::pmr::vector<VkImageView> const swapchain_image_views = create_swapchain_image_views(device, swapchain_images, select_surface_format(physical_device, surface).format);
 
+        std::size_t const pipeline_length = swapchain_images.size();
+        std::pmr::vector<Semaphore> const available_frames_semaphores = create_semaphores(pipeline_length, device, VK_SEMAPHORE_TYPE_BINARY);
+        std::pmr::vector<Semaphore> const finished_frames_semaphores = create_semaphores(pipeline_length, device, VK_SEMAPHORE_TYPE_BINARY);
+        std::pmr::vector<Fence> const available_frames_fences = create_fences(pipeline_length, device, VK_FENCE_CREATE_SIGNALED_BIT);
 
         std::pmr::vector<Command_buffer> const command_buffers = 
                 allocate_command_buffers(
                     device,
                     command_pool,
                     VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-                    1,
+                    pipeline_length,
                     {}
                 );
-        assert(command_buffers.size() == 1);
-        Command_buffer const command_buffer = command_buffers.front();
 
+        Frame_index frame_index{0};
         bool isRunning = true;
         while (isRunning)
         {
@@ -301,26 +306,38 @@ namespace Mythology::SDL
 
             if (isRunning)
             {
-                std::optional<Swapchain_image_index> const swapchain_image_index =
-                    acquire_next_image(device, swapchain, 0, semaphore, {});
+                Fence const available_frames_fence = available_frames_fences[frame_index.value];
 
-                if (swapchain_image_index)
+                if (is_fence_signaled(device, available_frames_fence))
                 {
-                    Image const swapchain_image = {swapchain_images[swapchain_image_index->value]};
+                    reset_fences(device, {&available_frames_fence, 1});
 
-                    begin_command_buffer(command_buffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, {});
+                    Semaphore const available_frame_semaphore = available_frames_semaphores[frame_index.value];
+                    std::optional<Swapchain_image_index> const swapchain_image_index =
+                        acquire_next_image(device, swapchain, 0, available_frame_semaphore, {});
+
+                    if (swapchain_image_index)
                     {
-                        render(command_buffer, swapchain_image);
+                        Image const swapchain_image = {swapchain_images[swapchain_image_index->value]};
 
-                        // TODO change layout
+                        Command_buffer const command_buffer = command_buffers[frame_index.value];
+                        reset_command_buffer(command_buffer, {});
+                        begin_command_buffer(command_buffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, {});
+                        {
+                            render(command_buffer, swapchain_image, true);
+                        }
+                        end_command_buffer(command_buffer);
+
+                        Semaphore const finished_frame_semaphore = finished_frames_semaphores[frame_index.value];
+                        {
+                            std::array<VkPipelineStageFlags, 1> constexpr wait_destination_stage_masks = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+                            queue_submit(queue, {&available_frame_semaphore, 1}, wait_destination_stage_masks, {&command_buffer, 1}, {&finished_frame_semaphore, 1}, available_frames_fence);
+                        }
+
+                        queue_present(queue, {&finished_frame_semaphore.value, 1}, swapchain, *swapchain_image_index);
+
+                        frame_index.value = (frame_index.value + 1) % pipeline_length;
                     }
-                    end_command_buffer(command_buffer);
-
-                    queue_submit(queue, {}, {}, {&command_buffer, 1}, {}, fence);
-                    check_result(
-                        wait_for_all_fences(device, {&fence, 1}, Timeout_nanoseconds{100000}));
-
-                    queue_present(queue, {}, swapchain, *swapchain_image_index);
                 }
             }
         }
