@@ -6,8 +6,10 @@ import maia.renderer.vulkan.device;
 
 import <vulkan/vulkan.h>;
 
+import <memory_resource>;
 import <optional>;
 import <span>;
+import <vector>;
 
 namespace Maia::Renderer::Vulkan
 {
@@ -45,6 +47,28 @@ namespace Maia::Renderer::Vulkan
         );
 
         return {semaphore};
+    }
+
+    std::pmr::vector<Semaphore> create_semaphores(
+        std::size_t const count,
+        Device const device,
+        VkSemaphoreType const semaphore_type,
+        Semaphore_value const initial_value,
+        VkSemaphoreCreateFlags const flags,
+        std::optional<Allocation_callbacks> const vulkan_allocator,
+        std::pmr::polymorphic_allocator<Semaphore> vector_allocator
+    ) noexcept
+    {
+        std::pmr::vector<Semaphore> semaphores{std::move(vector_allocator)};
+        semaphores.resize(count);
+
+        for (std::size_t index = 0; index < count; ++index)
+        {
+            semaphores[index] = 
+                create_semaphore(device, semaphore_type, initial_value, flags, vulkan_allocator);
+        }
+
+        return semaphores;
     }
 
     void destroy_semaphore(
