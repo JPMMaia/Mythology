@@ -40,7 +40,8 @@ namespace Mythology::Core::Vulkan
 
     export void render(
         Command_buffer command_buffer,
-        Image output_image
+        Image output_image,
+        bool const switch_to_present_layout = false
     ) noexcept;
 
     export std::pmr::vector<std::byte> read_memory(

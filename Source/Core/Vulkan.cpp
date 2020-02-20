@@ -266,7 +266,8 @@ namespace Mythology::Core::Vulkan
 
     void render(
         Command_buffer const command_buffer,
-        Image const output_image
+        Image const output_image,
+        bool const switch_to_present_layout
     ) noexcept
     {
         VkImageSubresourceRange const output_image_subresource_range
@@ -322,6 +323,36 @@ namespace Mythology::Core::Vulkan
                 &clear_value.color, 
                 1,
                 &output_image_subresource_range
+            );
+        }
+
+        if (switch_to_present_layout)
+        {
+            VkImageMemoryBarrier const image_memory_barrier
+            {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                .pNext = nullptr,
+                .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+                .dstAccessMask = 0,
+                .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image = output_image.value,
+                .subresourceRange = output_image_subresource_range
+            };
+
+            vkCmdPipelineBarrier(
+                command_buffer.value,
+                VK_PIPELINE_STAGE_TRANSFER_BIT, 
+                VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                {},
+                0,
+                nullptr,
+                0,
+                nullptr,
+                1,
+                &image_memory_barrier
             );
         }
     }
