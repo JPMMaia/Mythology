@@ -148,18 +148,51 @@ namespace Mythology::SDL
             return VK_PRESENT_MODE_FIFO_KHR;
         }
 
+        VkSharingMode select_sharing_mode(std::span<Queue_family_index const> const queue_family_indices) noexcept
+        {
+            assert(!queue_family_indices.empty());
+
+            if (std::equal(queue_family_indices.begin() + 1, queue_family_indices.end(), queue_family_indices.begin()))
+            {
+                return VK_SHARING_MODE_EXCLUSIVE;
+            }
+            else
+            {
+                return VK_SHARING_MODE_CONCURRENT;
+            }
+        }
+
+        std::span<Queue_family_index const> select_queue_family_indices(
+            std::span<Queue_family_index const> const queue_family_indices,
+            VkSharingMode const sharing_mode) noexcept
+        {
+            if (sharing_mode == VK_SHARING_MODE_EXCLUSIVE)
+            {
+                return {&queue_family_indices[0], 1};
+            }
+            else
+            {
+                return queue_family_indices;
+            }
+        }
+
         Swapchain create_swapchain(
             Physical_device const physical_device,
             Device const device,
-            Surface const surface
+            Surface const surface,
+            std::span<Queue_family_index const> const queue_family_indices
         ) noexcept
         {
+            assert(!queue_family_indices.empty());
+
             VkSurfaceCapabilitiesKHR const surface_capabilities = get_surface_capabilities(physical_device, surface);
             std::uint32_t const image_count = select_swapchain_image_count(surface_capabilities);
             VkSurfaceFormatKHR const selected_surface_format = select_surface_format(physical_device, surface);
             VkImageUsageFlags const swapchain_usage_flags = select_swapchain_usage_flags(surface_capabilities);
             VkCompositeAlphaFlagBitsKHR const composite_alpha = select_composite_alpha(surface_capabilities);
             VkPresentModeKHR const present_mode = select_present_mode(physical_device, surface);
+            VkSharingMode const sharing_mode = select_sharing_mode(queue_family_indices);
+            std::span<Queue_family_index const> const shared_queue_family_indices = select_queue_family_indices(queue_family_indices, sharing_mode);
 
             return create_swapchain(
                 device,
@@ -171,8 +204,8 @@ namespace Mythology::SDL
                 surface_capabilities.currentExtent,
                 Array_layer_count{1},
                 swapchain_usage_flags,
-                VkSharingMode{},
-                {},
+                sharing_mode,
+                shared_queue_family_indices,
                 surface_capabilities.currentTransform,
                 composite_alpha,
                 present_mode
@@ -274,7 +307,7 @@ namespace Mythology::SDL
         std::array<Queue_family_index, 2> const queue_family_indices{graphics_queue_family_index, present_queue_family_index};
         Device const device = create_device(physical_device, queue_family_indices, is_extension_to_enable);
 
-        Swapchain const swapchain = create_swapchain(physical_device, device, surface);
+        Swapchain const swapchain = create_swapchain(physical_device, device, surface, queue_family_indices);
         std::pmr::vector<VkImage> const swapchain_images = get_swapchain_images(device, swapchain);
         //std::pmr::vector<VkImageView> const swapchain_image_views = create_swapchain_image_views(device, swapchain_images, select_surface_format(physical_device, surface).format);
         
