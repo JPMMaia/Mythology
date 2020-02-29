@@ -30,6 +30,9 @@ namespace Maia::Renderer::Vulkan
         std::uint32_t value;
     };
 
+    export bool operator==(Queue_family_index lhs, Queue_family_index rhs) noexcept;
+    export bool operator!=(Queue_family_index lhs, Queue_family_index rhs) noexcept;
+
     
     export template <class Function>
     std::optional<Queue_family_index> find_queue_family_with_capabilities(

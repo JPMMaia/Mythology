@@ -47,6 +47,15 @@ namespace Maia::Renderer::Vulkan
         return queue_family_properties.value.queueFlags | VkQueueFlagBits::VK_QUEUE_TRANSFER_BIT;
     }
 
+    bool operator==(Queue_family_index const lhs, Queue_family_index const rhs) noexcept
+    {
+        return lhs.value == rhs.value;
+    }
+    bool operator!=(Queue_family_index const lhs, Queue_family_index const rhs) noexcept
+    {
+        return !(lhs == rhs);
+    }
+
 
     Device_queue_create_info create_device_queue_create_info(std::uint32_t const queue_family_index, std::uint32_t const queue_count, std::span<float const> const queue_priorities) noexcept
     {
