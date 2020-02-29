@@ -6,8 +6,10 @@ import maia.renderer.vulkan;
 import <vulkan/vulkan.h>;
 
 import <cassert>;
+import <cstring>;
 import <filesystem>;
 import <fstream>;
+import <functional>;
 import <memory_resource>;
 import <optional>;
 import <span>;
@@ -15,6 +17,14 @@ import <vector>;
 
 namespace Mythology::Windowless
 {
+    namespace
+    {
+        auto const is_extension_to_enable = [](VkExtensionProperties const& properties) -> bool
+        {
+            return false;
+        };
+    }
+
     void render_frame(
         std::filesystem::path const& output_filename
     ) noexcept
@@ -22,10 +32,11 @@ namespace Mythology::Windowless
         using namespace Mythology::Core::Vulkan;
         using namespace Maia::Renderer::Vulkan;
 
-        Instance const instance = create_instance();
+        API_version const api_version{make_api_version(1, 2, 0)};
+        Instance const instance = create_instance(Application_description{"Mythology", 1}, Engine_description{"Mythology Engine", 1}, api_version);
         Physical_device const physical_device = select_physical_device(instance);
-        Device const device = create_device(physical_device);
         Queue_family_index const graphics_queue_family_index = find_graphics_queue_family_index(physical_device);
+        Device const device = create_device(physical_device, {&graphics_queue_family_index, 1}, is_extension_to_enable);
         Command_pool const command_pool = create_command_pool(device, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT, graphics_queue_family_index, {});
         Queue const queue = get_device_queue(device, graphics_queue_family_index, 0);
         Fence const fence = create_fence(device, {}, {});
@@ -48,7 +59,11 @@ namespace Mythology::Windowless
 
             begin_command_buffer(command_buffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, {});
             {
-                render(command_buffer, device_memory_and_color_image.color_image);
+                VkClearColorValue const clear_color = {
+                    .uint32 = {0, 128, 0, 255}
+                };
+
+                render(command_buffer, device_memory_and_color_image.color_image, clear_color);
             }
             end_command_buffer(command_buffer);
 
