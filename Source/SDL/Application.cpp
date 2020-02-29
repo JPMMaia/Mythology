@@ -20,6 +20,9 @@ import <span>;
 import <utility>;
 import <vector>;
 
+import <fstream>;
+import <future>;
+
 using namespace Maia::SDL::Vulkan;
 using namespace Maia::Renderer::Vulkan;
 
@@ -92,19 +95,19 @@ namespace Mythology::SDL
             SDL_Window* m_window = nullptr;
         };
 
-        Min_image_count select_swapchain_image_count(
+        std::uint32_t select_swapchain_image_count(
             VkSurfaceCapabilitiesKHR const& surface_capabilities
         ) noexcept
         {
-            std::uint32_t constexpr desired_image_count = 3;
+            std::uint32_t const desired_image_count = surface_capabilities.minImageCount + 1;
 
             if (surface_capabilities.maxImageCount != 0)
             {
-                return {std::clamp(desired_image_count, surface_capabilities.minImageCount, surface_capabilities.maxImageCount)};
+                return std::clamp(desired_image_count, surface_capabilities.minImageCount, surface_capabilities.maxImageCount);
             }
             else
             {
-                return {std::max(desired_image_count, surface_capabilities.minImageCount)};
+                return std::max(desired_image_count, surface_capabilities.minImageCount);
             }
         }
 
@@ -142,10 +145,7 @@ namespace Mythology::SDL
             Surface const surface
         ) noexcept
         {
-            std::pmr::vector<VkPresentModeKHR> const supported_present_modes =
-                get_surface_present_modes(physical_device, surface);
-
-            return supported_present_modes[0];
+            return VK_PRESENT_MODE_FIFO_KHR;
         }
 
         Swapchain create_swapchain(
@@ -155,7 +155,7 @@ namespace Mythology::SDL
         ) noexcept
         {
             VkSurfaceCapabilitiesKHR const surface_capabilities = get_surface_capabilities(physical_device, surface);
-            Min_image_count const min_image_count = select_swapchain_image_count(surface_capabilities);
+            std::uint32_t const image_count = select_swapchain_image_count(surface_capabilities);
             VkSurfaceFormatKHR const selected_surface_format = select_surface_format(physical_device, surface);
             VkImageUsageFlags const swapchain_usage_flags = select_swapchain_usage_flags(surface_capabilities);
             VkCompositeAlphaFlagBitsKHR const composite_alpha = select_composite_alpha(surface_capabilities);
@@ -164,7 +164,7 @@ namespace Mythology::SDL
             return create_swapchain(
                 device,
                 VkSwapchainCreateFlagsKHR{},
-                min_image_count,
+                {image_count},
                 {surface},
                 selected_surface_format.format,
                 selected_surface_format.colorSpace,
@@ -211,6 +211,21 @@ namespace Mythology::SDL
         {
             std::uint8_t value = 0;
         };
+
+        struct Device_resources
+        {
+            Device_resources() noexcept
+            {
+            }
+            Device_resources(Device_resources const&) = delete;
+            Device_resources(Device_resources&&) = delete;
+            ~Device_resources() noexcept
+            {
+            }
+
+            Device_resources& operator=(Device_resources const&) = delete;
+            Device_resources& operator=(Device_resources&&) = delete;
+        };
     }
 
     void run() noexcept
@@ -230,7 +245,7 @@ namespace Mythology::SDL
             SDL_WINDOWPOS_UNDEFINED,
             800,
             600,
-            SDL_WINDOW_RESIZABLE | SDL_WINDOW_VULKAN
+            SDL_WINDOW_VULKAN
         };
 
         if (window.get() == nullptr)
@@ -250,29 +265,25 @@ namespace Mythology::SDL
             return std::strcmp(properties.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0;
         };
 
-        Instance const instance = create_instance(required_instance_extensions);
+        API_version const api_version{make_api_version(1, 2, 0)};
+        Instance const instance = create_instance(Application_description{"Mythology", 1}, Engine_description{"Mythology Engine", 1}, api_version, required_instance_extensions);
         Physical_device const physical_device = select_physical_device(instance);
-        Device const device = create_device(physical_device, is_extension_to_enable);
+        Surface const surface = {create_surface(*window.get(), instance.value)};
         Queue_family_index const graphics_queue_family_index = find_graphics_queue_family_index(physical_device);
+        Queue_family_index const present_queue_family_index = find_present_queue_family_index(physical_device, surface, graphics_queue_family_index);
+        std::array<Queue_family_index, 2> const queue_family_indices{graphics_queue_family_index, present_queue_family_index};
+        Device const device = create_device(physical_device, queue_family_indices, is_extension_to_enable);
+
+        Swapchain const swapchain = create_swapchain(physical_device, device, surface);
+        std::pmr::vector<VkImage> const swapchain_images = get_swapchain_images(device, swapchain);
+        //std::pmr::vector<VkImageView> const swapchain_image_views = create_swapchain_image_views(device, swapchain_images, select_surface_format(physical_device, surface).format);
+        
         Command_pool const command_pool = create_command_pool(device, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, graphics_queue_family_index, {});
         Queue const queue = get_device_queue(device, graphics_queue_family_index, 0);
 
         /*VkExtent3D constexpr color_image_extent{16, 16, 1};
         Device_memory_and_color_image const device_memory_and_color_image = 
             create_device_memory_and_color_image(physical_device, device, VK_FORMAT_R8G8B8A8_UINT, color_image_extent);*/
-
-
-        Surface const surface = {create_surface(*window.get(), instance.value)};
-        if (!is_surface_supported(physical_device, graphics_queue_family_index, surface))
-        {
-            // TODO find suitable present queue
-            std::cerr << "Surface is not supported by physical device and queue.\n";
-            std::exit(EXIT_FAILURE);
-        }
-
-        Swapchain const swapchain = create_swapchain(physical_device, device, surface);
-        std::pmr::vector<VkImage> const swapchain_images = get_swapchain_images(device, swapchain);
-        //std::pmr::vector<VkImageView> const swapchain_image_views = create_swapchain_image_views(device, swapchain_images, select_surface_format(physical_device, surface).format);
 
         std::size_t const pipeline_length = swapchain_images.size();
         std::pmr::vector<Semaphore> const available_frames_semaphores = create_semaphores(pipeline_length, device, VK_SEMAPHORE_TYPE_BINARY);
@@ -310,8 +321,6 @@ namespace Mythology::SDL
 
                 if (is_fence_signaled(device, available_frames_fence))
                 {
-                    reset_fences(device, {&available_frames_fence, 1});
-
                     Semaphore const available_frame_semaphore = available_frames_semaphores[frame_index.value];
                     std::optional<Swapchain_image_index> const swapchain_image_index =
                         acquire_next_image(device, swapchain, 0, available_frame_semaphore, {});
@@ -324,13 +333,18 @@ namespace Mythology::SDL
                         reset_command_buffer(command_buffer, {});
                         begin_command_buffer(command_buffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, {});
                         {
-                            render(command_buffer, swapchain_image, true);
+                            VkClearColorValue const clear_color = {
+                                .float32 = {0.0f, 0.0f, 1.0f, 1.0f}
+                            };
+
+                            render(command_buffer, swapchain_image, clear_color, true);
                         }
                         end_command_buffer(command_buffer);
 
                         Semaphore const finished_frame_semaphore = finished_frames_semaphores[frame_index.value];
                         {
                             std::array<VkPipelineStageFlags, 1> constexpr wait_destination_stage_masks = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+                            reset_fences(device, {&available_frames_fence, 1});
                             queue_submit(queue, {&available_frame_semaphore, 1}, wait_destination_stage_masks, {&command_buffer, 1}, {&finished_frame_semaphore, 1}, available_frames_fence);
                         }
 
