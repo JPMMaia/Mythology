@@ -278,7 +278,7 @@ namespace Mythology::SDL
             SDL_WINDOWPOS_UNDEFINED,
             800,
             600,
-            SDL_WINDOW_VULKAN
+            SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN
         };
 
         if (window.get() == nullptr)
@@ -286,6 +286,8 @@ namespace Mythology::SDL
             std::cerr << "Could not create window: " << SDL_GetError() << '\n';
             std::exit(EXIT_FAILURE);
         }
+
+        
 
         std::pmr::vector<char const*> const required_instance_extensions = 
             get_sdl_required_instance_extensions(*window.get());
@@ -312,7 +314,8 @@ namespace Mythology::SDL
         //std::pmr::vector<VkImageView> const swapchain_image_views = create_swapchain_image_views(device, swapchain_images, select_surface_format(physical_device, surface).format);
         
         Command_pool const command_pool = create_command_pool(device, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, graphics_queue_family_index, {});
-        Queue const queue = get_device_queue(device, graphics_queue_family_index, 0);
+        Queue const graphics_queue = get_device_queue(device, graphics_queue_family_index, 0);
+        Queue const present_queue = get_device_queue(device, present_queue_family_index, 0);
 
         /*VkExtent3D constexpr color_image_extent{16, 16, 1};
         Device_memory_and_color_image const device_memory_and_color_image = 
@@ -378,10 +381,10 @@ namespace Mythology::SDL
                         {
                             std::array<VkPipelineStageFlags, 1> constexpr wait_destination_stage_masks = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
                             reset_fences(device, {&available_frames_fence, 1});
-                            queue_submit(queue, {&available_frame_semaphore, 1}, wait_destination_stage_masks, {&command_buffer, 1}, {&finished_frame_semaphore, 1}, available_frames_fence);
+                            queue_submit(graphics_queue, {&available_frame_semaphore, 1}, wait_destination_stage_masks, {&command_buffer, 1}, {&finished_frame_semaphore, 1}, available_frames_fence);
                         }
 
-                        queue_present(queue, {&finished_frame_semaphore.value, 1}, swapchain, *swapchain_image_index);
+                        queue_present(present_queue, {&finished_frame_semaphore.value, 1}, swapchain, *swapchain_image_index);
 
                         frame_index.value = (frame_index.value + 1) % pipeline_length;
                     }
