@@ -56,7 +56,7 @@ namespace Maia::Renderer::Vulkan
             .imageUsage = image_usage,
             .imageSharingMode = image_sharing_mode,
             .queueFamilyIndexCount = static_cast<uint32_t>(queue_family_indices.size()),
-            .pQueueFamilyIndices = reinterpret_cast<uint32_t const*>(queue_family_indices.data()),
+            .pQueueFamilyIndices = !queue_family_indices.empty() ? reinterpret_cast<uint32_t const*>(queue_family_indices.data()) : nullptr,
             .preTransform = pre_transform,
             .compositeAlpha = composite_alpha,
             .presentMode = present_mode,
