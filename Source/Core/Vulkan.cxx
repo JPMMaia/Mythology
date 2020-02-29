@@ -8,6 +8,7 @@ import <cstddef>;
 import <fstream>;
 import <functional>;
 import <memory_resource>;
+import <optional>;
 import <span>;
 import <vector>;
 
@@ -15,15 +16,28 @@ using namespace Maia::Renderer::Vulkan;
 
 namespace Mythology::Core::Vulkan
 {
-    export Instance create_instance(std::span<char const* const> required_extensions = {}) noexcept;
+    export Instance create_instance(
+        std::optional<Application_description> application_description,
+        std::optional<Engine_description> engine_description,
+        API_version api_version,
+        std::span<char const* const> required_extensions = {}) noexcept;
     
     export Physical_device select_physical_device(Instance instance) noexcept;
-    
-    export Device create_device(Physical_device physical_device, std::function<bool(VkExtensionProperties)> const& is_extension_to_enable = {}) noexcept;
 
     export Queue_family_index find_graphics_queue_family_index(
         Physical_device physical_device
     ) noexcept;
+
+    export Queue_family_index find_present_queue_family_index(
+        Physical_device physical_device,
+        Surface surface,
+        std::optional<Queue_family_index> preference = {}
+    ) noexcept;
+    
+    export Device create_device(
+        Physical_device physical_device,
+        std::span<Queue_family_index const> queue_family_indices,
+        std::function<bool(VkExtensionProperties)> const& is_extension_to_enable) noexcept;
 
     export struct Device_memory_and_color_image
     {
@@ -41,6 +55,7 @@ namespace Mythology::Core::Vulkan
     export void render(
         Command_buffer command_buffer,
         Image output_image,
+        VkClearColorValue clear_color,
         bool const switch_to_present_layout = false
     ) noexcept;
 

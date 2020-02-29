@@ -80,6 +80,9 @@ namespace Mythology::Core::Vulkan
     }
 
     Instance create_instance(
+        std::optional<Application_description> application_description,
+        std::optional<Engine_description> engine_description,
+        API_version api_version,
         std::span<char const* const> const required_extensions
     ) noexcept
     {
@@ -87,9 +90,7 @@ namespace Mythology::Core::Vulkan
 
         auto const is_layer_to_enable = [](VkLayerProperties const& properties) -> bool
         {
-            return 
-                std::strcmp(properties.layerName, "VK_LAYER_KHRONOS_validation") == 0 ||
-                std::strcmp(properties.layerName, "VK_LAYER_LUNARG_standard_validation") == 0;
+            return false;
         };
 
         auto const get_layer_name = [](VkLayerProperties const& properties)
@@ -98,7 +99,7 @@ namespace Mythology::Core::Vulkan
         };
 
         std::pmr::vector<char const*> layers_to_enable;
-        layers_to_enable.reserve(1);
+        layers_to_enable.reserve(5);
         for (std::size_t layer_index = 0; layer_index < layer_properties.size(); ++layer_index)
         {
             if (is_layer_to_enable(layer_properties[layer_index]))
@@ -108,7 +109,32 @@ namespace Mythology::Core::Vulkan
             }
         }
 
-        return Maia::Renderer::Vulkan::create_instance(layers_to_enable, required_extensions);
+        std::pmr::vector<char const*> extensions_to_enable;
+        extensions_to_enable.reserve(required_extensions.size() + 5);
+        extensions_to_enable.assign(required_extensions.begin(), required_extensions.end());
+
+        std::array<VkValidationFeatureEnableEXT, 1> constexpr validation_features_to_enable
+        {
+            VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT
+        };
+        
+        VkValidationFeaturesEXT const validation_features
+        {
+            .sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT,
+            .pNext = nullptr,
+            .enabledValidationFeatureCount = validation_features_to_enable.size(),
+            .pEnabledValidationFeatures = validation_features_to_enable.data(),
+            .disabledValidationFeatureCount = 0,
+            .pDisabledValidationFeatures = nullptr
+        };
+
+        return Maia::Renderer::Vulkan::create_instance(
+            application_description,
+            engine_description,
+            api_version,
+            layers_to_enable,
+            extensions_to_enable,
+            &validation_features);
     }
 
     Physical_device select_physical_device(Instance const instance) noexcept
@@ -116,6 +142,51 @@ namespace Mythology::Core::Vulkan
         std::pmr::vector<Physical_device> const physical_devices = enumerate_physical_devices(instance);
 
         return physical_devices[0];
+    }
+
+        Queue_family_index find_graphics_queue_family_index(
+        Physical_device const physical_device
+    ) noexcept
+    {
+        std::pmr::vector<Queue_family_properties> const queue_family_properties = 
+            get_physical_device_queue_family_properties(physical_device);
+
+        std::optional<Queue_family_index> const queue_family_index = find_queue_family_with_capabilities(
+            queue_family_properties,
+            [](Queue_family_properties const& properties) -> bool { return has_graphics_capabilities(properties); }
+        );
+
+        assert(queue_family_index.has_value());
+
+        return *queue_family_index;
+    }
+
+    Queue_family_index find_present_queue_family_index(
+        Physical_device const physical_device,
+        Surface const surface,
+        std::optional<Queue_family_index> const preference
+    ) noexcept
+    {
+        if (preference)
+        {
+            if (is_surface_supported(physical_device, *preference, surface))
+            {
+                return *preference;
+            }
+        }
+
+        std::uint32_t const queue_family_count = 
+            get_physical_device_queue_family_count(physical_device);
+
+        for (std::uint32_t index = 0; index < queue_family_count; ++index)
+        {
+            if (is_surface_supported(physical_device, {index}, surface))
+            {
+                return {index};
+            } 
+        }
+
+        assert(false);
     }
 
     namespace
@@ -143,29 +214,24 @@ namespace Mythology::Core::Vulkan
         }
     }
 
-    Device create_device(Physical_device const physical_device, std::function<bool(VkExtensionProperties)> const& is_extension_to_enable) noexcept
+    Device create_device(
+        Physical_device const physical_device,
+        std::span<Queue_family_index const> const queue_family_indices,
+        std::function<bool(VkExtensionProperties)> const& is_extension_to_enable) noexcept
     {
-        std::pmr::vector<Queue_family_properties> const queue_family_properties = 
-            get_physical_device_queue_family_properties(physical_device);
+        std::array<float, 1> constexpr queue_priorities{1.0f};
 
-        std::array<float, 1> const queue_priorities{1.0f};
-
-        std::pmr::vector<Device_queue_create_info> const queue_create_infos = [&queue_family_properties, &queue_priorities]() -> std::pmr::vector<Device_queue_create_info>
+        std::pmr::vector<Device_queue_create_info> const queue_create_infos = [queue_family_indices, &queue_priorities]() -> std::pmr::vector<Device_queue_create_info>
         {
             std::pmr::vector<Device_queue_create_info> queue_create_infos;
-            queue_create_infos.reserve(queue_family_properties.size());
+            queue_create_infos.resize(queue_family_indices.size());
 
-            assert(queue_family_properties.size() <= std::numeric_limits<std::uint32_t>::max());
-            for (std::uint32_t queue_family_index = 0; queue_family_index < queue_family_properties.size(); ++queue_family_index)
-            {
-                Queue_family_properties const& properties = queue_family_properties[queue_family_index];
-
-                if (has_graphics_capabilities(properties) || has_compute_capabilities(properties) || has_transfer_capabilities(properties))
-                {
-                    queue_create_infos.push_back(
-                        create_device_queue_create_info(queue_family_index, 1, queue_priorities));
-                }
-            }
+            std::transform(
+                queue_family_indices.begin(),
+                queue_family_indices.end(),
+                queue_create_infos.begin(),
+                [queue_priorities](Queue_family_index const index) -> Device_queue_create_info { return create_device_queue_create_info(index.value, 1, queue_priorities); }
+            );
 
             return queue_create_infos;
         }();
@@ -214,23 +280,6 @@ namespace Mythology::Core::Vulkan
         return {};
     }
 
-    Queue_family_index find_graphics_queue_family_index(
-        Physical_device const physical_device
-    ) noexcept
-    {
-        std::pmr::vector<Queue_family_properties> const queue_family_properties = 
-            get_physical_device_queue_family_properties(physical_device);
-
-        std::optional<Queue_family_index> const queue_family_index = find_queue_family_with_capabilities(
-            queue_family_properties,
-            [](Queue_family_properties const& properties) -> bool { return has_graphics_capabilities(properties); }
-        );
-
-        assert(queue_family_index.has_value());
-
-        return *queue_family_index;
-    }
-
     Device_memory_and_color_image create_device_memory_and_color_image(
         Physical_device const physical_device,
         Device const device,
@@ -267,6 +316,7 @@ namespace Mythology::Core::Vulkan
     void render(
         Command_buffer const command_buffer,
         Image const output_image,
+        VkClearColorValue const clear_color,
         bool const switch_to_present_layout
     ) noexcept
     {
@@ -311,9 +361,7 @@ namespace Mythology::Core::Vulkan
         {
             VkClearValue const clear_value
             {
-                .color = {
-                    .uint32 =  {0, 0, 128, 255}
-                }
+                .color = clear_color
             };
 
             vkCmdClearColorImage(
