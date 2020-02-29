@@ -14,10 +14,16 @@ import <vector>;
 
 namespace Maia::Renderer::Vulkan
 {
-    std::pmr::vector<Queue_family_properties> get_physical_device_queue_family_properties(Physical_device const physical_device, std::pmr::polymorphic_allocator<Physical_device> const& allocator) noexcept
+    std::uint32_t get_physical_device_queue_family_count(Physical_device const physical_device) noexcept
     {
         std::uint32_t queue_family_property_count = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(physical_device.value, &queue_family_property_count, nullptr);
+        return queue_family_property_count;
+    }
+
+    std::pmr::vector<Queue_family_properties> get_physical_device_queue_family_properties(Physical_device const physical_device, std::pmr::polymorphic_allocator<Physical_device> const& allocator) noexcept
+    {
+        std::uint32_t queue_family_property_count = get_physical_device_queue_family_count(physical_device);
 
         std::pmr::vector<Queue_family_properties> queue_family_propertiess{queue_family_property_count, allocator};
 
@@ -62,20 +68,22 @@ namespace Maia::Renderer::Vulkan
         static_assert(std::is_standard_layout_v<Device_queue_create_info>, "Must be standard layout so that Device_queue_create_info and Device_queue_create_info.value are pointer-interconvertible");
         static_assert(sizeof(Device_queue_create_info) == sizeof(VkDeviceQueueCreateInfo), "Device_queue_create_info must only contain VkDeviceQueueCreateInfo since using Device_queue_create_info* as a contiguous array");
 
-        VkDeviceCreateInfo create_info{};
-        create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        create_info.pNext = nullptr;
-        create_info.flags = 0;
-        create_info.queueCreateInfoCount = queue_create_infos.size();
-        create_info.pQueueCreateInfos = reinterpret_cast<VkDeviceQueueCreateInfo const*>(queue_create_infos.data());
-        create_info.enabledExtensionCount = enabled_extensions.size();
-        create_info.ppEnabledExtensionNames = enabled_extensions.data();
-        create_info.pEnabledFeatures = nullptr;
+        VkDeviceCreateInfo const create_info
+        {
+            .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0,
+            .queueCreateInfoCount = static_cast<std::uint32_t>(queue_create_infos.size()),
+            .pQueueCreateInfos = reinterpret_cast<VkDeviceQueueCreateInfo const*>(queue_create_infos.data()),
+            .enabledExtensionCount = static_cast<std::uint32_t>(enabled_extensions.size()),
+            .ppEnabledExtensionNames = enabled_extensions.data(),
+            .pEnabledFeatures = nullptr
+        };
 
         VkDevice device = {};
         check_result(
             vkCreateDevice(physical_device.value, &create_info, nullptr, &device));
 
-        return { device };
+        return {device};
     }
 }

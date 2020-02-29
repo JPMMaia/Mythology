@@ -17,6 +17,7 @@ namespace Maia::Renderer::Vulkan
         VkQueueFamilyProperties value;
     };
 
+    export std::uint32_t get_physical_device_queue_family_count(Physical_device physical_device) noexcept;
     export std::pmr::vector<Queue_family_properties> get_physical_device_queue_family_properties(Physical_device physical_device, std::pmr::polymorphic_allocator<Physical_device> const& allocator = {}) noexcept;
 
     export bool has_graphics_capabilities(Queue_family_properties const& queue_family_properties) noexcept;
