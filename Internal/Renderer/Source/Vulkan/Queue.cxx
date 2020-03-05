@@ -15,7 +15,7 @@ namespace Maia::Renderer::Vulkan
 {
     export struct Queue
     {
-        VkQueue value;
+        VkQueue value = VK_NULL_HANDLE;
     };
 
     export Queue get_device_queue(
