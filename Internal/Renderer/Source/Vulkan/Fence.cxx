@@ -63,4 +63,27 @@ namespace Maia::Renderer::Vulkan
         std::span<Fence const> fences,
         Timeout_nanoseconds timeout
     ) noexcept;
+
+    export struct Wait_for_all_fences_lock
+    {
+        Wait_for_all_fences_lock(Device const device, std::span<Fence const> const fences, Timeout_nanoseconds const timeout) noexcept :
+            device{device},
+            fences{fences},
+            timeout{timeout}
+        {
+        }
+        Wait_for_all_fences_lock(Wait_for_all_fences_lock const&) noexcept = delete;
+        Wait_for_all_fences_lock(Wait_for_all_fences_lock&&) noexcept = delete;
+        ~Wait_for_all_fences_lock() noexcept
+        {
+            wait_for_all_fences(this->device, this->fences, this->timeout);
+        }
+
+        Wait_for_all_fences_lock& operator=(Wait_for_all_fences_lock const&) noexcept = delete;
+        Wait_for_all_fences_lock& operator=(Wait_for_all_fences_lock&&) noexcept = delete;
+
+        Device device;
+        std::span<Fence const> fences;
+        Timeout_nanoseconds timeout;
+    };
 }
