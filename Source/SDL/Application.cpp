@@ -247,17 +247,138 @@ namespace Mythology::SDL
 
         struct Device_resources
         {
-            Device_resources() noexcept
+            Device_resources(API_version const api_version, SDL_Window& window) noexcept
             {
+                using namespace Mythology::Core::Vulkan;
+
+                std::pmr::vector<char const*> const required_instance_extensions = get_sdl_required_instance_extensions(window);
+                this->instance = create_instance(Application_description{"Mythology", 1}, Engine_description{"Mythology Engine", 1}, api_version, required_instance_extensions);
+
+                this->physical_device = select_physical_device(this->instance);
+                
+                this->surface = {create_surface(window, this->instance.value)};
+                
+                this->graphics_queue_family_index = find_graphics_queue_family_index(this->physical_device);
+                this->present_queue_family_index = find_present_queue_family_index(this->physical_device, this->surface, graphics_queue_family_index);
+
+                auto const is_extension_to_enable = [](VkExtensionProperties const& properties) -> bool
+                {
+                    return std::strcmp(properties.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0;
+                };
+
+                if (this->graphics_queue_family_index != this->present_queue_family_index)
+                {
+                    std::array<Queue_family_index, 2> const queue_family_indices{this->graphics_queue_family_index, this->present_queue_family_index};
+                    this->device = create_device(this->physical_device, queue_family_indices, is_extension_to_enable);
+                    this->swapchain = create_swapchain(this->physical_device, this->device, this->surface, queue_family_indices);
+                }
+                else
+                {
+                    Queue_family_index const queue_family_index = this->present_queue_family_index;
+                    this->device = create_device(this->physical_device, {&queue_family_index, 1}, is_extension_to_enable);
+                    this->swapchain = create_swapchain(this->physical_device, this->device, this->surface, {&queue_family_index, 1});
+                }
             }
             Device_resources(Device_resources const&) = delete;
             Device_resources(Device_resources&&) = delete;
             ~Device_resources() noexcept
             {
+                if (this->swapchain.value != VK_NULL_HANDLE)
+                {
+                    destroy_swapchain(this->device, this->swapchain);
+                }
+
+                if (this->device.value != VK_NULL_HANDLE)
+                {
+                    destroy_device(this->device);
+                }
+
+                if (this->surface.value != VK_NULL_HANDLE)
+                {
+                    destroy_surface(this->instance, this->surface);
+                }
+
+                if (this->instance.value != VK_NULL_HANDLE)
+                {
+                    destroy_instance(this->instance);
+                }
             }
 
             Device_resources& operator=(Device_resources const&) = delete;
             Device_resources& operator=(Device_resources&&) = delete;
+
+            Instance instance = {};
+            Physical_device physical_device = {};
+            Surface surface = {};
+            Queue_family_index graphics_queue_family_index = {};
+            Queue_family_index present_queue_family_index = {};
+            Device device = {};
+            Swapchain swapchain = {};
+        };
+
+        struct Command_pools_resources
+        {
+            Command_pools_resources(
+                Device const device,
+                VkCommandPoolCreateFlags const flags,
+                Queue_family_index const queue_family_index) noexcept :
+                device{device},
+                command_pool{create_command_pool(device, flags, queue_family_index, {})}
+            {
+            }
+            Command_pools_resources(Command_pools_resources const&) noexcept = delete;
+            Command_pools_resources(Command_pools_resources&&) noexcept = delete;
+            ~Command_pools_resources() noexcept
+            {
+                if (this->command_pool.value != VK_NULL_HANDLE)
+                {
+                    destroy_command_pool(this->device, this->command_pool, {});
+                }
+            }
+
+            Command_pools_resources& operator=(Command_pools_resources const&) noexcept = delete;
+            Command_pools_resources& operator=(Command_pools_resources&&) noexcept = delete;
+
+            Device device = {};
+            Command_pool command_pool = {};
+        };
+
+        struct Synchronization_resources
+        {
+            Synchronization_resources(std::size_t const count, Device const device) noexcept :
+                device{device},
+                available_frames_semaphores{create_semaphores(count, device, VK_SEMAPHORE_TYPE_BINARY)},
+                finished_frames_semaphores{create_semaphores(count, device, VK_SEMAPHORE_TYPE_BINARY)},
+                available_frames_fences{create_fences(count, device, VK_FENCE_CREATE_SIGNALED_BIT)}
+            {
+            }
+            Synchronization_resources(Synchronization_resources const&) noexcept = delete;
+            Synchronization_resources(Synchronization_resources&&) noexcept = delete;
+            ~Synchronization_resources() noexcept
+            {
+                for (Fence const fence : available_frames_fences)
+                {
+                    destroy_fence(this->device, fence, {});
+                }
+
+                for (Semaphore const semaphore : finished_frames_semaphores)
+                {
+                    destroy_semaphore(this->device, semaphore, {});
+                }
+
+                for (Semaphore const semaphore : available_frames_semaphores)
+                {
+                    destroy_semaphore(this->device, semaphore, {});
+                }
+            }
+
+            Synchronization_resources& operator=(Synchronization_resources const&) noexcept = delete;
+            Synchronization_resources& operator=(Synchronization_resources&&) noexcept = delete;
+
+            Device device;
+            std::pmr::vector<Semaphore> available_frames_semaphores;
+            std::pmr::vector<Semaphore> finished_frames_semaphores;
+            std::pmr::vector<Fence> available_frames_fences;
         };
     }
 
@@ -287,45 +408,32 @@ namespace Mythology::SDL
             std::exit(EXIT_FAILURE);
         }
 
-        
-
-        std::pmr::vector<char const*> const required_instance_extensions = 
-            get_sdl_required_instance_extensions(*window.get());
-
+        Device_resources const device_resources{make_api_version(1, 2, 0), *window.get()};
+        Device const device = device_resources.device;
+        Swapchain const swapchain = device_resources.swapchain;
+        Queue_family_index const graphics_queue_family_index = device_resources.graphics_queue_family_index;
+        Queue_family_index const present_queue_family_index = device_resources.present_queue_family_index;
 
         using namespace Mythology::Core::Vulkan;
-        
-        auto const is_extension_to_enable = [](VkExtensionProperties const& properties) -> bool
-        {
-            return std::strcmp(properties.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0;
-        };
 
-        API_version const api_version{make_api_version(1, 2, 0)};
-        Instance const instance = create_instance(Application_description{"Mythology", 1}, Engine_description{"Mythology Engine", 1}, api_version, required_instance_extensions);
-        Physical_device const physical_device = select_physical_device(instance);
-        Surface const surface = {create_surface(*window.get(), instance.value)};
-        Queue_family_index const graphics_queue_family_index = find_graphics_queue_family_index(physical_device);
-        Queue_family_index const present_queue_family_index = find_present_queue_family_index(physical_device, surface, graphics_queue_family_index);
-        std::array<Queue_family_index, 2> const queue_family_indices{graphics_queue_family_index, present_queue_family_index};
-        Device const device = create_device(physical_device, queue_family_indices, is_extension_to_enable);
-
-        Swapchain const swapchain = create_swapchain(physical_device, device, surface, queue_family_indices);
         std::pmr::vector<VkImage> const swapchain_images = get_swapchain_images(device, swapchain);
         //std::pmr::vector<VkImageView> const swapchain_image_views = create_swapchain_image_views(device, swapchain_images, select_surface_format(physical_device, surface).format);
-        
-        Command_pool const command_pool = create_command_pool(device, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, graphics_queue_family_index, {});
-        Queue const graphics_queue = get_device_queue(device, graphics_queue_family_index, 0);
-        Queue const present_queue = get_device_queue(device, present_queue_family_index, 0);
 
         /*VkExtent3D constexpr color_image_extent{16, 16, 1};
         Device_memory_and_color_image const device_memory_and_color_image = 
             create_device_memory_and_color_image(physical_device, device, VK_FORMAT_R8G8B8A8_UINT, color_image_extent);*/
 
         std::size_t const pipeline_length = swapchain_images.size();
-        std::pmr::vector<Semaphore> const available_frames_semaphores = create_semaphores(pipeline_length, device, VK_SEMAPHORE_TYPE_BINARY);
-        std::pmr::vector<Semaphore> const finished_frames_semaphores = create_semaphores(pipeline_length, device, VK_SEMAPHORE_TYPE_BINARY);
-        std::pmr::vector<Fence> const available_frames_fences = create_fences(pipeline_length, device, VK_FENCE_CREATE_SIGNALED_BIT);
+        Synchronization_resources synchronization_resources{pipeline_length, device};
+        std::span<Semaphore> const available_frames_semaphores = synchronization_resources.available_frames_semaphores;
+        std::span<Semaphore> const finished_frames_semaphores = synchronization_resources.finished_frames_semaphores;
+        std::span<Fence> const available_frames_fences = synchronization_resources.available_frames_fences;
 
+        Queue const graphics_queue = get_device_queue(device, graphics_queue_family_index, 0);
+        Queue const present_queue = get_device_queue(device, present_queue_family_index, 0);
+
+        Command_pools_resources const command_pool_resources{device, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, graphics_queue_family_index};
+        Command_pool const command_pool = command_pool_resources.command_pool;
         std::pmr::vector<Command_buffer> const command_buffers = 
                 allocate_command_buffers(
                     device,
@@ -334,6 +442,8 @@ namespace Mythology::SDL
                     pipeline_length,
                     {}
                 );
+
+        Wait_for_all_fences_lock const wait_for_all_fences_lock{device, available_frames_fences, Timeout_nanoseconds{5000000000}};
 
         Frame_index frame_index{0};
         bool isRunning = true;
