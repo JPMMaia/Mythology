@@ -1,5 +1,6 @@
 export module maia.renderer.vulkan.device;
 
+import maia.renderer.vulkan.allocation_callbacks;
 import maia.renderer.vulkan.physical_device;
 
 import <vulkan/vulkan.h>;
@@ -7,6 +8,7 @@ import <vulkan/vulkan.h>;
 import <algorithm>;
 import <cstdint>;
 import <memory_resource>;
+import <optional>;
 import <span>;
 import <vector>;
 
@@ -68,8 +70,9 @@ namespace Maia::Renderer::Vulkan
 
     export struct Device
     {
-        VkDevice value;
+        VkDevice value = VK_NULL_HANDLE;
     };
 
     export Device create_device(Physical_device physical_device, std::span<Device_queue_create_info const> queue_create_infos, std::span<char const* const> enabled_extensions) noexcept;
+    export void destroy_device(Device device, std::optional<Allocation_callbacks> allocator = {}) noexcept;
 }
