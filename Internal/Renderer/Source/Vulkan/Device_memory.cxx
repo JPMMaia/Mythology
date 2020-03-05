@@ -76,7 +76,7 @@ namespace Maia::Renderer::Vulkan
 
     export struct Device_memory
     {
-        VkDeviceMemory value;
+        VkDeviceMemory value = VK_NULL_HANDLE;
     };
 
     export Device_memory allocate_memory(
