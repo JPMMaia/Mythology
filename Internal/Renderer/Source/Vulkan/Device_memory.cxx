@@ -86,6 +86,12 @@ namespace Maia::Renderer::Vulkan
         std::optional<Allocation_callbacks> allocator
     ) noexcept;
 
+    export void free_memory(
+        Device device,
+        Device_memory device_memory,
+        std::optional<Allocation_callbacks> allocator
+    ) noexcept;
+
 
     export void bind_memory(
         Device device,
