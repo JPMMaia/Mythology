@@ -16,7 +16,7 @@ namespace Maia::Renderer::Vulkan
 
     export struct Physical_device
     {
-        VkPhysicalDevice value;
+        VkPhysicalDevice value = VK_NULL_HANDLE;
     };
 
     export std::ostream& operator<<(std::ostream& output_stream, Physical_device physical_device) noexcept;
