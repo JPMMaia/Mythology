@@ -1,5 +1,7 @@
 export module maia.renderer.vulkan.instance;
 
+import maia.renderer.vulkan.allocation_callbacks;
+
 import <vulkan/vulkan.h>;
 
 import <cstdint>;
@@ -37,7 +39,7 @@ namespace Maia::Renderer::Vulkan
 
     export struct Instance
     {
-        VkInstance value;
+        VkInstance value = VK_NULL_HANDLE;
     };
 
     export Instance create_instance(
@@ -47,4 +49,9 @@ namespace Maia::Renderer::Vulkan
         std::span<char const* const> enabled_layers,
         std::span<char const* const> enabled_extensions,
         void const* next = nullptr) noexcept;
+
+    export void destroy_instance(
+        Instance instance,
+        std::optional<Allocation_callbacks> allocator = {}
+    ) noexcept;
 }
