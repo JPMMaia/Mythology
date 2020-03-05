@@ -11,7 +11,7 @@ namespace Maia::Renderer::Vulkan
 {
     export struct Command_pool
     {
-        VkCommandPool value;
+        VkCommandPool value = VK_NULL_HANDLE;
     };
 
     export Command_pool create_command_pool(
