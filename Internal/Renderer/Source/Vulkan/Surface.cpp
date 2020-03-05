@@ -1,13 +1,16 @@
 module maia.renderer.vulkan.surface;
 
+import maia.renderer.vulkan.allocation_callbacks;
 import maia.renderer.vulkan.check;
 import maia.renderer.vulkan.device;
+import maia.renderer.vulkan.instance;
 import maia.renderer.vulkan.physical_device;
 
 import <vulkan/vulkan.h>;
 
 import <cstdint>;
 import <memory_resource>;
+import <optional>;
 import <vector>;
 
 namespace Maia::Renderer::Vulkan
@@ -120,5 +123,10 @@ namespace Maia::Renderer::Vulkan
         {
             return {};
         }
+    }
+
+    void destroy_surface(Instance const instance, Surface const surface, std::optional<Allocation_callbacks> const allocator) noexcept
+    {
+        vkDestroySurfaceKHR(instance.value, surface.value, allocator.has_value() ? &allocator->value : nullptr);
     }
 }

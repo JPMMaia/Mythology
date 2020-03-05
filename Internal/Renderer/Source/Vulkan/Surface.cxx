@@ -1,19 +1,22 @@
 export module maia.renderer.vulkan.surface;
 
+import maia.renderer.vulkan.allocation_callbacks;
 import maia.renderer.vulkan.device;
+import maia.renderer.vulkan.instance;
 import maia.renderer.vulkan.physical_device;
 
 import <vulkan/vulkan.h>;
 
 import <cstdint>;
 import <memory_resource>;
+import <optional>;
 import <vector>;
 
 namespace Maia::Renderer::Vulkan
 {
     export struct Surface
     {
-        VkSurfaceKHR value;
+        VkSurfaceKHR value = VK_NULL_HANDLE;
     };
 
     export bool is_surface_supported(
@@ -38,4 +41,9 @@ namespace Maia::Renderer::Vulkan
         Surface surface,
         std::pmr::polymorphic_allocator<VkPresentModeKHR> allocator = {}
     ) noexcept;
+
+    export void destroy_surface(
+        Instance instance,
+        Surface surface,
+        std::optional<Allocation_callbacks> allocator = {}) noexcept;
 }
