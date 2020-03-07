@@ -20,10 +20,19 @@ target_module (
     INTERFACE "Keyboard_state.cxx"
     INTERFACE_DEPENDS "Standard_library"
 )
+
+target_module (
+    MaiaInput
+    "maia.input.mouse_state"
+    INTERFACE "Mouse_state.cxx"
+    INTERFACE_DEPENDS "Standard_library"
+)
+
 target_module (
     MaiaInput
     "maia.input"
     INTERFACE "Module.cxx"
     INTERFACE_DEPENDS
         "maia.input.keyboard_state"
+        "maia.input.mouse_state"
 )
