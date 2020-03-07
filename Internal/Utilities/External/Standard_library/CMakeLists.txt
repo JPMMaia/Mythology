@@ -39,4 +39,5 @@ target_header (Standard_library "string_view" "${standard_library_root}/string_v
 target_header (Standard_library "type_traits" "${standard_library_root}/type_traits")
 target_header (Standard_library "unordered_map" "${standard_library_root}/unordered_map")
 target_header (Standard_library "utility" "${standard_library_root}/utility")
+target_header (Standard_library "variant" "${standard_library_root}/variant")
 target_header (Standard_library "vector" "${standard_library_root}/vector")
