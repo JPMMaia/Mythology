@@ -16,6 +16,14 @@ set_target_properties (MaiaInput PROPERTIES
 
 target_module (
     MaiaInput
+    "maia.input.keyboard_state"
+    INTERFACE "Keyboard_state.cxx"
+    INTERFACE_DEPENDS "Standard_library"
+)
+target_module (
+    MaiaInput
     "maia.input"
     INTERFACE "Module.cxx"
+    INTERFACE_DEPENDS
+        "maia.input.keyboard_state"
 )
