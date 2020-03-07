@@ -1,5 +1,6 @@
 module mythology.sdl.application;
 
+import maia.input;
 import maia.renderer.vulkan;
 import maia.sdl.vulkan;
 import mythology.core.vulkan;
@@ -18,6 +19,7 @@ import <memory_resource>;
 import <optional>;
 import <span>;
 import <utility>;
+import <variant>;
 import <vector>;
 
 import <fstream>;
@@ -380,6 +382,38 @@ namespace Mythology::SDL
             std::pmr::vector<Semaphore> finished_frames_semaphores;
             std::pmr::vector<Fence> available_frames_fences;
         };
+
+        Maia::Input::Keyboard_state get_keyboard_state() noexcept
+        {
+            Uint8 const* const sdl_keyboard_state = SDL_GetKeyboardState(nullptr);
+
+            Maia::Input::Keyboard_state maia_keyboard_state;
+            std::transform(sdl_keyboard_state, sdl_keyboard_state + 256, maia_keyboard_state.keys.begin(),
+                [](Uint8 const state) -> bool { return state == 1; });
+            
+            return maia_keyboard_state;
+        }
+
+        Maia::Input::Mouse_state get_mouse_state() noexcept
+        {
+            int x = 0, y = 0;
+            Uint32 const state = SDL_GetMouseState(&x, &y);
+
+            return Maia::Input::Mouse_state
+            {
+                .position = {x, y},
+                .keys = {
+                    (state & SDL_BUTTON(SDL_BUTTON_LEFT)) != 0 ? true : false,
+                    (state & SDL_BUTTON(SDL_BUTTON_MIDDLE)) != 0 ? true : false,
+                    (state & SDL_BUTTON(SDL_BUTTON_RIGHT)) != 0 ? true : false,
+                    (state & SDL_BUTTON(SDL_BUTTON_X1)) != 0 ? true : false,
+                    (state & SDL_BUTTON(SDL_BUTTON_X2)) != 0 ? true : false,
+                    false,
+                    false,
+                    false
+                }
+            };
+        }
     }
 
     void run() noexcept
@@ -443,6 +477,9 @@ namespace Mythology::SDL
                     {}
                 );
 
+        Maia::Input::Keyboard_state previous_keyboard_state{};
+        Maia::Input::Mouse_state previous_mouse_state{};
+
         Wait_for_all_fences_lock const wait_for_all_fences_lock{device, available_frames_fences, Timeout_nanoseconds{5000000000}};
 
         Frame_index frame_index{0};
@@ -463,42 +500,53 @@ namespace Mythology::SDL
 
             if (isRunning)
             {
-                Fence const available_frames_fence = available_frames_fences[frame_index.value];
+                Maia::Input::Keyboard_state const current_keyboard_state = get_keyboard_state();
+                Maia::Input::Mouse_state const current_mouse_state = get_mouse_state();
 
-                if (is_fence_signaled(device, available_frames_fence))
+                /*using Input_key = std::variant<Maia::Input::Keyboard_key>;
+                std::array<Input_key, 256> virtual_to_input_key{};*/
+
                 {
-                    Semaphore const available_frame_semaphore = available_frames_semaphores[frame_index.value];
-                    std::optional<Swapchain_image_index> const swapchain_image_index =
-                        acquire_next_image(device, swapchain, 0, available_frame_semaphore, {});
+                    Fence const available_frames_fence = available_frames_fences[frame_index.value];
 
-                    if (swapchain_image_index)
+                    if (is_fence_signaled(device, available_frames_fence))
                     {
-                        Image const swapchain_image = {swapchain_images[swapchain_image_index->value]};
+                        Semaphore const available_frame_semaphore = available_frames_semaphores[frame_index.value];
+                        std::optional<Swapchain_image_index> const swapchain_image_index =
+                            acquire_next_image(device, swapchain, 0, available_frame_semaphore, {});
 
-                        Command_buffer const command_buffer = command_buffers[frame_index.value];
-                        reset_command_buffer(command_buffer, {});
-                        begin_command_buffer(command_buffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, {});
+                        if (swapchain_image_index)
                         {
-                            VkClearColorValue const clear_color = {
-                                .float32 = {0.0f, 0.0f, 1.0f, 1.0f}
-                            };
+                            Image const swapchain_image = {swapchain_images[swapchain_image_index->value]};
 
-                            render(command_buffer, swapchain_image, clear_color, true);
+                            Command_buffer const command_buffer = command_buffers[frame_index.value];
+                            reset_command_buffer(command_buffer, {});
+                            begin_command_buffer(command_buffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, {});
+                            {
+                                VkClearColorValue const clear_color = {
+                                    .float32 = {0.0f, 0.0f, 1.0f, 1.0f}
+                                };
+
+                                render(command_buffer, swapchain_image, clear_color, true);
+                            }
+                            end_command_buffer(command_buffer);
+
+                            Semaphore const finished_frame_semaphore = finished_frames_semaphores[frame_index.value];
+                            {
+                                std::array<VkPipelineStageFlags, 1> constexpr wait_destination_stage_masks = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+                                reset_fences(device, {&available_frames_fence, 1});
+                                queue_submit(graphics_queue, {&available_frame_semaphore, 1}, wait_destination_stage_masks, {&command_buffer, 1}, {&finished_frame_semaphore, 1}, available_frames_fence);
+                            }
+
+                            queue_present(present_queue, {&finished_frame_semaphore.value, 1}, swapchain, *swapchain_image_index);
+
+                            frame_index.value = (frame_index.value + 1) % pipeline_length;
                         }
-                        end_command_buffer(command_buffer);
-
-                        Semaphore const finished_frame_semaphore = finished_frames_semaphores[frame_index.value];
-                        {
-                            std::array<VkPipelineStageFlags, 1> constexpr wait_destination_stage_masks = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-                            reset_fences(device, {&available_frames_fence, 1});
-                            queue_submit(graphics_queue, {&available_frame_semaphore, 1}, wait_destination_stage_masks, {&command_buffer, 1}, {&finished_frame_semaphore, 1}, available_frames_fence);
-                        }
-
-                        queue_present(present_queue, {&finished_frame_semaphore.value, 1}, swapchain, *swapchain_image_index);
-
-                        frame_index.value = (frame_index.value + 1) % pipeline_length;
                     }
                 }
+
+                previous_keyboard_state = current_keyboard_state;
+                previous_mouse_state = current_mouse_state;
             }
         }
     }
