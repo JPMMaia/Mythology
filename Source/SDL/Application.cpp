@@ -490,226 +490,7 @@ namespace Mythology::SDL
             }
 
             return game_controllers_state;
-        }
-
-        
-        struct Input_key
-        {
-            std::uint8_t value;
-
-            static Input_key invalid_value() noexcept
-            {
-                return {std::numeric_limits<std::uint8_t>::max()};
-            }
-
-            bool is_valid() const noexcept
-            {
-                return this->value != invalid_value().value;
-            }
-        };
-
-        struct Input_axis
-        {
-            std::uint8_t value;
-
-            static Input_axis invalid_value() noexcept
-            {
-                return {std::numeric_limits<std::uint8_t>::max()};
-            }
-
-            bool is_valid() const noexcept
-            {
-                return this->value != invalid_value().value;
-            }
-        };
-
-        struct Input_trigger
-        {
-            std::uint8_t value;
-
-            static Input_trigger invalid_value() noexcept
-            {
-                return {std::numeric_limits<std::uint8_t>::max()};
-            }
-
-            bool is_valid() const noexcept
-            {
-                return this->value != invalid_value().value;
-            }
-        };
-
-        struct Input_state
-        {
-            std::array<bool, 256> keys;
-            std::array<std::int16_t, 8> axis;
-            std::array<std::int16_t, 2> triggers;
-        };
-
-        struct Input_positive_axis
-        {
-            std::uint8_t value;
-        };
-
-        struct Input_negative_axis
-        {
-            std::uint8_t value;
-        };
-
-        template <std::size_t Count>
-        struct Keyboard_mapping
-        {
-            using Key_type = Maia::Input::Keyboard_key;
-            using Value_type = std::variant<Input_key, Input_positive_axis, Input_negative_axis, Input_trigger>;
-
-            std::array<Key_type, Count> keys;
-            std::array<Value_type, Count> values;
-        };
-
-        template <std::size_t Count>
-        using Keyboard_mapping_key_value_pair = std::pair<typename Keyboard_mapping<Count>::Key_type, typename Keyboard_mapping<Count>::Value_type>;
-
-        template <std::size_t Count>
-        Keyboard_mapping<Count> create_keyboard_mapping(
-            std::initializer_list<Keyboard_mapping_key_value_pair<Count>> const key_value_pairs) noexcept
-        {
-            Keyboard_mapping<Count> keyboard_mapping{};
-
-            for (auto key_value_it = key_value_pairs.begin(); key_value_it != key_value_pairs.end(); ++key_value_it)
-            {
-                auto const key_index = std::distance(key_value_pairs.begin(), key_value_it);
-
-                keyboard_mapping.keys[key_index] = key_value_it->first;
-                keyboard_mapping.values[key_index] = key_value_it->second;
-            }
-
-            return keyboard_mapping;
-        }
-
-        struct Mouse_mapping
-        {
-            std::array<Input_key, 8> keys;
-            Input_axis horizontal_axis;
-            Input_axis vertical_axis;
-        };
-
-        Mouse_mapping create_mouse_mapping(
-            std::initializer_list<std::pair<Maia::Input::Mouse_key, Input_key>> const key_value_pairs,
-            std::optional<Input_axis> horizontal_axis,
-            std::optional<Input_axis> vertical_axis) noexcept
-        {
-            Mouse_mapping mouse_mapping{};
-
-            for (std::size_t key_index = 0; key_index < mouse_mapping.keys.size(); ++key_index)
-            {
-                mouse_mapping.keys[key_index] = Input_key::invalid_value();
-            }
-
-            for (std::pair<Maia::Input::Mouse_key, Input_key> const key_value : key_value_pairs)
-            {
-                mouse_mapping.keys[key_value.first.value] = key_value.second;
-            }
-
-            mouse_mapping.horizontal_axis = horizontal_axis->is_valid() ? *horizontal_axis : Input_axis::invalid_value();
-            mouse_mapping.vertical_axis = vertical_axis->is_valid() ? *vertical_axis : Input_axis::invalid_value();
-
-            return mouse_mapping;
-        }
-
-        struct Game_controller_mapping
-        {
-            Input_axis horizontal_left_axis;
-            Input_axis vertical_left_axis;
-            Input_axis horizontal_right_axis;
-            Input_axis vertical_right_axis;
-            Input_trigger left_trigger;
-            Input_trigger right_trigger;
-            std::array<Input_key, 15> keys;
-        };
-
-        /*struct Input_mapping
-        {
-            Keyboard_mapping keyboard;
-            Mouse_mapping mouse;
-            std::array<Game_controller_mapping, 2> game_controllers;
-        };
-
-        Input_mapping create_input_mapping() noexcept
-        {
-
-        }*/
-
-        template <std::size_t Keyboard_count>
-        Input_state map_input(
-            std::span<Maia::Input::Game_controller_state> const& game_controller_states,
-            std::span<Game_controller_mapping> const& game_controller_mappings,
-            Maia::Input::Keyboard_state const& keyboard_state,
-            Keyboard_mapping<Keyboard_count> const& keyboard_mapping,
-            Maia::Input::Mouse_state const& mouse_state,
-            Mouse_mapping const& mouse_mapping) noexcept
-        {
-            assert(game_controller_states.size() == game_controller_mappings.size());
-
-            Input_state input_state{};
-
-            for (std::size_t key_index = 0; key_index < Keyboard_count; ++key_index)
-            {
-                Maia::Input::Keyboard_key const key = keyboard_mapping.keys[key_index];
-                bool const key_down = keyboard_state.keys[key.value];
-
-                if (key_down)
-                {
-                    std::variant<Input_key, Input_positive_axis, Input_negative_axis, Input_trigger> const input_element = keyboard_mapping.values[key_index];
-
-                    if (std::holds_alternative<Input_key>(input_element))
-                    {
-                        Input_key const input_key = std::get<Input_key>(input_element);
-                        input_state.keys[input_key.value] |= key_down;
-                    }
-                    else if (std::holds_alternative<Input_positive_axis>(input_element))
-                    {
-                        Input_positive_axis const input_positive_axis = std::get<Input_positive_axis>(input_element);
-                        input_state.axis[input_positive_axis.value] = std::numeric_limits<std::int16_t>::max();
-                    }
-                    else if (std::holds_alternative<Input_negative_axis>(input_element))
-                    {
-                        Input_negative_axis const input_negative_axis = std::get<Input_negative_axis>(input_element);
-                        input_state.axis[input_negative_axis.value] = std::numeric_limits<std::int16_t>::lowest();
-                    }
-                    else if (std::holds_alternative<Input_trigger>(input_element))
-                    {
-                        Input_trigger const input_trigger = std::get<Input_trigger>(input_element);
-                        input_state.triggers[input_trigger.value] = std::numeric_limits<std::int16_t>::max();
-                    }
-                }
-            }
-
-            {
-                // static_assert(mouse_mapping.keys.size() == mouse_state.keys.size());
-
-                for (std::size_t key_index = 0; key_index < mouse_mapping.keys.size(); ++key_index)
-                {
-                    bool const key_down = mouse_state.keys[key_index];
-
-                    if (key_down)
-                    {
-                        Input_key const input_key = mouse_mapping.keys[key_index];
-                        input_state.keys[input_key.value] |= key_down;
-                    }
-                }
-
-                if (mouse_mapping.horizontal_axis.is_valid())
-                {
-                    // TODO
-                }
-
-                if (mouse_mapping.vertical_axis.is_valid())
-                {
-                    // TODO
-                }
-            }
-
-            return input_state;
-        }
+        }   
     }
 
     void run() noexcept
@@ -773,86 +554,70 @@ namespace Mythology::SDL
                     {}
                 );
 
-        Maia::Input::Keyboard_state previous_keyboard_state{};
-        Maia::Input::Mouse_state previous_mouse_state{};
-
-        Wait_for_all_fences_lock const wait_for_all_fences_lock{device, available_frames_fences, Timeout_nanoseconds{5000000000}};
+        Maia::Input::Input_state previous_input_state{};
 
         std::pmr::vector<Game_controller> game_controllers;
         game_controllers.reserve(2);
-
-        
-
-
-        // ----------
 
         enum class Game_key : std::uint8_t
         {
             Fire = 0,
             Jump,
-            Invalid = 255
+            Unused = 255
         };
 
         enum class Game_axis : std::uint8_t
         {
-            Move_forward = 0,
+            Move_backwards = 0,
             Move_right,
-            Invalid = 255
+            Unused = 255
         };
 
         enum class Game_trigger : std::uint8_t
         {
             Gradual_0 = 0,
             Gradual_1,
-            Invalid = 255
+            Unused = 255
         };
 
-        Keyboard_mapping<8> const keyboard_mapping = create_keyboard_mapping<8>(
+        Maia::Input::Keyboard_mapping<8> constexpr keyboard_mapping = Maia::Input::create_keyboard_mapping<8>(
             {
-                {{SDL_SCANCODE_RETURN}, Input_key{static_cast<std::uint8_t>(Game_key::Fire)}},
-                {{SDL_SCANCODE_SPACE}, Input_key{static_cast<std::uint8_t>(Game_key::Jump)}},
-                {{SDL_SCANCODE_W}, Input_positive_axis{static_cast<std::uint8_t>(Game_axis::Move_forward)}},
-                {{SDL_SCANCODE_S}, Input_negative_axis{static_cast<std::uint8_t>(Game_axis::Move_forward)}},
-                {{SDL_SCANCODE_A}, Input_negative_axis{static_cast<std::uint8_t>(Game_axis::Move_right)}},
-                {{SDL_SCANCODE_D}, Input_positive_axis{static_cast<std::uint8_t>(Game_axis::Move_right)}},
-                {{SDL_SCANCODE_LCTRL}, Input_trigger{static_cast<std::uint8_t>(Game_trigger::Gradual_0)}},
-                {{SDL_SCANCODE_RCTRL}, Input_trigger{static_cast<std::uint8_t>(Game_trigger::Gradual_1)}}
+                {{SDL_SCANCODE_RETURN}, Maia::Input::Key_id{static_cast<std::uint8_t>(Game_key::Fire)}},
+                {{SDL_SCANCODE_SPACE}, Maia::Input::Key_id{static_cast<std::uint8_t>(Game_key::Jump)}},
+                {{SDL_SCANCODE_W}, Maia::Input::Negative_axis_id{static_cast<std::uint8_t>(Game_axis::Move_backwards)}},
+                {{SDL_SCANCODE_S}, Maia::Input::Positive_axis_id{static_cast<std::uint8_t>(Game_axis::Move_backwards)}},
+                {{SDL_SCANCODE_A}, Maia::Input::Negative_axis_id{static_cast<std::uint8_t>(Game_axis::Move_right)}},
+                {{SDL_SCANCODE_D}, Maia::Input::Positive_axis_id{static_cast<std::uint8_t>(Game_axis::Move_right)}},
+                {{SDL_SCANCODE_LCTRL}, Maia::Input::Trigger_id{static_cast<std::uint8_t>(Game_trigger::Gradual_0)}},
+                {{SDL_SCANCODE_RCTRL}, Maia::Input::Trigger_id{static_cast<std::uint8_t>(Game_trigger::Gradual_1)}}
             }
         );
 
-        Mouse_mapping const mouse_mapping = create_mouse_mapping(
-            {
-                {{0}, Input_key{static_cast<std::uint8_t>(Game_key::Fire)}},
-                {{2}, Input_key{static_cast<std::uint8_t>(Game_key::Jump)}},
-            },
-            Input_axis{static_cast<std::int8_t>(Game_axis::Move_right)},
-            Input_axis{static_cast<std::int8_t>(Game_axis::Move_forward)}
-        );
+        Maia::Input::Mouse_mapping constexpr mouse_mapping
+        {
+            .keys = Maia::Input::create_array_mapping<8, Maia::Input::Mouse_key, Maia::Input::Key_id>({
+                {{0}, {static_cast<std::uint8_t>(Game_key::Fire)}},
+                {{2}, {static_cast<std::uint8_t>(Game_key::Jump)}}
+            }),
+            .horizontal_axis = Maia::Input::Axis_id{static_cast<std::uint8_t>(Game_axis::Move_right)},
+            .vertical_axis = Maia::Input::Axis_id{static_cast<std::uint8_t>(Game_axis::Move_backwards)}
+        };
 
-        /*
-        Input_mapping const input_mapping = create_input_mapping(
-            {
-                {.key = SDLK_RETURN}
-            }
-        );*/
-        /*
-        input_mapping.keyboard.keys[SDLK_RETURN] = {static_cast<std::uint8_t>(Game_key::Fire)};
-        input_mapping.keyboard.keys[SDLK_SPACE] = {static_cast<std::uint8_t>(Game_key::Jump)};
-        input_mapping.keyboard.axis[SDLK_w] = {static_cast<std::int8_t>(Game_axis::Move_forward)};
-        input_mapping.keyboard.axis[SDLK_s] = {-static_cast<std::int8_t>(Game_axis::Move_forward)};
-        input_mapping.keyboard.axis[SDLK_a] = {-static_cast<std::int8_t>(Game_axis::Move_right)};
-        input_mapping.keyboard.axis[SDLK_d] = {static_cast<std::int8_t>(Game_axis::Move_right)};
-        
-        input_mapping.mouse.keys[SDL_BUTTON(1)] = {static_cast<std::uint8_t>(Game_key::Fire)};
-        input_mapping.mouse.keys[SDL_BUTTON(3)] = {static_cast<std::uint8_t>(Game_key::Jump)};
-        input_mapping.mouse.horizontal_axis = {static_cast<std::int8_t>(Game_axis::Move_right)};
-        input_mapping.mouse.vertical_axis = {static_cast<std::int8_t>(Game_axis::Move_forward)};
+        Maia::Input::Game_controller_mapping constexpr game_controller_mapping
+        {
+            .buttons = Maia::Input::create_array_mapping<15, Maia::Input::Game_controller_button, Maia::Input::Key_id>({
+                {{SDL_CONTROLLER_BUTTON_A}, {static_cast<std::uint8_t>(Game_key::Fire)}},
+                {{SDL_CONTROLLER_BUTTON_B}, {static_cast<std::uint8_t>(Game_key::Jump)}},
+            }),
+            .horizontal_left_axis = Maia::Input::Axis_id{static_cast<std::uint8_t>(Game_axis::Move_right)},
+            .vertical_left_axis = Maia::Input::Axis_id{static_cast<std::uint8_t>(Game_axis::Move_backwards)},
+            .left_trigger = Maia::Input::Trigger_id{static_cast<std::uint8_t>(Game_trigger::Gradual_0)},
+            .right_trigger = Maia::Input::Trigger_id{static_cast<std::uint8_t>(Game_trigger::Gradual_1)}
+        };
 
-        input_mapping.game_controllers[0].keys[SDL_CONTROLLER_BUTTON_A] = {static_cast<std::uint8_t>(Game_key::Fire)};
-        input_mapping.game_controllers[0].keys[SDL_CONTROLLER_BUTTON_B] = {static_cast<std::uint8_t>(Game_key::Jump)};
-        input_mapping.game_controllers[0].horizontal_left_axis = {static_cast<std::int8_t>(Game_axis::Move_right)};
-        input_mapping.game_controllers[0].vertical_left_axis = {static_cast<std::int8_t>(Game_axis::Move_forward)};
-        */
+        std::pmr::vector<Maia::Input::Game_controller_mapping> const game_controllers_mappings{game_controller_mapping, game_controller_mapping};
+
+        Wait_for_all_fences_lock const wait_for_all_fences_lock{device, available_frames_fences, Timeout_nanoseconds{5000000000}};
 
         Frame_index frame_index{0};
         bool isRunning = true;
@@ -897,43 +662,40 @@ namespace Mythology::SDL
             {
                 Maia::Input::Keyboard_state const current_keyboard_state = get_keyboard_state();
                 Maia::Input::Mouse_state const current_mouse_state = get_mouse_state();
-                std::pmr::vector<Maia::Input::Game_controller_state> const game_controllers_state =
+                std::pmr::vector<Maia::Input::Game_controller_state> const current_game_controllers_state =
                     get_game_controllers_state(game_controllers);
 
-                Input_state const input_state = map_input({}, {}, current_keyboard_state, keyboard_mapping, current_mouse_state, mouse_mapping);
+                Maia::Input::Input_state const current_input_state = Maia::Input::map_input(current_game_controllers_state, game_controllers_mappings, current_keyboard_state, keyboard_mapping, current_mouse_state, mouse_mapping);
 
-                if (input_state.keys[static_cast<std::uint8_t>(Game_key::Fire)])
+                if (Maia::Input::is_pressed({static_cast<std::uint8_t>(Game_key::Fire)}, previous_input_state, current_input_state))
                 {
                     std::cout << "Fire!\n";
                 }
                 
-                if (input_state.keys[static_cast<std::uint8_t>(Game_key::Jump)])
+                if (Maia::Input::is_pressed({static_cast<std::uint8_t>(Game_key::Jump)}, previous_input_state, current_input_state))
                 {
                     std::cout << "Jump!\n";
                 }
                 
-                if (input_state.axis[static_cast<std::uint8_t>(Game_axis::Move_forward)] != 0)
+                if (current_input_state.axis[static_cast<std::uint8_t>(Game_axis::Move_backwards)].value != 0)
                 {
-                    std::cout << "Moving forward: " << input_state.axis[static_cast<std::uint8_t>(Game_axis::Move_forward)] << "\n";
+                    std::cout << "Moving backwards: " << current_input_state.axis[static_cast<std::uint8_t>(Game_axis::Move_backwards)].normalized<float>() << "\n";
                 }
                 
-                if (input_state.axis[static_cast<std::uint8_t>(Game_axis::Move_right)] != 0)
+                if (current_input_state.axis[static_cast<std::uint8_t>(Game_axis::Move_right)].value != 0)
                 {
-                    std::cout << "Moving right: " << input_state.axis[static_cast<std::uint8_t>(Game_axis::Move_right)] << "\n";
+                    std::cout << "Moving right: " << current_input_state.axis[static_cast<std::uint8_t>(Game_axis::Move_right)].normalized<float>() << "\n";
                 }
 
-                if (input_state.triggers[static_cast<std::uint8_t>(Game_trigger::Gradual_0)] != 0)
+                if (current_input_state.triggers[static_cast<std::uint8_t>(Game_trigger::Gradual_0)].value != 0)
                 {
-                    std::cout << "Gradual 0: " << input_state.triggers[static_cast<std::uint8_t>(Game_trigger::Gradual_0)] << "\n";
+                    std::cout << "Gradual 0: " << current_input_state.triggers[static_cast<std::uint8_t>(Game_trigger::Gradual_0)].normalized<float>() << "\n";
                 }
 
-                if (input_state.triggers[static_cast<std::uint8_t>(Game_trigger::Gradual_1)] != 0)
+                if (current_input_state.triggers[static_cast<std::uint8_t>(Game_trigger::Gradual_1)].value != 0)
                 {
-                    std::cout << "Gradual 1: " << input_state.triggers[static_cast<std::uint8_t>(Game_trigger::Gradual_1)] << "\n";
+                    std::cout << "Gradual 1: " << current_input_state.triggers[static_cast<std::uint8_t>(Game_trigger::Gradual_1)].normalized<float>() << "\n";
                 }
-
-                /*using Input_key = std::variant<Maia::Input::Keyboard_key>;
-                std::array<Input_key, 256> virtual_to_input_key{};*/
 
                 {
                     Fence const available_frames_fence = available_frames_fences[frame_index.value];
@@ -974,8 +736,7 @@ namespace Mythology::SDL
                     }
                 }
 
-                previous_keyboard_state = current_keyboard_state;
-                previous_mouse_state = current_mouse_state;
+                previous_input_state = current_input_state;
             }
         }
     }
