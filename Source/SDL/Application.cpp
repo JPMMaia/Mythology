@@ -182,7 +182,8 @@ namespace Mythology::SDL
             Physical_device const physical_device,
             Device const device,
             Surface const surface,
-            std::span<Queue_family_index const> const queue_family_indices
+            std::span<Queue_family_index const> const queue_family_indices,
+            std::optional<Swapchain> const old_swapchain = {}
         ) noexcept
         {
             assert(!queue_family_indices.empty());
@@ -210,7 +211,9 @@ namespace Mythology::SDL
                 shared_queue_family_indices,
                 surface_capabilities.currentTransform,
                 composite_alpha,
-                present_mode
+                present_mode,
+                true,
+                old_swapchain.has_value() ? *old_swapchain : Swapchain{VK_NULL_HANDLE}
             );
         }
 
@@ -272,24 +275,17 @@ namespace Mythology::SDL
                 {
                     std::array<Queue_family_index, 2> const queue_family_indices{this->graphics_queue_family_index, this->present_queue_family_index};
                     this->device = create_device(this->physical_device, queue_family_indices, is_extension_to_enable);
-                    this->swapchain = create_swapchain(this->physical_device, this->device, this->surface, queue_family_indices);
                 }
                 else
                 {
                     Queue_family_index const queue_family_index = this->present_queue_family_index;
                     this->device = create_device(this->physical_device, {&queue_family_index, 1}, is_extension_to_enable);
-                    this->swapchain = create_swapchain(this->physical_device, this->device, this->surface, {&queue_family_index, 1});
                 }
             }
             Device_resources(Device_resources const&) = delete;
             Device_resources(Device_resources&&) = delete;
             ~Device_resources() noexcept
             {
-                if (this->swapchain.value != VK_NULL_HANDLE)
-                {
-                    destroy_swapchain(this->device, this->swapchain);
-                }
-
                 if (this->device.value != VK_NULL_HANDLE)
                 {
                     destroy_device(this->device);
@@ -314,6 +310,44 @@ namespace Mythology::SDL
             Surface surface = {};
             Queue_family_index graphics_queue_family_index = {};
             Queue_family_index present_queue_family_index = {};
+            Device device = {};
+        };
+
+        struct Swapchain_raii
+        {
+            Swapchain_raii(
+                Physical_device const physical_device,
+                Device const device,
+                Surface const surface,
+                std::span<Queue_family_index const> const queue_family_indices,
+                std::optional<Swapchain> const old_swapchain = {}) noexcept :
+                device{device},
+                swapchain{create_swapchain(physical_device, device, surface, queue_family_indices, old_swapchain)}
+            {
+            }
+            Swapchain_raii(Swapchain_raii const&) = delete;
+            Swapchain_raii(Swapchain_raii&& other) noexcept :
+                device{std::exchange(other.device, {VK_NULL_HANDLE})},
+                swapchain{std::exchange(other.swapchain, {VK_NULL_HANDLE})}
+            {
+            }
+            ~Swapchain_raii() noexcept
+            {
+                if (this->swapchain.value != VK_NULL_HANDLE)
+                {
+                    destroy_swapchain(this->device, this->swapchain);
+                }
+            }
+
+            Swapchain_raii& operator=(Swapchain_raii const&) = delete;
+            Swapchain_raii& operator=(Swapchain_raii&& other) noexcept
+            {
+                this->device = std::exchange(other.device, {VK_NULL_HANDLE});
+                this->swapchain = std::exchange(other.swapchain, {VK_NULL_HANDLE});
+
+                return *this;
+            }
+
             Device device = {};
             Swapchain swapchain = {};
         };
@@ -510,7 +544,7 @@ namespace Mythology::SDL
             SDL_WINDOWPOS_UNDEFINED,
             800,
             600,
-            SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN
+            SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_VULKAN
         };
 
         if (window.get() == nullptr)
@@ -521,20 +555,12 @@ namespace Mythology::SDL
 
         Device_resources const device_resources{make_api_version(1, 2, 0), *window.get()};
         Device const device = device_resources.device;
-        Swapchain const swapchain = device_resources.swapchain;
         Queue_family_index const graphics_queue_family_index = device_resources.graphics_queue_family_index;
         Queue_family_index const present_queue_family_index = device_resources.present_queue_family_index;
 
         using namespace Mythology::Core::Vulkan;
 
-        std::pmr::vector<VkImage> const swapchain_images = get_swapchain_images(device, swapchain);
-        //std::pmr::vector<VkImageView> const swapchain_image_views = create_swapchain_image_views(device, swapchain_images, select_surface_format(physical_device, surface).format);
-
-        /*VkExtent3D constexpr color_image_extent{16, 16, 1};
-        Device_memory_and_color_image const device_memory_and_color_image = 
-            create_device_memory_and_color_image(physical_device, device, VK_FORMAT_R8G8B8A8_UINT, color_image_extent);*/
-
-        std::size_t const pipeline_length = swapchain_images.size();
+        std::size_t constexpr pipeline_length = 3;
         Synchronization_resources synchronization_resources{pipeline_length, device};
         std::span<Semaphore> const available_frames_semaphores = synchronization_resources.available_frames_semaphores;
         std::span<Semaphore> const finished_frames_semaphores = synchronization_resources.finished_frames_semaphores;
@@ -553,11 +579,6 @@ namespace Mythology::SDL
                     pipeline_length,
                     {}
                 );
-
-        Maia::Input::Input_state previous_input_state{};
-
-        std::pmr::vector<Game_controller> game_controllers;
-        game_controllers.reserve(2);
 
         enum class Game_key : std::uint8_t
         {
@@ -617,8 +638,21 @@ namespace Mythology::SDL
 
         std::pmr::vector<Maia::Input::Game_controller_mapping> const game_controllers_mappings{game_controller_mapping, game_controller_mapping};
 
-        Wait_for_all_fences_lock const wait_for_all_fences_lock{device, available_frames_fences, Timeout_nanoseconds{5000000000}};
 
+        Maia::Input::Input_state previous_input_state{};
+
+        std::pmr::vector<Game_controller> game_controllers;
+        game_controllers.reserve(2);
+
+        Swapchain_raii swapchain_raii{device_resources.physical_device, device, device_resources.surface, std::array<Queue_family_index, 2>{graphics_queue_family_index, present_queue_family_index}};
+        std::pmr::vector<VkImage> swapchain_images = get_swapchain_images(device, swapchain_raii.swapchain);
+        //std::pmr::vector<VkImageView> const swapchain_image_views = create_swapchain_image_views(device, swapchain_images, select_surface_format(physical_device, surface).format);
+
+        /*VkExtent3D constexpr color_image_extent{16, 16, 1};
+        Device_memory_and_color_image const device_memory_and_color_image = 
+            create_device_memory_and_color_image(physical_device, device, VK_FORMAT_R8G8B8A8_UINT, color_image_extent);*/
+
+        Wait_for_all_fences_lock const wait_for_all_fences_lock{device, available_frames_fences, Timeout_nanoseconds{5000000000}};
         Frame_index frame_index{0};
         bool isRunning = true;
         while (isRunning)
@@ -631,6 +665,15 @@ namespace Mythology::SDL
                     {
                         isRunning = false;
                         break;
+                    }
+                    else if (event.type == SDL_WINDOWEVENT)
+                    {
+                        if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED || event.window.event == SDL_WINDOWEVENT_RESIZED)
+                        {
+                            Swapchain const old_swapchain = swapchain_raii.swapchain;
+                            swapchain_raii = {device_resources.physical_device, device, device_resources.surface, std::array<Queue_family_index, 2>{graphics_queue_family_index, present_queue_family_index}, old_swapchain};
+                            swapchain_images = get_swapchain_images(device, swapchain_raii.swapchain);
+                        }
                     }
                     else if (event.type == SDL_CONTROLLERDEVICEADDED)
                     {
@@ -704,7 +747,7 @@ namespace Mythology::SDL
                     {
                         Semaphore const available_frame_semaphore = available_frames_semaphores[frame_index.value];
                         std::optional<Swapchain_image_index> const swapchain_image_index =
-                            acquire_next_image(device, swapchain, 0, available_frame_semaphore, {});
+                            acquire_next_image(device, swapchain_raii.swapchain, 0, available_frame_semaphore, {});
 
                         if (swapchain_image_index)
                         {
@@ -729,7 +772,7 @@ namespace Mythology::SDL
                                 queue_submit(graphics_queue, {&available_frame_semaphore, 1}, wait_destination_stage_masks, {&command_buffer, 1}, {&finished_frame_semaphore, 1}, available_frames_fence);
                             }
 
-                            queue_present(present_queue, {&finished_frame_semaphore.value, 1}, swapchain, *swapchain_image_index);
+                            queue_present(present_queue, {&finished_frame_semaphore.value, 1}, swapchain_raii.swapchain, *swapchain_image_index);
 
                             frame_index.value = (frame_index.value + 1) % pipeline_length;
                         }
