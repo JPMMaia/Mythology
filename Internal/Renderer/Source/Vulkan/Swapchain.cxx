@@ -76,7 +76,7 @@ namespace Maia::Renderer::Vulkan
     ) noexcept;
 
 
-    export void queue_present(
+    export VkResult queue_present(
         Queue queue,
         std::span<VkSemaphore const> semaphores_to_wait,
         Swapchain swapchain,

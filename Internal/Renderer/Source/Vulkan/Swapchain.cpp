@@ -148,7 +148,7 @@ namespace Maia::Renderer::Vulkan
             &swapchain_image_index
         );
 
-        if (status == VK_NOT_READY || status == VK_TIMEOUT)
+        if (status == VK_NOT_READY || status == VK_TIMEOUT || status == VK_SUBOPTIMAL_KHR || status == VK_ERROR_OUT_OF_DATE_KHR)
         {
             return {};
         }
@@ -159,15 +159,13 @@ namespace Maia::Renderer::Vulkan
         }
     }
 
-    void queue_present(
+    VkResult queue_present(
         Queue const queue,
         std::span<VkSemaphore const> const semaphores_to_wait,
         Swapchain const swapchain,
         Swapchain_image_index const swapchain_image_index
     ) noexcept
     {
-        VkResult result = {};
-
         VkPresentInfoKHR const present_info
         {
             .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -177,16 +175,19 @@ namespace Maia::Renderer::Vulkan
             .swapchainCount = 1,
             .pSwapchains = &swapchain.value,
             .pImageIndices = &swapchain_image_index.value,
-            .pResults = &result,
+            .pResults = nullptr,
         };
 
-        check_result(
-            vkQueuePresentKHR(
+        VkResult const result = vkQueuePresentKHR(
                 queue.value,
                 &present_info
-            )
         );
 
-        check_result(result);
+        if (result != VK_SUBOPTIMAL_KHR && result != VK_ERROR_OUT_OF_DATE_KHR)
+        {
+            check_result(result);
+        }
+
+        return result;
     }
 }
