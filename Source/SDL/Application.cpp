@@ -97,6 +97,19 @@ namespace Mythology::SDL
             SDL_Window* m_window = nullptr;
         };
 
+        void toggle_fullscreen(SDL_Window& window) noexcept
+        {
+            SDL_WindowFlags constexpr fullscreen_flag = SDL_WINDOW_FULLSCREEN;
+            Uint32 constexpr windowed_flag = 0;
+
+            bool const is_fullscreen = SDL_GetWindowFlags(&window) & fullscreen_flag;
+
+            if (SDL_SetWindowFullscreen(&window, is_fullscreen ? windowed_flag : fullscreen_flag) != 0)
+            {
+                std::cerr << SDL_GetError() << '\n';
+            }
+        }
+
         std::uint32_t select_swapchain_image_count(
             VkSurfaceCapabilitiesKHR const& surface_capabilities
         ) noexcept
@@ -584,6 +597,7 @@ namespace Mythology::SDL
         {
             Fire = 0,
             Jump,
+            Fullscreen_toggle,
             Unused = 255
         };
 
@@ -601,8 +615,9 @@ namespace Mythology::SDL
             Unused = 255
         };
 
-        Maia::Input::Keyboard_mapping<8> constexpr keyboard_mapping = Maia::Input::create_keyboard_mapping<8>(
+        Maia::Input::Keyboard_mapping<9> constexpr keyboard_mapping = Maia::Input::create_keyboard_mapping<9>(
             {
+                {{SDL_SCANCODE_F1}, Maia::Input::Key_id{static_cast<std::uint8_t>(Game_key::Fullscreen_toggle)}},
                 {{SDL_SCANCODE_RETURN}, Maia::Input::Key_id{static_cast<std::uint8_t>(Game_key::Fire)}},
                 {{SDL_SCANCODE_SPACE}, Maia::Input::Key_id{static_cast<std::uint8_t>(Game_key::Jump)}},
                 {{SDL_SCANCODE_W}, Maia::Input::Negative_axis_id{static_cast<std::uint8_t>(Game_axis::Move_backwards)}},
@@ -709,6 +724,11 @@ namespace Mythology::SDL
                     get_game_controllers_state(game_controllers);
 
                 Maia::Input::Input_state const current_input_state = Maia::Input::map_input(current_game_controllers_state, game_controllers_mappings, current_keyboard_state, keyboard_mapping, current_mouse_state, mouse_mapping);
+
+                if (Maia::Input::is_pressed({static_cast<std::uint8_t>(Game_key::Fullscreen_toggle)}, previous_input_state, current_input_state))
+                {
+                    toggle_fullscreen(*window.get());
+                }
 
                 if (Maia::Input::is_pressed({static_cast<std::uint8_t>(Game_key::Fire)}, previous_input_state, current_input_state))
                 {
