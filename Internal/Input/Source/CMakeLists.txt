@@ -21,6 +21,17 @@ target_module (
     INTERFACE_DEPENDS "Standard_library"
 )
 
+target_module (
+    MaiaInput
+    "maia.input.input_mapping"
+    INTERFACE "Input_mapping.cxx"
+    INTERFACE_DEPENDS
+        "maia.input.game_controller_state"
+        "maia.input.input_state"
+        "maia.input.keyboard_state"
+        "maia.input.mouse_state"
+        "Standard_library"
+)
 
 target_module (
     MaiaInput
@@ -49,6 +60,7 @@ target_module (
     INTERFACE "Module.cxx"
     INTERFACE_DEPENDS    
         "maia.input.game_controller_state"
+        "maia.input.input_mapping"
         "maia.input.input_state"
         "maia.input.keyboard_state"
         "maia.input.mouse_state"
