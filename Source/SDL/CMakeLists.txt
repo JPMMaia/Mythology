@@ -3,6 +3,7 @@ add_library (Maia::Mythology::SDL ALIAS MaiaMythologySDL)
 
 target_link_libraries (MaiaMythologySDL PRIVATE Maia::Input)
 target_link_libraries (MaiaMythologySDL PRIVATE Maia::Renderer::Vulkan)
+target_link_libraries (MaiaMythologySDL PRIVATE Maia::Shaders)
 target_link_libraries (MaiaMythologySDL PRIVATE Maia::SDL2)
 
 target_link_libraries (MaiaMythologySDL PRIVATE Maia::Mythology::Core)

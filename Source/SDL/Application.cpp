@@ -13,6 +13,7 @@ import <algorithm>;
 import <cassert>;
 import <cstdlib>;
 import <cstring>;
+import <filesystem>;
 import <functional>;
 import <iostream>;
 import <memory_resource>;
@@ -537,11 +538,43 @@ namespace Mythology::SDL
             }
 
             return game_controllers_state;
-        }   
+        }
+
+        std::pmr::vector<std::byte> read_bytes(std::filesystem::path const& file_path) noexcept
+        {
+            std::ifstream input_stream{file_path, std::ios::in | std::ios::binary};
+            assert(input_stream.good());
+
+            input_stream.seekg(0, std::ios::end);
+            auto const size_in_bytes = input_stream.tellg();
+
+            std::pmr::vector<std::byte> buffer;
+            buffer.resize(size_in_bytes);
+
+            input_stream.seekg(0, std::ios::beg);
+            input_stream.read(reinterpret_cast<char*>(buffer.data()), buffer.size());
+
+            return buffer;
+        }
+
+        template<typename Value_type>
+        std::pmr::vector<Value_type> convert_bytes(std::span<std::byte const> const bytes) noexcept
+        {
+            assert(bytes.size_bytes() % sizeof(Value_type) == 0);
+
+            std::pmr::vector<Value_type> values;
+            values.resize(bytes.size_bytes() / sizeof(Value_type));
+
+            std::memcpy(values.data(), bytes.data(), bytes.size_bytes());
+
+            return values;
+        }
     }
 
     void run() noexcept
     {
+        std::filesystem::path const shaders_path = std::filesystem::current_path() / "../shaders";
+
         SDL_application sdl_application;
         
         if (SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_VIDEO) != 0)
@@ -666,6 +699,9 @@ namespace Mythology::SDL
         /*VkExtent3D constexpr color_image_extent{16, 16, 1};
         Device_memory_and_color_image const device_memory_and_color_image = 
             create_device_memory_and_color_image(physical_device, device, VK_FORMAT_R8G8B8A8_UINT, color_image_extent);*/
+
+        Maia::Renderer::Vulkan::Shader_module const triangle_vertex_shader_module = create_shader_module(device, {}, convert_bytes<std::uint32_t>(read_bytes(shaders_path / "Triangle.vertex.spv")));
+        Maia::Renderer::Vulkan::Shader_module const white_fragment_shader_module = create_shader_module(device, {}, convert_bytes<std::uint32_t>(read_bytes(shaders_path / "White.fragment.spv")));
 
         Wait_for_all_fences_lock const wait_for_all_fences_lock{device, available_frames_fences, Timeout_nanoseconds{5000000000}};
         Frame_index frame_index{0};
