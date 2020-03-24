@@ -157,6 +157,20 @@ target_module (
 
 target_module (
     MaiaRendererVulkan
+    "maia.renderer.vulkan.shader_module"
+    INTERFACE "Shader_module.cxx"
+    INTERFACE_DEPENDS "Standard_library" "Vulkan"
+        "maia.renderer.vulkan.allocation_callbacks"
+        "maia.renderer.vulkan.device"
+    IMPLEMENTATION "Shader_module.cpp"
+    IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" 
+        "maia.renderer.vulkan.allocation_callbacks"
+        "maia.renderer.vulkan.check"
+        "maia.renderer.vulkan.device"
+)
+
+target_module (
+    MaiaRendererVulkan
     "maia.renderer.vulkan.command_pool"
     INTERFACE "Command_pool.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
@@ -244,6 +258,7 @@ target_module (
         "maia.renderer.vulkan.queue"
         "maia.renderer.vulkan.render_pass"
         "maia.renderer.vulkan.semaphore"
+        "maia.renderer.vulkan.shader_module"
         "maia.renderer.vulkan.surface"
         "maia.renderer.vulkan.swapchain"
 )
