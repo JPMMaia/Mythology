@@ -5,8 +5,8 @@ struct Vertex_shader_output
 
 static float2 const clip_positions[3] = {
     float2(0.0, -0.5),
+    float2(-0.5, 0.5),
     float2(0.5, 0.5),
-    float2(-0.5, 0.5)
 };
 
 Vertex_shader_output main(uint const vertex_index : SV_VertexID)
