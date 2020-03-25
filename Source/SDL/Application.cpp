@@ -196,6 +196,7 @@ namespace Mythology::SDL
             Physical_device const physical_device,
             Device const device,
             Surface const surface,
+            VkSurfaceFormatKHR const surface_format,
             std::span<Queue_family_index const> const queue_family_indices,
             std::optional<Swapchain> const old_swapchain = {}
         ) noexcept
@@ -204,7 +205,6 @@ namespace Mythology::SDL
 
             VkSurfaceCapabilitiesKHR const surface_capabilities = get_surface_capabilities(physical_device, surface);
             std::uint32_t const image_count = select_swapchain_image_count(surface_capabilities);
-            VkSurfaceFormatKHR const selected_surface_format = select_surface_format(physical_device, surface);
             VkImageUsageFlags const swapchain_usage_flags = select_swapchain_usage_flags(surface_capabilities);
             VkCompositeAlphaFlagBitsKHR const composite_alpha = select_composite_alpha(surface_capabilities);
             VkPresentModeKHR const present_mode = select_present_mode(physical_device, surface);
@@ -216,8 +216,8 @@ namespace Mythology::SDL
                 VkSwapchainCreateFlagsKHR{},
                 {image_count},
                 {surface},
-                selected_surface_format.format,
-                selected_surface_format.colorSpace,
+                surface_format.format,
+                surface_format.colorSpace,
                 surface_capabilities.currentExtent,
                 Array_layer_count{1},
                 swapchain_usage_flags,
@@ -333,10 +333,11 @@ namespace Mythology::SDL
                 Physical_device const physical_device,
                 Device const device,
                 Surface const surface,
+                VkSurfaceFormatKHR const surface_format,
                 std::span<Queue_family_index const> const queue_family_indices,
                 std::optional<Swapchain> const old_swapchain = {}) noexcept :
                 device{device},
-                swapchain{create_swapchain(physical_device, device, surface, queue_family_indices, old_swapchain)}
+                swapchain{create_swapchain(physical_device, device, surface, surface_format, queue_family_indices, old_swapchain)}
             {
             }
             Swapchain_raii(Swapchain_raii const&) = delete;
@@ -569,6 +570,314 @@ namespace Mythology::SDL
 
             return values;
         }
+
+        VkPipelineLayout create_pipeline_layout(
+            Device const device,
+            std::span<VkDescriptorSetLayout const> const set_layouts,
+            std::span<VkPushConstantRange const> const push_constants,
+            std::optional<Allocation_callbacks> const vulkan_allocator = {}) noexcept
+        {
+            VkPipelineLayoutCreateInfo const create_info
+            {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = {},
+                .setLayoutCount = static_cast<std::uint32_t>(set_layouts.size()),
+                .pSetLayouts = set_layouts.data(),
+                .pushConstantRangeCount = static_cast<std::uint32_t>(push_constants.size()),
+                .pPushConstantRanges = push_constants.data(),
+            };
+
+            VkPipelineLayout pipeline_layout = {};
+            check_result(
+                vkCreatePipelineLayout(
+                    device.value,
+                    &create_info,
+                    vulkan_allocator.has_value() ? &vulkan_allocator->value : nullptr,
+                    &pipeline_layout
+                )
+            );
+
+            return pipeline_layout;
+        }
+
+        void destroy_pipeline_layout(
+            Device const device,
+            VkPipelineLayout const pipeline_layout,
+            std::optional<Allocation_callbacks> vulkan_allocator = {}
+        ) noexcept
+        {
+            vkDestroyPipelineLayout(
+                device.value,
+                pipeline_layout,
+                vulkan_allocator.has_value() ? &vulkan_allocator->value : nullptr
+            );
+        }
+
+        Render_pass create_render_pass(Device const device, VkFormat const color_image_format) noexcept
+        {
+            VkAttachmentDescription const color_attachment_description
+            {
+                .flags = {},
+                .format = color_image_format,
+                .samples = VK_SAMPLE_COUNT_1_BIT,
+                .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+                .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+                .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            };
+
+            VkAttachmentReference const color_attachment_reference
+            {
+                0,
+                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+            };
+
+            VkSubpassDescription const subpass_description
+            {
+                .flags = {},
+                .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+                .inputAttachmentCount = 0,
+                .pInputAttachments = nullptr,
+                .colorAttachmentCount = 1,
+                .pColorAttachments = &color_attachment_reference,
+                .pResolveAttachments = nullptr,
+                .pDepthStencilAttachment = nullptr,
+                .preserveAttachmentCount = 0,
+                .pPreserveAttachments = nullptr,
+            };
+
+            VkSubpassDependency const subpass_dependency
+            {
+                .srcSubpass = VK_SUBPASS_EXTERNAL,
+                .dstSubpass = {},
+                .srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                .srcAccessMask = {},
+                .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                .dependencyFlags = {}
+            };
+
+            return create_render_pass(
+                device,
+                {&color_attachment_description, 1},
+                {&subpass_description, 1},
+                {&subpass_dependency, 1},
+                {}
+            );
+        }
+
+        VkPipeline create_vertex_and_fragment_pipeline(
+            Device const device,
+            std::optional<VkPipelineCache> const pipeline_cache,
+            VkPipelineLayout const pipeline_layout,
+            VkRenderPass const render_pass,
+            std::uint32_t const subpass_index,
+            std::uint32_t const subpass_attachment_count,
+            VkShaderModule const vertex_shader,
+            VkShaderModule const fragment_shader
+        ) noexcept
+        {
+            std::array<VkPipelineShaderStageCreateInfo, 2> const shader_stages_create_info
+            {
+                VkPipelineShaderStageCreateInfo
+                {
+                    .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                    .pNext = nullptr,
+                    .flags = {},
+                    .stage = VK_SHADER_STAGE_VERTEX_BIT,
+                    .module = vertex_shader,
+                    .pName = "main",
+                    .pSpecializationInfo = nullptr
+                },
+                VkPipelineShaderStageCreateInfo
+                {
+                    .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                    .pNext = nullptr,
+                    .flags = {},
+                    .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+                    .module = fragment_shader,
+                    .pName = "main",
+                    .pSpecializationInfo = nullptr
+                }
+            };
+
+            VkPipelineVertexInputStateCreateInfo const vertex_input_state_create_info
+            {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = {},
+                .vertexBindingDescriptionCount = 0,
+                .pVertexBindingDescriptions = nullptr,
+                .vertexAttributeDescriptionCount = 0,
+                .pVertexAttributeDescriptions = nullptr,
+            };
+
+            VkPipelineInputAssemblyStateCreateInfo const input_assembly_state_create_info
+            {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = {},
+                .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+                .primitiveRestartEnable = VK_FALSE,
+            };
+
+            VkPipelineViewportStateCreateInfo const viewport_state_create_info
+            {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = {},
+                .viewportCount = 1,
+                .pViewports = nullptr,
+                .scissorCount = 1,
+                .pScissors = nullptr,
+            };
+
+            VkPipelineRasterizationStateCreateInfo const rasterization_state_create_info
+            {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = {},
+                .depthClampEnable = VK_FALSE,
+                .rasterizerDiscardEnable = VK_FALSE,
+                .polygonMode = VK_POLYGON_MODE_FILL,
+                .cullMode = VK_CULL_MODE_BACK_BIT,
+                .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+                .depthBiasEnable = VK_FALSE,
+                .depthBiasConstantFactor = {},
+                .depthBiasClamp = {},
+                .depthBiasSlopeFactor = {},
+                .lineWidth = 1.0f,
+            };
+
+            std::uint32_t const sample_mask = 0xFFFFFFFF;
+
+            VkPipelineMultisampleStateCreateInfo const multisample_state_create_info
+            {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = {},
+                .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+                .sampleShadingEnable = VK_FALSE,
+                .minSampleShading = {},
+                .pSampleMask = &sample_mask,
+                .alphaToCoverageEnable = VK_FALSE,
+                .alphaToOneEnable = VK_FALSE,
+            };
+
+            VkPipelineDepthStencilStateCreateInfo const depth_stencil_state_create_info
+            {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = {},
+                .depthTestEnable = VK_FALSE,
+                .depthWriteEnable = VK_FALSE,
+                .depthCompareOp = {},
+                .depthBoundsTestEnable = VK_FALSE,
+                .stencilTestEnable = VK_FALSE,
+                .front = {},
+                .back = {},
+                .minDepthBounds = {},
+                .maxDepthBounds = {},
+            };
+
+            std::pmr::vector<VkPipelineColorBlendAttachmentState> const color_blend_attachment_states
+            (
+                subpass_attachment_count,
+                {
+                    .blendEnable = VK_FALSE,
+                    .srcColorBlendFactor = {},
+                    .dstColorBlendFactor = {},
+                    .colorBlendOp = {},
+                    .srcAlphaBlendFactor = {},
+                    .dstAlphaBlendFactor = {},
+                    .alphaBlendOp = {},
+                    .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+                }
+            );
+
+            VkPipelineColorBlendStateCreateInfo const color_blend_state_create_info
+            {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = {},
+                .logicOpEnable = VK_FALSE,
+                .logicOp = {},
+                .attachmentCount = subpass_attachment_count,
+                .pAttachments = color_blend_attachment_states.data(),
+                .blendConstants = {1.0f, 1.0, 1.0f, 1.0},
+            };
+
+            std::array<VkDynamicState, 2> const dynamic_state
+            {
+                VK_DYNAMIC_STATE_VIEWPORT,
+                VK_DYNAMIC_STATE_SCISSOR
+            };
+
+            VkPipelineDynamicStateCreateInfo const dynamic_state_create_info
+            {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = {},
+                .dynamicStateCount = dynamic_state.size(),
+                .pDynamicStates = dynamic_state.data(),
+            };
+
+            VkGraphicsPipelineCreateInfo const graphics_pipeline_create_info
+            {
+                .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = {},
+                .stageCount = shader_stages_create_info.size(),
+                .pStages = shader_stages_create_info.data(),
+                .pVertexInputState = &vertex_input_state_create_info,
+                .pInputAssemblyState = &input_assembly_state_create_info,
+                .pTessellationState = nullptr,
+                .pViewportState = &viewport_state_create_info,
+                .pRasterizationState = &rasterization_state_create_info,
+                .pMultisampleState = &multisample_state_create_info,
+                .pDepthStencilState = &depth_stencil_state_create_info,
+                .pColorBlendState = &color_blend_state_create_info,
+                .pDynamicState = &dynamic_state_create_info,
+                .layout = pipeline_layout,
+                .renderPass = render_pass,
+                .subpass = subpass_index,
+                .basePipelineHandle = VK_NULL_HANDLE,
+                .basePipelineIndex = -1,
+            };
+
+            return create_graphics_pipelines(device, {&graphics_pipeline_create_info, 1}, pipeline_cache).at(0);
+        }
+
+        std::pmr::vector<Framebuffer> create_swapchain_framebuffers(
+            Device const device,
+            Render_pass const render_pass,
+            std::span<VkImageView const> const swapchain_image_views,
+            Framebuffer_dimensions const framebuffer_dimensions
+        ) noexcept
+        {
+            std::pmr::vector<Framebuffer> framebuffers;
+            framebuffers.reserve(swapchain_image_views.size());
+            
+            for (VkImageView const image_view : swapchain_image_views)
+            {
+                framebuffers.push_back(create_framebuffer(device, {}, render_pass, {&image_view, 1}, framebuffer_dimensions, {}));
+            }
+
+            return framebuffers;
+        }
+
+        void destroy_framebuffers(
+            Device const device,
+            std::span<Framebuffer const> const framebuffers) noexcept
+        {
+            for (Framebuffer const framebuffer : framebuffers)
+            {
+                destroy_framebuffer(device, framebuffer, {});
+            }
+        }
     }
 
     void run() noexcept
@@ -692,16 +1001,21 @@ namespace Mythology::SDL
         std::pmr::vector<Game_controller> game_controllers;
         game_controllers.reserve(2);
 
-        Swapchain_raii swapchain_raii{device_resources.physical_device, device, device_resources.surface, std::array<Queue_family_index, 2>{graphics_queue_family_index, present_queue_family_index}};
+        VkSurfaceFormatKHR const surface_format = select_surface_format(device_resources.physical_device, device_resources.surface);
+        Swapchain_raii swapchain_raii{device_resources.physical_device, device, device_resources.surface, surface_format, std::array<Queue_family_index, 2>{graphics_queue_family_index, present_queue_family_index}};
         std::pmr::vector<VkImage> swapchain_images = get_swapchain_images(device, swapchain_raii.swapchain);
-        //std::pmr::vector<VkImageView> const swapchain_image_views = create_swapchain_image_views(device, swapchain_images, select_surface_format(physical_device, surface).format);
+        std::pmr::vector<VkImageView> swapchain_image_views = create_swapchain_image_views(device, swapchain_images, surface_format.format);
+        VkExtent2D current_surface_extent = get_surface_capabilities(device_resources.physical_device, device_resources.surface).currentExtent;
 
-        /*VkExtent3D constexpr color_image_extent{16, 16, 1};
-        Device_memory_and_color_image const device_memory_and_color_image = 
-            create_device_memory_and_color_image(physical_device, device, VK_FORMAT_R8G8B8A8_UINT, color_image_extent);*/
 
+        VkPipelineLayout const pipeline_layout = create_pipeline_layout(device, {}, {});
+        Render_pass const render_pass = create_render_pass(device, surface_format.format);
         Maia::Renderer::Vulkan::Shader_module const triangle_vertex_shader_module = create_shader_module(device, {}, convert_bytes<std::uint32_t>(read_bytes(shaders_path / "Triangle.vertex.spv")));
         Maia::Renderer::Vulkan::Shader_module const white_fragment_shader_module = create_shader_module(device, {}, convert_bytes<std::uint32_t>(read_bytes(shaders_path / "White.fragment.spv")));
+        VkPipeline const white_triangle_pipeline =  create_vertex_and_fragment_pipeline(
+            device, {}, pipeline_layout, render_pass.value, 0, 1, triangle_vertex_shader_module.value, white_fragment_shader_module.value);
+
+        std::pmr::vector<Framebuffer> swapchain_framebuffers = create_swapchain_framebuffers(device, render_pass, swapchain_image_views, Framebuffer_dimensions{current_surface_extent.width, current_surface_extent.height, 1});
 
         Wait_for_all_fences_lock const wait_for_all_fences_lock{device, available_frames_fences, Timeout_nanoseconds{5000000000}};
         Frame_index frame_index{0};
@@ -721,9 +1035,16 @@ namespace Mythology::SDL
                     {
                         if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED || event.window.event == SDL_WINDOWEVENT_RESIZED)
                         {
+                            vkDeviceWaitIdle(device.value);
+
                             Swapchain const old_swapchain = swapchain_raii.swapchain;
-                            swapchain_raii = {device_resources.physical_device, device, device_resources.surface, std::array<Queue_family_index, 2>{graphics_queue_family_index, present_queue_family_index}, old_swapchain};
+                            swapchain_raii = {device_resources.physical_device, device, device_resources.surface, surface_format, std::array<Queue_family_index, 2>{graphics_queue_family_index, present_queue_family_index}, old_swapchain};
                             swapchain_images = get_swapchain_images(device, swapchain_raii.swapchain);
+                            swapchain_image_views = create_swapchain_image_views(device, swapchain_images, surface_format.format);
+                            current_surface_extent = get_surface_capabilities(device_resources.physical_device, device_resources.surface).currentExtent;
+
+                            destroy_framebuffers(device, swapchain_framebuffers);
+                            swapchain_framebuffers = create_swapchain_framebuffers(device, render_pass, swapchain_image_views, Framebuffer_dimensions{current_surface_extent.width, current_surface_extent.height, 1});
                         }
                     }
                     else if (event.type == SDL_CONTROLLERDEVICEADDED)
@@ -808,16 +1129,24 @@ namespace Mythology::SDL
                         if (swapchain_image_index)
                         {
                             Image const swapchain_image = {swapchain_images[swapchain_image_index->value]};
+                            Framebuffer const swapchain_framebuffer = swapchain_framebuffers[swapchain_image_index->value];
 
                             Command_buffer const command_buffer = command_buffers[frame_index.value];
                             reset_command_buffer(command_buffer, {});
                             begin_command_buffer(command_buffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, {});
                             {
-                                VkClearColorValue const clear_color = {
+                                VkClearColorValue const clear_color
+                                {
                                     .float32 = {0.0f, 0.0f, 1.0f, 1.0f}
                                 };
 
-                                render(command_buffer, swapchain_image, clear_color, true);
+                                VkRect2D const output_render_area
+                                {
+                                    .offset = {0, 0},
+                                    .extent = current_surface_extent
+                                };
+
+                                render(command_buffer, render_pass, swapchain_framebuffer, clear_color, white_triangle_pipeline, swapchain_image, output_render_area, true);
                             }
                             end_command_buffer(command_buffer);
 
