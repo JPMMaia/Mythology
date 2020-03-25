@@ -21,64 +21,6 @@ using namespace Maia::Renderer::Vulkan;
 
 namespace Mythology::Core::Vulkan
 {
-    namespace
-    {
-        Render_pass create_render_pass(Device const device, VkFormat const color_image_format) noexcept
-        {
-            VkAttachmentDescription const color_attachment_description
-            {
-                .flags = {},
-                .format = color_image_format,
-                .samples = VK_SAMPLE_COUNT_1_BIT,
-                .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-                .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-                .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-                .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            };
-
-            VkAttachmentReference const color_attachment_reference
-            {
-                0,
-                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-            };
-
-            VkSubpassDescription const subpass_description
-            {
-                .flags = {},
-                .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-                .inputAttachmentCount = 0,
-                .pInputAttachments = nullptr,
-                .colorAttachmentCount = 1,
-                .pColorAttachments = &color_attachment_reference,
-                .pResolveAttachments = nullptr,
-                .pDepthStencilAttachment = nullptr,
-                .preserveAttachmentCount = 0,
-                .pPreserveAttachments = nullptr,
-            };
-
-            VkSubpassDependency const subpass_dependency
-            {
-                .srcSubpass = VK_SUBPASS_EXTERNAL,
-                .dstSubpass = {},
-                .srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                .srcAccessMask = {},
-                .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                .dependencyFlags = {}
-            };
-
-            return create_render_pass(
-                device,
-                {&color_attachment_description, 1},
-                {&subpass_description, 1},
-                {&subpass_dependency, 1},
-                {}
-            );
-        }
-    }
-
     Instance create_instance(
         std::optional<Application_description> application_description,
         std::optional<Engine_description> engine_description,
@@ -90,7 +32,7 @@ namespace Mythology::Core::Vulkan
 
         auto const is_layer_to_enable = [](VkLayerProperties const& properties) -> bool
         {
-            return false;
+            return std::strcmp(properties.layerName, "VK_LAYER_KHRONOS_validation") == 0;
         };
 
         auto const get_layer_name = [](VkLayerProperties const& properties)
@@ -315,8 +257,12 @@ namespace Mythology::Core::Vulkan
 
     void render(
         Command_buffer const command_buffer,
-        Image const output_image,
+        Render_pass const render_pass,
+        Framebuffer const framebuffer,
         VkClearColorValue const clear_color,
+        VkPipeline const pipeline,
+        Image const output_image,
+        VkRect2D const output_render_area,
         bool const switch_to_present_layout
     ) noexcept
     {
@@ -374,15 +320,96 @@ namespace Mythology::Core::Vulkan
             );
         }
 
-        if (switch_to_present_layout)
         {
             VkImageMemoryBarrier const image_memory_barrier
             {
                 .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                 .pNext = nullptr,
                 .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-                .dstAccessMask = 0,
+                .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
                 .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image = output_image.value,
+                .subresourceRange = output_image_subresource_range
+            };
+
+            vkCmdPipelineBarrier(
+                command_buffer.value,
+                VK_PIPELINE_STAGE_TRANSFER_BIT,
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                {},
+                0,
+                nullptr,
+                0,
+                nullptr,
+                1,
+                &image_memory_barrier
+            );
+        }
+
+        {
+            VkClearValue const clear_value
+            {
+                .color = clear_color
+            };
+
+            begin_render_pass(
+                command_buffer,
+                render_pass,
+                framebuffer,
+                output_render_area,
+                {&clear_value, 1},
+                VK_SUBPASS_CONTENTS_INLINE
+            );
+            {
+                vkCmdBindPipeline(command_buffer.value, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+                {
+                    std::array<VkViewport, 1> const viewports
+                    {
+                        VkViewport
+                        {
+                            .x = static_cast<float>(output_render_area.offset.x),
+                            .y = static_cast<float>(output_render_area.offset.y),
+                            .width = static_cast<float>(output_render_area.extent.width),
+                            .height = static_cast<float>(output_render_area.extent.height),
+                            .minDepth = 0.0f,
+                            .maxDepth = 1.0f,
+                        }
+                    };
+                    
+                    vkCmdSetViewport(command_buffer.value, 0, static_cast<std::uint32_t>(viewports.size()), viewports.data());
+                }
+
+                {
+                    std::array<VkRect2D, 1> const scissors
+                    {
+                        VkRect2D
+                        {
+                            .offset = output_render_area.offset,
+                            .extent = output_render_area.extent,
+                        }
+                    };
+                    
+                    vkCmdSetScissor(command_buffer.value, 0, static_cast<std::uint32_t>(scissors.size()), scissors.data());
+                }
+
+                vkCmdDraw(command_buffer.value, 3, 1, 0, 0);
+            }
+            end_render_pass(command_buffer);
+        }
+
+        if (switch_to_present_layout)
+        {
+            VkImageMemoryBarrier const image_memory_barrier
+            {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                .pNext = nullptr,
+                .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                .dstAccessMask = 0,
+                .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
@@ -392,7 +419,7 @@ namespace Mythology::Core::Vulkan
 
             vkCmdPipelineBarrier(
                 command_buffer.value,
-                VK_PIPELINE_STAGE_TRANSFER_BIT, 
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 
                 VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                 {},
                 0,

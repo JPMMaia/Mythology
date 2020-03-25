@@ -54,9 +54,13 @@ namespace Mythology::Core::Vulkan
 
     export void render(
         Command_buffer command_buffer,
-        Image output_image,
+        Render_pass render_pass,
+        Framebuffer framebuffer,
         VkClearColorValue clear_color,
-        bool const switch_to_present_layout = false
+        VkPipeline pipeline,
+        Image output_image,
+        VkRect2D output_render_area,
+        bool switch_to_present_layout = false
     ) noexcept;
 
     export std::pmr::vector<std::byte> read_memory(
