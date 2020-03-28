@@ -28,5 +28,5 @@ target_module (
     INTERFACE "Application.cxx"
     INTERFACE_DEPENDS "Standard_library"
     IMPLEMENTATION "Application.cpp"
-    IMPLEMENTATION_DEPENDS "maia.input" "maia.sdl.vulkan" "SDL" "SDL_vulkan" "Standard_library"
+    IMPLEMENTATION_DEPENDS "maia.input" "maia.sdl.vulkan" "mythology.core.vulkan" "mythology.core.utilities" "SDL" "SDL_vulkan" "Standard_library"
 )
