@@ -75,4 +75,24 @@ namespace Maia::Renderer::Vulkan
 
     export Device create_device(Physical_device physical_device, std::span<Device_queue_create_info const> queue_create_infos, std::span<char const* const> enabled_extensions) noexcept;
     export void destroy_device(Device device, std::optional<Allocation_callbacks> allocator = {}) noexcept;
+
+
+    export struct Wait_device_idle_lock
+    {
+        Wait_device_idle_lock(Device const device) noexcept :
+            device{device}
+        {
+        }
+        Wait_device_idle_lock(Wait_device_idle_lock const&) noexcept = delete;
+        Wait_device_idle_lock(Wait_device_idle_lock&&) noexcept = delete;
+        ~Wait_device_idle_lock() noexcept
+        {
+            vkDeviceWaitIdle(device.value);
+        }
+
+        Wait_device_idle_lock& operator=(Wait_device_idle_lock const&) noexcept = delete;
+        Wait_device_idle_lock& operator=(Wait_device_idle_lock&&) noexcept = delete;
+
+        Device device;
+    };
 }
