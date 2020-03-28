@@ -11,6 +11,7 @@ export import maia.renderer.vulkan.image;
 export import maia.renderer.vulkan.instance;
 export import maia.renderer.vulkan.physical_device;
 export import maia.renderer.vulkan.pipeline;
+export import maia.renderer.vulkan.pipeline_layout;
 export import maia.renderer.vulkan.queue;
 export import maia.renderer.vulkan.render_pass;
 export import maia.renderer.vulkan.semaphore;
