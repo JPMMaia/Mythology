@@ -255,6 +255,145 @@ namespace Mythology::Core::Vulkan
         return {device_memory, color_image};
     }
 
+    Render_pass create_render_pass(Device const device, VkFormat const color_image_format) noexcept
+    {
+        VkAttachmentDescription const color_attachment_description
+        {
+            .flags = {},
+            .format = color_image_format,
+            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+            .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+            .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        };
+
+        VkAttachmentReference const color_attachment_reference
+        {
+            0,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+        };
+
+        VkSubpassDescription const subpass_description
+        {
+            .flags = {},
+            .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+            .inputAttachmentCount = 0,
+            .pInputAttachments = nullptr,
+            .colorAttachmentCount = 1,
+            .pColorAttachments = &color_attachment_reference,
+            .pResolveAttachments = nullptr,
+            .pDepthStencilAttachment = nullptr,
+            .preserveAttachmentCount = 0,
+            .pPreserveAttachments = nullptr,
+        };
+
+        VkSubpassDependency const subpass_dependency
+        {
+            .srcSubpass = VK_SUBPASS_EXTERNAL,
+            .dstSubpass = {},
+            .srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            .srcAccessMask = {},
+            .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            .dependencyFlags = {}
+        };
+
+        return create_render_pass(
+            device,
+            {&color_attachment_description, 1},
+            {&subpass_description, 1},
+            {&subpass_dependency, 1},
+            {}
+        );
+    }
+
+    VkPipeline create_vertex_and_fragment_pipeline(
+        Device const device,
+        std::optional<VkPipelineCache> const pipeline_cache,
+        VkPipelineLayout const pipeline_layout,
+        VkRenderPass const render_pass,
+        std::uint32_t const subpass_index,
+        std::uint32_t const subpass_attachment_count,
+        VkShaderModule const vertex_shader,
+        VkShaderModule const fragment_shader
+    ) noexcept
+    {
+        std::array<VkPipelineShaderStageCreateInfo, 2> const shader_stages_create_info =
+            create_shader_stages_create_info(vertex_shader, fragment_shader);
+
+        VkPipelineVertexInputStateCreateInfo constexpr vertex_input_state_create_info = 
+            create_vertex_input_state_create_info();
+        
+        VkPipelineInputAssemblyStateCreateInfo constexpr input_assembly_state_create_info = 
+            create_input_assembly_state_create_info(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+
+        VkPipelineViewportStateCreateInfo constexpr viewport_state_create_info =
+            create_viewport_state_create_info(1, 1);
+
+        VkPipelineRasterizationStateCreateInfo const rasterization_state_create_info
+        {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = {},
+            .depthClampEnable = VK_FALSE,
+            .rasterizerDiscardEnable = VK_FALSE,
+            .polygonMode = VK_POLYGON_MODE_FILL,
+            .cullMode = VK_CULL_MODE_BACK_BIT,
+            .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+            .depthBiasEnable = VK_FALSE,
+            .depthBiasConstantFactor = {},
+            .depthBiasClamp = {},
+            .depthBiasSlopeFactor = {},
+            .lineWidth = 1.0f,
+        };
+
+        VkPipelineMultisampleStateCreateInfo const multisample_state_create_info = 
+            create_disabled_multisample_state_create_info();
+
+        VkPipelineDepthStencilStateCreateInfo constexpr depth_stencil_state_create_info =
+            create_disabled_depth_stencil_state_create_info();
+
+        std::pmr::vector<VkPipelineColorBlendAttachmentState> const color_blend_attachment_states
+        (
+            subpass_attachment_count,
+            create_disabled_color_blend_attachment_state()
+        );
+
+        VkPipelineColorBlendStateCreateInfo const color_blend_state_create_info = 
+            create_disabled_color_blend_state_create_info(color_blend_attachment_states);
+
+        VkPipelineDynamicStateCreateInfo const dynamic_state_create_info =
+            create_viewport_scissor_dynamic_state_create_info();
+
+        VkGraphicsPipelineCreateInfo const graphics_pipeline_create_info
+        {
+            .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = {},
+            .stageCount = static_cast<std::uint32_t>(shader_stages_create_info.size()),
+            .pStages = shader_stages_create_info.data(),
+            .pVertexInputState = &vertex_input_state_create_info,
+            .pInputAssemblyState = &input_assembly_state_create_info,
+            .pTessellationState = nullptr,
+            .pViewportState = &viewport_state_create_info,
+            .pRasterizationState = &rasterization_state_create_info,
+            .pMultisampleState = &multisample_state_create_info,
+            .pDepthStencilState = &depth_stencil_state_create_info,
+            .pColorBlendState = &color_blend_state_create_info,
+            .pDynamicState = &dynamic_state_create_info,
+            .layout = pipeline_layout,
+            .renderPass = render_pass,
+            .subpass = subpass_index,
+            .basePipelineHandle = VK_NULL_HANDLE,
+            .basePipelineIndex = -1,
+        };
+
+        return create_graphics_pipelines(device, {&graphics_pipeline_create_info, 1}, pipeline_cache).at(0);
+    }
+
     void render(
         Command_buffer const command_buffer,
         Render_pass const render_pass,

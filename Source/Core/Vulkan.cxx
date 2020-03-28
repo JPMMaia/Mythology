@@ -52,6 +52,21 @@ namespace Mythology::Core::Vulkan
         VkExtent3D extent
     ) noexcept;
 
+    export Render_pass create_render_pass(
+        Device device,
+        VkFormat color_image_format) noexcept;
+
+    export VkPipeline create_vertex_and_fragment_pipeline(
+        Device device,
+        std::optional<VkPipelineCache> pipeline_cache,
+        VkPipelineLayout pipeline_layout,
+        VkRenderPass render_pass,
+        std::uint32_t subpass_index,
+        std::uint32_t subpass_attachment_count,
+        VkShaderModule vertex_shader,
+        VkShaderModule fragment_shader
+    ) noexcept;
+
     export void render(
         Command_buffer command_buffer,
         Render_pass render_pass,
