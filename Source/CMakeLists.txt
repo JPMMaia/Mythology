@@ -50,6 +50,7 @@ target_link_libraries (MaiaMythology
 )
 
 add_subdirectory ("Core")
+add_subdirectory ("ImGui")
 
 add_subdirectory ("Windowless")
 target_link_libraries (MaiaMythology PRIVATE Maia::Mythology::Windowless)

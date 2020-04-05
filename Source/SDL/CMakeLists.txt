@@ -6,6 +6,7 @@ target_link_libraries (MaiaMythologySDL PRIVATE Maia::Renderer::Vulkan)
 target_link_libraries (MaiaMythologySDL PRIVATE Maia::Shaders)
 target_link_libraries (MaiaMythologySDL PRIVATE Maia::SDL2)
 
+target_link_libraries (MaiaMythologySDL PRIVATE Maia::Mythology::ImGui)
 target_link_libraries (MaiaMythologySDL PRIVATE Maia::Mythology::Core)
 
 target_link_libraries (MaiaMythologySDL PRIVATE Standard_library)
