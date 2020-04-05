@@ -14,12 +14,12 @@ namespace Maia::Renderer::Vulkan
 {
     Buffer create_buffer(
         Device const device, 
-        std::optional<Allocation_callbacks> const allocator,
-        VkBufferCreateFlags const flags,
         VkDeviceSize const size,
         VkBufferUsageFlags const usage,
+        VkBufferCreateFlags const flags,
         VkSharingMode const sharing_mode,
-        std::span<std::uint32_t const> const queue_family_indices
+        std::span<std::uint32_t const> const queue_family_indices,
+        std::optional<Allocation_callbacks> const allocator
     ) noexcept
     {
         VkBufferCreateInfo const info
@@ -57,181 +57,6 @@ namespace Maia::Renderer::Vulkan
             device.value,
             buffer.value,
             allocator.has_value() ? &allocator->value : nullptr
-        );
-    }
-
-    Buffer create_transfer_source_buffer(
-        Device const device, 
-        std::optional<Allocation_callbacks> const allocator,
-        VkDeviceSize const size,
-        VkSharingMode const sharing_mode,
-        std::span<std::uint32_t const> const queue_family_indices
-    ) noexcept
-    {
-        return create_buffer(
-            device, 
-            allocator, 
-            {}, 
-            size, 
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            sharing_mode, 
-            queue_family_indices
-        );
-    }
-
-
-    Buffer create_mappable_vertex_buffer(
-        Device const device, 
-        std::optional<Allocation_callbacks> const allocator,
-        VkDeviceSize const size,
-        VkSharingMode const sharing_mode,
-        std::span<std::uint32_t const> const queue_family_indices
-    ) noexcept
-    {
-        return create_buffer(
-            device, 
-            allocator, 
-            {}, 
-            size, 
-            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-            sharing_mode, 
-            queue_family_indices
-        );
-    }
-
-    Buffer create_non_mappable_vertex_buffer(
-        Device const device, 
-        std::optional<Allocation_callbacks> const allocator,
-        VkDeviceSize const size,
-        VkSharingMode const sharing_mode,
-        std::span<std::uint32_t const> const queue_family_indices
-    ) noexcept
-    {
-        return create_buffer(
-            device, 
-            allocator, 
-            {}, 
-            size, 
-            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            sharing_mode, 
-            queue_family_indices
-        );
-    }
-
-
-    Buffer create_mappable_index_buffer(
-        Device const device, 
-        std::optional<Allocation_callbacks> const allocator,
-        VkDeviceSize const size,
-        VkSharingMode const sharing_mode,
-        std::span<std::uint32_t const> const queue_family_indices
-    ) noexcept
-    {
-        return create_buffer(
-            device, 
-            allocator, 
-            {}, 
-            size, 
-            VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-            sharing_mode, 
-            queue_family_indices
-        );
-    }
-
-    Buffer create_non_mappable_index_buffer(
-        Device const device, 
-        std::optional<Allocation_callbacks> const allocator,
-        VkDeviceSize const size,
-        VkSharingMode const sharing_mode,
-        std::span<std::uint32_t const> const queue_family_indices
-    ) noexcept
-    {
-        return create_buffer(
-            device, 
-            allocator, 
-            {}, 
-            size, 
-            VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            sharing_mode, 
-            queue_family_indices
-        );
-    }
-
-
-    Buffer create_mappable_uniform_buffer(
-        Device const device, 
-        std::optional<Allocation_callbacks> const allocator,
-        VkDeviceSize const size,
-        VkSharingMode const sharing_mode,
-        std::span<std::uint32_t const> const queue_family_indices
-    ) noexcept
-    {
-        return create_buffer(
-            device, 
-            allocator, 
-            {}, 
-            size, 
-            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            sharing_mode, 
-            queue_family_indices
-        );
-    }
-
-    Buffer create_non_mappable_uniform_buffer(
-        Device const device, 
-        std::optional<Allocation_callbacks> const allocator,
-        VkDeviceSize const size,
-        VkSharingMode const sharing_mode,
-        std::span<std::uint32_t const> const queue_family_indices
-    ) noexcept
-    {
-        return create_buffer(
-            device, 
-            allocator, 
-            {}, 
-            size, 
-            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            sharing_mode, 
-            queue_family_indices
-        );
-    }
-
-
-    Buffer create_mappable_storage_buffer(
-        Device const device, 
-        std::optional<Allocation_callbacks> const allocator,
-        VkDeviceSize const size,
-        VkSharingMode const sharing_mode,
-        std::span<std::uint32_t const> const queue_family_indices
-    ) noexcept
-    {
-        return create_buffer(
-            device, 
-            allocator, 
-            {}, 
-            size, 
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-            sharing_mode, 
-            queue_family_indices
-        );
-    }
-
-    Buffer create_non_mappable_storage_buffer(
-        Device const device, 
-        std::optional<Allocation_callbacks> const allocator,
-        VkDeviceSize const size,
-        VkSharingMode const sharing_mode,
-        std::span<std::uint32_t const> const queue_family_indices
-    ) noexcept
-    {
-        return create_buffer(
-            device, 
-            allocator, 
-            {}, 
-            size, 
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            sharing_mode, 
-            queue_family_indices
         );
     }
 }

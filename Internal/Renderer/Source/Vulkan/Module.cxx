@@ -1,6 +1,7 @@
 export module maia.renderer.vulkan;
 
 export import maia.renderer.vulkan.allocation_callbacks;
+export import maia.renderer.vulkan.buffer;
 export import maia.renderer.vulkan.check;
 export import maia.renderer.vulkan.command_buffer;
 export import maia.renderer.vulkan.command_pool;

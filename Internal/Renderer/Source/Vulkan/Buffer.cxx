@@ -18,94 +18,17 @@ namespace Maia::Renderer::Vulkan
 
     export Buffer create_buffer(
         Device device, 
-        std::optional<Allocation_callbacks> allocator,
-        VkBufferCreateFlags flags,
         VkDeviceSize size,
         VkBufferUsageFlags usage,
+        VkBufferCreateFlags flags = {},
         VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE,
-        std::span<std::uint32_t const> queue_family_indices = {}
+        std::span<std::uint32_t const> queue_family_indices = {},
+        std::optional<Allocation_callbacks> allocator = {}
     ) noexcept;
 
     export void destroy_buffer(
         Device device,
         Buffer buffer,
         std::optional<Allocation_callbacks> allocator
-    ) noexcept;
-
-
-    export Buffer create_transfer_source_buffer(
-        Device device, 
-        std::optional<Allocation_callbacks> allocator,
-        VkDeviceSize size,
-        VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE,
-        std::span<std::uint32_t const> queue_family_indices = {}
-    ) noexcept;
-
-
-    export Buffer create_mappable_vertex_buffer(
-        Device device, 
-        std::optional<Allocation_callbacks> allocator,
-        VkDeviceSize size,
-        VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE,
-        std::span<std::uint32_t const> queue_family_indices = {}
-    ) noexcept;
-
-    export Buffer create_non_mappable_vertex_buffer(
-        Device device, 
-        std::optional<Allocation_callbacks> allocator,
-        VkDeviceSize size,
-        VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE,
-        std::span<std::uint32_t const> queue_family_indices = {}
-    ) noexcept;
-
-
-    export Buffer create_mappable_index_buffer(
-        Device device, 
-        std::optional<Allocation_callbacks> allocator,
-        VkDeviceSize size,
-        VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE,
-        std::span<std::uint32_t const> queue_family_indices = {}
-    ) noexcept;
-
-    export Buffer create_non_mappable_index_buffer(
-        Device device, 
-        std::optional<Allocation_callbacks> allocator,
-        VkDeviceSize size,
-        VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE,
-        std::span<std::uint32_t const> queue_family_indices = {}
-    ) noexcept;
-
-
-    export Buffer create_mappable_uniform_buffer(
-        Device device, 
-        std::optional<Allocation_callbacks> allocator,
-        VkDeviceSize size,
-        VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE,
-        std::span<std::uint32_t const> queue_family_indices = {}
-    ) noexcept;
-
-    export Buffer create_non_mappable_uniform_buffer(
-        Device device, 
-        std::optional<Allocation_callbacks> allocator,
-        VkDeviceSize size,
-        VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE,
-        std::span<std::uint32_t const> queue_family_indices = {}
-    ) noexcept;
-
-
-    export Buffer create_mappable_storage_buffer(
-        Device device, 
-        std::optional<Allocation_callbacks> allocator,
-        VkDeviceSize size,
-        VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE,
-        std::span<std::uint32_t const> queue_family_indices = {}
-    ) noexcept;
-
-    export Buffer create_non_mappable_storage_buffer(
-        Device device, 
-        std::optional<Allocation_callbacks> allocator,
-        VkDeviceSize size,
-        VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE,
-        std::span<std::uint32_t const> queue_family_indices = {}
     ) noexcept;
 }

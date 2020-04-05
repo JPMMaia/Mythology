@@ -274,6 +274,7 @@ target_module (
     INTERFACE "Module.cxx"
     INTERFACE_DEPENDS
         "maia.renderer.vulkan.allocation_callbacks"
+        "maia.renderer.vulkan.buffer"
         "maia.renderer.vulkan.check"
         "maia.renderer.vulkan.command_buffer"
         "maia.renderer.vulkan.command_pool"
