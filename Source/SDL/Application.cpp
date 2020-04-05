@@ -644,6 +644,122 @@ namespace Mythology::SDL
             Shader_module white_fragment_shader_module;
             VkPipeline white_triangle_pipeline;
         };
+
+        struct Device_memory_and_buffer
+        {
+            Buffer buffer;
+            Device_memory memory;
+            VkMemoryPropertyFlags memory_property_flags;
+        };
+
+        Device_memory_and_buffer create_device_memory_and_buffer(
+            Physical_device_memory_properties const& physical_device_memory_properties,
+            Device const device,
+            VkDeviceSize const allocation_size, 
+            VkBufferUsageFlags const usage,
+            VkBufferCreateFlags const flags = {},
+            VkSharingMode const sharing_mode = {},
+            std::span<std::uint32_t const> const queue_family_indices = {},
+            std::optional<Allocation_callbacks> const allocator = {}
+        ) noexcept
+        {
+            Buffer const buffer = create_buffer(device, allocation_size, usage, flags, sharing_mode, queue_family_indices);
+
+            Memory_requirements const memory_requirements = get_memory_requirements(device, buffer);
+            Memory_type_bits const memory_type_bits = get_memory_type_bits(memory_requirements);
+
+            std::optional<Memory_type_index> const memory_type_index = find_memory_type(
+                physical_device_memory_properties,
+                memory_type_bits,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+            );
+            assert(memory_type_index.has_value());
+
+            Device_memory const device_memory =
+                allocate_memory(device, memory_requirements.value.size, *memory_type_index, allocator);
+
+            VkDeviceSize const device_offset = 0;
+            bind_memory(device, buffer, device_memory, device_offset);
+
+            VkMemoryPropertyFlags const memory_property_flags =
+                physical_device_memory_properties.value.memoryTypes[memory_type_index->value].propertyFlags;
+
+            return {buffer, device_memory, memory_property_flags};
+        }
+
+        void destroy_device_memory_and_buffer(
+            Device const device,
+            Device_memory_and_buffer const device_memory_and_buffer,
+            std::optional<Allocation_callbacks> const allocator = {}) noexcept
+        {
+            destroy_buffer(device, device_memory_and_buffer.buffer, allocator);
+            free_memory(device, device_memory_and_buffer.memory, allocator);
+        }
+
+        void upload_data(
+            Device const device,
+            Device_memory const device_memory,
+            VkDeviceSize const memory_offset,
+            VkDeviceSize const memory_size,
+            VkMemoryPropertyFlags const memory_property_flags,
+            VkMemoryMapFlags const map_flags,
+            std::function<void(void*)> const copy_data
+        ) noexcept
+        {
+            assert(memory_property_flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+
+            {
+                Mapped_memory const mapped_memory{device, device_memory, memory_offset, memory_size, map_flags};
+
+                copy_data(mapped_memory.data());
+            }
+
+            if (!(memory_property_flags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
+            {
+                VkMappedMemoryRange const mapped_memory_range
+                {
+                    .sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+                    .pNext = nullptr,
+                    .memory = device_memory.value,
+                    .offset = memory_offset,
+                    .size = memory_size,
+                };
+
+                check_result(
+                    vkFlushMappedMemoryRanges(device.value, 1, &mapped_memory_range));
+            }
+        }
+
+        void upload_data(
+            VkMemoryPropertyFlags const memory_property_flags
+        ) noexcept
+        {
+            assert(memory_property_flags & (VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT));
+
+            if (memory_property_flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+            {
+                // wrap this branch into a function
+                // map
+                // memcpy
+                // unmap
+
+                if (!(memory_property_flags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
+                {
+                    // vkFlushMappedMemoryRanges
+                }
+            }
+            else
+            {
+                assert(memory_property_flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+                // First check if there is available host visible buffer
+                // If not, we need to create one
+
+                // upload_data using host visible buffer
+
+                // issue command to copy from host visible to device local
+            }
+        }
     }
 
     void run() noexcept
@@ -774,6 +890,45 @@ namespace Mythology::SDL
         Application_resources const application_resources{shaders_path, physical_device, device, surface_format.format};
         Render_pass const render_pass = application_resources.render_pass;
         VkPipeline const white_triangle_pipeline = application_resources.white_triangle_pipeline;
+
+        struct Clip_position
+        {
+            float x;
+            float y;
+        };
+
+        std::array<Clip_position, 3> constexpr positions
+        {
+            {
+                {0.0f, -0.5f},
+                {-0.5f, 0.5f},
+                {0.5f, 0.5f},
+            }
+        };
+
+        VkDeviceSize constexpr positions_allocation_size = positions.size() * sizeof(decltype(positions)::value_type);
+
+        Device_memory_and_buffer const positions_device_memory_and_buffer = create_device_memory_and_buffer(
+            get_phisical_device_memory_properties(physical_device),
+            device,
+            positions_allocation_size,
+            VkBufferUsageFlagBits::VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+        );
+
+        auto const copy_positions = [&positions](void* const destination_data) -> void
+        {
+            std::size_t const size_bytes = positions.size() * sizeof(decltype(positions)::value_type);
+            std::memcpy(destination_data, positions.data(), size_bytes);
+        };
+
+        upload_data(
+            device,
+            positions_device_memory_and_buffer.memory,
+            0,
+            positions_allocation_size,
+            positions_device_memory_and_buffer.memory_property_flags,
+            {},
+            copy_positions);
 
         Swapchain_resources swapchain_resources{physical_device, device, surface, surface_format, std::array<Queue_family_index, 2>{graphics_queue_family_index, present_queue_family_index}, render_pass};
         
