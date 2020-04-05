@@ -198,7 +198,7 @@ namespace Maia::Renderer::Vulkan
     ) noexcept
     {
         std::optional<Memory_type_index> const memory_type_index =
-            find_memory_type(memory_properties, memory_type_bits_requirement, optimal_properties);
+            find_memory_type(memory_properties, memory_type_bits_requirement, required_properties | optimal_properties);
 
         if (memory_type_index.has_value())
         {
