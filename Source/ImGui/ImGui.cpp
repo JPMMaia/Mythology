@@ -9,6 +9,7 @@ import <vulkan/vulkan.h>;
 import <array>;
 import <cassert>;
 import <cstring>;
+import <functional>;
 import <optional>;
 import <span>;
 
@@ -16,15 +17,15 @@ using namespace Maia::Renderer::Vulkan;
 
 namespace Mythology::ImGui
 {
-    void upload_texture_data(
-        VkDevice const device,
-        VkDeviceMemory const device_memory,
-        VkImage const image,
-        std::span<std::byte const> const source,
+    void upload_image_data(
+        std::uint32_t const size,
+        void* const destination,
+        std::uint32_t const destination_row_pitch,
+        void const* const source,
         std::uint32_t const source_row_pitch
     ) noexcept
     {
-        assert((source.size_bytes() % source_row_pitch) == 0);
+        /*assert((source.size_bytes() % source_row_pitch) == 0);
 
         VkSubresourceLayout const subresource_layout = get_subresource_layout(
             {device},
@@ -39,25 +40,89 @@ namespace Mythology::ImGui
             {device_memory},
             subresource_layout.offset,
             subresource_layout.size
-        };
+        };*/
 
-        std::uint32_t const num_rows_to_upload = source.size_bytes() / source_row_pitch;
+        std::uint32_t const num_rows_to_upload = size / source_row_pitch;
 
         for (std::uint32_t row_index = 0; row_index < num_rows_to_upload; ++row_index)
         {
             std::uint64_t const row_destination_offset =
-                row_index * subresource_layout.rowPitch;
+                row_index * destination_row_pitch;
 
             std::byte* const row_destination = 
-                static_cast<std::byte*>(mapped_memory.data()) + row_destination_offset;
+                static_cast<std::byte*>(destination) + row_destination_offset;
 
             std::uint64_t const row_source_offset =
                 row_index * source_row_pitch;
 
-            std::byte const* const row_source = source.data() + row_source_offset;
+            std::byte const* const row_source = 
+                static_cast<std::byte const*>(source) + row_source_offset;
             
             std::memcpy(row_destination, row_source, source_row_pitch);
         }
+    }
+
+    struct Image_memory_range
+    {
+        VkImage image;
+        VkDeviceMemory device_memory;
+        VkDeviceSize offset;
+        VkDeviceSize size;
+    };
+
+    VkImageCreateInfo create_fonts_image_create_info() noexcept
+    {
+        int width = 0;
+        int height = 0;
+        {
+            ImGuiIO& io = ::ImGui::GetIO();
+
+            unsigned char* pixels = nullptr;
+            io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+        }
+
+        return
+        {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = {},
+            .imageType = VK_IMAGE_TYPE_2D,
+            .format = VK_FORMAT_R8G8B8A8_UNORM,
+            .extent = {static_cast<std::uint32_t>(width), static_cast<std::uint32_t>(height), 1},
+            .mipLevels = 1,
+            .arrayLayers = 1,
+            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .tiling = VK_IMAGE_TILING_OPTIMAL,
+            .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+            .queueFamilyIndexCount = 0,
+            .pQueueFamilyIndices = nullptr,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        };
+    }
+    
+    VkImageView create_fonts_image_view(
+        VkDevice const device,
+        VkImage const fonts_image
+    ) noexcept
+    {
+        return create_image_view(
+            {device},
+            {},
+            {fonts_image},
+            VK_IMAGE_VIEW_TYPE_2D,
+            VK_FORMAT_R8G8B8A8_UNORM,
+            {},
+            VkImageSubresourceRange
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1
+            },
+            {}
+        ).value;
     }
 
     void create_fonts_texture(
@@ -68,6 +133,37 @@ namespace Mythology::ImGui
         // TODO allocator
         ) noexcept
     {
+        auto const create_and_allocate_image = [](
+            Physical_device_memory_properties const& physical_device_memory_properties,
+            VkDevice const device,
+            VkImageCreateInfo const& image_create_info
+        ) -> Image_memory_range
+        {
+            VkImage const image = create_image(device, image_create_info);
+
+            Memory_requirements const memory_requirements = 
+                get_memory_requirements({device}, {image});
+
+            Memory_type_bits const memory_type_bits = get_memory_type_bits(memory_requirements);
+
+            std::optional<Memory_type_index> const memory_type_index = 
+                find_memory_type(physical_device_memory_properties, memory_type_bits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+            // if memory is not available
+            {
+                // allocate memory
+            }
+            // else
+            {
+                // get available memory
+            }
+
+            // bind memory
+            // return image, and device memory range
+
+            return Image_memory_range{};
+        };
+
         unsigned char* pixels = nullptr;
         int width = 0;
         int height = 0;
@@ -77,68 +173,49 @@ namespace Mythology::ImGui
             io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
         }
 
-        VkResult err;
-
-        Image font_image;
+        VkImageCreateInfo const font_image_create_info
         {
-            font_image = create_image(
-                {device},
-                {},
-                VK_IMAGE_TYPE_2D,
-                VK_FORMAT_R8G8B8A8_UNORM,
-                {static_cast<std::uint32_t>(width), static_cast<std::uint32_t>(height), 1},
-                Mip_level_count{1},
-                Array_layer_count{1},
-                VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-                VK_IMAGE_LAYOUT_UNDEFINED,
-                VK_SAMPLE_COUNT_1_BIT,
-                {},
-                VK_IMAGE_TILING_OPTIMAL,
-                VK_SHARING_MODE_EXCLUSIVE
-            );
+            .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = {},
+            .imageType = VK_IMAGE_TYPE_2D,
+            .format = VK_FORMAT_R8G8B8A8_UNORM,
+            .extent = {static_cast<std::uint32_t>(width), static_cast<std::uint32_t>(height), 1},
+            .mipLevels = 1,
+            .arrayLayers = 1,
+            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .tiling = VK_IMAGE_TILING_OPTIMAL,
+            .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+            .queueFamilyIndexCount = 0,
+            .pQueueFamilyIndices = nullptr,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        };
 
-            Memory_requirements const memory_requirements = 
-                get_memory_requirements({device}, font_image);
+        Image_memory_range font_image_memory_range = create_and_allocate_image(
+            physical_device_memory_properties,
+            device,
+            font_image_create_info);
 
-            Memory_type_bits const memory_type_bits = get_memory_type_bits(memory_requirements);
+        VkImage const font_image = font_image_memory_range.image;
 
-            std::optional<Memory_type_index> const memory_type_index = 
-                find_memory_type(physical_device_memory_properties, memory_type_bits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-            
-            // allocate_memory({device}, )
-            // TODO allocate and bind
-
-            /*VkMemoryAllocateInfo alloc_info = {};
-            alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-            alloc_info.allocationSize = req.size;
-            alloc_info.memoryTypeIndex = ;
-            err = vkAllocateMemory(v->Device, &alloc_info, v->Allocator, &g_FontMemory);
-            check_vk_result(err);
-
-            err = vkBindImageMemory(v->Device, g_FontImage, g_FontMemory, 0);
-            check_vk_result(err);*/
-        }
-
-        Image_view font_image_view;
-        {
-            font_image_view = create_image_view(
-                {device},
-                {},
-                font_image,
-                VK_IMAGE_VIEW_TYPE_2D,
-                VK_FORMAT_R8G8B8A8_UNORM,
-                {},
-                VkImageSubresourceRange
-                {
-                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                    .baseMipLevel = 0,
-                    .levelCount = 1,
-                    .baseArrayLayer = 0,
-                    .layerCount = 1
-                },
-                {}
-            );
-        }
+        Image_view font_image_view = create_image_view(
+            {device},
+            {},
+            {font_image},
+            VK_IMAGE_VIEW_TYPE_2D,
+            VK_FORMAT_R8G8B8A8_UNORM,
+            {},
+            VkImageSubresourceRange
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1
+            },
+            {}
+        );
 
         {
             std::array<VkDescriptorImageInfo, 1> const descriptor_image_infos
@@ -247,108 +324,152 @@ namespace Mythology::ImGui
             use_barrier[0].subresourceRange.layerCount = 1;
             vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, use_barrier);
         }*/
-
-        {
-            ImGuiIO& io = ::ImGui::GetIO();
-            io.Fonts->TexID = reinterpret_cast<ImTextureID>(font_image.value);
-        }
     }
 
-    void create_device_objects(
+    VkSampler create_fonts_sampler(
         VkDevice const device,
+        VkAllocationCallbacks const* const allocator = nullptr
+    ) noexcept
+    {
+        VkSamplerCreateInfo const fonts_sampler_create_info
+        {
+            .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+            .magFilter = VK_FILTER_LINEAR,
+            .minFilter = VK_FILTER_LINEAR,
+            .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+            .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+            .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+            .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+            .maxAnisotropy = 1.0f,
+            .minLod = -1000,
+            .maxLod = 1000,
+        };
+
+        return create_sampler(device, fonts_sampler_create_info, allocator);
+    }
+
+    VkDescriptorSetLayout create_descriptor_set_layout(
+        VkDevice const device,
+        VkSampler const fonts_sampler,
+        VkAllocationCallbacks const* const allocator = nullptr
+    ) noexcept
+    {
+        VkDescriptorSetLayoutBinding const descriptor_set_layout_binding
+        {
+            .binding = 0,
+            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .pImmutableSamplers = &fonts_sampler,
+        };
+        
+        VkDescriptorSetLayoutCreateInfo const descriptor_set_layout_create_info
+        {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = {},
+            .bindingCount = 1,
+            .pBindings = &descriptor_set_layout_binding,
+        };
+
+        return Maia::Renderer::Vulkan::create_descriptor_set_layout(device, descriptor_set_layout_create_info, allocator);
+    }
+
+    VkDescriptorSet create_descriptor_set(
+        VkDevice const device,
+        VkDescriptorPool const descriptor_pool,
+        VkDescriptorSetLayout const descriptor_set_layout
+    ) noexcept
+    {
+        VkDescriptorSetAllocateInfo const descriptor_set_allocate_info
+        {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            .pNext = nullptr,
+            .descriptorPool = descriptor_pool,
+            .descriptorSetCount = 1,
+            .pSetLayouts = &descriptor_set_layout,
+        };
+
+        return Maia::Renderer::Vulkan::allocate_descriptor_set(device, descriptor_set_allocate_info);
+    }
+
+    void update_descriptor_set(
+        VkDevice const device,
+        VkDescriptorSet const descriptor_set,
+        VkImageView const font_image_view
+    ) noexcept
+    {
+        std::array<VkDescriptorImageInfo, 1> const descriptor_image_infos
+        {
+            {
+                {
+                    .sampler = VK_NULL_HANDLE,
+                    .imageView = font_image_view,
+                    .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                }
+            }
+        };
+
+        VkWriteDescriptorSet const write_descriptor_set
+        {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .pNext = nullptr,
+            .dstSet = descriptor_set,
+            .dstBinding = 0,
+            .dstArrayElement = 0,
+            .descriptorCount = descriptor_image_infos.size(),
+            .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+            .pImageInfo = descriptor_image_infos.data(),
+            .pBufferInfo = nullptr,
+            .pTexelBufferView = nullptr,
+        };
+
+        vkUpdateDescriptorSets(device, 1, &write_descriptor_set, 0, nullptr);
+    }
+
+    VkPipelineLayout create_pipeline_layout(
+        VkDevice const device,
+        VkDescriptorSetLayout const descriptor_set_layout,
+        VkAllocationCallbacks const* const allocator = nullptr
+    ) noexcept
+    {
+        VkPushConstantRange constexpr push_constant_range
+        {
+            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+            .offset = sizeof(float) * 0,
+            .size = sizeof(float) * 4,
+        };
+
+        VkPipelineLayoutCreateInfo const pipeline_layout_info
+        {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = {},
+            .setLayoutCount = 1,
+            .pSetLayouts = &descriptor_set_layout,
+            .pushConstantRangeCount = 1,
+            .pPushConstantRanges = &push_constant_range,
+        };
+
+        return Maia::Renderer::Vulkan::create_pipeline_layout(device, pipeline_layout_info, allocator);
+    }
+
+    VkPipeline create_graphics_pipeline(
+        VkDevice const device,
+        VkPipelineLayout const pipeline_layout,
         VkRenderPass const render_pass,
         std::uint32_t const subpass_index,
         VkShaderModule const vertex_shader_module,
         VkShaderModule const fragment_shader_module,
-        VkDescriptorPool const descriptor_pool,
-        VkPipelineCache const pipeline_cache
-        // TODO allocator
+        VkPipelineCache const pipeline_cache,
+        VkAllocationCallbacks const* const allocator = nullptr
     ) noexcept
     {
-        VkResult err;
-
-        VkSampler font_sampler = {};
-        {
-            VkSamplerCreateInfo const info
-            {
-                .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-                .magFilter = VK_FILTER_LINEAR,
-                .minFilter = VK_FILTER_LINEAR,
-                .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-                .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-                .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-                .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-                .maxAnisotropy = 1.0f,
-                .minLod = -1000,
-                .maxLod = 1000,
-            };
-            
-            check_result(
-                vkCreateSampler(device, &info, nullptr, &font_sampler));
-        }
-
-        VkDescriptorSetLayout descriptor_set_layout = {};
-        {
-            VkDescriptorSetLayoutBinding const binding
-            {
-                .binding = 0,
-                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .descriptorCount = 1,
-                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .pImmutableSamplers = &font_sampler,
-            };
-            
-            VkDescriptorSetLayoutCreateInfo const info
-            {
-                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-                .pNext = nullptr,
-                .flags = {},
-                .bindingCount = 1,
-                .pBindings = &binding,
-            };
-            
-            check_result(
-                vkCreateDescriptorSetLayout(device, &info, nullptr, &descriptor_set_layout));
-        }
-
-        VkDescriptorSet descriptor_set = {};
-        {
-            VkDescriptorSetAllocateInfo const allocate_info
-            {
-                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-                .pNext = nullptr,
-                .descriptorPool = descriptor_pool,
-                .descriptorSetCount = 1,
-                .pSetLayouts = &descriptor_set_layout,
-            };
-            
-            check_result(
-                vkAllocateDescriptorSets(device, &allocate_info, &descriptor_set));
-        }
-
-        VkPipelineLayout pipeline_layout = {};
-        {
-            VkPushConstantRange constexpr push_constant_range
-            {
-                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-                .offset = sizeof(float) * 0,
-                .size = sizeof(float) * 4,
-            };
-
-            VkPipelineLayoutCreateInfo const layout_info
-            {
-                .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-                .pNext = nullptr,
-                .flags = {},
-                .setLayoutCount = 1,
-                .pSetLayouts = &descriptor_set_layout,
-                .pushConstantRangeCount = 1,
-                .pPushConstantRanges = &push_constant_range,
-            };
-
-            check_result(
-                vkCreatePipelineLayout(device, &layout_info, nullptr, &pipeline_layout));
-        }
+        // TODO
+        /*{
+            ImGuiIO& io = ::ImGui::GetIO();
+            io.Fonts->TexID = reinterpret_cast<ImTextureID>(fonts_image);
+        }*/
 
         std::array<VkPipelineShaderStageCreateInfo, 2> const shader_stages
         {
@@ -521,7 +642,7 @@ namespace Mythology::ImGui
             .pDynamicStates = dynamic_states.data(),
         };
 
-        VkGraphicsPipelineCreateInfo info
+        VkGraphicsPipelineCreateInfo const graphics_pipeline_create_info
         {
             .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
             .pNext = nullptr,
@@ -544,14 +665,86 @@ namespace Mythology::ImGui
             .basePipelineIndex = 0,
         };
 
-        VkPipeline pipeline = {};
-        check_result(
-            vkCreateGraphicsPipelines(device, pipeline_cache, 1, &info, nullptr, &pipeline));
-
-        // TODO destroy shader modules
-        //vkDestroyShaderModule(v->Device, vert_module, v->Allocator);
-        //vkDestroyShaderModule(v->Device, frag_module, v->Allocator);
+        return Maia::Renderer::Vulkan::create_graphics_pipeline(
+            device,
+            graphics_pipeline_create_info,
+            pipeline_cache,
+            allocator
+        );
     }
+
+    struct ImGui_resources
+    {
+        VkDevice device;
+        VkAllocationCallbacks const* allocator;
+        VkImageView fonts_image_view;
+        VkSampler fonts_sampler;
+        VkDescriptorSetLayout descriptor_set_layout;
+        VkDescriptorPool descriptor_pool;
+        VkDescriptorSet descriptor_set;
+        VkPipelineLayout pipeline_layout;
+        VkPipeline pipeline;
+
+        ImGui_resources(
+            VkDevice const device,
+            VkImage const fonts_image,
+            VkDescriptorPool const descriptor_pool,
+            VkRenderPass const render_pass,
+            std::uint32_t const subpass_index,
+            VkShaderModule const vertex_shader_module,
+            VkShaderModule const fragment_shader_module,
+            VkPipelineCache const pipeline_cache = VK_NULL_HANDLE,
+            VkAllocationCallbacks const* const allocator = nullptr
+        ) noexcept :
+            device{device},
+            allocator{allocator},
+            fonts_image_view{create_fonts_image_view(device, fonts_image)},
+            fonts_sampler{create_fonts_sampler(device, allocator)},
+            descriptor_set_layout{create_descriptor_set_layout(device, this->fonts_sampler)},
+            descriptor_pool{descriptor_pool},
+            descriptor_set{create_descriptor_set(device, descriptor_pool, this->descriptor_set_layout)},
+            pipeline_layout{create_pipeline_layout(device, this->descriptor_set_layout, allocator)},
+            pipeline{create_graphics_pipeline(device, this->pipeline_layout, render_pass, subpass_index, vertex_shader_module, fragment_shader_module, pipeline_cache)}
+        {
+        }
+        ImGui_resources(ImGui_resources const&) noexcept = delete;
+        ImGui_resources(ImGui_resources&&) noexcept = delete;
+        ~ImGui_resources() noexcept
+        {
+            if (this->pipeline != VK_NULL_HANDLE)
+            {
+                destroy_pipeline(this->device, this->pipeline, this->allocator);
+            }
+
+            if (this->pipeline_layout != VK_NULL_HANDLE)
+            {
+                destroy_pipeline_layout(this->device, this->pipeline_layout, this->allocator);
+            }
+
+            if (this->descriptor_set != VK_NULL_HANDLE)
+            {
+                free_descriptor_sets(this->device, this->descriptor_pool, {&this->descriptor_set, 1});
+            }
+
+            if (this->descriptor_set_layout != VK_NULL_HANDLE)
+            {
+                destroy_descriptor_set_layout(this->device, this->descriptor_set_layout, this->allocator);
+            }
+
+            if (this->fonts_sampler != VK_NULL_HANDLE)
+            {
+                destroy_sampler(this->device, this->fonts_sampler, this->allocator);
+            }
+
+            if (this->fonts_image_view != VK_NULL_HANDLE)
+            {
+                destroy_image_view({this->device}, {this->fonts_image_view}, this->allocator ? Allocation_callbacks{*this->allocator} : Allocation_callbacks{});
+            }
+        }
+
+        ImGui_resources& operator=(ImGui_resources const&) noexcept = delete;
+        ImGui_resources& operator=(ImGui_resources&&) noexcept = delete;
+    };
 
     struct Buffer_range
     {
@@ -690,9 +883,6 @@ namespace Mythology::ImGui
             }
         }
     }
-
-    // TODO create fonts texture and upload data to it
-    // TODO create pipeline, pipeline layout, descriptor set
 
     void render(
         ImDrawData const& draw_data,
