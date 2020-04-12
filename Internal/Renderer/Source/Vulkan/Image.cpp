@@ -12,6 +12,26 @@ import <span>;
 
 namespace Maia::Renderer::Vulkan
 {
+    VkImage create_image(
+        VkDevice const device,
+        VkImageCreateInfo const& create_info,
+        VkAllocationCallbacks const* const allocator
+    ) noexcept
+    {
+        VkImage image = {};
+
+        check_result(
+            vkCreateImage(
+                device, 
+                &create_info, 
+                allocator,
+                &image
+            )
+        );
+
+        return image;
+    }
+
     Image create_image(
         Device const device,
         std::optional<Allocation_callbacks> const allocator,
@@ -48,17 +68,7 @@ namespace Maia::Renderer::Vulkan
             .initialLayout = initial_layout,
         };
 
-        VkImage image = {};
-        check_result(
-            vkCreateImage(
-                device.value, 
-                &create_info, 
-                allocator.has_value() ? &allocator->value : nullptr, 
-                &image
-            )
-        );
-
-        return {image};
+        return {create_image(device.value, create_info, allocator.has_value() ? &allocator->value : nullptr)};
     }
 
     void destroy_image(

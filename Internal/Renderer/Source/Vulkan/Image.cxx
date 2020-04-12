@@ -27,6 +27,12 @@ namespace Maia::Renderer::Vulkan
         VkImage value;
     };
 
+    export VkImage create_image(
+        VkDevice device,
+        VkImageCreateInfo const& create_info,
+        VkAllocationCallbacks const* allocator = nullptr
+    ) noexcept;
+
     export Image create_image(
         Device device,
         std::optional<Allocation_callbacks> allocator,
