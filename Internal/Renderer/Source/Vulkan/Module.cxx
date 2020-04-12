@@ -8,6 +8,7 @@ export import maia.renderer.vulkan.command_pool;
 export import maia.renderer.vulkan.device;
 export import maia.renderer.vulkan.device_memory;
 export import maia.renderer.vulkan.descriptor_set_layout;
+export import maia.renderer.vulkan.descriptor_set;
 export import maia.renderer.vulkan.fence;
 export import maia.renderer.vulkan.image;
 export import maia.renderer.vulkan.instance;

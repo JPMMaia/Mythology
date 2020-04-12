@@ -58,6 +58,15 @@ target_module (
 
 target_module (
     MaiaRendererVulkan
+    "maia.renderer.vulkan.descriptor_set"
+    INTERFACE "Descriptor_set.cxx"
+    INTERFACE_DEPENDS "Standard_library" "Vulkan"
+    IMPLEMENTATION "Descriptor_set.cpp"
+    IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" "maia.renderer.vulkan.check"
+)
+
+target_module (
+    MaiaRendererVulkan
     "maia.renderer.vulkan.fence"
     INTERFACE "Fence.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
