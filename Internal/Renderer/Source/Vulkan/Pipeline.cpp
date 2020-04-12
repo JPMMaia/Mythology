@@ -1,8 +1,6 @@
 module maia.renderer.vulkan.pipeline;
 
-import maia.renderer.vulkan.allocation_callbacks;
 import maia.renderer.vulkan.check;
-import maia.renderer.vulkan.device;
 
 import <vulkan/vulkan.h>;
 
@@ -13,24 +11,47 @@ import <vector>;
 
 namespace Maia::Renderer::Vulkan
 {
-    std::pmr::vector<VkPipeline> create_compute_pipelines(
-        Device const device,
-        std::span<VkComputePipelineCreateInfo const> const create_infos,
-        std::optional<VkPipelineCache> const pipeline_cache,
-        std::optional<Allocation_callbacks> const vulkan_allocator,
-        std::pmr::polymorphic_allocator<VkPipeline> const polymorphic_allocator
+    VkPipeline create_compute_pipeline(
+        VkDevice const device,
+        VkComputePipelineCreateInfo const& create_info,
+        VkPipelineCache const pipeline_cache,
+        VkAllocationCallbacks const* const vulkan_allocator
     ) noexcept
     {
-        std::pmr::vector<VkPipeline> pipelines{polymorphic_allocator};
+        VkPipeline pipeline{};
+
+        check_result(
+            vkCreateComputePipelines(
+                device,
+                pipeline_cache,
+                1,
+                &create_info,
+                vulkan_allocator,
+                &pipeline
+            )
+        );
+
+        return pipeline;
+    }
+
+    std::pmr::vector<VkPipeline> create_compute_pipelines(
+        VkDevice const device,
+        std::span<VkComputePipelineCreateInfo const> const create_infos,
+        VkPipelineCache const pipeline_cache,
+        VkAllocationCallbacks const* const vulkan_allocator,
+        std::pmr::polymorphic_allocator<VkPipeline> const& vector_allocator
+    ) noexcept
+    {
+        std::pmr::vector<VkPipeline> pipelines{vector_allocator};
         pipelines.resize(create_infos.size());
 
         check_result(
             vkCreateComputePipelines(
-                device.value,
-                pipeline_cache.has_value() ? *pipeline_cache : VK_NULL_HANDLE,
+                device,
+                pipeline_cache,
                 create_infos.size(),
                 create_infos.data(),
-                vulkan_allocator.has_value() ? &vulkan_allocator->value : nullptr,
+                vulkan_allocator,
                 pipelines.data()
             )
         );
@@ -38,11 +59,34 @@ namespace Maia::Renderer::Vulkan
         return pipelines;
     }
 
+    VkPipeline create_graphics_pipeline(
+        VkDevice const device,
+        VkGraphicsPipelineCreateInfo const& create_info,
+        VkPipelineCache const pipeline_cache,
+        VkAllocationCallbacks const* const vulkan_allocator
+    ) noexcept
+    {
+        VkPipeline pipeline{};
+
+        check_result(
+            vkCreateGraphicsPipelines(
+                device,
+                pipeline_cache,
+                1,
+                &create_info,
+                vulkan_allocator,
+                &pipeline
+            )
+        );
+
+        return pipeline;
+    }
+
     std::pmr::vector<VkPipeline> create_graphics_pipelines(
-        Device const device,
+        VkDevice const device,
         std::span<VkGraphicsPipelineCreateInfo const> const create_infos,
-        std::optional<VkPipelineCache> const pipeline_cache,
-        std::optional<Allocation_callbacks> const vulkan_allocator,
+        VkPipelineCache const pipeline_cache,
+        VkAllocationCallbacks const* const vulkan_allocator,
         std::pmr::polymorphic_allocator<VkPipeline> const polymorphic_allocator
     ) noexcept
     {
@@ -51,11 +95,11 @@ namespace Maia::Renderer::Vulkan
 
         check_result(
             vkCreateGraphicsPipelines(
-                device.value,
-                pipeline_cache.has_value() ? *pipeline_cache : VK_NULL_HANDLE,
+                device,
+                pipeline_cache,
                 create_infos.size(),
                 create_infos.data(),
-                vulkan_allocator.has_value() ? &vulkan_allocator->value : nullptr,
+                vulkan_allocator,
                 pipelines.data()
             )
         );
@@ -64,15 +108,15 @@ namespace Maia::Renderer::Vulkan
     }
 
     void destroy_pipeline(
-        Device const device,
+        VkDevice const device,
         VkPipeline const pipeline,
-        std::optional<Allocation_callbacks> const vulkan_allocator
+        VkAllocationCallbacks const* const vulkan_allocator
     ) noexcept
     {
         vkDestroyPipeline(
-            device.value,
+            device,
             pipeline,
-            vulkan_allocator.has_value() ? &vulkan_allocator->value : nullptr
+            vulkan_allocator
         );
     }
 }

@@ -1,37 +1,47 @@
 export module maia.renderer.vulkan.pipeline;
 
-import maia.renderer.vulkan.allocation_callbacks;
-import maia.renderer.vulkan.device;
-
 import <vulkan/vulkan.h>;
 
 import <memory_resource>;
-import <optional>;
 import <span>;
 import <vector>;
 
 namespace Maia::Renderer::Vulkan
 {
+    export VkPipeline create_compute_pipeline(
+        VkDevice device,
+        VkComputePipelineCreateInfo const& create_info,
+        VkPipelineCache pipeline_cache = VK_NULL_HANDLE,
+        VkAllocationCallbacks const* vulkan_allocator = nullptr
+    ) noexcept;
+
     export std::pmr::vector<VkPipeline> create_compute_pipelines(
-        Device device,
+        VkDevice device,
         std::span<VkComputePipelineCreateInfo const> create_infos,
-        std::optional<VkPipelineCache> pipeline_cache = {},
-        std::optional<Allocation_callbacks> vulkan_allocator = {},
-        std::pmr::polymorphic_allocator<VkPipeline> polymorphic_allocator = {}
+        VkPipelineCache pipeline_cache = VK_NULL_HANDLE,
+        VkAllocationCallbacks const* vulkan_allocator = nullptr,
+        std::pmr::polymorphic_allocator<VkPipeline> const& vector_allocator = {}
+    ) noexcept;
+
+    export VkPipeline create_graphics_pipeline(
+        VkDevice device,
+        VkGraphicsPipelineCreateInfo const& create_info,
+        VkPipelineCache pipeline_cache = VK_NULL_HANDLE,
+        VkAllocationCallbacks const* vulkan_allocator = nullptr
     ) noexcept;
 
     export std::pmr::vector<VkPipeline> create_graphics_pipelines(
-        Device device,
+        VkDevice device,
         std::span<VkGraphicsPipelineCreateInfo const> create_infos,
-        std::optional<VkPipelineCache> pipeline_cache = {},
-        std::optional<Allocation_callbacks> vulkan_allocator = {},
-        std::pmr::polymorphic_allocator<VkPipeline> polymorphic_allocator = {}
+        VkPipelineCache pipeline_cache = VK_NULL_HANDLE,
+        VkAllocationCallbacks const* vulkan_allocator = nullptr,
+        std::pmr::polymorphic_allocator<VkPipeline> vector_allocator = {}
     ) noexcept;
 
     export void destroy_pipeline(
-        Device device,
+        VkDevice device,
         VkPipeline pipeline,
-        std::optional<Allocation_callbacks> vulkan_allocator = {}
+        VkAllocationCallbacks const* vulkan_allocator = nullptr
     ) noexcept;
 
 
