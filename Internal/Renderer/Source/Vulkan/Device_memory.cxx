@@ -8,8 +8,10 @@ import maia.renderer.vulkan.physical_device;
 
 import <vulkan/vulkan.h>;
 
+import <cstddef>;
 import <cstdint>;
 import <optional>;
+import <functional>;
 import <ostream>;
 
 namespace Maia::Renderer::Vulkan
@@ -59,6 +61,16 @@ namespace Maia::Renderer::Vulkan
     {
         std::uint32_t value;
     };
+
+    export bool operator==(Memory_type_index lhs, Memory_type_index rhs) noexcept
+    {
+        return lhs.value == rhs.value;
+    }
+    
+    export bool operator!=(Memory_type_index lhs, Memory_type_index rhs) noexcept
+    {
+        return !(lhs == rhs);
+    }
 
     export std::optional<Memory_type_index> find_memory_type(
         Physical_device_memory_properties const& memory_properties,
@@ -146,5 +158,18 @@ namespace Maia::Renderer::Vulkan
         Device m_device = {};
         Device_memory m_device_memory = {};
         void* m_mapped_memory = nullptr;
+    };
+}
+
+namespace std
+{
+    export template<> struct hash<Maia::Renderer::Vulkan::Memory_type_index>
+    {
+        using value_type = Maia::Renderer::Vulkan::Memory_type_index;
+
+        std::size_t operator()(value_type const value) const noexcept
+        {
+            return std::hash<std::uint32_t>{}(value.value);
+        }
     };
 }
