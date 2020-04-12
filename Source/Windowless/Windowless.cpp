@@ -93,7 +93,7 @@ namespace Mythology::Windowless
                 VkExtent3D const color_image_extent) noexcept :
                 device{device},
                 device_memory_and_color_image(Mythology::Core::Vulkan::create_device_memory_and_color_image(physical_device, device, color_image_format, color_image_extent)),
-                pipeline_layout{create_pipeline_layout(device, {}, {})},
+                pipeline_layout{create_pipeline_layout(device.value, empty_pipeline_layout_create_info(), {})},
                 render_pass{create_render_pass(device, color_image_format)},
                 triangle_vertex_shader_module{create_shader_module(device, {}, convert_bytes<std::uint32_t>(read_bytes(shaders_path / "Triangle.vertex.spv")))},
                 white_fragment_shader_module{create_shader_module(device, {}, convert_bytes<std::uint32_t>(read_bytes(shaders_path / "White.fragment.spv")))},
@@ -138,7 +138,7 @@ namespace Mythology::Windowless
 
                 if (pipeline_layout != VK_NULL_HANDLE)
                 {
-                    destroy_pipeline_layout(device, pipeline_layout, {});
+                    destroy_pipeline_layout(device.value, pipeline_layout, {});
                 }
 
                 if (this->device_memory_and_color_image.color_image.value != VK_NULL_HANDLE)
