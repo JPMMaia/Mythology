@@ -302,6 +302,7 @@ target_module (
         "maia.renderer.vulkan.command_buffer"
         "maia.renderer.vulkan.command_pool"
         "maia.renderer.vulkan.descriptor_set_layout"
+        "maia.renderer.vulkan.descriptor_set"
         "maia.renderer.vulkan.device"
         "maia.renderer.vulkan.device_memory"
         "maia.renderer.vulkan.fence"
