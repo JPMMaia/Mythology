@@ -49,6 +49,15 @@ target_module (
 
 target_module (
     MaiaRendererVulkan
+    "maia.renderer.vulkan.descriptor_set_layout"
+    INTERFACE "Descriptor_set_layout.cxx"
+    INTERFACE_DEPENDS "Vulkan"
+    IMPLEMENTATION "Descriptor_set_layout.cpp"
+    IMPLEMENTATION_DEPENDS "Vulkan" "maia.renderer.vulkan.check"
+)
+
+target_module (
+    MaiaRendererVulkan
     "maia.renderer.vulkan.fence"
     INTERFACE "Fence.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
@@ -287,6 +296,7 @@ target_module (
         "maia.renderer.vulkan.check"
         "maia.renderer.vulkan.command_buffer"
         "maia.renderer.vulkan.command_pool"
+        "maia.renderer.vulkan.descriptor_set_layout"
         "maia.renderer.vulkan.device"
         "maia.renderer.vulkan.device_memory"
         "maia.renderer.vulkan.fence"
