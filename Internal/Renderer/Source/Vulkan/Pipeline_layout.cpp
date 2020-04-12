@@ -12,28 +12,18 @@ import <span>;
 namespace Maia::Renderer::Vulkan
 {
     VkPipelineLayout create_pipeline_layout(
-        Device const device,
-        std::span<VkDescriptorSetLayout const> const set_layouts,
-        std::span<VkPushConstantRange const> const push_constants,
-        std::optional<Allocation_callbacks> const vulkan_allocator) noexcept
+        VkDevice const device,
+        VkPipelineLayoutCreateInfo const& create_info,
+        VkAllocationCallbacks const* const allocator
+    ) noexcept
     {
-        VkPipelineLayoutCreateInfo const create_info
-        {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = {},
-            .setLayoutCount = static_cast<std::uint32_t>(set_layouts.size()),
-            .pSetLayouts = set_layouts.data(),
-            .pushConstantRangeCount = static_cast<std::uint32_t>(push_constants.size()),
-            .pPushConstantRanges = push_constants.data(),
-        };
+        VkPipelineLayout pipeline_layout{};
 
-        VkPipelineLayout pipeline_layout = {};
         check_result(
             vkCreatePipelineLayout(
-                device.value,
+                device,
                 &create_info,
-                vulkan_allocator.has_value() ? &vulkan_allocator->value : nullptr,
+                allocator,
                 &pipeline_layout
             )
         );
@@ -42,15 +32,15 @@ namespace Maia::Renderer::Vulkan
     }
 
     void destroy_pipeline_layout(
-        Device const device,
+        VkDevice const device,
         VkPipelineLayout const pipeline_layout,
-        std::optional<Allocation_callbacks> const vulkan_allocator
+        VkAllocationCallbacks const* const allocator
     ) noexcept
     {
         vkDestroyPipelineLayout(
-            device.value,
+            device,
             pipeline_layout,
-            vulkan_allocator.has_value() ? &vulkan_allocator->value : nullptr
+            allocator
         );
     }
 }

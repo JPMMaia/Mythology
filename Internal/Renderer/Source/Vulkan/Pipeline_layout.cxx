@@ -1,24 +1,32 @@
 export module maia.renderer.vulkan.pipeline_layout;
 
-import maia.renderer.vulkan.allocation_callbacks;
-import maia.renderer.vulkan.device;
-
 import <vulkan/vulkan.h>;
-
-import <optional>;
-import <span>;
 
 namespace Maia::Renderer::Vulkan
 {
+    export VkPipelineLayoutCreateInfo constexpr empty_pipeline_layout_create_info() noexcept
+    {
+        return 
+        {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = {},
+            .setLayoutCount = 0,
+            .pSetLayouts = nullptr,
+            .pushConstantRangeCount = 0,
+            .pPushConstantRanges = nullptr,
+        };
+    }
+
     export VkPipelineLayout create_pipeline_layout(
-        Device device,
-        std::span<VkDescriptorSetLayout const> set_layouts,
-        std::span<VkPushConstantRange const> push_constants,
-        std::optional<Allocation_callbacks> vulkan_allocator = {}) noexcept;
+        VkDevice device,
+        VkPipelineLayoutCreateInfo const& create_info,
+        VkAllocationCallbacks const* allocator = nullptr
+    ) noexcept;
 
     export void destroy_pipeline_layout(
-        Device device,
+        VkDevice device,
         VkPipelineLayout pipeline_layout,
-        std::optional<Allocation_callbacks> vulkan_allocator = {}
+        VkAllocationCallbacks const* allocator = nullptr
     ) noexcept;
 }
