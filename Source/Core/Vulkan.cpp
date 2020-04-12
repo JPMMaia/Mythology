@@ -391,7 +391,7 @@ namespace Mythology::Core::Vulkan
             .basePipelineIndex = -1,
         };
 
-        return create_graphics_pipelines(device, {&graphics_pipeline_create_info, 1}, pipeline_cache).at(0);
+        return create_graphics_pipeline(device.value, graphics_pipeline_create_info, pipeline_cache.has_value() ? *pipeline_cache : VK_NULL_HANDLE);
     }
 
     void render(
