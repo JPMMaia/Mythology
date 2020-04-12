@@ -229,6 +229,15 @@ target_module (
         "maia.renderer.vulkan.render_pass"
 )
 
+target_module (
+    MaiaRendererVulkan
+    "maia.renderer.vulkan.sampler"
+    INTERFACE "Sampler.cxx"
+    INTERFACE_DEPENDS "Vulkan"
+    IMPLEMENTATION "Sampler.cpp"
+    IMPLEMENTATION_DEPENDS "Vulkan" 
+        "maia.renderer.vulkan.check"
+)
 
 target_module (
     MaiaRendererVulkan
@@ -288,6 +297,7 @@ target_module (
         "maia.renderer.vulkan.pipeline_layout"
         "maia.renderer.vulkan.queue"
         "maia.renderer.vulkan.render_pass"
+        "maia.renderer.vulkan.sampler"
         "maia.renderer.vulkan.semaphore"
         "maia.renderer.vulkan.shader_module"
         "maia.renderer.vulkan.surface"
