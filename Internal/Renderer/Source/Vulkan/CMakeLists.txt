@@ -293,6 +293,19 @@ target_module (
 
 target_module (
     MaiaRendererVulkan
+    "maia.renderer.vulkan.memory_management"
+    INTERFACE "Memory_management.cxx"
+    INTERFACE_DEPENDS "Standard_library" "Vulkan"
+        "maia.renderer.vulkan.device_memory"
+    IMPLEMENTATION "Memory_management.cpp"
+    IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan"
+        "maia.renderer.vulkan.allocation_callbacks"
+        "maia.renderer.vulkan.device"
+        "maia.renderer.vulkan.device_memory"
+)
+
+target_module (
+    MaiaRendererVulkan
     "maia.renderer.vulkan"
     INTERFACE "Module.cxx"
     INTERFACE_DEPENDS
