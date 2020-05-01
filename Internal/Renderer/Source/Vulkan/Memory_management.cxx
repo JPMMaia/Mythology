@@ -100,19 +100,72 @@ namespace Maia::Renderer::Vulkan
         Memory_size maximum_block_size;
     };
 
-    export std::optional<Tree_node> find_free_node(
-        Memory_tree const& tree,
-        Tree_node base,
-        Memory_size required_size
+    export Memory_tree create_memory_tree(
+        Memory_size minimum_block_size,
+        Memory_size maximum_block_size,
+        std::pmr::polymorphic_allocator<bool> const& allocator = {}
     ) noexcept;
 
-    export void allocate_node(
+    export std::optional<Tree_node> allocate_node(
         Memory_tree& tree,
-        Tree_node node_to_allocate
+        Memory_size required_size
     ) noexcept;
 
     export void free_node(
         Memory_tree& tree,
         Tree_node const node_to_free
     ) noexcept;
+
+
+    export struct Node_device_memory_resource
+    {
+        Device_memory_range device_memory_range;
+        Memory_tree& memory_tree;
+        Tree_node node;
+    };
+
+    export class Pool_device_memory_resource
+    {
+    public:
+
+        struct Chunk
+        {
+            Device_memory_range device_memory_range;
+            Memory_tree memory_tree;
+        };
+
+        Pool_device_memory_resource(
+            VkDevice device,
+            VkDeviceSize maximum_block_size,
+            VkDeviceSize minimum_block_size,
+            VkAllocationCallbacks const* vulkan_allocator = nullptr,
+            std::pmr::polymorphic_allocator<std::pair<Memory_type_index const, Chunk>> const& chunk_allocator = {},
+            std::pmr::polymorphic_allocator<bool> bool_allocator = {}
+        ) noexcept;
+        Pool_device_memory_resource(Pool_device_memory_resource const&) noexcept = delete;
+        Pool_device_memory_resource(Pool_device_memory_resource&& other) noexcept;
+        ~Pool_device_memory_resource() noexcept;
+
+        Pool_device_memory_resource& operator=(Pool_device_memory_resource const&) noexcept = delete;
+        Pool_device_memory_resource& operator=(Pool_device_memory_resource&& other) noexcept;
+
+        Node_device_memory_resource allocate(
+            Memory_type_index memory_type_index,
+            VkDeviceSize bytes_to_allocate,
+            VkDeviceSize alignment
+        ) noexcept;
+
+        void deallocate(
+            Node_device_memory_resource memory_resource
+        ) noexcept;
+
+    private:
+
+        std::pmr::unordered_multimap<Memory_type_index, Chunk> m_chunks;
+        VkDevice m_device;
+        VkDeviceSize m_maximum_block_size;
+        VkDeviceSize m_minimum_block_size;
+        VkAllocationCallbacks const* m_vulkan_allocator;
+        std::pmr::polymorphic_allocator<bool> m_bool_allocator;
+    };
 }
