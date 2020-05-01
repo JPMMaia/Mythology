@@ -23,12 +23,12 @@ namespace Maia::Renderer::Vulkan
         VkBufferCreateFlags flags = {},
         VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE,
         std::span<std::uint32_t const> queue_family_indices = {},
-        std::optional<Allocation_callbacks> allocator = {}
+        VkAllocationCallbacks const* allocator = nullptr
     ) noexcept;
 
     export void destroy_buffer(
         Device device,
         Buffer buffer,
-        std::optional<Allocation_callbacks> allocator
+        VkAllocationCallbacks const* allocator = nullptr
     ) noexcept;
 }

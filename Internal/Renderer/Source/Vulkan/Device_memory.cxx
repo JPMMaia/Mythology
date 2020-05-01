@@ -95,13 +95,13 @@ namespace Maia::Renderer::Vulkan
         Device device, 
         VkDeviceSize allocation_size, 
         Memory_type_index memory_type_index, 
-        std::optional<Allocation_callbacks> allocator
+        VkAllocationCallbacks const* allocator = nullptr
     ) noexcept;
 
     export void free_memory(
         Device device,
         Device_memory device_memory,
-        std::optional<Allocation_callbacks> allocator
+        VkAllocationCallbacks const* allocator = nullptr
     ) noexcept;
 
 

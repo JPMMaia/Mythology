@@ -23,7 +23,7 @@ namespace Maia::Renderer::Vulkan
     ) noexcept
     {   
         VkDeviceMemory const device_memory = 
-            allocate_memory({device}, allocation_size, memory_type_index, vulkan_allocator ? Allocation_callbacks{*vulkan_allocator} : Allocation_callbacks{VK_NULL_HANDLE}).value;
+            allocate_memory({device}, allocation_size, memory_type_index, vulkan_allocator).value;
         
         return {device_memory, 0, allocation_size};
     }
@@ -34,7 +34,7 @@ namespace Maia::Renderer::Vulkan
         VkAllocationCallbacks const* const vulkan_allocator
     ) noexcept
     {
-        free_memory({device}, {device_memory_range.device_memory}, vulkan_allocator ? Allocation_callbacks{*vulkan_allocator} : Allocation_callbacks{VK_NULL_HANDLE});
+        free_memory({device}, {device_memory_range.device_memory}, vulkan_allocator);
     }
 
     Monotonic_device_memory_resource::Monotonic_device_memory_resource(
@@ -75,20 +75,33 @@ namespace Maia::Renderer::Vulkan
         return *this;
     }
 
+    namespace
+    {
+        VkDeviceSize align(VkDeviceSize const offset, VkDeviceSize const alignment) noexcept
+        {
+            assert(alignment % 2 == 0);
+
+            return (offset + alignment -1) & ~(alignment-1);;
+        }
+    }
+
     Device_memory_range Monotonic_device_memory_resource::allocate(
         Memory_type_index const memory_type_index,
-        VkDeviceSize const bytes_to_allocate,
+        VkDeviceSize bytes_to_allocate,
         VkDeviceSize const alignment
     ) noexcept
     {
-        // TODO alignment
+        bytes_to_allocate = align(bytes_to_allocate, alignment);
+        assert((bytes_to_allocate % alignment) == 0);
 
         auto const range = m_chunks.equal_range(memory_type_index);
 
-        auto const is_chunk_available = [bytes_to_allocate](std::pair<Memory_type_index, Chunk> const& pair) -> bool
+        auto const is_chunk_available = [bytes_to_allocate, alignment](std::pair<Memory_type_index, Chunk> const& pair) -> bool
         {
             Chunk const& chunk = pair.second;
-            return (chunk.allocated_bytes + bytes_to_allocate) <= chunk.device_memory_range.size;
+            
+            VkDeviceSize const aligned_offset = align(chunk.allocated_bytes, alignment);
+            return (aligned_offset + bytes_to_allocate) <= chunk.device_memory_range.size;
         };
 
         auto const chunk_available_iterator = std::find_if(range.first, range.second, is_chunk_available);
@@ -98,11 +111,13 @@ namespace Maia::Renderer::Vulkan
             Chunk& chunk = chunk_available_iterator->second;
 
             VkDeviceSize const offset_to_new_range = 
-                chunk.device_memory_range.offset + chunk.allocated_bytes;
+                align(chunk.device_memory_range.offset + chunk.allocated_bytes, alignment);
 
-            chunk.allocated_bytes += bytes_to_allocate;
+            chunk.allocated_bytes = (offset_to_new_range + bytes_to_allocate) - chunk.device_memory_range.offset;
             assert(chunk.allocated_bytes <= chunk.device_memory_range.size);
 
+            assert((bytes_to_allocate % alignment) == 0);
+            assert((offset_to_new_range % alignment) == 0);
             return {chunk.device_memory_range.device_memory, offset_to_new_range, bytes_to_allocate};
         }
         else
@@ -115,6 +130,8 @@ namespace Maia::Renderer::Vulkan
                 m_chunks.insert({memory_type_index, new_chunk});
             }
 
+            assert((bytes_to_allocate % alignment) == 0);
+            assert((new_device_memory_range.offset % alignment) == 0);
             return {new_device_memory_range.device_memory, new_device_memory_range.offset, bytes_to_allocate};
         }
     }

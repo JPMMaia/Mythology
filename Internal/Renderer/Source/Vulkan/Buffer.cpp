@@ -19,7 +19,7 @@ namespace Maia::Renderer::Vulkan
         VkBufferCreateFlags const flags,
         VkSharingMode const sharing_mode,
         std::span<std::uint32_t const> const queue_family_indices,
-        std::optional<Allocation_callbacks> const allocator
+        VkAllocationCallbacks const* const allocator
     ) noexcept
     {
         VkBufferCreateInfo const info
@@ -39,7 +39,7 @@ namespace Maia::Renderer::Vulkan
             vkCreateBuffer(
                 device.value, 
                 &info, 
-                allocator.has_value() ? &allocator->value : nullptr,
+                allocator,
                 &buffer
             )
         );
@@ -50,13 +50,13 @@ namespace Maia::Renderer::Vulkan
     void destroy_buffer(
         Device const device,
         Buffer const buffer,
-        std::optional<Allocation_callbacks> const allocator
+        VkAllocationCallbacks const* const allocator
     ) noexcept
     {
         vkDestroyBuffer(
             device.value,
             buffer.value,
-            allocator.has_value() ? &allocator->value : nullptr
+            allocator
         );
     }
 }

@@ -215,7 +215,7 @@ namespace Maia::Renderer::Vulkan
         Device const device, 
         VkDeviceSize const allocation_size, 
         Memory_type_index const memory_type_index, 
-        std::optional<Allocation_callbacks> const allocator
+        VkAllocationCallbacks const* const allocator
     ) noexcept
     {
         VkMemoryAllocateInfo const info
@@ -231,7 +231,7 @@ namespace Maia::Renderer::Vulkan
             vkAllocateMemory(
                 device.value, 
                 &info, 
-                allocator.has_value() ? &allocator->value : nullptr,
+                allocator,
                 &memory
             )
         );
@@ -242,10 +242,10 @@ namespace Maia::Renderer::Vulkan
     void free_memory(
         Device const device,
         Device_memory const device_memory,
-        std::optional<Allocation_callbacks> const allocator
+        VkAllocationCallbacks const* const allocator
     ) noexcept
     {
-        vkFreeMemory(device.value, device_memory.value, allocator.has_value() ? &allocator->value : nullptr);
+        vkFreeMemory(device.value, device_memory.value, allocator);
     }
 
     void bind_memory(
