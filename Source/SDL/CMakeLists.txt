@@ -9,6 +9,7 @@ target_link_libraries (MaiaMythologySDL PRIVATE Maia::SDL2)
 target_link_libraries (MaiaMythologySDL PRIVATE Maia::Mythology::ImGui)
 target_link_libraries (MaiaMythologySDL PRIVATE Maia::Mythology::Core)
 
+target_link_libraries (MaiaMythologySDL PRIVATE ImGui::Module)
 target_link_libraries (MaiaMythologySDL PRIVATE Standard_library)
 target_link_libraries (MaiaMythologySDL PRIVATE Vulkan)
 
@@ -17,9 +18,9 @@ if (MaiaRenderer_build_vulkan)
         MaiaMythologySDL
         "maia.sdl.vulkan"
         INTERFACE "Vulkan_SDL.cxx"
-        INTERFACE_DEPENDS "SDL" "Standard_library" "Vulkan"
+        INTERFACE_DEPENDS "ImGui" "SDL" "Standard_library" "Vulkan"
         IMPLEMENTATION "Vulkan_SDL.cpp"
-        IMPLEMENTATION_DEPENDS "SDL" "SDL_vulkan" "Standard_library" "Vulkan"
+        IMPLEMENTATION_DEPENDS "ImGui" "SDL" "SDL_vulkan" "Standard_library" "Vulkan"
     )
 endif ()
 

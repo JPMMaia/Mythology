@@ -5,6 +5,9 @@ import maia.renderer.vulkan;
 import maia.sdl.vulkan;
 import mythology.core.utilities;
 import mythology.core.vulkan;
+import mythology.imgui;
+
+import <imgui.h>;
 
 import <SDL2/SDL.h>;
 
@@ -660,7 +663,7 @@ namespace Mythology::SDL
             VkBufferCreateFlags const flags = {},
             VkSharingMode const sharing_mode = {},
             std::span<std::uint32_t const> const queue_family_indices = {},
-            std::optional<Allocation_callbacks> const allocator = {}
+            VkAllocationCallbacks const* const allocator = nullptr
         ) noexcept
         {
             Buffer const buffer = create_buffer(device, allocation_size, usage, flags, sharing_mode, queue_family_indices);
@@ -690,7 +693,7 @@ namespace Mythology::SDL
         void destroy_device_memory_and_buffer(
             Device const device,
             Device_memory_and_buffer const device_memory_and_buffer,
-            std::optional<Allocation_callbacks> const allocator = {}) noexcept
+            VkAllocationCallbacks const* const allocator = nullptr) noexcept
         {
             destroy_buffer(device, device_memory_and_buffer.buffer, allocator);
             free_memory(device, device_memory_and_buffer.memory, allocator);
@@ -760,24 +763,6 @@ namespace Mythology::SDL
                 // issue command to copy from host visible to device local
             }
         }
-
-        // Release all memory only once it is destroyed
-
-
-        struct Device_memory_resource; // underlying memory
-        struct Device_memory_allocator; // 
-
-
-
-
-        
-
-        class Pool_device_memory_resource
-        {
-        public:
-
-        private:
-        };
     }
 
     void run() noexcept
@@ -947,6 +932,52 @@ namespace Mythology::SDL
             positions_device_memory_and_buffer.memory_property_flags,
             {},
             copy_positions);
+
+
+        std::array<VkDescriptorPoolSize, 1> constexpr descriptor_pool_sizes
+        {
+            {
+                {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1}
+            }
+        };
+
+        VkDescriptorPoolCreateInfo const descriptor_pool_create_info
+        {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = {},
+            .maxSets = 1,
+            .poolSizeCount = static_cast<std::uint32_t>(descriptor_pool_sizes.size()),
+            .pPoolSizes = descriptor_pool_sizes.data(),
+        };
+
+        VkDescriptorPool descriptor_pool = create_descriptor_pool(
+            device.value,
+            descriptor_pool_create_info
+        );
+        // TODO destroy descriptor pool
+
+        Monotonic_device_memory_resource monotonic_memory_resource{device.value, 128*1024*1024};
+
+        Shader_module const imgui_vertex_shader_module = create_shader_module(device, {}, convert_bytes<std::uint32_t>(read_bytes(shaders_path / "Imgui.vertex.spv")));
+        Shader_module const imgui_fragment_shader_module = create_shader_module(device, {}, convert_bytes<std::uint32_t>(read_bytes(shaders_path / "Imgui.fragment.spv")));
+        
+        ::ImGui::CreateContext();
+        ::ImGui::StyleColorsDark();
+        Mythology::ImGui::ImGui_resources const imgui_resources
+        {
+            get_phisical_device_memory_properties(physical_device).value,
+            device.value,
+            descriptor_pool,
+            render_pass.value,
+            0,
+            imgui_vertex_shader_module.value,
+            imgui_fragment_shader_module.value,
+            monotonic_memory_resource
+        };
+        
+        destroy_shader_module(device, imgui_fragment_shader_module);
+        destroy_shader_module(device, imgui_vertex_shader_module);
 
         Swapchain_resources swapchain_resources{physical_device, device, surface, surface_format, std::array<Queue_family_index, 2>{graphics_queue_family_index, present_queue_family_index}, render_pass};
         

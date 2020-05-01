@@ -101,122 +101,34 @@ namespace Mythology::ImGui
         };
     }
     
-    VkImageView create_fonts_image_view(
+    VkImage create_fonts_image(
+        VkPhysicalDeviceMemoryProperties const& physical_device_memory_properties,
         VkDevice const device,
-        VkImage const fonts_image
+        Monotonic_device_memory_resource& monotonic_memory_resource,
+        VkAllocationCallbacks const* const vulkan_allocator
     ) noexcept
     {
-        return create_image_view(
-            {device},
-            {},
-            {fonts_image},
-            VK_IMAGE_VIEW_TYPE_2D,
-            VK_FORMAT_R8G8B8A8_UNORM,
-            {},
-            VkImageSubresourceRange
-            {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = 1
-            },
-            {}
-        ).value;
-    }
+        VkImageCreateInfo const font_image_create_info = create_fonts_image_create_info();
 
-    void create_fonts_texture(
-        Physical_device_memory_properties const& physical_device_memory_properties,
-        VkDevice const device,
-        VkDescriptorSet const descriptor_set,
-        VkCommandBuffer const command_buffer
-        // TODO allocator
-        ) noexcept
-    {
-        auto const create_and_allocate_image = [](
-            Physical_device_memory_properties const& physical_device_memory_properties,
-            VkDevice const device,
-            VkImageCreateInfo const& image_create_info
-        ) -> Image_memory_range
-        {
-            VkImage const image = create_image(device, image_create_info);
+        VkImage const image = create_image(device, font_image_create_info, vulkan_allocator);
 
-            Memory_requirements const memory_requirements = 
-                get_memory_requirements({device}, {image});
+        Memory_requirements const memory_requirements = 
+            get_memory_requirements({device}, {image});
 
-            Memory_type_bits const memory_type_bits = get_memory_type_bits(memory_requirements);
+        Memory_type_bits const memory_type_bits = get_memory_type_bits(memory_requirements);
 
-            std::optional<Memory_type_index> const memory_type_index = 
-                find_memory_type(physical_device_memory_properties, memory_type_bits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        std::optional<Memory_type_index> const memory_type_index = 
+            find_memory_type({physical_device_memory_properties}, memory_type_bits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-            // if memory is not available
-            {
-                // allocate memory
-            }
-            // else
-            {
-                // get available memory
-            }
+        assert(memory_type_index.has_value());
 
-            // bind memory
-            // return image, and device memory range
+        Device_memory_range const device_memory_range = monotonic_memory_resource.allocate(*memory_type_index, memory_requirements.value.size, memory_requirements.value.alignment);
 
-            return Image_memory_range{};
-        };
+        bind_memory({device}, {image}, {device_memory_range.device_memory}, device_memory_range.offset);
 
-        unsigned char* pixels = nullptr;
-        int width = 0;
-        int height = 0;
-        {
-            ImGuiIO& io = ::ImGui::GetIO();
+        return image;
 
-            io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-        }
-
-        VkImageCreateInfo const font_image_create_info
-        {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = {},
-            .imageType = VK_IMAGE_TYPE_2D,
-            .format = VK_FORMAT_R8G8B8A8_UNORM,
-            .extent = {static_cast<std::uint32_t>(width), static_cast<std::uint32_t>(height), 1},
-            .mipLevels = 1,
-            .arrayLayers = 1,
-            .samples = VK_SAMPLE_COUNT_1_BIT,
-            .tiling = VK_IMAGE_TILING_OPTIMAL,
-            .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-            .queueFamilyIndexCount = 0,
-            .pQueueFamilyIndices = nullptr,
-            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        };
-
-        Image_memory_range font_image_memory_range = create_and_allocate_image(
-            physical_device_memory_properties,
-            device,
-            font_image_create_info);
-
-        VkImage const font_image = font_image_memory_range.image;
-
-        Image_view font_image_view = create_image_view(
-            {device},
-            {},
-            {font_image},
-            VK_IMAGE_VIEW_TYPE_2D,
-            VK_FORMAT_R8G8B8A8_UNORM,
-            {},
-            VkImageSubresourceRange
-            {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = 1
-            },
-            {}
-        );
-
+        /*
         {
             std::array<VkDescriptorImageInfo, 1> const descriptor_image_infos
             {
@@ -244,9 +156,8 @@ namespace Mythology::ImGui
             };
 
             vkUpdateDescriptorSets(device, 1, &write_descriptor_set, 0, nullptr);
-        }
+        }*/
 
-        // TODO create and bind memory somehow
         // TODO copy to image
 
         /*size_t const upload_size = width * height * 4 * sizeof(char);
@@ -324,6 +235,30 @@ namespace Mythology::ImGui
             use_barrier[0].subresourceRange.layerCount = 1;
             vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, use_barrier);
         }*/
+    }
+
+    VkImageView create_fonts_image_view(
+        VkDevice const device,
+        VkImage const fonts_image
+    ) noexcept
+    {
+        return create_image_view(
+            {device},
+            {},
+            {fonts_image},
+            VK_IMAGE_VIEW_TYPE_2D,
+            VK_FORMAT_R8G8B8A8_UNORM,
+            {},
+            VkImageSubresourceRange
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1
+            },
+            {}
+        ).value;
     }
 
     VkSampler create_fonts_sampler(
@@ -673,78 +608,99 @@ namespace Mythology::ImGui
         );
     }
 
-    struct ImGui_resources
+
+    ImGui_resources::ImGui_resources(
+        VkPhysicalDeviceMemoryProperties const& physical_device_memory_properties,
+        VkDevice const device,
+        VkDescriptorPool const descriptor_pool,
+        VkRenderPass const render_pass,
+        std::uint32_t const subpass_index,
+        VkShaderModule const vertex_shader_module,
+        VkShaderModule const fragment_shader_module,
+        Monotonic_device_memory_resource& monotonic_memory_resource,
+        VkPipelineCache const pipeline_cache,
+        VkAllocationCallbacks const* const allocator
+    ) noexcept :
+        device{device},
+        allocator{allocator},
+        fonts_image{create_fonts_image(physical_device_memory_properties, device, monotonic_memory_resource, allocator)},
+        fonts_image_view{create_fonts_image_view(device, fonts_image)},
+        fonts_sampler{create_fonts_sampler(device, allocator)},
+        descriptor_set_layout{create_descriptor_set_layout(device, this->fonts_sampler)},
+        descriptor_pool{descriptor_pool},
+        descriptor_set{create_descriptor_set(device, descriptor_pool, this->descriptor_set_layout)},
+        pipeline_layout{create_pipeline_layout(device, this->descriptor_set_layout, allocator)},
+        pipeline{create_graphics_pipeline(device, this->pipeline_layout, render_pass, subpass_index, vertex_shader_module, fragment_shader_module, pipeline_cache)}
     {
-        VkDevice device;
-        VkAllocationCallbacks const* allocator;
-        VkImageView fonts_image_view;
-        VkSampler fonts_sampler;
-        VkDescriptorSetLayout descriptor_set_layout;
-        VkDescriptorPool descriptor_pool;
-        VkDescriptorSet descriptor_set;
-        VkPipelineLayout pipeline_layout;
-        VkPipeline pipeline;
+    }
 
-        ImGui_resources(
-            VkDevice const device,
-            VkImage const fonts_image,
-            VkDescriptorPool const descriptor_pool,
-            VkRenderPass const render_pass,
-            std::uint32_t const subpass_index,
-            VkShaderModule const vertex_shader_module,
-            VkShaderModule const fragment_shader_module,
-            VkPipelineCache const pipeline_cache = VK_NULL_HANDLE,
-            VkAllocationCallbacks const* const allocator = nullptr
-        ) noexcept :
-            device{device},
-            allocator{allocator},
-            fonts_image_view{create_fonts_image_view(device, fonts_image)},
-            fonts_sampler{create_fonts_sampler(device, allocator)},
-            descriptor_set_layout{create_descriptor_set_layout(device, this->fonts_sampler)},
-            descriptor_pool{descriptor_pool},
-            descriptor_set{create_descriptor_set(device, descriptor_pool, this->descriptor_set_layout)},
-            pipeline_layout{create_pipeline_layout(device, this->descriptor_set_layout, allocator)},
-            pipeline{create_graphics_pipeline(device, this->pipeline_layout, render_pass, subpass_index, vertex_shader_module, fragment_shader_module, pipeline_cache)}
+    ImGui_resources::ImGui_resources(ImGui_resources&& other) noexcept :
+        device{std::exchange(other.device, {})},
+        allocator{std::exchange(other.allocator, {})},
+        fonts_image{std::exchange(other.fonts_image, {})},
+        fonts_image_view{std::exchange(other.fonts_image_view, {})},
+        fonts_sampler{std::exchange(other.fonts_sampler, {})},
+        descriptor_set_layout{std::exchange(other.descriptor_set_layout, {})},
+        descriptor_pool{std::exchange(other.descriptor_pool, {})},
+        descriptor_set{std::exchange(other.descriptor_set, {})},
+        pipeline_layout{std::exchange(other.pipeline_layout, {})},
+        pipeline{std::exchange(other.pipeline, {})}
+    {
+    }
+
+    ImGui_resources::~ImGui_resources() noexcept
+    {
+        if (this->pipeline != VK_NULL_HANDLE)
         {
-        }
-        ImGui_resources(ImGui_resources const&) noexcept = delete;
-        ImGui_resources(ImGui_resources&&) noexcept = delete;
-        ~ImGui_resources() noexcept
-        {
-            if (this->pipeline != VK_NULL_HANDLE)
-            {
-                destroy_pipeline(this->device, this->pipeline, this->allocator);
-            }
-
-            if (this->pipeline_layout != VK_NULL_HANDLE)
-            {
-                destroy_pipeline_layout(this->device, this->pipeline_layout, this->allocator);
-            }
-
-            if (this->descriptor_set != VK_NULL_HANDLE)
-            {
-                free_descriptor_sets(this->device, this->descriptor_pool, {&this->descriptor_set, 1});
-            }
-
-            if (this->descriptor_set_layout != VK_NULL_HANDLE)
-            {
-                destroy_descriptor_set_layout(this->device, this->descriptor_set_layout, this->allocator);
-            }
-
-            if (this->fonts_sampler != VK_NULL_HANDLE)
-            {
-                destroy_sampler(this->device, this->fonts_sampler, this->allocator);
-            }
-
-            if (this->fonts_image_view != VK_NULL_HANDLE)
-            {
-                destroy_image_view({this->device}, {this->fonts_image_view}, this->allocator ? Allocation_callbacks{*this->allocator} : Allocation_callbacks{});
-            }
+            destroy_pipeline(this->device, this->pipeline, this->allocator);
         }
 
-        ImGui_resources& operator=(ImGui_resources const&) noexcept = delete;
-        ImGui_resources& operator=(ImGui_resources&&) noexcept = delete;
-    };
+        if (this->pipeline_layout != VK_NULL_HANDLE)
+        {
+            destroy_pipeline_layout(this->device, this->pipeline_layout, this->allocator);
+        }
+
+        if (this->descriptor_set != VK_NULL_HANDLE)
+        {
+            free_descriptor_sets(this->device, this->descriptor_pool, {&this->descriptor_set, 1});
+        }
+
+        if (this->descriptor_set_layout != VK_NULL_HANDLE)
+        {
+            destroy_descriptor_set_layout(this->device, this->descriptor_set_layout, this->allocator);
+        }
+
+        if (this->fonts_sampler != VK_NULL_HANDLE)
+        {
+            destroy_sampler(this->device, this->fonts_sampler, this->allocator);
+        }
+
+        if (this->fonts_image_view != VK_NULL_HANDLE)
+        {
+            destroy_image_view({this->device}, {this->fonts_image_view}, this->allocator ? Allocation_callbacks{*this->allocator} : Allocation_callbacks{});
+        }
+
+        if (this->fonts_image != VK_NULL_HANDLE)
+        {
+            destroy_image({this->device}, {this->fonts_image}, this->allocator ? Allocation_callbacks{*this->allocator} : Allocation_callbacks{});
+        }
+    }
+
+    ImGui_resources& ImGui_resources::operator=(ImGui_resources&& other) noexcept
+    {
+        std::swap(device, other.device);
+        std::swap(allocator, other.allocator);
+        std::swap(fonts_image, other.fonts_image);
+        std::swap(fonts_image_view, other.fonts_image_view);
+        std::swap(fonts_sampler, other.fonts_sampler);
+        std::swap(descriptor_set_layout, other.descriptor_set_layout);
+        std::swap(descriptor_pool, other.descriptor_pool);
+        std::swap(descriptor_set, other.descriptor_set);
+        std::swap(pipeline_layout, other.pipeline_layout);
+        std::swap(pipeline, other.pipeline);
+
+        return *this;
+    }
 
     struct Buffer_range
     {
