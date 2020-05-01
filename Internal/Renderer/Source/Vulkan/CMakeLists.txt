@@ -306,6 +306,16 @@ target_module (
 
 target_module (
     MaiaRendererVulkan
+    "maia.renderer.vulkan.descriptor_pool"
+    INTERFACE "Descriptor_pool.cxx"
+    INTERFACE_DEPENDS "Standard_library" "Vulkan"
+    IMPLEMENTATION "Descriptor_pool.cpp"
+    IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan"
+        "maia.renderer.vulkan.allocation_callbacks"
+)
+
+target_module (
+    MaiaRendererVulkan
     "maia.renderer.vulkan"
     INTERFACE "Module.cxx"
     INTERFACE_DEPENDS
@@ -314,6 +324,7 @@ target_module (
         "maia.renderer.vulkan.check"
         "maia.renderer.vulkan.command_buffer"
         "maia.renderer.vulkan.command_pool"
+        "maia.renderer.vulkan.descriptor_pool"
         "maia.renderer.vulkan.descriptor_set_layout"
         "maia.renderer.vulkan.descriptor_set"
         "maia.renderer.vulkan.device"
