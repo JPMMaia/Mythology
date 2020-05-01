@@ -13,6 +13,7 @@ export import maia.renderer.vulkan.descriptor_set;
 export import maia.renderer.vulkan.fence;
 export import maia.renderer.vulkan.image;
 export import maia.renderer.vulkan.instance;
+export import maia.renderer.vulkan.memory_management;
 export import maia.renderer.vulkan.physical_device;
 export import maia.renderer.vulkan.pipeline;
 export import maia.renderer.vulkan.pipeline_layout;

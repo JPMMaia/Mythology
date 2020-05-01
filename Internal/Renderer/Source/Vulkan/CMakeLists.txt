@@ -332,6 +332,7 @@ target_module (
         "maia.renderer.vulkan.fence"
         "maia.renderer.vulkan.image"
         "maia.renderer.vulkan.instance"
+        "maia.renderer.vulkan.memory_management"
         "maia.renderer.vulkan.physical_device"
         "maia.renderer.vulkan.pipeline"
         "maia.renderer.vulkan.pipeline_layout"
