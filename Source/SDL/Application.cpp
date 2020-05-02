@@ -650,8 +650,8 @@ namespace Mythology::SDL
 
         struct Device_memory_and_buffer
         {
-            Buffer buffer;
-            Device_memory memory;
+            VkBuffer buffer;
+            VkDeviceMemory memory;
             VkMemoryPropertyFlags memory_property_flags;
         };
 
@@ -666,9 +666,9 @@ namespace Mythology::SDL
             VkAllocationCallbacks const* const allocator = nullptr
         ) noexcept
         {
-            Buffer const buffer = create_buffer(device, allocation_size, usage, flags, sharing_mode, queue_family_indices);
+            VkBuffer const buffer = create_buffer(device.value, allocation_size, usage, flags, sharing_mode, queue_family_indices);
 
-            Memory_requirements const memory_requirements = get_memory_requirements(device, buffer);
+            Memory_requirements const memory_requirements = get_memory_requirements(device.value, buffer);
             Memory_type_bits const memory_type_bits = get_memory_type_bits(memory_requirements);
 
             std::optional<Memory_type_index> const memory_type_index = find_memory_type(
@@ -678,11 +678,11 @@ namespace Mythology::SDL
             );
             assert(memory_type_index.has_value());
 
-            Device_memory const device_memory =
-                allocate_memory(device, memory_requirements.value.size, *memory_type_index, allocator);
+            VkDeviceMemory const device_memory =
+                allocate_memory(device.value, memory_requirements.value.size, *memory_type_index, allocator);
 
             VkDeviceSize const device_offset = 0;
-            bind_memory(device, buffer, device_memory, device_offset);
+            bind_memory(device.value, buffer, device_memory, device_offset);
 
             VkMemoryPropertyFlags const memory_property_flags =
                 physical_device_memory_properties.value.memoryTypes[memory_type_index->value].propertyFlags;
@@ -695,13 +695,13 @@ namespace Mythology::SDL
             Device_memory_and_buffer const device_memory_and_buffer,
             VkAllocationCallbacks const* const allocator = nullptr) noexcept
         {
-            destroy_buffer(device, device_memory_and_buffer.buffer, allocator);
-            free_memory(device, device_memory_and_buffer.memory, allocator);
+            destroy_buffer(device.value, device_memory_and_buffer.buffer, allocator);
+            free_memory(device.value, device_memory_and_buffer.memory, allocator);
         }
 
         void upload_data(
             Device const device,
-            Device_memory const device_memory,
+            VkDeviceMemory const device_memory,
             VkDeviceSize const memory_offset,
             VkDeviceSize const memory_size,
             VkMemoryPropertyFlags const memory_property_flags,
@@ -712,7 +712,7 @@ namespace Mythology::SDL
             assert(memory_property_flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
             {
-                Mapped_memory const mapped_memory{device, device_memory, memory_offset, memory_size, map_flags};
+                Mapped_memory const mapped_memory{device.value, device_memory, memory_offset, memory_size, map_flags};
 
                 copy_data(mapped_memory.data());
             }
@@ -723,7 +723,7 @@ namespace Mythology::SDL
                 {
                     .sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
                     .pNext = nullptr,
-                    .memory = device_memory.value,
+                    .memory = device_memory,
                     .offset = memory_offset,
                     .size = memory_size,
                 };
@@ -762,6 +762,36 @@ namespace Mythology::SDL
 
                 // issue command to copy from host visible to device local
             }
+        }
+
+        Buffer_pool_memory_resource create_geometry_buffer_pool(
+            VkPhysicalDeviceMemoryProperties const& physical_device_memory_properties,
+            VkDevice const device
+        ) noexcept
+        {
+            VkBufferCreateInfo const buffer_create_info
+            {
+                .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = {},
+                .size = 128*1024*1024,
+                .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+                .queueFamilyIndexCount = 0,
+                .pQueueFamilyIndices = nullptr,
+            };
+
+            VkMemoryPropertyFlags constexpr memory_properties = 
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+
+            return 
+            {
+                physical_device_memory_properties,
+                device,
+                buffer_create_info,
+                memory_properties,
+                256
+            };
         }
     }
 
@@ -934,10 +964,11 @@ namespace Mythology::SDL
             copy_positions);
 
 
-        std::array<VkDescriptorPoolSize, 1> constexpr descriptor_pool_sizes
+        std::array<VkDescriptorPoolSize, 2> constexpr descriptor_pool_sizes
         {
             {
-                {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1}
+                {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1},
+                {VK_DESCRIPTOR_TYPE_SAMPLER, 1}
             }
         };
 
@@ -958,13 +989,14 @@ namespace Mythology::SDL
         // TODO destroy descriptor pool
 
         Monotonic_device_memory_resource monotonic_memory_resource{device.value, 128*1024*1024};
+        Buffer_pool_memory_resource geometry_buffer_memory_resource = create_geometry_buffer_pool(get_phisical_device_memory_properties(physical_device).value, device.value);
 
         Shader_module const imgui_vertex_shader_module = create_shader_module(device, {}, convert_bytes<std::uint32_t>(read_bytes(shaders_path / "Imgui.vertex.spv")));
         Shader_module const imgui_fragment_shader_module = create_shader_module(device, {}, convert_bytes<std::uint32_t>(read_bytes(shaders_path / "Imgui.fragment.spv")));
         
         ::ImGui::CreateContext();
         ::ImGui::StyleColorsDark();
-        Mythology::ImGui::ImGui_resources const imgui_resources
+        Mythology::ImGui::ImGui_resources imgui_resources
         {
             get_phisical_device_memory_properties(physical_device).value,
             device.value,
@@ -973,7 +1005,8 @@ namespace Mythology::SDL
             0,
             imgui_vertex_shader_module.value,
             imgui_fragment_shader_module.value,
-            monotonic_memory_resource
+            monotonic_memory_resource,
+            geometry_buffer_memory_resource
         };
         
         destroy_shader_module(device, imgui_fragment_shader_module);
@@ -982,6 +1015,11 @@ namespace Mythology::SDL
         Swapchain_resources swapchain_resources{physical_device, device, surface, surface_format, std::array<Queue_family_index, 2>{graphics_queue_family_index, present_queue_family_index}, render_pass};
         
         Wait_device_idle_lock const wait_device_idle_lock{device};
+
+        // ImGui state
+        bool show_demo_window = true;
+        bool show_another_window = false;
+        ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
         Frame_index frame_index{0};
         bool isRunning = true;
@@ -1077,6 +1115,48 @@ namespace Mythology::SDL
                 }
 
                 {
+                    ::ImGuiIO& io = ::ImGui::GetIO();
+                    int w, h;
+                    int display_w, display_h;
+                    SDL_GetWindowSize(window.get(), &w, &h);
+                    SDL_GL_GetDrawableSize(window.get(), &display_w, &display_h);
+                    io.DisplaySize = ImVec2((float)w, (float)h);
+                    if (w > 0 && h > 0)
+                        io.DisplayFramebufferScale = ImVec2((float)display_w / w, (float)display_h / h);
+
+                    // Setup time step (we don't use SDL_GetTicks() because it is using millisecond resolution)
+                    static std::uint64_t g_Time = 0;
+                    static std::uint64_t frequency = SDL_GetPerformanceFrequency();
+                    std::uint64_t current_time = SDL_GetPerformanceCounter();
+                    io.DeltaTime = g_Time > 0 ? (float)((double)(current_time - g_Time) / frequency) : (float)(1.0f / 60.0f);
+                    g_Time = current_time;
+                }
+
+                ::ImGui::NewFrame();
+                {
+                    static float f = 0.0f;
+                    static int counter = 0;
+
+                    ::ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
+
+                    ::ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
+                    ::ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
+                    ::ImGui::Checkbox("Another Window", &show_another_window);
+
+                    ::ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+                    ::ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
+
+                    if (::ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
+                        counter++;
+                    ::ImGui::SameLine();
+                    ::ImGui::Text("counter = %d", counter);
+
+                    ::ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ::ImGui::GetIO().Framerate, ::ImGui::GetIO().Framerate);
+                    ::ImGui::End();
+                }
+                ::ImGui::Render();
+
+                {
                     Fence const available_frames_fence = available_frames_fences[frame_index.value];
 
                     if (is_fence_signaled(device, available_frames_fence))
@@ -1106,6 +1186,28 @@ namespace Mythology::SDL
                                 };
 
                                 render(command_buffer, render_pass, swapchain_framebuffer, clear_color, white_triangle_pipeline, swapchain_image, output_render_area, true);
+
+                                {
+                                    ImDrawData const& draw_data = *::ImGui::GetDrawData();
+
+                                    imgui_resources.geometry_buffer_node = Mythology::ImGui::update_geometry_buffer(
+                                        device.value,
+                                        draw_data,
+                                        imgui_resources.geometry_buffer_node,
+                                        geometry_buffer_memory_resource
+                                    );
+
+                                    // TODO render inside render pass
+                                    Mythology::ImGui::render(
+                                        draw_data,
+                                        command_buffer.value,
+                                        imgui_resources.pipeline,
+                                        imgui_resources.pipeline_layout,
+                                        imgui_resources.descriptor_set,
+                                        {geometry_buffer_memory_resource.buffer(), imgui_resources.geometry_buffer_node.offset(), draw_data.TotalVtxCount * sizeof(ImDrawVert)},
+                                        {geometry_buffer_memory_resource.buffer(), imgui_resources.geometry_buffer_node.offset() + draw_data.TotalVtxCount * sizeof(ImDrawVert), draw_data.TotalIdxCount * sizeof(ImDrawIdx)}
+                                    );
+                                }
                             }
                             end_command_buffer(command_buffer);
 
