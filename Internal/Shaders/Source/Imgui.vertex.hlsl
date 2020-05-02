@@ -18,7 +18,7 @@ struct Transform
     float2 translation;
 };
 
-ConstantBuffer<Transform> g_transform : register(b0, space0);
+[[vk::push_constant]] Transform g_transform;
 
 Vertex_shader_output main(Vertex_shader_input const input)
 {

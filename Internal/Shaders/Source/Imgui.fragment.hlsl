@@ -9,9 +9,9 @@ struct Pixel_shader_output
 	float4 color : SV_Target;
 };
 
-SamplerState const s_linear_wrap_sampler : register(s0, space7);
+SamplerState const s_linear_wrap_sampler : register(s0, space0);
 
-Texture2D g_texture : register(t0, space1);
+Texture2D g_texture : register(t1, space0);
 
 Pixel_shader_output main(Pixel_shader_input const input)
 {

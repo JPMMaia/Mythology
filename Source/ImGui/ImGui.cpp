@@ -113,7 +113,7 @@ namespace Mythology::ImGui
         VkImage const image = create_image(device, font_image_create_info, vulkan_allocator);
 
         Memory_requirements const memory_requirements = 
-            get_memory_requirements({device}, {image});
+            get_memory_requirements(device, image);
 
         Memory_type_bits const memory_type_bits = get_memory_type_bits(memory_requirements);
 
@@ -124,7 +124,7 @@ namespace Mythology::ImGui
 
         Device_memory_range const device_memory_range = monotonic_memory_resource.allocate(*memory_type_index, memory_requirements.value.size, memory_requirements.value.alignment);
 
-        bind_memory({device}, {image}, {device_memory_range.device_memory}, device_memory_range.offset);
+        bind_memory(device, image, device_memory_range.device_memory, device_memory_range.offset);
 
         return image;
 
@@ -289,13 +289,24 @@ namespace Mythology::ImGui
         VkAllocationCallbacks const* const allocator = nullptr
     ) noexcept
     {
-        VkDescriptorSetLayoutBinding const descriptor_set_layout_binding
+        std::array<VkDescriptorSetLayoutBinding, 2> const bindings
         {
-            .binding = 0,
-            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .descriptorCount = 1,
-            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-            .pImmutableSamplers = &fonts_sampler,
+            {
+                {
+                    .binding = 0,
+                    .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
+                    .descriptorCount = 1,
+                    .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+                    .pImmutableSamplers = &fonts_sampler,
+                },
+                {
+                    .binding = 1,
+                    .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                    .descriptorCount = 1,
+                    .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+                    .pImmutableSamplers = nullptr,
+                }
+            }
         };
         
         VkDescriptorSetLayoutCreateInfo const descriptor_set_layout_create_info
@@ -303,8 +314,8 @@ namespace Mythology::ImGui
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
             .pNext = nullptr,
             .flags = {},
-            .bindingCount = 1,
-            .pBindings = &descriptor_set_layout_binding,
+            .bindingCount = static_cast<std::uint32_t>(bindings.size()),
+            .pBindings = bindings.data(),
         };
 
         return Maia::Renderer::Vulkan::create_descriptor_set_layout(device, descriptor_set_layout_create_info, allocator);
@@ -350,7 +361,7 @@ namespace Mythology::ImGui
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
             .pNext = nullptr,
             .dstSet = descriptor_set,
-            .dstBinding = 0,
+            .dstBinding = 1,
             .dstArrayElement = 0,
             .descriptorCount = descriptor_image_infos.size(),
             .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
@@ -400,12 +411,6 @@ namespace Mythology::ImGui
         VkAllocationCallbacks const* const allocator = nullptr
     ) noexcept
     {
-        // TODO
-        /*{
-            ImGuiIO& io = ::ImGui::GetIO();
-            io.Fonts->TexID = reinterpret_cast<ImTextureID>(fonts_image);
-        }*/
-
         std::array<VkPipelineShaderStageCreateInfo, 2> const shader_stages
         {
             {
@@ -618,11 +623,13 @@ namespace Mythology::ImGui
         VkShaderModule const vertex_shader_module,
         VkShaderModule const fragment_shader_module,
         Monotonic_device_memory_resource& monotonic_memory_resource,
+        Buffer_pool_memory_resource& buffer_pool,
         VkPipelineCache const pipeline_cache,
         VkAllocationCallbacks const* const allocator
     ) noexcept :
         device{device},
         allocator{allocator},
+        geometry_buffer_node{*buffer_pool.allocate(4096, 0, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT)},
         fonts_image{create_fonts_image(physical_device_memory_properties, device, monotonic_memory_resource, allocator)},
         fonts_image_view{create_fonts_image_view(device, fonts_image)},
         fonts_sampler{create_fonts_sampler(device, allocator)},
@@ -630,13 +637,21 @@ namespace Mythology::ImGui
         descriptor_pool{descriptor_pool},
         descriptor_set{create_descriptor_set(device, descriptor_pool, this->descriptor_set_layout)},
         pipeline_layout{create_pipeline_layout(device, this->descriptor_set_layout, allocator)},
-        pipeline{create_graphics_pipeline(device, this->pipeline_layout, render_pass, subpass_index, vertex_shader_module, fragment_shader_module, pipeline_cache)}
+        pipeline{create_graphics_pipeline(device, this->pipeline_layout, render_pass, subpass_index, vertex_shader_module, fragment_shader_module, pipeline_cache)},
+        buffer_pool{&buffer_pool}
     {
+        {
+            ImGuiIO& io = ::ImGui::GetIO();
+            io.Fonts->TexID = reinterpret_cast<ImTextureID>(fonts_image);
+        }
+
+        update_descriptor_set(device, descriptor_set, fonts_image_view);
     }
 
     ImGui_resources::ImGui_resources(ImGui_resources&& other) noexcept :
         device{std::exchange(other.device, {})},
         allocator{std::exchange(other.allocator, {})},
+        geometry_buffer_node{std::exchange(other.geometry_buffer_node, {})},
         fonts_image{std::exchange(other.fonts_image, {})},
         fonts_image_view{std::exchange(other.fonts_image_view, {})},
         fonts_sampler{std::exchange(other.fonts_sampler, {})},
@@ -644,7 +659,8 @@ namespace Mythology::ImGui
         descriptor_pool{std::exchange(other.descriptor_pool, {})},
         descriptor_set{std::exchange(other.descriptor_set, {})},
         pipeline_layout{std::exchange(other.pipeline_layout, {})},
-        pipeline{std::exchange(other.pipeline, {})}
+        pipeline{std::exchange(other.pipeline, {})},
+        buffer_pool{other.buffer_pool}
     {
     }
 
@@ -684,12 +700,18 @@ namespace Mythology::ImGui
         {
             destroy_image({this->device}, {this->fonts_image}, this->allocator ? Allocation_callbacks{*this->allocator} : Allocation_callbacks{});
         }
+
+        if (this->geometry_buffer_node.memory_tree != nullptr)
+        {
+            this->buffer_pool->deallocate(this->geometry_buffer_node);
+        }
     }
 
     ImGui_resources& ImGui_resources::operator=(ImGui_resources&& other) noexcept
     {
         std::swap(device, other.device);
         std::swap(allocator, other.allocator);
+        std::swap(geometry_buffer_node, other.geometry_buffer_node);
         std::swap(fonts_image, other.fonts_image);
         std::swap(fonts_image_view, other.fonts_image_view);
         std::swap(fonts_sampler, other.fonts_sampler);
@@ -698,21 +720,33 @@ namespace Mythology::ImGui
         std::swap(descriptor_set, other.descriptor_set);
         std::swap(pipeline_layout, other.pipeline_layout);
         std::swap(pipeline, other.pipeline);
+        std::swap(buffer_pool, other.buffer_pool);
 
         return *this;
     }
 
-    struct Buffer_range
+    Buffer_pool_node resize_geometry_buffer(
+        Buffer_pool_node const geometry_buffer_node,
+        VkDeviceSize const new_size,
+        Maia::Renderer::Vulkan::Buffer_pool_memory_resource& geometry_buffer_pool
+    ) noexcept
     {
-        VkBuffer buffer;
-        VkDeviceSize offset;
-        VkDeviceSize size;
-    };
+        assert(new_size > geometry_buffer_node.size());
 
-    void upload_vertex_and_index_buffers_data(
+        geometry_buffer_pool.deallocate(geometry_buffer_node);
+        
+        std::optional<Buffer_pool_node> const new_geometry_buffer_node = 
+            geometry_buffer_pool.allocate(new_size, 0, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+        
+        assert(new_geometry_buffer_node.has_value());
+
+        return *new_geometry_buffer_node;
+    }
+
+    void upload_gometry_buffer_data(
+        ImDrawData const& draw_data,
         void* const raw_vertex_destination,
-        void* const raw_index_destination,
-        ImDrawData const& draw_data
+        void* const raw_index_destination
     ) noexcept
     {
         using Vertex_type = ImDrawVert;
@@ -740,6 +774,54 @@ namespace Mythology::ImGui
             vertex_destination += command_list.VtxBuffer.Size;
             index_destination += command_list.IdxBuffer.Size;
         }
+    }
+
+    Buffer_pool_node update_geometry_buffer(
+        VkDevice const device,
+        ImDrawData const& draw_data,
+        Buffer_pool_node geometry_buffer_node,
+        Maia::Renderer::Vulkan::Buffer_pool_memory_resource& geometry_buffer_pool
+    ) noexcept
+    {
+        VkDeviceSize const required_size = 
+            draw_data.TotalVtxCount * sizeof(ImDrawVert) + draw_data.TotalIdxCount * sizeof(ImDrawIdx);
+
+        if (required_size > geometry_buffer_node.size())
+        {
+            geometry_buffer_node = resize_geometry_buffer(geometry_buffer_node, required_size, geometry_buffer_pool);
+            assert(required_size <= geometry_buffer_node.size());
+        }
+
+        if (required_size > 0)
+        {
+            Maia::Renderer::Vulkan::Mapped_memory const mapped_memory
+            {
+                device,
+                geometry_buffer_pool.device_memory(),
+                geometry_buffer_node.offset(),
+                required_size,
+                {}
+            };
+
+            VkDeviceSize const offset_to_index_buffer = draw_data.TotalVtxCount * sizeof(ImDrawVert);
+            upload_gometry_buffer_data(draw_data, mapped_memory.data(), static_cast<std::byte*>(mapped_memory.data()) + offset_to_index_buffer);
+
+            /*if (!(geometry_buffer_pool.memory_properties() & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
+            {
+                VkMappedMemoryRange const mapped_memory_range
+                {
+                    .sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+                    .pNext = nullptr,
+                    .memory = geometry_buffer_pool.device_memory(),
+                    .offset = geometry_buffer_node.offset(),
+                    .size = required_size,
+                };
+
+                flush_mapped_memory_ranges(device, {&mapped_memory_range, 1});
+            }*/
+        }
+
+        return geometry_buffer_node;
     }
 
     namespace
