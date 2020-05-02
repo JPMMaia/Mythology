@@ -245,12 +245,12 @@ namespace Mythology::Core::Vulkan
         );
 
         Physical_device_memory_properties const physical_device_memory_properties = get_phisical_device_memory_properties(physical_device);
-        Memory_requirements const color_image_memory_requirements = get_memory_requirements(device, color_image);
+        Memory_requirements const color_image_memory_requirements = get_memory_requirements(device.value, color_image.value);
         Memory_type_info const color_image_memory_type_info = get_memory_type_info(physical_device_memory_properties, color_image_memory_requirements);
 
-        Device_memory const device_memory =
-            allocate_memory(device, color_image_memory_requirements.value.size, color_image_memory_type_info.memory_type_index, {});
-        bind_memory(device, color_image, device_memory, 0);
+        VkDeviceMemory const device_memory =
+            allocate_memory(device.value, color_image_memory_requirements.value.size, color_image_memory_type_info.memory_type_index, {});
+        bind_memory(device.value, color_image.value, device_memory, 0);
 
         return {device_memory, color_image};
     }
@@ -606,7 +606,7 @@ namespace Mythology::Core::Vulkan
 
     std::pmr::vector<std::byte> read_memory(
         Device const device,
-        Device_memory const device_memory,
+        VkDeviceMemory const device_memory,
         VkSubresourceLayout const subresource_layout,
         std::pmr::polymorphic_allocator<std::byte> const& allocator
     ) noexcept
@@ -615,7 +615,7 @@ namespace Mythology::Core::Vulkan
         memory_data.resize(subresource_layout.size);
 
         {
-            Mapped_memory const mapped_memory{device, device_memory, subresource_layout.offset, subresource_layout.size};
+            Mapped_memory const mapped_memory{device.value, device_memory, subresource_layout.offset, subresource_layout.size};
             std::memcpy(memory_data.data(), mapped_memory.data(), memory_data.size());
         }
 

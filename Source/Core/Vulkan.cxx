@@ -41,7 +41,7 @@ namespace Mythology::Core::Vulkan
 
     export struct Device_memory_and_color_image
     {
-        Device_memory device_memory;
+        VkDeviceMemory device_memory;
         Image color_image;
     };
 
@@ -80,7 +80,7 @@ namespace Mythology::Core::Vulkan
 
     export std::pmr::vector<std::byte> read_memory(
         Device device,
-        Device_memory device_memory,
+        VkDeviceMemory device_memory,
         VkSubresourceLayout subresource_layout,
         std::pmr::polymorphic_allocator<std::byte> const& allocator = {}
     ) noexcept;
