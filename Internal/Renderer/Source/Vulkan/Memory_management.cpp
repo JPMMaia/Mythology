@@ -1,6 +1,7 @@
 module maia.renderer.vulkan.memory_management;
 
 import maia.renderer.vulkan.allocation_callbacks;
+import maia.renderer.vulkan.buffer;
 import maia.renderer.vulkan.device;
 import maia.renderer.vulkan.device_memory;
 
@@ -15,28 +16,6 @@ import <utility>;
 
 namespace Maia::Renderer::Vulkan
 {
-    Device_memory_range allocate_device_memory(
-        VkDevice const device,
-        Memory_type_index const memory_type_index,
-        VkDeviceSize const allocation_size,
-        VkAllocationCallbacks const* const vulkan_allocator
-    ) noexcept
-    {   
-        VkDeviceMemory const device_memory = 
-            allocate_memory({device}, allocation_size, memory_type_index, vulkan_allocator).value;
-        
-        return {device_memory, 0, allocation_size};
-    }
-
-    void free_device_memory(
-        VkDevice const device,
-        Device_memory_range const device_memory_range,
-        VkAllocationCallbacks const* const vulkan_allocator
-    ) noexcept
-    {
-        free_memory({device}, {device_memory_range.device_memory}, vulkan_allocator);
-    }
-
     Monotonic_device_memory_resource::Monotonic_device_memory_resource(
         VkDevice const device,
         VkDeviceSize const blocks_size,
@@ -61,7 +40,7 @@ namespace Maia::Renderer::Vulkan
         for (std::pair<Memory_type_index const, Chunk> const& pair : m_chunks)
         {
             Chunk const& chunk = pair.second;
-            free_device_memory(m_device, chunk.device_memory_range, m_vulkan_allocator);
+            free_memory(m_device, chunk.device_memory_range.device_memory, m_vulkan_allocator);
         }
     }
 
@@ -122,8 +101,10 @@ namespace Maia::Renderer::Vulkan
         }
         else
         {
-            Device_memory_range const new_device_memory_range =
-                allocate_device_memory(m_device, memory_type_index, m_blocks_size, m_vulkan_allocator);
+            VkDeviceMemory const new_device_memory =
+                allocate_memory(m_device, m_blocks_size, memory_type_index, m_vulkan_allocator);
+
+            Device_memory_range const new_device_memory_range{new_device_memory, 0, m_blocks_size};
 
             {
                 Chunk const new_chunk{new_device_memory_range, bytes_to_allocate};
@@ -139,6 +120,16 @@ namespace Maia::Renderer::Vulkan
 
     namespace
     {
+        std::uint32_t constexpr block_count(Memory_size const minimum_block_size, Memory_size const maximum_block_size) noexcept
+        {
+            assert(minimum_block_size <= maximum_block_size);
+            assert(minimum_block_size != 0);
+            assert((minimum_block_size % 2) == 0);
+            assert((maximum_block_size % 2) == 0);
+
+            return 2*(maximum_block_size / minimum_block_size) - 1;
+        }
+
         std::uint32_t constexpr block_count(Tree_level const level) noexcept
         {
             return static_cast<Memory_size>(std::pow(2, level.value));
@@ -319,7 +310,7 @@ namespace Maia::Renderer::Vulkan
         Tree_node split_subtrees_until_level(Memory_tree& tree, Tree_node const root, Tree_level const level) noexcept
         {
             assert(root.level.value < level.value);
-            assert(get_node_index({level, 0}).value < !tree.internal.size());
+            assert(get_node_index({level, 0}).value < tree.internal.size());
             assert(is_free_external_node(tree, root));
 
             Tree_node current_node = root;
@@ -422,10 +413,17 @@ namespace Maia::Renderer::Vulkan
         std::pmr::polymorphic_allocator<bool> const& allocator
     ) noexcept
     {
+        assert(minimum_block_size <= minimum_block_size);
+        assert(minimum_block_size != 0);
+        assert((minimum_block_size % 2) == 0);
+        assert((maximum_block_size % 2) == 0);
+
+        std::uint32_t const num_blocks = block_count(minimum_block_size, maximum_block_size);
+
         return
         {
-            .allocated{allocator},
-            .internal{allocator},
+            .allocated{num_blocks, 0, allocator},
+            .internal{num_blocks, 0, allocator},
             .minimum_block_size = minimum_block_size,
             .maximum_block_size = maximum_block_size
         };
@@ -519,7 +517,7 @@ namespace Maia::Renderer::Vulkan
         for (std::pair<Memory_type_index const, Chunk> const& pair : m_chunks)
         {
             Chunk const& chunk = pair.second;
-            free_device_memory(m_device, chunk.device_memory_range, m_vulkan_allocator);
+            free_memory(m_device, chunk.device_memory_range.device_memory, m_vulkan_allocator);
         }
     }
 
@@ -579,10 +577,10 @@ namespace Maia::Renderer::Vulkan
             }
         }
 
-        Device_memory_range const device_memory_range = 
-            allocate_device_memory(m_device, memory_type_index, m_maximum_block_size, m_vulkan_allocator);
+        VkDeviceMemory const device_memory = 
+            allocate_memory(m_device, m_maximum_block_size, memory_type_index, m_vulkan_allocator);
 
-        auto const chunkIterator = m_chunks.emplace(memory_type_index, Chunk{device_memory_range, create_memory_tree(m_minimum_block_size, m_maximum_block_size, m_bool_allocator)});
+        auto const chunkIterator = m_chunks.emplace(memory_type_index, Chunk{{device_memory, 0, m_maximum_block_size}, create_memory_tree(m_minimum_block_size, m_maximum_block_size, m_bool_allocator)});
         Memory_tree& tree = chunkIterator->second.memory_tree;
         
         std::optional<Tree_node> const node = allocate_node(tree, bytes_to_allocate);
@@ -604,5 +602,153 @@ namespace Maia::Renderer::Vulkan
             [&memory_resource](std::pair<Memory_type_index, Chunk> const& pair) -> bool { return &pair.second.memory_tree == &memory_resource.memory_tree; }) != m_chunks.end());
 
         free_node(memory_resource.memory_tree, memory_resource.node);
+    }
+
+
+    VkDeviceSize Buffer_pool_node::offset() const noexcept
+    {
+        return begin_offset(this->node, this->memory_tree->maximum_block_size);
+    }
+    VkDeviceSize Buffer_pool_node::size() const noexcept
+    {
+        return block_size(this->node.level, this->memory_tree->maximum_block_size);
+    }
+
+
+    namespace
+    {
+        VkDeviceMemory allocate_buffer_device_memory(
+            VkPhysicalDeviceMemoryProperties const& physical_device_memory_properties,
+            VkDevice const device,
+            VkBuffer const buffer,
+            VkMemoryPropertyFlags const memory_properties,
+            VkAllocationCallbacks const* const vulkan_allocator
+        ) noexcept
+        {
+            VkMemoryRequirements const memory_requirements = 
+                get_memory_requirements(device, buffer).value;
+
+            Memory_type_bits const memory_type_bits = get_memory_type_bits({memory_requirements});
+
+            std::optional<Memory_type_index> const memory_type_index = 
+                find_memory_type({physical_device_memory_properties}, memory_type_bits, memory_properties);
+
+            assert(memory_type_index.has_value());
+
+            return allocate_memory(
+                device,
+                memory_requirements.size,
+                *memory_type_index,
+                vulkan_allocator
+            );
+        }
+    }
+
+    Buffer_pool_memory_resource::Buffer_pool_memory_resource(
+        VkPhysicalDeviceMemoryProperties const& physical_device_memory_properties,
+        VkDevice const device,
+        VkBufferCreateInfo const& buffer_create_info,
+        VkMemoryPropertyFlags const memory_properties,
+        VkDeviceSize const minimum_block_size,
+        VkAllocationCallbacks const* const vulkan_allocator,
+        std::pmr::polymorphic_allocator<bool> const& bool_allocator
+    ) noexcept :
+        m_device{device},
+        m_buffer{create_buffer(device, buffer_create_info, vulkan_allocator)},
+        m_buffer_usage_flags{buffer_create_info.usage},
+        m_device_memory{allocate_buffer_device_memory(physical_device_memory_properties, device, m_buffer, memory_properties, vulkan_allocator)},
+        m_memory_property_flags{memory_properties}, // TODO query actual memory properties
+        m_memory_tree{create_memory_tree(minimum_block_size, buffer_create_info.size, bool_allocator)},
+        m_vulkan_allocator{vulkan_allocator}
+    {
+        bind_memory(m_device, m_buffer, m_device_memory, 0);
+    }
+    Buffer_pool_memory_resource::Buffer_pool_memory_resource(Buffer_pool_memory_resource&& other) noexcept :
+        m_device{std::exchange(other.m_device, {})},
+        m_buffer{std::exchange(other.m_buffer, {})},
+        m_buffer_usage_flags{std::exchange(other.m_buffer_usage_flags, {})},
+        m_device_memory{std::exchange(other.m_device_memory, {})},
+        m_memory_property_flags{std::exchange(other.m_memory_property_flags, {})},
+        m_memory_tree{std::exchange(other.m_memory_tree, {})},
+        m_vulkan_allocator{std::exchange(other.m_vulkan_allocator, {})}
+    {
+    }
+    Buffer_pool_memory_resource::~Buffer_pool_memory_resource() noexcept
+    {
+        if (m_device_memory != VK_NULL_HANDLE)
+        {
+            free_memory(m_device, m_device_memory, m_vulkan_allocator);
+        }
+
+        if (m_buffer != VK_NULL_HANDLE)
+        {
+            destroy_buffer(m_device, m_buffer, m_vulkan_allocator);
+        }
+    }
+
+    Buffer_pool_memory_resource& Buffer_pool_memory_resource::operator=(Buffer_pool_memory_resource&& other) noexcept
+    {
+        std::swap(m_device, other.m_device);
+        std::swap(m_buffer, other.m_buffer);
+        std::swap(m_buffer_usage_flags, other.m_buffer_usage_flags);
+        std::swap(m_device_memory, other.m_device_memory);
+        std::swap(m_memory_property_flags, other.m_memory_property_flags);
+        std::swap(m_memory_tree, other.m_memory_tree);
+        std::swap(m_vulkan_allocator, other.m_vulkan_allocator);
+
+        return *this;
+    }
+
+    std::optional<Buffer_pool_node> Buffer_pool_memory_resource::allocate(
+        VkDeviceSize const bytes_to_allocate,
+        VkDeviceSize const alignment,
+        VkBufferUsageFlags const buffer_usage_flags
+    ) noexcept
+    {
+        assert(bytes_to_allocate <= m_memory_tree.maximum_block_size);
+        assert((alignment % m_memory_tree.minimum_block_size) == 0);
+        assert((buffer_usage_flags | m_buffer_usage_flags) == m_buffer_usage_flags);
+
+        std::optional<Tree_node> const node = allocate_node(m_memory_tree, bytes_to_allocate);
+
+        if (node)
+        {
+            return
+            {
+                {
+                    .memory_tree = &m_memory_tree,
+                    .node = *node
+                }
+            };
+        }
+        else
+        {
+            return {};
+        }
+    }
+
+    void Buffer_pool_memory_resource::deallocate(
+        Buffer_pool_node const memory_resource
+    ) noexcept
+    {
+        assert(memory_resource.memory_tree != nullptr);
+        assert(&m_memory_tree == memory_resource.memory_tree);
+
+        free_node(m_memory_tree, memory_resource.node);
+    }
+
+    VkBuffer Buffer_pool_memory_resource::buffer() noexcept
+    {
+        return m_buffer;
+    }
+
+    VkDeviceMemory Buffer_pool_memory_resource::device_memory() noexcept
+    {
+        return m_device_memory;
+    }
+
+    VkMemoryPropertyFlags Buffer_pool_memory_resource::memory_properties() noexcept
+    {
+        return m_memory_property_flags;
     }
 }

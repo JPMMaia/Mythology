@@ -17,19 +17,6 @@ namespace Maia::Renderer::Vulkan
         VkDeviceSize offset;
         VkDeviceSize size;
     };
-
-    export Device_memory_range allocate_device_memory(
-        VkDevice device,
-        Memory_type_index memory_type_index,
-        VkDeviceSize allocation_size,
-        VkAllocationCallbacks const* vulkan_allocator = nullptr
-    ) noexcept;
-
-    export void free_device_memory(
-        VkDevice device,
-        Device_memory_range device_memory_range,
-        VkAllocationCallbacks const* vulkan_allocator = nullptr
-    ) noexcept;
     
     export class Monotonic_device_memory_resource
     {
@@ -167,5 +154,63 @@ namespace Maia::Renderer::Vulkan
         VkDeviceSize m_minimum_block_size;
         VkAllocationCallbacks const* m_vulkan_allocator;
         std::pmr::polymorphic_allocator<bool> m_bool_allocator;
+    };
+
+
+    export struct Buffer_pool_node
+    {
+        Memory_tree const* memory_tree;
+        Tree_node node;
+
+        VkDeviceSize offset() const noexcept;
+        VkDeviceSize size() const noexcept;
+    };
+    
+    export class Buffer_pool_memory_resource
+    {
+    public:
+
+        Buffer_pool_memory_resource(
+            VkPhysicalDeviceMemoryProperties const& physical_device_memory_properties,
+            VkDevice device,
+            VkBufferCreateInfo const& buffer_create_info,
+            VkMemoryPropertyFlags memory_properties,
+            VkDeviceSize minimum_block_size,
+            VkAllocationCallbacks const* vulkan_allocator = nullptr,
+            std::pmr::polymorphic_allocator<bool> const& bool_allocator = {}
+        ) noexcept;
+        Buffer_pool_memory_resource(Buffer_pool_memory_resource const&) noexcept = delete;
+        Buffer_pool_memory_resource(Buffer_pool_memory_resource&& other) noexcept;
+        ~Buffer_pool_memory_resource() noexcept;
+
+        Buffer_pool_memory_resource& operator=(Buffer_pool_memory_resource const&) noexcept = delete;
+        Buffer_pool_memory_resource& operator=(Buffer_pool_memory_resource&& other) noexcept;
+
+        std::optional<Buffer_pool_node> allocate(
+            VkDeviceSize bytes_to_allocate,
+            VkDeviceSize alignment,
+            VkBufferUsageFlags buffer_usage_flags
+        ) noexcept;
+
+        void deallocate(
+            Buffer_pool_node memory_resource
+        ) noexcept;
+
+        
+        VkBuffer buffer() noexcept;
+
+        VkDeviceMemory device_memory() noexcept;
+
+        VkMemoryPropertyFlags memory_properties() noexcept;
+
+    private:
+
+        VkDevice m_device;
+        VkBuffer m_buffer;
+        VkBufferUsageFlags m_buffer_usage_flags;
+        VkDeviceMemory m_device_memory;
+        VkMemoryPropertyFlags m_memory_property_flags;
+        Memory_tree m_memory_tree;
+        VkAllocationCallbacks const* m_vulkan_allocator;
     };
 }
