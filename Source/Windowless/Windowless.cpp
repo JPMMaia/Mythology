@@ -146,9 +146,9 @@ namespace Mythology::Windowless
                     destroy_image(this->device, this->device_memory_and_color_image.color_image, {});
                 }
 
-                if (this->device_memory_and_color_image.device_memory.value != VK_NULL_HANDLE)
+                if (this->device_memory_and_color_image.device_memory != VK_NULL_HANDLE)
                 {
-                    free_memory(this->device, this->device_memory_and_color_image.device_memory, {});
+                    free_memory(this->device.value, this->device_memory_and_color_image.device_memory, {});
                 }
             }
 
@@ -188,7 +188,7 @@ namespace Mythology::Windowless
         VkFormat constexpr color_image_format = VK_FORMAT_R8G8B8A8_UINT;
         VkExtent3D constexpr color_image_extent{16, 16, 1};
         Application_resources const application_resources{shaders_path, physical_device, device, color_image_format, color_image_extent};
-        Device_memory const color_image_device_memory = application_resources.device_memory_and_color_image.device_memory;
+        VkDeviceMemory const color_image_device_memory = application_resources.device_memory_and_color_image.device_memory;
         Image const color_image = application_resources.device_memory_and_color_image.color_image;
         Render_pass const render_pass = application_resources.render_pass;
         Framebuffer const framebuffer = application_resources.framebuffer;
