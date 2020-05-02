@@ -300,6 +300,7 @@ target_module (
     IMPLEMENTATION "Memory_management.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan"
         "maia.renderer.vulkan.allocation_callbacks"
+        "maia.renderer.vulkan.buffer"
         "maia.renderer.vulkan.device"
         "maia.renderer.vulkan.device_memory"
 )
