@@ -1,9 +1,6 @@
 export module maia.renderer.vulkan.device_memory;
 
 import maia.renderer.vulkan.allocation_callbacks;
-import maia.renderer.vulkan.buffer;
-import maia.renderer.vulkan.device;
-import maia.renderer.vulkan.image;
 import maia.renderer.vulkan.physical_device;
 
 import <vulkan/vulkan.h>;
@@ -13,6 +10,7 @@ import <cstdint>;
 import <optional>;
 import <functional>;
 import <ostream>;
+import <span>;
 
 namespace Maia::Renderer::Vulkan
 {
@@ -22,13 +20,13 @@ namespace Maia::Renderer::Vulkan
     };
 
     export Memory_requirements get_memory_requirements(
-        Device device,
-        Buffer buffer
+        VkDevice device,
+        VkBuffer buffer
     ) noexcept;
 
     export Memory_requirements get_memory_requirements(
-        Device device,
-        Image image
+        VkDevice device,
+        VkImage image
     ) noexcept;
 
 
@@ -86,51 +84,51 @@ namespace Maia::Renderer::Vulkan
     ) noexcept;
 
 
-    export struct Device_memory
-    {
-        VkDeviceMemory value = VK_NULL_HANDLE;
-    };
-
-    export Device_memory allocate_memory(
-        Device device, 
+    export VkDeviceMemory allocate_memory(
+        VkDevice device, 
         VkDeviceSize allocation_size, 
         Memory_type_index memory_type_index, 
         VkAllocationCallbacks const* allocator = nullptr
     ) noexcept;
 
     export void free_memory(
-        Device device,
-        Device_memory device_memory,
+        VkDevice device,
+        VkDeviceMemory device_memory,
         VkAllocationCallbacks const* allocator = nullptr
     ) noexcept;
 
 
     export void bind_memory(
-        Device device,
-        Buffer buffer,
-        Device_memory memory,
+        VkDevice device,
+        VkBuffer buffer,
+        VkDeviceMemory memory,
         VkDeviceSize memory_offset
     ) noexcept;
 
     export void bind_memory(
-        Device device,
-        Image image,
-        Device_memory memory,
+        VkDevice device,
+        VkImage image,
+        VkDeviceMemory memory,
         VkDeviceSize memory_offset
+    ) noexcept;
+
+    export void flush_mapped_memory_ranges(
+        VkDevice device,
+        std::span<VkMappedMemoryRange const> memory_ranges
     ) noexcept;
 
 
     export void* map_memory(
-        Device device,
-        Device_memory device_memory,
+        VkDevice device,
+        VkDeviceMemory device_memory,
         VkDeviceSize offset,
         VkDeviceSize size,
         VkMemoryMapFlags flags = {}
     ) noexcept;
 
     export void unmap_memory(
-        Device device,
-        Device_memory device_memory
+        VkDevice device,
+        VkDeviceMemory device_memory
     ) noexcept;
 
     export class Mapped_memory
@@ -138,8 +136,8 @@ namespace Maia::Renderer::Vulkan
     public:
 
         Mapped_memory(
-            Device device,
-            Device_memory device_memory,
+            VkDevice device,
+            VkDeviceMemory device_memory,
             VkDeviceSize offset,
             VkDeviceSize size,
             VkMemoryMapFlags flags = {}
@@ -155,8 +153,8 @@ namespace Maia::Renderer::Vulkan
 
     private:
 
-        Device m_device = {};
-        Device_memory m_device_memory = {};
+        VkDevice m_device = {};
+        VkDeviceMemory m_device_memory = {};
         void* m_mapped_memory = nullptr;
     };
 }

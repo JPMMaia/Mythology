@@ -3,7 +3,6 @@ module maia.renderer.vulkan.device_memory;
 import maia.renderer.vulkan.allocation_callbacks;
 import maia.renderer.vulkan.buffer;
 import maia.renderer.vulkan.check;
-import maia.renderer.vulkan.device;
 import maia.renderer.vulkan.image;
 import maia.renderer.vulkan.physical_device;
 
@@ -13,6 +12,7 @@ import <cstdint>;
 import <memory_resource>;
 import <optional>;
 import <ostream>;
+import <span>;
 import <sstream>;
 import <utility>;
 import <vector>;
@@ -20,22 +20,22 @@ import <vector>;
 namespace Maia::Renderer::Vulkan
 {
     Memory_requirements get_memory_requirements(
-        Device const device,
-        Buffer const buffer
+        VkDevice const device,
+        VkBuffer const buffer
     ) noexcept
     {
         VkMemoryRequirements memory_requirements = {};
-        vkGetBufferMemoryRequirements(device.value, buffer.value, &memory_requirements);
+        vkGetBufferMemoryRequirements(device, buffer, &memory_requirements);
         return {memory_requirements};
     }
 
     Memory_requirements get_memory_requirements(
-        Device const device,
-        Image const image
+        VkDevice const device,
+        VkImage const image
     ) noexcept
     {
         VkMemoryRequirements memory_requirements = {};
-        vkGetImageMemoryRequirements(device.value, image.value, &memory_requirements);
+        vkGetImageMemoryRequirements(device, image, &memory_requirements);
         return {memory_requirements};
     }
 
@@ -211,8 +211,8 @@ namespace Maia::Renderer::Vulkan
     }
 
 
-    Device_memory allocate_memory(
-        Device const device, 
+    VkDeviceMemory allocate_memory(
+        VkDevice const device, 
         VkDeviceSize const allocation_size, 
         Memory_type_index const memory_type_index, 
         VkAllocationCallbacks const* const allocator
@@ -229,51 +229,60 @@ namespace Maia::Renderer::Vulkan
         VkDeviceMemory memory = {};
         check_result(
             vkAllocateMemory(
-                device.value, 
+                device, 
                 &info, 
                 allocator,
                 &memory
             )
         );
 
-        return {memory};
+        return memory;
     }
 
     void free_memory(
-        Device const device,
-        Device_memory const device_memory,
+        VkDevice const device,
+        VkDeviceMemory const device_memory,
         VkAllocationCallbacks const* const allocator
     ) noexcept
     {
-        vkFreeMemory(device.value, device_memory.value, allocator);
+        vkFreeMemory(device, device_memory, allocator);
     }
 
     void bind_memory(
-        Device const device,
-        Buffer const buffer,
-        Device_memory const memory,
+        VkDevice const device,
+        VkBuffer const buffer,
+        VkDeviceMemory const memory,
         VkDeviceSize const memory_offset
     ) noexcept
     {
         check_result(
-            vkBindBufferMemory(device.value, buffer.value, memory.value, memory_offset));
+            vkBindBufferMemory(device, buffer, memory, memory_offset));
     }
 
     void bind_memory(
-        Device const device,
-        Image const image,
-        Device_memory const memory,
+        VkDevice const device,
+        VkImage const image,
+        VkDeviceMemory const memory,
         VkDeviceSize const memory_offset
     ) noexcept
     {
         check_result(
-            vkBindImageMemory(device.value, image.value, memory.value, memory_offset));
+            vkBindImageMemory(device, image, memory, memory_offset));
+    }
+
+    void flush_mapped_memory_ranges(
+        VkDevice const device,
+        std::span<VkMappedMemoryRange const> const memory_ranges
+    ) noexcept
+    {
+        check_result(
+            vkFlushMappedMemoryRanges(device, static_cast<std::uint32_t>(memory_ranges.size()), memory_ranges.data()));
     }
 
 
     void* map_memory(
-        Device const device,
-        Device_memory const device_memory,
+        VkDevice const device,
+        VkDeviceMemory const device_memory,
         VkDeviceSize const offset,
         VkDeviceSize const size,
         VkMemoryMapFlags const flags
@@ -282,8 +291,8 @@ namespace Maia::Renderer::Vulkan
         void* data = nullptr;
         check_result(
             vkMapMemory(
-                device.value,
-                device_memory.value,
+                device,
+                device_memory,
                 offset,
                 size,
                 flags,
@@ -294,20 +303,20 @@ namespace Maia::Renderer::Vulkan
     }
 
     void unmap_memory(
-        Device const device,
-        Device_memory const device_memory
+        VkDevice const device,
+        VkDeviceMemory const device_memory
     ) noexcept
     {
         vkUnmapMemory(
-            device.value,
-            device_memory.value
+            device,
+            device_memory
         );
     }
 
 
     Mapped_memory::Mapped_memory(
-        Device const device,
-        Device_memory const device_memory,
+        VkDevice const device,
+        VkDeviceMemory const device_memory,
         VkDeviceSize const offset,
         VkDeviceSize const size,
         VkMemoryMapFlags const flags
