@@ -11,13 +11,14 @@ import <span>;
 
 namespace Maia::Renderer::Vulkan
 {
-    export struct Buffer
-    {
-        VkBuffer value;
-    };
+    export VkBuffer create_buffer(
+        VkDevice device, 
+        VkBufferCreateInfo const& create_info,
+        VkAllocationCallbacks const* allocator = nullptr
+    ) noexcept;
 
-    export Buffer create_buffer(
-        Device device, 
+    export VkBuffer create_buffer(
+        VkDevice device, 
         VkDeviceSize size,
         VkBufferUsageFlags usage,
         VkBufferCreateFlags flags = {},
@@ -26,9 +27,10 @@ namespace Maia::Renderer::Vulkan
         VkAllocationCallbacks const* allocator = nullptr
     ) noexcept;
 
+
     export void destroy_buffer(
-        Device device,
-        Buffer buffer,
+        VkDevice device,
+        VkBuffer buffer,
         VkAllocationCallbacks const* allocator = nullptr
     ) noexcept;
 }

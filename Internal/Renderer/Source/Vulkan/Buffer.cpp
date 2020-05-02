@@ -12,8 +12,28 @@ import <span>;
 
 namespace Maia::Renderer::Vulkan
 {
-    Buffer create_buffer(
-        Device const device, 
+    VkBuffer create_buffer(
+        VkDevice const device, 
+        VkBufferCreateInfo const& create_info,
+        VkAllocationCallbacks const* const allocator
+    ) noexcept
+    {
+        VkBuffer buffer = {};
+
+        check_result(
+            vkCreateBuffer(
+                device, 
+                &create_info, 
+                allocator,
+                &buffer
+            )
+        );
+        
+        return buffer;
+    }
+
+    VkBuffer create_buffer(
+        VkDevice const device, 
         VkDeviceSize const size,
         VkBufferUsageFlags const usage,
         VkBufferCreateFlags const flags,
@@ -34,28 +54,18 @@ namespace Maia::Renderer::Vulkan
             .pQueueFamilyIndices = queue_family_indices.data(),
         };
 
-        VkBuffer buffer = {};
-        check_result(
-            vkCreateBuffer(
-                device.value, 
-                &info, 
-                allocator,
-                &buffer
-            )
-        );
-        
-        return {buffer};
+        return create_buffer(device, info, allocator);
     }
 
     void destroy_buffer(
-        Device const device,
-        Buffer const buffer,
+        VkDevice const device,
+        VkBuffer const buffer,
         VkAllocationCallbacks const* const allocator
     ) noexcept
     {
         vkDestroyBuffer(
-            device.value,
-            buffer.value,
+            device,
+            buffer,
             allocator
         );
     }
