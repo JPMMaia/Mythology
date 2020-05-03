@@ -47,6 +47,11 @@ namespace Mythology::ImGui
         ImGui_resources& operator=(ImGui_resources&& other) noexcept;
     };
 
+    export void upload_fonts_image_data(
+        VkCommandBuffer command_buffer,
+        VkImage fonts_image
+    ) noexcept;
+
     export Maia::Renderer::Vulkan::Buffer_pool_node update_geometry_buffer(
         VkDevice device,
         ImDrawData const& draw_data,

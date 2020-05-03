@@ -127,114 +127,6 @@ namespace Mythology::ImGui
         bind_memory(device, image, device_memory_range.device_memory, device_memory_range.offset);
 
         return image;
-
-        /*
-        {
-            std::array<VkDescriptorImageInfo, 1> const descriptor_image_infos
-            {
-                {
-                    {
-                        .sampler = VK_NULL_HANDLE,
-                        .imageView = font_image_view.value,
-                        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-                    }
-                }
-            };
-
-            VkWriteDescriptorSet const write_descriptor_set
-            {
-                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .pNext = nullptr,
-                .dstSet = descriptor_set,
-                .dstBinding = 0,
-                .dstArrayElement = 0,
-                .descriptorCount = descriptor_image_infos.size(),
-                .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-                .pImageInfo = descriptor_image_infos.data(),
-                .pBufferInfo = nullptr,
-                .pTexelBufferView = nullptr,
-            };
-
-            vkUpdateDescriptorSets(device, 1, &write_descriptor_set, 0, nullptr);
-        }*/
-
-        // TODO copy to image
-
-        /*size_t const upload_size = width * height * 4 * sizeof(char);
-        {
-
-            VkBufferCreateInfo buffer_info = {};
-            buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-            buffer_info.size = upload_size;
-            buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-            buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-            err = vkCreateBuffer(v->Device, &buffer_info, v->Allocator, &g_UploadBuffer);
-            check_vk_result(err);
-            VkMemoryRequirements req;
-            vkGetBufferMemoryRequirements(v->Device, g_UploadBuffer, &req);
-            g_BufferMemoryAlignment = (g_BufferMemoryAlignment > req.alignment) ? g_BufferMemoryAlignment : req.alignment;
-            VkMemoryAllocateInfo alloc_info = {};
-            alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-            alloc_info.allocationSize = req.size;
-            alloc_info.memoryTypeIndex = ImGui_ImplVulkan_MemoryType(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, req.memoryTypeBits);
-            err = vkAllocateMemory(v->Device, &alloc_info, v->Allocator, &g_UploadBufferMemory);
-            check_vk_result(err);
-            err = vkBindBufferMemory(v->Device, g_UploadBuffer, g_UploadBufferMemory, 0);
-            check_vk_result(err);
-        }
-
-        // Upload to Buffer:
-        {
-            char* map = NULL;
-            err = vkMapMemory(v->Device, g_UploadBufferMemory, 0, upload_size, 0, (void**)(&map));
-            check_vk_result(err);
-            memcpy(map, pixels, upload_size);
-            VkMappedMemoryRange range[1] = {};
-            range[0].sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-            range[0].memory = g_UploadBufferMemory;
-            range[0].size = upload_size;
-            err = vkFlushMappedMemoryRanges(v->Device, 1, range);
-            check_vk_result(err);
-            vkUnmapMemory(v->Device, g_UploadBufferMemory);
-        }
-
-        // Copy to Image:
-        {
-            VkImageMemoryBarrier copy_barrier[1] = {};
-            copy_barrier[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            copy_barrier[0].dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-            copy_barrier[0].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            copy_barrier[0].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-            copy_barrier[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            copy_barrier[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            copy_barrier[0].image = g_FontImage;
-            copy_barrier[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            copy_barrier[0].subresourceRange.levelCount = 1;
-            copy_barrier[0].subresourceRange.layerCount = 1;
-            vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, copy_barrier);
-
-            VkBufferImageCopy region = {};
-            region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            region.imageSubresource.layerCount = 1;
-            region.imageExtent.width = width;
-            region.imageExtent.height = height;
-            region.imageExtent.depth = 1;
-            vkCmdCopyBufferToImage(command_buffer, g_UploadBuffer, g_FontImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-
-            VkImageMemoryBarrier use_barrier[1] = {};
-            use_barrier[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            use_barrier[0].srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-            use_barrier[0].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-            use_barrier[0].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-            use_barrier[0].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            use_barrier[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            use_barrier[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            use_barrier[0].image = g_FontImage;
-            use_barrier[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            use_barrier[0].subresourceRange.levelCount = 1;
-            use_barrier[0].subresourceRange.layerCount = 1;
-            vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, use_barrier);
-        }*/
     }
 
     VkImageView create_fonts_image_view(
@@ -723,6 +615,123 @@ namespace Mythology::ImGui
         std::swap(buffer_pool, other.buffer_pool);
 
         return *this;
+    }
+
+    void upload_fonts_image_data(
+        VkCommandBuffer const command_buffer,
+        VkImage const fonts_image
+    ) noexcept
+    {
+        /*size_t const upload_size = width * height * 4 * sizeof(char);
+        {
+
+            VkBufferCreateInfo buffer_info = {};
+            buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+            buffer_info.size = upload_size;
+            buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+            buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            err = vkCreateBuffer(v->Device, &buffer_info, v->Allocator, &g_UploadBuffer);
+            check_vk_result(err);
+            VkMemoryRequirements req;
+            vkGetBufferMemoryRequirements(v->Device, g_UploadBuffer, &req);
+            g_BufferMemoryAlignment = (g_BufferMemoryAlignment > req.alignment) ? g_BufferMemoryAlignment : req.alignment;
+            VkMemoryAllocateInfo alloc_info = {};
+            alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+            alloc_info.allocationSize = req.size;
+            alloc_info.memoryTypeIndex = ImGui_ImplVulkan_MemoryType(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, req.memoryTypeBits);
+            err = vkAllocateMemory(v->Device, &alloc_info, v->Allocator, &g_UploadBufferMemory);
+            check_vk_result(err);
+            err = vkBindBufferMemory(v->Device, g_UploadBuffer, g_UploadBufferMemory, 0);
+            check_vk_result(err);
+        }
+
+        // Upload to Buffer:
+        {
+            char* map = NULL;
+            err = vkMapMemory(v->Device, g_UploadBufferMemory, 0, upload_size, 0, (void**)(&map));
+            check_vk_result(err);
+            memcpy(map, pixels, upload_size);
+            VkMappedMemoryRange range[1] = {};
+            range[0].sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+            range[0].memory = g_UploadBufferMemory;
+            range[0].size = upload_size;
+            err = vkFlushMappedMemoryRanges(v->Device, 1, range);
+            check_vk_result(err);
+            vkUnmapMemory(v->Device, g_UploadBufferMemory);
+        }
+
+        // Copy to Image:
+        {
+            VkImageMemoryBarrier copy_barrier[1] = {};
+            copy_barrier[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            copy_barrier[0].dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            copy_barrier[0].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            copy_barrier[0].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            copy_barrier[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            copy_barrier[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            copy_barrier[0].image = g_FontImage;
+            copy_barrier[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            copy_barrier[0].subresourceRange.levelCount = 1;
+            copy_barrier[0].subresourceRange.layerCount = 1;
+            vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, copy_barrier);
+
+            VkBufferImageCopy region = {};
+            region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            region.imageSubresource.layerCount = 1;
+            region.imageExtent.width = width;
+            region.imageExtent.height = height;
+            region.imageExtent.depth = 1;
+            vkCmdCopyBufferToImage(command_buffer, g_UploadBuffer, g_FontImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+            VkImageMemoryBarrier use_barrier[1] = {};
+            use_barrier[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            use_barrier[0].srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            use_barrier[0].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+            use_barrier[0].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            use_barrier[0].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            use_barrier[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            use_barrier[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            use_barrier[0].image = g_FontImage;
+            use_barrier[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            use_barrier[0].subresourceRange.levelCount = 1;
+            use_barrier[0].subresourceRange.layerCount = 1;
+            vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, use_barrier);
+        }*/
+
+        {
+            VkImageMemoryBarrier const use_barrier
+            {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                .srcAccessMask = {}, // VK_ACCESS_TRANSFER_WRITE_BIT
+                .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+                .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image = fonts_image,
+                .subresourceRange = {
+                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                    .baseMipLevel = 0,
+                    .levelCount = 1,
+                    .baseArrayLayer = 0,
+                    .layerCount = 1,
+                }
+                
+            };
+
+            vkCmdPipelineBarrier(
+                command_buffer,
+                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, // VK_PIPELINE_STAGE_TRANSFER_BIT
+                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                0,
+                0,
+                nullptr,
+                0,
+                nullptr,
+                1,
+                &use_barrier
+            );
+        }
     }
 
     Buffer_pool_node resize_geometry_buffer(

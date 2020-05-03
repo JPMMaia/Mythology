@@ -1,6 +1,7 @@
 module mythology.core.vulkan;
 
 import maia.renderer.vulkan;
+import mythology.imgui;
 
 import <vulkan/vulkan.h>;
 
@@ -394,26 +395,16 @@ namespace Mythology::Core::Vulkan
         return create_graphics_pipeline(device.value, graphics_pipeline_create_info, pipeline_cache.has_value() ? *pipeline_cache : VK_NULL_HANDLE);
     }
 
-    void render(
+    void clear_and_begin_render_pass(
         Command_buffer const command_buffer,
         Render_pass const render_pass,
         Framebuffer const framebuffer,
         VkClearColorValue const clear_color,
-        VkPipeline const pipeline,
         Image const output_image,
-        VkRect2D const output_render_area,
-        bool const switch_to_present_layout
+        VkImageSubresourceRange const output_image_subresource_range,
+        VkRect2D const output_render_area
     ) noexcept
     {
-        VkImageSubresourceRange const output_image_subresource_range
-        {
-            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, 
-            .baseMipLevel = 0,
-            .levelCount = 1, 
-            .baseArrayLayer = 0,
-            .layerCount = 1
-        };
-
         {
             VkImageMemoryBarrier const image_memory_barrier
             {
@@ -502,43 +493,17 @@ namespace Mythology::Core::Vulkan
                 {&clear_value, 1},
                 VK_SUBPASS_CONTENTS_INLINE
             );
-            {
-                vkCmdBindPipeline(command_buffer.value, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-
-                {
-                    std::array<VkViewport, 1> const viewports
-                    {
-                        VkViewport
-                        {
-                            .x = static_cast<float>(output_render_area.offset.x),
-                            .y = static_cast<float>(output_render_area.offset.y),
-                            .width = static_cast<float>(output_render_area.extent.width),
-                            .height = static_cast<float>(output_render_area.extent.height),
-                            .minDepth = 0.0f,
-                            .maxDepth = 1.0f,
-                        }
-                    };
-                    
-                    vkCmdSetViewport(command_buffer.value, 0, static_cast<std::uint32_t>(viewports.size()), viewports.data());
-                }
-
-                {
-                    std::array<VkRect2D, 1> const scissors
-                    {
-                        VkRect2D
-                        {
-                            .offset = output_render_area.offset,
-                            .extent = output_render_area.extent,
-                        }
-                    };
-                    
-                    vkCmdSetScissor(command_buffer.value, 0, static_cast<std::uint32_t>(scissors.size()), scissors.data());
-                }
-
-                vkCmdDraw(command_buffer.value, 3, 1, 0, 0);
-            }
-            end_render_pass(command_buffer);
         }
+    }
+
+    void end_render_pass_and_switch_layout(
+        Command_buffer const command_buffer,
+        Image const output_image,
+        VkImageSubresourceRange const output_image_subresource_range,
+        bool const switch_to_present_layout
+    ) noexcept
+    {
+        end_render_pass(command_buffer);
 
         if (switch_to_present_layout)
         {

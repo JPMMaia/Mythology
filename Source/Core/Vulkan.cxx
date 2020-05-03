@@ -67,15 +67,21 @@ namespace Mythology::Core::Vulkan
         VkShaderModule fragment_shader
     ) noexcept;
 
-    export void render(
+    export void clear_and_begin_render_pass(
         Command_buffer command_buffer,
         Render_pass render_pass,
         Framebuffer framebuffer,
         VkClearColorValue clear_color,
-        VkPipeline pipeline,
         Image output_image,
-        VkRect2D output_render_area,
-        bool switch_to_present_layout = false
+        VkImageSubresourceRange output_image_subresource_range,
+        VkRect2D output_render_area
+    ) noexcept;
+
+    export void end_render_pass_and_switch_layout(
+        Command_buffer command_buffer,
+        Image output_image,
+        VkImageSubresourceRange output_image_subresource_range,
+        bool switch_to_present_layout
     ) noexcept;
 
     export std::pmr::vector<std::byte> read_memory(

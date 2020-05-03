@@ -793,6 +793,64 @@ namespace Mythology::SDL
                 256
             };
         }
+
+        void render(
+            Command_buffer const command_buffer,
+            VkPipeline const pipeline,
+            VkRect2D const output_render_area,
+            Mythology::ImGui::ImGui_resources const& imgui_resources
+        ) noexcept
+        {
+            {
+                vkCmdBindPipeline(command_buffer.value, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+                {
+                    std::array<VkViewport, 1> const viewports
+                    {
+                        VkViewport
+                        {
+                            .x = static_cast<float>(output_render_area.offset.x),
+                            .y = static_cast<float>(output_render_area.offset.y),
+                            .width = static_cast<float>(output_render_area.extent.width),
+                            .height = static_cast<float>(output_render_area.extent.height),
+                            .minDepth = 0.0f,
+                            .maxDepth = 1.0f,
+                        }
+                    };
+                    
+                    vkCmdSetViewport(command_buffer.value, 0, static_cast<std::uint32_t>(viewports.size()), viewports.data());
+                }
+
+                {
+                    std::array<VkRect2D, 1> const scissors
+                    {
+                        VkRect2D
+                        {
+                            .offset = output_render_area.offset,
+                            .extent = output_render_area.extent,
+                        }
+                    };
+                    
+                    vkCmdSetScissor(command_buffer.value, 0, static_cast<std::uint32_t>(scissors.size()), scissors.data());
+                }
+
+                vkCmdDraw(command_buffer.value, 3, 1, 0, 0);
+
+                {
+                    ImDrawData const& draw_data = *::ImGui::GetDrawData();
+
+                    Mythology::ImGui::render(
+                        draw_data,
+                        command_buffer.value,
+                        imgui_resources.pipeline,
+                        imgui_resources.pipeline_layout,
+                        imgui_resources.descriptor_set,
+                        {imgui_resources.buffer_pool->buffer(), imgui_resources.geometry_buffer_node.offset(), draw_data.TotalVtxCount * sizeof(ImDrawVert)},
+                        {imgui_resources.buffer_pool->buffer(), imgui_resources.geometry_buffer_node.offset() + draw_data.TotalVtxCount * sizeof(ImDrawVert), draw_data.TotalIdxCount * sizeof(ImDrawIdx)}
+                    );
+                }
+            }
+        }
     }
 
     void run() noexcept
@@ -822,6 +880,11 @@ namespace Mythology::SDL
             std::cerr << "Could not create window: " << SDL_GetError() << '\n';
             std::exit(EXIT_FAILURE);
         }
+
+        /*{
+            using namespace std::chrono_literals;
+            std::this_thread::sleep_for(5s);
+        }*/
 
         Device_resources const device_resources{make_api_version(1, 2, 0), *window.get()};
         Physical_device const physical_device = device_resources.physical_device;
@@ -1008,6 +1071,23 @@ namespace Mythology::SDL
             monotonic_memory_resource,
             geometry_buffer_memory_resource
         };
+
+        {
+            Command_buffer const command_buffer = command_buffers[0];
+            reset_command_buffer(command_buffer, {});
+            begin_command_buffer(command_buffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, {});
+
+            Mythology::ImGui::upload_fonts_image_data(
+                command_buffer.value,
+                imgui_resources.fonts_image
+            );
+
+            end_command_buffer(command_buffer);
+
+            queue_submit(graphics_queue, {}, {}, {&command_buffer, 1}, {}, {});
+
+            vkDeviceWaitIdle(device.value);
+        }
         
         destroy_shader_module(device, imgui_fragment_shader_module);
         destroy_shader_module(device, imgui_vertex_shader_module);
@@ -1174,19 +1254,6 @@ namespace Mythology::SDL
                             reset_command_buffer(command_buffer, {});
                             begin_command_buffer(command_buffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, {});
                             {
-                                VkClearColorValue const clear_color
-                                {
-                                    .float32 = {0.0f, 0.0f, 1.0f, 1.0f}
-                                };
-
-                                VkRect2D const output_render_area
-                                {
-                                    .offset = {0, 0},
-                                    .extent = swapchain_resources.extent
-                                };
-
-                                render(command_buffer, render_pass, swapchain_framebuffer, clear_color, white_triangle_pipeline, swapchain_image, output_render_area, true);
-
                                 {
                                     ImDrawData const& draw_data = *::ImGui::GetDrawData();
 
@@ -1194,19 +1261,34 @@ namespace Mythology::SDL
                                         device.value,
                                         draw_data,
                                         imgui_resources.geometry_buffer_node,
-                                        geometry_buffer_memory_resource
+                                        *imgui_resources.buffer_pool
                                     );
+                                }
 
-                                    // TODO render inside render pass
-                                    Mythology::ImGui::render(
-                                        draw_data,
-                                        command_buffer.value,
-                                        imgui_resources.pipeline,
-                                        imgui_resources.pipeline_layout,
-                                        imgui_resources.descriptor_set,
-                                        {geometry_buffer_memory_resource.buffer(), imgui_resources.geometry_buffer_node.offset(), draw_data.TotalVtxCount * sizeof(ImDrawVert)},
-                                        {geometry_buffer_memory_resource.buffer(), imgui_resources.geometry_buffer_node.offset() + draw_data.TotalVtxCount * sizeof(ImDrawVert), draw_data.TotalIdxCount * sizeof(ImDrawIdx)}
-                                    );
+                                {
+                                    VkClearColorValue const clear_color
+                                    {
+                                        .float32 = {0.0f, 0.0f, 1.0f, 1.0f}
+                                    };
+
+                                    VkRect2D const output_render_area
+                                    {
+                                        .offset = {0, 0},
+                                        .extent = swapchain_resources.extent
+                                    };
+
+                                    VkImageSubresourceRange const output_image_subresource_range
+                                    {
+                                        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, 
+                                        .baseMipLevel = 0,
+                                        .levelCount = 1, 
+                                        .baseArrayLayer = 0,
+                                        .layerCount = 1
+                                    };
+
+                                    clear_and_begin_render_pass(command_buffer, render_pass, swapchain_framebuffer, clear_color, swapchain_image, output_image_subresource_range, output_render_area);
+                                    render(command_buffer, white_triangle_pipeline, output_render_area, imgui_resources);
+                                    end_render_pass_and_switch_layout(command_buffer, swapchain_image, output_image_subresource_range, true);
                                 }
                             }
                             end_command_buffer(command_buffer);
