@@ -165,6 +165,12 @@ namespace Maia::Renderer::Vulkan
         VkDeviceSize offset() const noexcept;
         VkDeviceSize size() const noexcept;
     };
+
+    export struct Device_memory_and_properties
+    {
+        VkDeviceMemory device_memory;
+        VkMemoryPropertyFlags properties;
+    };
     
     export class Buffer_pool_memory_resource
     {
@@ -208,8 +214,7 @@ namespace Maia::Renderer::Vulkan
         VkDevice m_device;
         VkBuffer m_buffer;
         VkBufferUsageFlags m_buffer_usage_flags;
-        VkDeviceMemory m_device_memory;
-        VkMemoryPropertyFlags m_memory_property_flags;
+        Device_memory_and_properties m_device_memory_and_properties;
         Memory_tree m_memory_tree;
         VkAllocationCallbacks const* m_vulkan_allocator;
     };

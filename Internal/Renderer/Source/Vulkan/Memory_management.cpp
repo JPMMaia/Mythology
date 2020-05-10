@@ -58,7 +58,7 @@ namespace Maia::Renderer::Vulkan
     {
         VkDeviceSize align(VkDeviceSize const offset, VkDeviceSize const alignment) noexcept
         {
-            assert(alignment % 2 == 0);
+            assert((alignment == 1) || (alignment % 2 == 0));
 
             return (offset + alignment -1) & ~(alignment-1);;
         }
@@ -617,7 +617,7 @@ namespace Maia::Renderer::Vulkan
 
     namespace
     {
-        VkDeviceMemory allocate_buffer_device_memory(
+        Device_memory_and_properties allocate_buffer_device_memory(
             VkPhysicalDeviceMemoryProperties const& physical_device_memory_properties,
             VkDevice const device,
             VkBuffer const buffer,
@@ -630,17 +630,19 @@ namespace Maia::Renderer::Vulkan
 
             Memory_type_bits const memory_type_bits = get_memory_type_bits({memory_requirements});
 
-            std::optional<Memory_type_index> const memory_type_index = 
+            std::optional<Memory_type_index_and_properties> const memory_type_index_and_properties = 
                 find_memory_type({physical_device_memory_properties}, memory_type_bits, memory_properties);
 
-            assert(memory_type_index.has_value());
+            assert(memory_type_index_and_properties.has_value());
 
-            return allocate_memory(
+            VkDeviceMemory const device_memory = allocate_memory(
                 device,
                 memory_requirements.size,
-                *memory_type_index,
+                memory_type_index_and_properties->type_index,
                 vulkan_allocator
             );
+
+            return {device_memory, memory_type_index_and_properties->properties};
         }
     }
 
@@ -656,28 +658,26 @@ namespace Maia::Renderer::Vulkan
         m_device{device},
         m_buffer{create_buffer(device, buffer_create_info, vulkan_allocator)},
         m_buffer_usage_flags{buffer_create_info.usage},
-        m_device_memory{allocate_buffer_device_memory(physical_device_memory_properties, device, m_buffer, memory_properties, vulkan_allocator)},
-        m_memory_property_flags{memory_properties}, // TODO query actual memory properties
+        m_device_memory_and_properties{allocate_buffer_device_memory(physical_device_memory_properties, device, m_buffer, memory_properties, vulkan_allocator)},
         m_memory_tree{create_memory_tree(minimum_block_size, buffer_create_info.size, bool_allocator)},
         m_vulkan_allocator{vulkan_allocator}
     {
-        bind_memory(m_device, m_buffer, m_device_memory, 0);
+        bind_memory(m_device, m_buffer, m_device_memory_and_properties.device_memory, 0);
     }
     Buffer_pool_memory_resource::Buffer_pool_memory_resource(Buffer_pool_memory_resource&& other) noexcept :
         m_device{std::exchange(other.m_device, {})},
         m_buffer{std::exchange(other.m_buffer, {})},
         m_buffer_usage_flags{std::exchange(other.m_buffer_usage_flags, {})},
-        m_device_memory{std::exchange(other.m_device_memory, {})},
-        m_memory_property_flags{std::exchange(other.m_memory_property_flags, {})},
+        m_device_memory_and_properties{std::exchange(other.m_device_memory_and_properties, {})},
         m_memory_tree{std::exchange(other.m_memory_tree, {})},
         m_vulkan_allocator{std::exchange(other.m_vulkan_allocator, {})}
     {
     }
     Buffer_pool_memory_resource::~Buffer_pool_memory_resource() noexcept
     {
-        if (m_device_memory != VK_NULL_HANDLE)
+        if (m_device_memory_and_properties.device_memory != VK_NULL_HANDLE)
         {
-            free_memory(m_device, m_device_memory, m_vulkan_allocator);
+            free_memory(m_device, m_device_memory_and_properties.device_memory, m_vulkan_allocator);
         }
 
         if (m_buffer != VK_NULL_HANDLE)
@@ -691,8 +691,7 @@ namespace Maia::Renderer::Vulkan
         std::swap(m_device, other.m_device);
         std::swap(m_buffer, other.m_buffer);
         std::swap(m_buffer_usage_flags, other.m_buffer_usage_flags);
-        std::swap(m_device_memory, other.m_device_memory);
-        std::swap(m_memory_property_flags, other.m_memory_property_flags);
+        std::swap(m_device_memory_and_properties, other.m_device_memory_and_properties);
         std::swap(m_memory_tree, other.m_memory_tree);
         std::swap(m_vulkan_allocator, other.m_vulkan_allocator);
 
@@ -744,11 +743,11 @@ namespace Maia::Renderer::Vulkan
 
     VkDeviceMemory Buffer_pool_memory_resource::device_memory() noexcept
     {
-        return m_device_memory;
+        return m_device_memory_and_properties.device_memory;
     }
 
     VkMemoryPropertyFlags Buffer_pool_memory_resource::memory_properties() noexcept
     {
-        return m_memory_property_flags;
+        return m_device_memory_and_properties.properties;
     }
 }
