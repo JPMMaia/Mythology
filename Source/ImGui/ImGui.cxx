@@ -10,12 +10,19 @@ import <cstdint>;
 
 namespace Mythology::ImGui
 {
+    export struct Image_resource
+    {
+        VkImage image;
+        Maia::Renderer::Vulkan::Device_memory_range device_memory_range;
+        VkMemoryPropertyFlags memory_properties;
+    };
+
     export struct ImGui_resources
     {
         VkDevice device;
         VkAllocationCallbacks const* allocator;
         Maia::Renderer::Vulkan::Buffer_pool_node geometry_buffer_node;
-        VkImage fonts_image;
+        Image_resource fonts_image_resource;
         VkImageView fonts_image_view;
         VkSampler fonts_sampler;
         VkDescriptorSetLayout descriptor_set_layout;
@@ -48,8 +55,11 @@ namespace Mythology::ImGui
     };
 
     export void upload_fonts_image_data(
+        VkDevice device,
         VkCommandBuffer command_buffer,
-        VkImage fonts_image
+        VkImage fonts_image,
+        Maia::Renderer::Vulkan::Device_memory_range fonts_image_device_memory_range,
+        VkMemoryPropertyFlags memory_properties
     ) noexcept;
 
     export Maia::Renderer::Vulkan::Buffer_pool_node update_geometry_buffer(

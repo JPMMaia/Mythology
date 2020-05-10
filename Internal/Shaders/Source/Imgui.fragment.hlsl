@@ -15,10 +15,10 @@ Texture2D g_texture : register(t1, space0);
 
 Pixel_shader_output main(Pixel_shader_input const input)
 {
-    float4 const texture_color = g_texture.Sample(s_linear_wrap_sampler, input.texture_coordinates);
+    float const texture_color = g_texture.Sample(s_linear_wrap_sampler, input.texture_coordinates).r;
 
     Pixel_shader_output output;
-	output.color = input.color * texture_color;
+	output.color = texture_color * input.color;
 
 	return output;
 }

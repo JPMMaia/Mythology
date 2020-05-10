@@ -207,15 +207,15 @@ namespace Mythology::Core::Vulkan
 
         for (VkMemoryPropertyFlags const properties : properties_sorted_by_preference)
         {
-            std::optional<Memory_type_index> const memory_type_index = find_memory_type(
+            std::optional<Memory_type_index_and_properties> const memory_type_index_and_properties = find_memory_type(
                 physical_device_memory_properties,
                 memory_type_bits,
                 properties
             );
 
-            if (memory_type_index)
+            if (memory_type_index_and_properties)
             {
-                return {properties, *memory_type_index};
+                return {properties, memory_type_index_and_properties->type_index};
             }
         }
 

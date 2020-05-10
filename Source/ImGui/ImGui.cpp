@@ -78,7 +78,7 @@ namespace Mythology::ImGui
             ImGuiIO& io = ::ImGui::GetIO();
 
             unsigned char* pixels = nullptr;
-            io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+            io.Fonts->GetTexDataAsAlpha8(&pixels, &width, &height);
         }
 
         return
@@ -87,21 +87,21 @@ namespace Mythology::ImGui
             .pNext = nullptr,
             .flags = {},
             .imageType = VK_IMAGE_TYPE_2D,
-            .format = VK_FORMAT_R8G8B8A8_UNORM,
+            .format = VK_FORMAT_R8_UNORM,
             .extent = {static_cast<std::uint32_t>(width), static_cast<std::uint32_t>(height), 1},
             .mipLevels = 1,
             .arrayLayers = 1,
             .samples = VK_SAMPLE_COUNT_1_BIT,
-            .tiling = VK_IMAGE_TILING_OPTIMAL,
+            .tiling = VK_IMAGE_TILING_LINEAR,
             .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
             .queueFamilyIndexCount = 0,
             .pQueueFamilyIndices = nullptr,
-            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED,
         };
     }
     
-    VkImage create_fonts_image(
+    Image_resource create_fonts_image(
         VkPhysicalDeviceMemoryProperties const& physical_device_memory_properties,
         VkDevice const device,
         Monotonic_device_memory_resource& monotonic_memory_resource,
@@ -117,16 +117,16 @@ namespace Mythology::ImGui
 
         Memory_type_bits const memory_type_bits = get_memory_type_bits(memory_requirements);
 
-        std::optional<Memory_type_index> const memory_type_index = 
+        std::optional<Memory_type_index_and_properties> const memory_type_index_and_properties = 
             find_memory_type({physical_device_memory_properties}, memory_type_bits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-        assert(memory_type_index.has_value());
+        assert(memory_type_index_and_properties.has_value());
 
-        Device_memory_range const device_memory_range = monotonic_memory_resource.allocate(*memory_type_index, memory_requirements.value.size, memory_requirements.value.alignment);
+        Device_memory_range const device_memory_range = monotonic_memory_resource.allocate(memory_type_index_and_properties->type_index, memory_requirements.value.size, memory_requirements.value.alignment);
 
         bind_memory(device, image, device_memory_range.device_memory, device_memory_range.offset);
 
-        return image;
+        return {image, device_memory_range, memory_type_index_and_properties->properties};
     }
 
     VkImageView create_fonts_image_view(
@@ -139,7 +139,7 @@ namespace Mythology::ImGui
             {},
             {fonts_image},
             VK_IMAGE_VIEW_TYPE_2D,
-            VK_FORMAT_R8G8B8A8_UNORM,
+            VK_FORMAT_R8_UNORM,
             {},
             VkImageSubresourceRange
             {
@@ -522,8 +522,8 @@ namespace Mythology::ImGui
         device{device},
         allocator{allocator},
         geometry_buffer_node{*buffer_pool.allocate(4096, 0, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT)},
-        fonts_image{create_fonts_image(physical_device_memory_properties, device, monotonic_memory_resource, allocator)},
-        fonts_image_view{create_fonts_image_view(device, fonts_image)},
+        fonts_image_resource{create_fonts_image(physical_device_memory_properties, device, monotonic_memory_resource, allocator)},
+        fonts_image_view{create_fonts_image_view(device, fonts_image_resource.image)},
         fonts_sampler{create_fonts_sampler(device, allocator)},
         descriptor_set_layout{create_descriptor_set_layout(device, this->fonts_sampler)},
         descriptor_pool{descriptor_pool},
@@ -534,7 +534,7 @@ namespace Mythology::ImGui
     {
         {
             ImGuiIO& io = ::ImGui::GetIO();
-            io.Fonts->TexID = reinterpret_cast<ImTextureID>(fonts_image);
+            io.Fonts->TexID = reinterpret_cast<ImTextureID>(fonts_image_resource.image);
         }
 
         update_descriptor_set(device, descriptor_set, fonts_image_view);
@@ -544,7 +544,7 @@ namespace Mythology::ImGui
         device{std::exchange(other.device, {})},
         allocator{std::exchange(other.allocator, {})},
         geometry_buffer_node{std::exchange(other.geometry_buffer_node, {})},
-        fonts_image{std::exchange(other.fonts_image, {})},
+        fonts_image_resource{std::exchange(other.fonts_image_resource, {})},
         fonts_image_view{std::exchange(other.fonts_image_view, {})},
         fonts_sampler{std::exchange(other.fonts_sampler, {})},
         descriptor_set_layout{std::exchange(other.descriptor_set_layout, {})},
@@ -588,9 +588,9 @@ namespace Mythology::ImGui
             destroy_image_view({this->device}, {this->fonts_image_view}, this->allocator ? Allocation_callbacks{*this->allocator} : Allocation_callbacks{});
         }
 
-        if (this->fonts_image != VK_NULL_HANDLE)
+        if (this->fonts_image_resource.image != VK_NULL_HANDLE)
         {
-            destroy_image({this->device}, {this->fonts_image}, this->allocator ? Allocation_callbacks{*this->allocator} : Allocation_callbacks{});
+            destroy_image({this->device}, {this->fonts_image_resource.image}, this->allocator ? Allocation_callbacks{*this->allocator} : Allocation_callbacks{});
         }
 
         if (this->geometry_buffer_node.memory_tree != nullptr)
@@ -604,7 +604,7 @@ namespace Mythology::ImGui
         std::swap(device, other.device);
         std::swap(allocator, other.allocator);
         std::swap(geometry_buffer_node, other.geometry_buffer_node);
-        std::swap(fonts_image, other.fonts_image);
+        std::swap(fonts_image_resource, other.fonts_image_resource);
         std::swap(fonts_image_view, other.fonts_image_view);
         std::swap(fonts_sampler, other.fonts_sampler);
         std::swap(descriptor_set_layout, other.descriptor_set_layout);
@@ -618,10 +618,54 @@ namespace Mythology::ImGui
     }
 
     void upload_fonts_image_data(
+        VkDevice const device,
         VkCommandBuffer const command_buffer,
-        VkImage const fonts_image
+        VkImage const fonts_image,
+        Maia::Renderer::Vulkan::Device_memory_range const fonts_image_device_memory_range,
+        VkMemoryPropertyFlags const memory_properties
     ) noexcept
     {
+        assert((memory_properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0);
+        assert((memory_properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0);
+
+        {
+            ImGuiIO& io = ::ImGui::GetIO();
+            int width = 0;
+            int height = 0;
+            unsigned char* pixels = nullptr;
+            io.Fonts->GetTexDataAsAlpha8(&pixels, &width, &height);
+
+            {
+                Mapped_memory const mapped_memory
+                {
+                    device,
+                    fonts_image_device_memory_range.device_memory,
+                    fonts_image_device_memory_range.offset,
+                    fonts_image_device_memory_range.size
+                };
+
+                uint32_t const size_in_bytes = width * height * 1;
+                assert(size_in_bytes <= fonts_image_device_memory_range.size);
+
+                std::memcpy(mapped_memory.data(), pixels, size_in_bytes);
+            }
+
+            if (!(memory_properties & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
+            {
+                VkMappedMemoryRange const mapped_memory_range
+                {
+                    .sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+                    .pNext = nullptr,
+                    .memory = fonts_image_device_memory_range.device_memory,
+                    .offset = fonts_image_device_memory_range.offset,
+                    .size = fonts_image_device_memory_range.size,
+                };
+
+                check_result(
+                    vkFlushMappedMemoryRanges(device, 1, &mapped_memory_range));
+            }
+        }
+
         /*size_t const upload_size = width * height * 4 * sizeof(char);
         {
 
@@ -704,7 +748,7 @@ namespace Mythology::ImGui
                 .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                 .srcAccessMask = {}, // VK_ACCESS_TRANSFER_WRITE_BIT
                 .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
-                .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                .oldLayout = VK_IMAGE_LAYOUT_PREINITIALIZED,
                 .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
@@ -792,6 +836,9 @@ namespace Mythology::ImGui
         Maia::Renderer::Vulkan::Buffer_pool_memory_resource& geometry_buffer_pool
     ) noexcept
     {
+        assert((geometry_buffer_pool.memory_properties() & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0);
+        assert((geometry_buffer_pool.memory_properties() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0);
+
         VkDeviceSize const required_size = 
             draw_data.TotalVtxCount * sizeof(ImDrawVert) + draw_data.TotalIdxCount * sizeof(ImDrawIdx);
 
@@ -815,7 +862,7 @@ namespace Mythology::ImGui
             VkDeviceSize const offset_to_index_buffer = draw_data.TotalVtxCount * sizeof(ImDrawVert);
             upload_gometry_buffer_data(draw_data, mapped_memory.data(), static_cast<std::byte*>(mapped_memory.data()) + offset_to_index_buffer);
 
-            /*if (!(geometry_buffer_pool.memory_properties() & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
+            if (!(geometry_buffer_pool.memory_properties() & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
             {
                 VkMappedMemoryRange const mapped_memory_range
                 {
@@ -827,7 +874,7 @@ namespace Mythology::ImGui
                 };
 
                 flush_mapped_memory_ranges(device, {&mapped_memory_range, 1});
-            }*/
+            }
         }
 
         return geometry_buffer_node;

@@ -671,21 +671,21 @@ namespace Mythology::SDL
             Memory_requirements const memory_requirements = get_memory_requirements(device.value, buffer);
             Memory_type_bits const memory_type_bits = get_memory_type_bits(memory_requirements);
 
-            std::optional<Memory_type_index> const memory_type_index = find_memory_type(
+            std::optional<Memory_type_index_and_properties> const memory_type_index_and_properties = find_memory_type(
                 physical_device_memory_properties,
                 memory_type_bits,
                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
             );
-            assert(memory_type_index.has_value());
+            assert(memory_type_index_and_properties.has_value());
 
             VkDeviceMemory const device_memory =
-                allocate_memory(device.value, memory_requirements.value.size, *memory_type_index, allocator);
+                allocate_memory(device.value, memory_requirements.value.size, memory_type_index_and_properties->type_index, allocator);
 
             VkDeviceSize const device_offset = 0;
             bind_memory(device.value, buffer, device_memory, device_offset);
 
             VkMemoryPropertyFlags const memory_property_flags =
-                physical_device_memory_properties.value.memoryTypes[memory_type_index->value].propertyFlags;
+                physical_device_memory_properties.value.memoryTypes[memory_type_index_and_properties->type_index.value].propertyFlags;
 
             return {buffer, device_memory, memory_property_flags};
         }
@@ -881,10 +881,10 @@ namespace Mythology::SDL
             std::exit(EXIT_FAILURE);
         }
 
-        /*{
+        {
             using namespace std::chrono_literals;
             std::this_thread::sleep_for(5s);
-        }*/
+        }
 
         Device_resources const device_resources{make_api_version(1, 2, 0), *window.get()};
         Physical_device const physical_device = device_resources.physical_device;
@@ -1078,8 +1078,11 @@ namespace Mythology::SDL
             begin_command_buffer(command_buffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, {});
 
             Mythology::ImGui::upload_fonts_image_data(
+                device.value,
                 command_buffer.value,
-                imgui_resources.fonts_image
+                imgui_resources.fonts_image_resource.image,
+                imgui_resources.fonts_image_resource.device_memory_range,
+                imgui_resources.fonts_image_resource.memory_properties
             );
 
             end_command_buffer(command_buffer);
