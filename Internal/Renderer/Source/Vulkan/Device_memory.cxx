@@ -69,14 +69,21 @@ namespace Maia::Renderer::Vulkan
     {
         return !(lhs == rhs);
     }
+    
 
-    export std::optional<Memory_type_index> find_memory_type(
+    export struct Memory_type_index_and_properties
+    {
+        Memory_type_index type_index;
+        VkMemoryPropertyFlags properties;
+    };
+
+    export std::optional<Memory_type_index_and_properties> find_memory_type(
         Physical_device_memory_properties const& memory_properties,
         Memory_type_bits memory_type_bits_requirement,
         VkMemoryPropertyFlags required_properties
     ) noexcept;
 
-    export std::optional<Memory_type_index> find_memory_type(
+    export std::optional<Memory_type_index_and_properties> find_memory_type(
         Physical_device_memory_properties const& memory_properties,
         Memory_type_bits memory_type_bits_requirement,
         VkMemoryPropertyFlags required_properties,

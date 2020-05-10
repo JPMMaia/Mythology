@@ -165,7 +165,7 @@ namespace Maia::Renderer::Vulkan
     }
 
 
-    std::optional<Memory_type_index> find_memory_type(
+    std::optional<Memory_type_index_and_properties> find_memory_type(
         Physical_device_memory_properties const& memory_properties,
         Memory_type_bits const memory_type_bits_requirement,
         VkMemoryPropertyFlags const required_properties
@@ -184,25 +184,25 @@ namespace Maia::Renderer::Vulkan
                 (properties & required_properties) == required_properties;
 
             if (is_required_memory_type && has_required_properties)
-                return {{memory_index}};
+                return Memory_type_index_and_properties{{memory_index}, properties};
         }
 
         return {};
     }
 
-    std::optional<Memory_type_index> find_memory_type(
+    std::optional<Memory_type_index_and_properties> find_memory_type(
         Physical_device_memory_properties const& memory_properties,
         Memory_type_bits const memory_type_bits_requirement,
         VkMemoryPropertyFlags const required_properties,
         VkMemoryPropertyFlags const optimal_properties
     ) noexcept
     {
-        std::optional<Memory_type_index> const memory_type_index =
+        std::optional<Memory_type_index_and_properties> const memory_type_index_and_properties =
             find_memory_type(memory_properties, memory_type_bits_requirement, required_properties | optimal_properties);
 
-        if (memory_type_index.has_value())
+        if (memory_type_index_and_properties.has_value())
         {
-            return memory_type_index;
+            return memory_type_index_and_properties;
         }
         else 
         {
