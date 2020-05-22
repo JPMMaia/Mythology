@@ -56,7 +56,7 @@ class AccessFlagsNodeSocket(bpy.types.NodeSocket):
     
     bl_label = "Access Flags Socket"
 
-    values = (
+    enmu_values = (
         ("NONE", "NONE", ""),
         ("INDIRECT_COMMAND_READ", "INDIRECT_COMMAND_READ", ""),
         ("INDEX_READ", "INDEX_READ", ""),
@@ -77,10 +77,10 @@ class AccessFlagsNodeSocket(bpy.types.NodeSocket):
         ("MEMORY_WRITE", "MEMORY_WRITE", ""),
     )
 
-    values_property: bpy.props.EnumProperty(
+    default_value: bpy.props.EnumProperty(
         name="Access Flags",
         description="Access Flags",
-        items=values,
+        items=enum_values,
         default="NONE",
     )
 
@@ -88,7 +88,7 @@ class AccessFlagsNodeSocket(bpy.types.NodeSocket):
         if self.is_output or self.is_linked:
             layout.label(text=text)
         else:
-            layout.prop(self, "values_property", text=text)
+            layout.prop(self, "default_value", text=text)
 
     def draw_color(self, context, node):
         return (1.0, 0.0, 0.0, 1.0)
@@ -117,17 +117,17 @@ class DependencyFlagsNodeSocket(bpy.types.NodeSocket):
     
     bl_label = "Dependency Flags Socket"
 
-    values = (
+    enmu_values = (
         ("NONE", "NONE", ""),
         ("BY_REGION", "BY_REGION", ""),
         ("DEVICE_GROUP", "DEVICE_GROUP", ""),
         ("VIEW_LOCAL", "VIEW_LOCAL", ""),
     )
 
-    values_property: bpy.props.EnumProperty(
+    default_value: bpy.props.EnumProperty(
         name="Dependency Flags",
         description="Dependency Flags",
-        items=values,
+        items=enum_values,
         default="NONE",
     )
 
@@ -135,7 +135,7 @@ class DependencyFlagsNodeSocket(bpy.types.NodeSocket):
         if self.is_output or self.is_linked:
             layout.label(text=text)
         else:
-            layout.prop(self, "values_property", text=text)
+            layout.prop(self, "default_value", text=text)
 
     def draw_color(self, context, node):
         return (1.0, 0.5, 0.0, 1.0)
@@ -144,7 +144,7 @@ class FormatNodeSocket(bpy.types.NodeSocket):
     
     bl_label = "Format Node Socket"
 
-    formats = (
+    enum_values = (
         ("UNDEFINED", "UNDEFINED", ""),
         ("R8_UNORM", "R8_UNORM", ""),
         ("R8_SNORM", "R8_SNORM", ""),
@@ -251,10 +251,10 @@ class FormatNodeSocket(bpy.types.NodeSocket):
         ("D32_SFLOAT_S8_UINT", "D32_SFLOAT_S8_UINT", ""),
     )
 
-    formats_property: bpy.props.EnumProperty(
+    default_value: bpy.props.EnumProperty(
         name="Format",
         description="Format",
-        items=formats,
+        items=enum_values,
         default='UNDEFINED',
     )
 
@@ -262,7 +262,7 @@ class FormatNodeSocket(bpy.types.NodeSocket):
         if self.is_output or self.is_linked:
             layout.label(text=text)
         else:
-            layout.prop(self, "formats_property", text=text)
+            layout.prop(self, "default_value", text=text)
 
     def draw_color(self, context, node):
         return (0.5, 1.0, 0.0, 1.0)
@@ -272,7 +272,7 @@ class SampleCountNodeSocket(bpy.types.NodeSocket):
     
     bl_label = "Format Node Socket"
 
-    sample_count = (
+    enum_values = (
         ("1", "1", ""),
         ("2", "2", ""),
         ("4", "4", ""),
@@ -282,10 +282,10 @@ class SampleCountNodeSocket(bpy.types.NodeSocket):
         ("64", "64", ""),
     )
 
-    sample_count_property: bpy.props.EnumProperty(
+    default_value: bpy.props.EnumProperty(
         name="Sample count",
         description="Sample count",
-        items=sample_count,
+        items=enum_values,
         default="1",
     )
 
@@ -293,7 +293,7 @@ class SampleCountNodeSocket(bpy.types.NodeSocket):
         if self.is_output or self.is_linked:
             layout.label(text=text)
         else:
-            layout.prop(self, "sample_count_property", text=text)
+            layout.prop(self, "default_value", text=text)
 
     def draw_color(self, context, node):
         return (0.0, 0.5, 1.0, 1.0)
@@ -302,16 +302,16 @@ class LoadOperationNodeSocket(bpy.types.NodeSocket):
     
     bl_label = "Load operation Socket"
 
-    values = (
+    enmu_values = (
         ("LOAD", "Load", ""),
         ("CLEAR", "Clear", ""),
         ("DONT_CARE", "Don't care", ""),
     )
 
-    values_property: bpy.props.EnumProperty(
+    default_value: bpy.props.EnumProperty(
         name="Load operation",
         description="Load operation",
-        items=values,
+        items=enum_values,
         default="LOAD",
     )
 
@@ -319,7 +319,7 @@ class LoadOperationNodeSocket(bpy.types.NodeSocket):
         if self.is_output or self.is_linked:
             layout.label(text=text)
         else:
-            layout.prop(self, "values_property", text=text)
+            layout.prop(self, "default_value", text=text)
 
     def draw_color(self, context, node):
         return (1.0, 0.5, 0.5, 1.0)
@@ -329,15 +329,15 @@ class StoreOperationNodeSocket(bpy.types.NodeSocket):
     
     bl_label = "Store operation Socket"
 
-    values = (
+    enmu_values = (
         ("STORE", "Store", ""),
         ("DONT_CARE", "Don't care", ""),
     )
 
-    values_property: bpy.props.EnumProperty(
+    default_value: bpy.props.EnumProperty(
         name="Store operation",
         description="Store operation",
-        items=values,
+        items=enum_values,
         default="STORE",
     )
 
@@ -345,7 +345,7 @@ class StoreOperationNodeSocket(bpy.types.NodeSocket):
         if self.is_output or self.is_linked:
             layout.label(text=text)
         else:
-            layout.prop(self, "values_property", text=text)
+            layout.prop(self, "default_value", text=text)
 
     def draw_color(self, context, node):
         return (1.0, 1.0, 0.5, 1.0)
@@ -364,7 +364,7 @@ class ImageLayoutNodeSocket(bpy.types.NodeSocket):
     
     bl_label = "Image layout Socket"
 
-    values = (
+    enmu_values = (
         ("UNDEFINED", "UNDEFINED", ""),
         ("GENERAL", "GENERAL", ""),
         ("COLOR_ATTACHMENT_OPTIMAL", "COLOR_ATTACHMENT_OPTIMAL", ""),
@@ -382,10 +382,10 @@ class ImageLayoutNodeSocket(bpy.types.NodeSocket):
         ("STENCIL_READ_ONLY_OPTIMAL", "STENCIL_READ_ONLY_OPTIMAL", ""),
     )
 
-    values_property: bpy.props.EnumProperty(
+    default_value: bpy.props.EnumProperty(
         name="Image layout",
         description="Image layout",
-        items=values,
+        items=enum_values,
         default="UNDEFINED",
     )
 
@@ -393,7 +393,7 @@ class ImageLayoutNodeSocket(bpy.types.NodeSocket):
         if self.is_output or self.is_linked:
             layout.label(text=text)
         else:
-            layout.prop(self, "values_property", text=text)
+            layout.prop(self, "default_value", text=text)
 
     def draw_color(self, context, node):
         return (0.75, 0.25, 0.5, 1.0)
@@ -403,15 +403,15 @@ class PipelineBindPointNodeSocket(bpy.types.NodeSocket):
     
     bl_label = "Pipeline Bind Point Node Socket"
 
-    values = (
+    enmu_values = (
         ("GRAPHICS", "Graphics", ""),
         ("COMPUTE", "Compute", ""),
     )
 
-    values_property: bpy.props.EnumProperty(
+    default_value: bpy.props.EnumProperty(
         name="Pipeline Bind Point",
         description="Pipeline Bind Point",
-        items=values,
+        items=enum_values,
         default="GRAPHICS",
     )
 
@@ -419,7 +419,7 @@ class PipelineBindPointNodeSocket(bpy.types.NodeSocket):
         if self.is_output or self.is_linked:
             layout.label(text=text)
         else:
-            layout.prop(self, "values_property", text=text)
+            layout.prop(self, "default_value", text=text)
 
     def draw_color(self, context, node):
         return (0.25, 0.5, 0.75, 1.0)
@@ -429,7 +429,7 @@ class PipelineStageFlagsNodeSocket(bpy.types.NodeSocket):
     
     bl_label = "Pipeline Stage Flags Node Socket"
 
-    values = (
+    enmu_values = (
         ("TOP_OF_PIPE", "TOP_OF_PIPE", ""),
         ("DRAW_INDIRECT", "DRAW_INDIRECT", ""),
         ("VERTEX_INPUT", "VERTEX_INPUT", ""),
@@ -449,10 +449,10 @@ class PipelineStageFlagsNodeSocket(bpy.types.NodeSocket):
         ("ALL_COMMANDS", "ALL_COMMANDS", ""),
     )
 
-    values_property: bpy.props.EnumProperty(
+    default_value: bpy.props.EnumProperty(
         name="Pipeline Stage Flags",
         description="Pipeline Stage Flags",
-        items=values,
+        items=enum_values,
         default="TOP_OF_PIPE",
     )
 
@@ -460,7 +460,7 @@ class PipelineStageFlagsNodeSocket(bpy.types.NodeSocket):
         if self.is_output or self.is_linked:
             layout.label(text=text)
         else:
-            layout.prop(self, "values_property", text=text)
+            layout.prop(self, "default_value", text=text)
 
     def draw_color(self, context, node):
         return (0.5, 0.75, 0.75, 1.0)
@@ -596,3 +596,80 @@ render_pass_node_categories = [
         nodeitems_utils.NodeItem("SubpassNode"),
     ]),
 ]
+
+import functools
+import operator
+import typing
+
+JSONType = typing.Union[str, int, float, bool, None, typing.Dict[str, typing.Any], typing.List[typing.Any]]
+
+def get_attachment_input(attachment_node: AttachmentNode, input_name: str) -> typing.Any:
+
+    assert len(attachment_node.inputs[input_name]) == 0
+
+    return attachment_node.inputs[input_name].default_value
+
+
+def attachment_to_json(attachment_node: AttachmentNode) -> JSONType:
+    
+    return {
+        "flags": 0, # TODO
+        "format": get_attachment_input(attachment_node, "Format"),
+        "samples": get_attachment_input(attachment_node, "Sample Count"),
+        "load_operation": get_attachment_input(attachment_node, "Load Op"),
+        "store_operation": get_attachment_input(attachment_node, "Store Op"),
+        "stencil_load_operation": get_attachment_input(attachment_node, "Stencil Load Op"),
+        "stencil_store_operation": get_attachment_input(attachment_node, "Stencil Store Op"),
+        "initial_layout": get_attachment_input(attachment_node, "Initial Layout"),
+        "final_layout": get_attachment_input(attachment_node, "Final Layout"),
+    }
+
+
+def get_subpass_input(subpass_node: SubpassNode, input_name: str) -> typing.Any:
+    
+    assert len(subpass_node.inputs[input_name]) == 0
+
+    return subpass_node.inputs[input_name].default_value
+
+def subpass_to_json(subpass_node: SubpassNode, attachments: typing.List[AttachmentNode]) -> JSONType:
+    
+    return {
+        "pipeline_bind_point": get_subpass_input(subpass_node, "Pipeline Bind Point"),
+        "input_attachments": [],
+    }
+
+def subpass_dependency_to_json(subpass_depency_node: SubpassDependencyNode) -> JSONType:
+    return {}
+
+def render_pass_to_json(nodes: typing.List[bpy.types.Node]) -> JSONType:
+    
+    render_pass_nodes = [node
+                         for node in nodes
+                         if node.bl_idname == "RenderPassNode"]
+
+    assert functools.reduce(operator.and_, [len(node.inputs["Subpasses"].links) > 0
+                                            for node in render_pass_nodes])
+
+    attachments_per_render_pass = [[link.from_node 
+                                    for link in node.inputs["Attachments"].links]
+                                   for node in render_pass_nodes]
+
+    assert functools.reduce(operator.and_, [attachment.bl_idname == "AttachmentNode"
+                                            for attachments in attachments_per_render_pass
+                                            for attachment in attachments])
+
+    subpasses_per_render_pass = [[link.from_node 
+                                  for link in node.inputs["Subpasses"].links]
+                                 for node in render_pass_nodes]
+
+    assert functools.reduce(operator.and_, [subpass.bl_idname == "SubpassNode"
+                                            for subpasses in subpasses_per_render_pass
+                                            for subpass in subpasses])
+
+    attachments_per_render_pass_jsons = [[attachment_to_json(attachment) for attachment in attachments]
+                                         for attachments in attachments_per_render_pass]
+
+    subpasses_per_render_pass_jsons = [[subpass_to_json(subpass, subpasses_per_render_pass[render_pass_index]) for subpass in subpasses]
+                                       for render_pass_index, subpasses in enumerate(subpasses_per_render_pass)]
+
+    return {"hello": 1}

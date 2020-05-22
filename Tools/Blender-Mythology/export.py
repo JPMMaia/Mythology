@@ -1,5 +1,7 @@
 import bpy
 
+from .render_pass import render_pass_to_json
+
 class MythologyExportOperator(bpy.types.Operator):
 
     bl_idname = "mythology.export_json"
@@ -7,9 +9,13 @@ class MythologyExportOperator(bpy.types.Operator):
 
     def execute(self, context):
 
-        # TODO call function that outputs a json corresponding to the selected nodes
+        nodes = [node
+                 for node in bpy.data.node_groups['NodeTree'].nodes]
 
-        print("Hello World")
+        render_passes_json = render_pass_to_json(nodes)
+
+        print(render_passes_json)
+        
         return {'FINISHED'}
 
 def mythology_export_menu(self, context):
