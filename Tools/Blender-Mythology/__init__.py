@@ -1,0 +1,51 @@
+bl_info = {
+    "name": "Mythology Addon",
+    "blender": (2, 82, 0),
+    "category": "Object",
+}
+
+import bpy
+import nodeitems_utils
+from .render_pass import *
+
+classes = (
+    render_pass.MyCustomTree,
+    render_pass.MyCustomSocket,
+    render_pass.AccessFlagsNodeSocket,
+    render_pass.AttachmentNodeSocket,
+    render_pass.AttachmentReferenceNodeSocket,
+    render_pass.DependencyFlagsNodeSocket,
+    render_pass.FormatNodeSocket,
+    render_pass.ImageLayoutNodeSocket,
+    render_pass.LoadOperationNodeSocket,
+    render_pass.PipelineBindPointNodeSocket,
+    render_pass.PipelineStageFlagsNodeSocket,
+    render_pass.RenderPassNodeSocket,
+    render_pass.SampleCountNodeSocket,
+    render_pass.StoreOperationNodeSocket,
+    render_pass.SubpassDependencyNodeSocket,
+    render_pass.SubpassNodeSocket,
+
+    render_pass.AttachmentNode,
+    render_pass.AttachmentReferenceNode,
+    render_pass.RenderPassNode,
+    render_pass.SubpassDependencyNode,
+    render_pass.SubpassNode,
+)
+
+def register():
+
+    from bpy.utils import register_class
+    for cls in classes:
+        register_class(cls)
+
+    nodeitems_utils.register_node_categories('RENDER_PASS', render_pass_node_categories)
+
+
+def unregister():
+
+    nodeitems_utils.unregister_node_categories('RENDER_PASS')
+
+    from bpy.utils import unregister_class
+    for cls in reversed(classes):
+        unregister_class(cls)
