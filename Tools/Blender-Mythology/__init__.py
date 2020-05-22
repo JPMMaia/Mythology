@@ -6,6 +6,7 @@ bl_info = {
 
 import bpy
 import nodeitems_utils
+from .export import *
 from .render_pass import *
 
 classes = (
@@ -31,6 +32,8 @@ classes = (
     render_pass.RenderPassNode,
     render_pass.SubpassDependencyNode,
     render_pass.SubpassNode,
+
+    export.MythologyExportOperator,
 )
 
 def register():
@@ -41,8 +44,12 @@ def register():
 
     nodeitems_utils.register_node_categories('RENDER_PASS', render_pass_node_categories)
 
+    bpy.types.NODE_MT_node.append(export.mythology_export_menu)
+
 
 def unregister():
+
+    bpy.types.NODE_MT_node.remove(export.mythology_export_menu)
 
     nodeitems_utils.unregister_node_categories('RENDER_PASS')
 
