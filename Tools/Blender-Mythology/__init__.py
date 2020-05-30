@@ -27,6 +27,7 @@ classes = (
     render_pass.SubpassDependencyNodeSocket,
     render_pass.SubpassNodeSocket,
 
+    render_pass.AccessFlagsNode,
     render_pass.AttachmentNode,
     render_pass.AttachmentReferenceNode,
     render_pass.RenderPassNode,

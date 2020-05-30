@@ -1,4 +1,5 @@
 import bpy
+import json
 
 from .render_pass import render_pass_to_json
 
@@ -14,7 +15,7 @@ class MythologyExportOperator(bpy.types.Operator):
 
         render_passes_json = render_pass_to_json(nodes)
 
-        print(render_passes_json)
+        print(json.dumps(render_passes_json))
         
         return {'FINISHED'}
 
