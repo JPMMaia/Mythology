@@ -7,12 +7,19 @@ bl_info = {
 import bpy
 import nodeitems_utils
 from .export import *
+from .pipeline_state import *
 from .render_node_tree import *
 from .render_pass import *
 
 classes = (
     render_node_tree.RenderNodeTree,
+
+    pipeline_state.PipelineShaderStageNodeSocket,
+    pipeline_state.ShaderModuleNodeSocket,
     
+    pipeline_state.PipelineShaderStageNode,
+    pipeline_state.ShaderModuleNode,
+
     render_pass.AccessFlagsNodeSocket,
     render_pass.AttachmentNodeSocket,
     render_pass.AttachmentReferenceNodeSocket,
@@ -45,6 +52,7 @@ def register():
         register_class(cls)
 
     nodeitems_utils.register_node_categories('RENDER_PASS', render_pass_node_categories)
+    nodeitems_utils.register_node_categories('PIPELINE_STATE', pipeline_state_node_categories)
 
     bpy.types.NODE_MT_node.append(export.mythology_export_menu)
 
@@ -53,6 +61,7 @@ def unregister():
 
     bpy.types.NODE_MT_node.remove(export.mythology_export_menu)
 
+    nodeitems_utils.unregister_node_categories('PIPELINE_STATE')
     nodeitems_utils.unregister_node_categories('RENDER_PASS')
 
     from bpy.utils import unregister_class
