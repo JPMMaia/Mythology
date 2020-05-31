@@ -3,55 +3,7 @@ import typing
 
 from bpy.types import NodeTree, Node, NodeSocket
 
-# Implementation of custom nodes from Python
-
-
-# Derived from the NodeTree base type, similar to Menu, Operator, Panel, etc.
-class MyCustomTree(NodeTree):
-    # Description string
-    '''A custom node tree type that will show up in the editor type list'''
-    # Optional identifier string. If not explicitly defined, the python class name is used.
-    bl_idname = 'CustomTreeType'
-    # Label for nice name display
-    bl_label = "Custom Node Tree"
-    # Icon identifier
-    bl_icon = 'NODETREE'
-
-
-# Custom socket type
-class MyCustomSocket(NodeSocket):
-    # Description string
-    '''Custom node socket type'''
-    # Optional identifier string. If not explicitly defined, the python class name is used.
-    bl_idname = 'CustomSocketType'
-    # Label for nice name display
-    bl_label = "Custom Node Socket"
-
-    # Enum items list
-    my_items = (
-        ('DOWN', "Down", "Where your feet are"),
-        ('UP', "Up", "Where your head should be"),
-        ('LEFT', "Left", "Not right"),
-        ('RIGHT', "Right", "Not left"),
-    )
-
-    my_enum_prop: bpy.props.EnumProperty(
-        name="Direction",
-        description="Just an example",
-        items=my_items,
-        default='UP',
-    )
-
-    # Optional function for drawing the socket input value
-    def draw(self, context, layout, node, text):
-        if self.is_output or self.is_linked:
-            layout.label(text=text)
-        else:
-            layout.prop(self, "my_enum_prop", text=text)
-
-    # Socket color
-    def draw_color(self, context, node):
-        return (1.0, 0.0, 0.0, 1.0)
+from .render_node_tree import RenderTreeNode
 
 
 class AccessFlagsNodeSocket(bpy.types.NodeSocket):
@@ -556,15 +508,8 @@ class SubpassDependencyNodeSocket(bpy.types.NodeSocket):
         return (0.0, 0.25, 0.75, 1.0)
 
 
-# Mix-in class for all custom nodes in this tree type.
-# Defines a poll function to enable instantiation.
-class MyCustomTreeNode:
-    @classmethod
-    def poll(cls, ntree):
-        return ntree.bl_idname == 'CustomTreeType'
 
-
-class AccessFlagsNode(bpy.types.Node, MyCustomTreeNode):
+class AccessFlagsNode(bpy.types.Node, RenderTreeNode):
 
     bl_label = 'Access Flags node'
 
@@ -574,7 +519,7 @@ class AccessFlagsNode(bpy.types.Node, MyCustomTreeNode):
         self.outputs.new('AccessFlagsNodeSocket', "Flags")
 
 
-class AttachmentNode(bpy.types.Node, MyCustomTreeNode):
+class AttachmentNode(bpy.types.Node, RenderTreeNode):
 
     bl_label = 'Attachment node'
 
@@ -591,7 +536,7 @@ class AttachmentNode(bpy.types.Node, MyCustomTreeNode):
         self.outputs.new('AttachmentNodeSocket', "Attachment")
 
 
-class AttachmentReferenceNode(bpy.types.Node, MyCustomTreeNode):
+class AttachmentReferenceNode(bpy.types.Node, RenderTreeNode):
 
     bl_label = 'Attachment Reference node'
 
@@ -605,7 +550,7 @@ class AttachmentReferenceNode(bpy.types.Node, MyCustomTreeNode):
 
 
 # Derived from the Node base type.
-class RenderPassNode(bpy.types.Node, MyCustomTreeNode):
+class RenderPassNode(bpy.types.Node, RenderTreeNode):
     
     bl_idname = 'RenderPassNode'
     bl_label = "Render pass node"
@@ -634,7 +579,7 @@ class RenderPassNode(bpy.types.Node, MyCustomTreeNode):
 
         self.outputs.new('RenderPassNodeSocket', "Render Pass")
 
-class SubpassDependencyNode(bpy.types.Node, MyCustomTreeNode):
+class SubpassDependencyNode(bpy.types.Node, RenderTreeNode):
 
     bl_label = 'Subpass Dependency node'
 
@@ -650,7 +595,7 @@ class SubpassDependencyNode(bpy.types.Node, MyCustomTreeNode):
 
         self.outputs.new('SubpassDependencyNodeSocket', "Subpass Dependency")
 
-class SubpassNode(bpy.types.Node, MyCustomTreeNode):
+class SubpassNode(bpy.types.Node, RenderTreeNode):
 
     bl_label = 'Subpass node'
 
@@ -673,7 +618,7 @@ class RenderPassNodeCategory(nodeitems_utils.NodeCategory):
     
     @classmethod
     def poll(cls, context):
-        return context.space_data.tree_type == 'CustomTreeType'
+        return context.space_data.tree_type == 'RenderNodeTree'
 
 
 render_pass_node_categories = [

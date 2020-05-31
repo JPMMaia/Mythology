@@ -7,11 +7,12 @@ bl_info = {
 import bpy
 import nodeitems_utils
 from .export import *
+from .render_node_tree import *
 from .render_pass import *
 
 classes = (
-    render_pass.MyCustomTree,
-    render_pass.MyCustomSocket,
+    render_node_tree.RenderNodeTree,
+    
     render_pass.AccessFlagsNodeSocket,
     render_pass.AttachmentNodeSocket,
     render_pass.AttachmentReferenceNodeSocket,
