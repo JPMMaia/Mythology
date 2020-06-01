@@ -14,12 +14,14 @@ from .render_pass import *
 classes = (
     render_node_tree.RenderNodeTree,
 
+    pipeline_state.InputAssemblyStateNodeSocket,
     pipeline_state.PipelineShaderStageNodeSocket,
     pipeline_state.ShaderModuleNodeSocket,
     pipeline_state.VertexInputAttributeNodeSocket,
     pipeline_state.VertexInputBindingNodeSocket,
     pipeline_state.VertexInputStateNodeSocket,
     
+    pipeline_state.InputAssemblyStateNode,
     pipeline_state.PipelineShaderStageNode,
     pipeline_state.ShaderModuleNode,
     pipeline_state.VertexInputAttributeNode,

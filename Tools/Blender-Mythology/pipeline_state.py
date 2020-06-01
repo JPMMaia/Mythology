@@ -3,6 +3,16 @@ import bpy
 from .render_node_tree import RenderTreeNode
 from .vulkan_enums import *
 
+class InputAssemblyStateNodeSocket(bpy.types.NodeSocket):
+
+    bl_label = "Input Assembly State node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.5, 0.5, 0.0, 1.0)
+
 class PipelineShaderStageNodeSocket(bpy.types.NodeSocket):
     
     bl_label = "Pipeline Shader Node Socket"
@@ -52,6 +62,35 @@ class VertexInputStateNodeSocket(bpy.types.NodeSocket):
 
     def draw_color(self, context, node):
         return (0.0, 0.0, 1.0, 1.0)
+
+
+topology_values = (
+    ("POINT_LIST", "Point List", "", 0),
+    ("LINE_LIST", "Line List", "", 1),
+    ("LINE_STRIP", "Line Strip", "", 2),
+    ("TRIANGLE_LIST", "Triangle List", "", 3),
+    ("TRIANGLE_STRIP", "Triangle Strip", "", 4),
+    ("TRIANGLE_FAN", "Triangle Fan", "", 5),
+    ("LINE_LIST_WITH_ADJACENCY", "Line List With Adjacency", "", 6),
+    ("LINE_STRIP_WITH_ADJACENCY", "Line Strip With Adjacency", "", 7),
+    ("TRIANGLE_LIST_WITH_ADJACENCY", "Triangle List With Adjacency", "", 8),
+    ("TRIANGLE_STRIP_WITH_ADJACENCY", "Triangle Strip With Adjacency", "", 9),
+    ("PATCH_LIST", "Patch List", "", 10),
+)
+
+class InputAssemblyStateNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = 'Input Assembly State node'
+
+    topology_property: bpy.props.EnumProperty(name="Topology", items=topology_values)
+    primitive_restart_enable_property: bpy.props.BoolProperty(name="Primitive Restart Enable")
+
+    def init(self, context):
+        self.outputs.new("InputAssemblyStateNodeSocket", "Input Assembly State")
+
+    def draw_buttons(self, context, layout):
+        layout.prop(self, "topology_property")
+        layout.prop(self, "primitive_restart_enable_property")
 
 
 class PipelineShaderStageNode(bpy.types.Node, RenderTreeNode):
@@ -151,6 +190,43 @@ class VertexInputStateNode(bpy.types.Node, RenderTreeNode):
         self.outputs.new("VertexInputStateNodeSocket", "Vertex Input State")
 
 
+class ViewportStateNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = 'Viewport State node'
+
+    viewport_count_property: bpy.props.IntProperty(name="Viewport Count", min=1)
+    dynamic_viewport_property: bpy.props.BoolProperty(name="Dynamic Viewport")
+    scissor_count_property: bpy.props.IntProperty(name="Scissor Count", min=1)
+    dynamic_scissor_property: bpy.props.BoolProperty(name="Dynamic Scissor")
+
+    def init(self, context):
+        # TODO create socket classes
+        self.inputs.new("ViewportNodeSocket", "Viewports")
+        self.inputs["Viewports"].link_limit = 0
+        self.inputs.new("ScissorNodeSocket", "Scissors")
+        self.inputs["Scissors"].link_limit = 0
+
+        self.outputs.new("ViewportStateNodeSocket", "Viewport State")
+
+    def draw_buttons(self, context, layout):
+
+        layout.prop(self, "dynamic_viewport_property")
+        
+        if self.dynamic_viewport_property:
+            layout.prop(self, "viewport_count_property")
+
+        layout.prop(self, "dynamic_scissor_property")
+
+        if self.dynamic_scissor_property:
+            layout.prop(self, "scissor_count_property")
+
+    def update(self):
+        
+        self.inputs["Viewports"].enabled = not self.dynamic_viewport_property
+        self.inputs["Scissors"].enabled = not self.dynamic_scissor_property
+        
+
+
 import nodeitems_utils
 
 class PipelineStateNodeCategory(nodeitems_utils.NodeCategory):
@@ -162,6 +238,7 @@ class PipelineStateNodeCategory(nodeitems_utils.NodeCategory):
 
 pipeline_state_node_categories = [
     PipelineStateNodeCategory('PIPELINE_STATE', "Pipeline State", items=[
+        nodeitems_utils.NodeItem("InputAssemblyStateNode"),
         nodeitems_utils.NodeItem("PipelineShaderStageNode"),
         nodeitems_utils.NodeItem("ShaderModuleNode"),
         nodeitems_utils.NodeItem("VertexInputAttributeNode"),
