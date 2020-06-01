@@ -16,9 +16,15 @@ classes = (
 
     pipeline_state.PipelineShaderStageNodeSocket,
     pipeline_state.ShaderModuleNodeSocket,
+    pipeline_state.VertexInputAttributeNodeSocket,
+    pipeline_state.VertexInputBindingNodeSocket,
+    pipeline_state.VertexInputStateNodeSocket,
     
     pipeline_state.PipelineShaderStageNode,
     pipeline_state.ShaderModuleNode,
+    pipeline_state.VertexInputAttributeNode,
+    pipeline_state.VertexInputBindingNode,
+    pipeline_state.VertexInputStateNode,
 
     render_pass.AccessFlagsNodeSocket,
     render_pass.AttachmentNodeSocket,
