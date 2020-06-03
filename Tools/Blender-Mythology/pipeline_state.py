@@ -3,6 +3,16 @@ import bpy
 from .render_node_tree import RenderTreeNode
 from .vulkan_enums import *
 
+class Extent2DNodeSocket(bpy.types.NodeSocket):
+    
+    bl_label = "Extent 2D node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.75, 0.75, 0.75, 1.0)
+
 class InputAssemblyStateNodeSocket(bpy.types.NodeSocket):
 
     bl_label = "Input Assembly State node socket"
@@ -13,6 +23,16 @@ class InputAssemblyStateNodeSocket(bpy.types.NodeSocket):
     def draw_color(self, context, node):
         return (0.5, 0.5, 0.0, 1.0)
 
+class Offset2DNodeSocket(bpy.types.NodeSocket):
+    
+    bl_label = "Offset 2D node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.25, 0.25, 0.25, 1.0)
+
 class PipelineShaderStageNodeSocket(bpy.types.NodeSocket):
     
     bl_label = "Pipeline Shader Node Socket"
@@ -22,6 +42,16 @@ class PipelineShaderStageNodeSocket(bpy.types.NodeSocket):
 
     def draw_color(self, context, node):
         return (0.0, 1.0, 0.0, 1.0)
+
+class Rect2DNodeSocket(bpy.types.NodeSocket):
+
+    bl_label = "Scissor node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.0, 0.25, 0.25, 1.0)
 
 class ShaderModuleNodeSocket(bpy.types.NodeSocket):
     
@@ -63,6 +93,25 @@ class VertexInputStateNodeSocket(bpy.types.NodeSocket):
     def draw_color(self, context, node):
         return (0.0, 0.0, 1.0, 1.0)
 
+class ViewportNodeSocket(bpy.types.NodeSocket):
+
+    bl_label = "Viewport node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.25, 0.0, 0.25, 1.0)
+
+class ViewportStateNodeSocket(bpy.types.NodeSocket):
+
+    bl_label = "Viewport node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.1, 0.5, 0.5, 1.0)
 
 topology_values = (
     ("POINT_LIST", "Point List", "", 0),
@@ -77,6 +126,22 @@ topology_values = (
     ("TRIANGLE_STRIP_WITH_ADJACENCY", "Triangle Strip With Adjacency", "", 9),
     ("PATCH_LIST", "Patch List", "", 10),
 )
+
+class Extent2DNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = 'Extent 2D node'
+
+    width_property: bpy.props.IntProperty(name="Width", default=800, min=0)
+    height_property: bpy.props.IntProperty(name="Height", default=600, min=0)
+
+    def init(self, context):
+        
+        self.outputs.new("Extent2DNodeSocket", "Extent 2D")
+
+    def draw_buttons(self, context, layout):
+
+        layout.prop(self, "width_property")
+        layout.prop(self, "height_property")
 
 class InputAssemblyStateNode(bpy.types.Node, RenderTreeNode):
 
@@ -93,6 +158,22 @@ class InputAssemblyStateNode(bpy.types.Node, RenderTreeNode):
         layout.prop(self, "primitive_restart_enable_property")
 
 
+class Offset2DNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = 'Offset 2D node'
+
+    x_property: bpy.props.IntProperty(name="X", default=0)
+    y_property: bpy.props.IntProperty(name="Y", default=0)
+
+    def init(self, context):
+        
+        self.outputs.new("Offset2DNodeSocket", "Offset 2D")
+
+    def draw_buttons(self, context, layout):
+
+        layout.prop(self, "x_property")
+        layout.prop(self, "y_property")
+
 class PipelineShaderStageNode(bpy.types.Node, RenderTreeNode):
 
     bl_label = 'Pipeline Shader Stage node'
@@ -100,6 +181,16 @@ class PipelineShaderStageNode(bpy.types.Node, RenderTreeNode):
     def init(self, context):
         self.inputs.new("ShaderModuleNodeSocket", "Shader")
         self.outputs.new("PipelineShaderStageNodeSocket", "Stage")
+
+class Rect2DNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = 'Rect2D node'
+
+    def init(self, context):
+        self.inputs.new("Offset2DNodeSocket", "Offset")
+        self.inputs.new("Extent2DNodeSocket", "Extent")
+        
+        self.outputs.new("Rect2DNodeSocket", "Scissor")
 
 
 shader_type_values = [
@@ -189,6 +280,30 @@ class VertexInputStateNode(bpy.types.Node, RenderTreeNode):
 
         self.outputs.new("VertexInputStateNodeSocket", "Vertex Input State")
 
+class ViewportNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = 'Viewport node'
+
+    x_property: bpy.props.FloatProperty(name="X", default=0.0)
+    y_property: bpy.props.FloatProperty(name="Y", default=0.0)
+    width_property: bpy.props.FloatProperty(name="Width", min=0.00001, default=800.0)
+    height_property: bpy.props.FloatProperty(name="Height", min=0.00001, default=600.0)
+    minimum_depth_property: bpy.props.FloatProperty(name="Minimum Depth", min=0.0, max=1.0)
+    maximum_depth_property: bpy.props.FloatProperty(name="Maximum Depth", min=0.0, max=1.0)
+
+    def init(self, context):
+        
+        self.outputs.new("ViewportNodeSocket", "Viewport")
+
+    def draw_buttons(self, context, layout):
+
+        layout.prop(self, "x_property")
+        layout.prop(self, "y_property")
+        layout.prop(self, "width_property")
+        layout.prop(self, "height_property")
+        layout.prop(self, "minimum_depth_property")
+        layout.prop(self, "maximum_depth_property")
+
 
 class ViewportStateNode(bpy.types.Node, RenderTreeNode):
 
@@ -200,10 +315,9 @@ class ViewportStateNode(bpy.types.Node, RenderTreeNode):
     dynamic_scissor_property: bpy.props.BoolProperty(name="Dynamic Scissor")
 
     def init(self, context):
-        # TODO create socket classes
         self.inputs.new("ViewportNodeSocket", "Viewports")
         self.inputs["Viewports"].link_limit = 0
-        self.inputs.new("ScissorNodeSocket", "Scissors")
+        self.inputs.new("Rect2DNodeSocket", "Scissors")
         self.inputs["Scissors"].link_limit = 0
 
         self.outputs.new("ViewportStateNodeSocket", "Viewport State")
@@ -238,11 +352,16 @@ class PipelineStateNodeCategory(nodeitems_utils.NodeCategory):
 
 pipeline_state_node_categories = [
     PipelineStateNodeCategory('PIPELINE_STATE', "Pipeline State", items=[
+        nodeitems_utils.NodeItem("Extent2DNode"),
         nodeitems_utils.NodeItem("InputAssemblyStateNode"),
+        nodeitems_utils.NodeItem("Offset2DNode"),
         nodeitems_utils.NodeItem("PipelineShaderStageNode"),
+        nodeitems_utils.NodeItem("Rect2DNode"),
         nodeitems_utils.NodeItem("ShaderModuleNode"),
         nodeitems_utils.NodeItem("VertexInputAttributeNode"),
         nodeitems_utils.NodeItem("VertexInputBindingNode"),
         nodeitems_utils.NodeItem("VertexInputStateNode"),
+        nodeitems_utils.NodeItem("ViewportNode"),
+        nodeitems_utils.NodeItem("ViewportStateNode"),
     ]),
 ]
