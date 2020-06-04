@@ -1,7 +1,7 @@
 import bpy
 
 from .render_node_tree import RenderTreeNode
-from .vulkan_enums import *
+from .vulkan_enums import cull_modes, format_values, front_face, polygon_modes
 
 class Extent2DNodeSocket(bpy.types.NodeSocket):
     
@@ -42,6 +42,16 @@ class PipelineShaderStageNodeSocket(bpy.types.NodeSocket):
 
     def draw_color(self, context, node):
         return (0.0, 1.0, 0.0, 1.0)
+
+class RasterizationStateNodeSocket(bpy.types.NodeSocket):
+
+    bl_label = "Rasterization State node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.25, 1.0, 0.25, 1.0)
 
 class Rect2DNodeSocket(bpy.types.NodeSocket):
 
@@ -181,6 +191,37 @@ class PipelineShaderStageNode(bpy.types.Node, RenderTreeNode):
     def init(self, context):
         self.inputs.new("ShaderModuleNodeSocket", "Shader")
         self.outputs.new("PipelineShaderStageNodeSocket", "Stage")
+
+class RasterizationStateNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = 'Rasterization State node'
+    
+    depth_clamp_enable_property: bpy.props.BoolProperty(name="Depth Clamp Enable", default=False)
+    rasterizer_discard_enable_property: bpy.props.BoolProperty(name="Rasterizer Discard Enable", default=False)
+    polygon_mode_property: bpy.props.EnumProperty(name="Polygon Mode", items=polygon_modes, default="FILL")
+    cull_mode_property: bpy.props.EnumProperty(name="Cull Mode", items=cull_modes, default={"BACK"}, options={"ANIMATABLE", "ENUM_FLAG"})
+    front_face_property: bpy.props.EnumProperty(name="Front Face", items=front_face, default="COUNTER_CLOCKWISE")
+    depth_bias_enable_property: bpy.props.BoolProperty(name="Depth Bias Enable", default=False)
+    depth_bias_constant_factor_property: bpy.props.FloatProperty(name="Depth Bias Constant Factor", default=0.0)
+    depth_bias_clamp_property: bpy.props.FloatProperty(name="Depth Bias Clamp", default=0.0)
+    depth_bias_slope_factor_property: bpy.props.FloatProperty(name="Depth Bias Slope Factor", default=0.0)
+    line_width_property: bpy.props.FloatProperty(name="Line Width", default=1.0)
+
+    def init(self, context):
+        self.outputs.new("RasterizationStateNodeSocket", "State")
+
+    def draw_buttons(self, context, layout):
+        layout.prop(self, "depth_clamp_enable_property")
+        layout.prop(self, "rasterizer_discard_enable_property")
+        layout.prop(self, "polygon_mode_property")
+        layout.label(text="Cull Mode")
+        layout.prop(self, "cull_mode_property")
+        layout.prop(self, "front_face_property")
+        layout.prop(self, "depth_bias_enable_property")
+        layout.prop(self, "depth_bias_constant_factor_property")
+        layout.prop(self, "depth_bias_clamp_property")
+        layout.prop(self, "depth_bias_slope_factor_property")
+        layout.prop(self, "line_width_property")
 
 class Rect2DNode(bpy.types.Node, RenderTreeNode):
 
@@ -356,6 +397,7 @@ pipeline_state_node_categories = [
         nodeitems_utils.NodeItem("InputAssemblyStateNode"),
         nodeitems_utils.NodeItem("Offset2DNode"),
         nodeitems_utils.NodeItem("PipelineShaderStageNode"),
+        nodeitems_utils.NodeItem("RasterizationStateNode"),
         nodeitems_utils.NodeItem("Rect2DNode"),
         nodeitems_utils.NodeItem("ShaderModuleNode"),
         nodeitems_utils.NodeItem("VertexInputAttributeNode"),

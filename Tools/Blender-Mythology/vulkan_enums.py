@@ -1,3 +1,8 @@
+cull_modes = (
+    ("FRONT", "Front", "", 0x00000001),
+    ("BACK", "Back", "", 0x00000002),
+)
+
 format_values = (
     ("UNDEFINED", "UNDEFINED", "", 0),
     ("R4G4_UNORM_PACK8", "R4G4_UNORM_PACK8", "", 1),
@@ -146,4 +151,15 @@ format_values = (
     ("BC6H_SFLOAT_BLOCK", "BC6H_SFLOAT_BLOCK", "", 144),
     ("BC7_UNORM_BLOCK", "BC7_UNORM_BLOCK", "", 145),
     ("BC7_SRGB_BLOCK", "BC7_SRGB_BLOCK", "", 146),
+)
+
+front_face = (
+    ("COUNTER_CLOCKWISE", "Counter Clockwise", "", 0),
+    ("CLOCKWISE", "Clockwise", "", 1),
+)
+
+polygon_modes = (
+    ("FILL", "Fill", "", 0),
+    ("LINE", "Line", "", 1),
+    ("POINT", "Point", "", 2),
 )
