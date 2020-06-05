@@ -1,7 +1,18 @@
 import bpy
 
 from .render_node_tree import RenderTreeNode
-from .vulkan_enums import cull_modes, format_values, front_face, polygon_modes
+from .vulkan_enums import compare_operation_values, cull_modes, format_values, front_face, polygon_modes, stencil_operation_values
+
+
+class DepthStencilStateNodeSocket(bpy.types.NodeSocket):
+    
+    bl_label = "Depth Stencil State node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.0, 0.75, 0.25, 1.0)
 
 class Extent2DNodeSocket(bpy.types.NodeSocket):
     
@@ -73,6 +84,16 @@ class ShaderModuleNodeSocket(bpy.types.NodeSocket):
     def draw_color(self, context, node):
         return (1.0, 0.0, 0.0, 1.0)
 
+class StencilOperationStateNodeSocket(bpy.types.NodeSocket):
+    
+    bl_label = "Stencil Operation State Node Socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.25, 0.5, 0.75, 1.0)
+
 class VertexInputAttributeNodeSocket(bpy.types.NodeSocket):
 
     bl_label = "Vertex Input Attribute node socket"
@@ -136,6 +157,36 @@ topology_values = (
     ("TRIANGLE_STRIP_WITH_ADJACENCY", "Triangle Strip With Adjacency", "", 9),
     ("PATCH_LIST", "Patch List", "", 10),
 )
+
+class DepthStencilStateNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = 'Depth Stencil State node'
+
+    depth_test_enable_property: bpy.props.BoolProperty(name="Depth Test Enable", default=False)
+    depth_write_enable_property: bpy.props.BoolProperty(name="Depth Write Enable", default=False)
+    compare_operation_property: bpy.props.EnumProperty(name="Compare Operation", items=compare_operation_values, default="NEVER")
+    depth_bounds_test_enable_property: bpy.props.BoolProperty(name="Depth Bounds Test Enable", default=False)
+    stencil_test_enable_property: bpy.props.BoolProperty(name="Stencil Test Enable", default=False)
+    min_depth_bounds_property: bpy.props.FloatProperty(name="Min Depth Bounds", default=0.0)
+    max_depth_bounds_property: bpy.props.FloatProperty(name="Max Depth Bounds", default=1.0)
+
+    def init(self, context):
+        
+        self.inputs.new("StencilOperationStateNodeSocket", "Front Stencil State")
+        self.inputs.new("StencilOperationStateNodeSocket", "Back Stencil State")
+
+        self.outputs.new("DepthStencilStateNodeSocket", "State")
+
+    def draw_buttons(self, context, layout):
+
+        layout.prop(self, "depth_test_enable_property")
+        layout.prop(self, "depth_write_enable_property")
+        layout.prop(self, "compare_operation_property")
+        layout.prop(self, "depth_bounds_test_enable_property")
+        layout.prop(self, "stencil_test_enable_property")
+        layout.prop(self, "min_depth_bounds_property")
+        layout.prop(self, "max_depth_bounds_property")
+
 
 class Extent2DNode(bpy.types.Node, RenderTreeNode):
 
@@ -267,6 +318,32 @@ class ShaderModuleNode(bpy.types.Node, RenderTreeNode):
         layout.prop(self, "entry_point")
         layout.prop(self, "additional_compile_flags")
 
+class StencilOperationStateNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = 'Stencil Operation State node'
+
+    fail_operation_property: bpy.props.EnumProperty(name="Fail Operation", items=stencil_operation_values, default="KEEP")
+    pass_operation_property: bpy.props.EnumProperty(name="Pass Operation", items=stencil_operation_values, default="KEEP")
+    depth_fail_operation_property: bpy.props.EnumProperty(name="Depth Fail Operation", items=stencil_operation_values, default="KEEP")
+    compare_operation_property: bpy.props.EnumProperty(name="Compare Operation", items=compare_operation_values, default="NEVER")
+    compare_mask_property: bpy.props.IntProperty(name="Compare Mask", default=2**31-1, min=0, max=2**31-1)
+    write_mask_property: bpy.props.IntProperty(name="Write Mask", default=2**31-1, min=0, max=2**31-1)
+    reference_property: bpy.props.IntProperty(name="Reference", default=0, min=0)
+
+    def init(self, context):
+        
+        self.outputs.new("StencilOperationStateNodeSocket", "State")
+
+    def draw_buttons(self, context, layout):
+
+        layout.prop(self, "fail_operation_property")
+        layout.prop(self, "pass_operation_property")
+        layout.prop(self, "depth_fail_operation_property")
+        layout.prop(self, "compare_operation_property")
+        layout.prop(self, "compare_mask_property")
+        layout.prop(self, "write_mask_property")
+        layout.prop(self, "reference_property")
+
 
 class VertexInputAttributeNode(bpy.types.Node, RenderTreeNode):
 
@@ -393,6 +470,7 @@ class PipelineStateNodeCategory(nodeitems_utils.NodeCategory):
 
 pipeline_state_node_categories = [
     PipelineStateNodeCategory('PIPELINE_STATE', "Pipeline State", items=[
+        nodeitems_utils.NodeItem("DepthStencilStateNode"),
         nodeitems_utils.NodeItem("Extent2DNode"),
         nodeitems_utils.NodeItem("InputAssemblyStateNode"),
         nodeitems_utils.NodeItem("Offset2DNode"),
@@ -400,6 +478,7 @@ pipeline_state_node_categories = [
         nodeitems_utils.NodeItem("RasterizationStateNode"),
         nodeitems_utils.NodeItem("Rect2DNode"),
         nodeitems_utils.NodeItem("ShaderModuleNode"),
+        nodeitems_utils.NodeItem("StencilOperationStateNode"),
         nodeitems_utils.NodeItem("VertexInputAttributeNode"),
         nodeitems_utils.NodeItem("VertexInputBindingNode"),
         nodeitems_utils.NodeItem("VertexInputStateNode"),

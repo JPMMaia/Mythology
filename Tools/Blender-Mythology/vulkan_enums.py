@@ -1,3 +1,14 @@
+compare_operation_values = (
+    ("NEVER", "Never", "", 0),
+    ("LESS", "Less", "", 1),
+    ("EQUAL", "Equal", "", 2),
+    ("LESS_OR_EQUAL", "Less or equal", "", 3),
+    ("GREATER", "Greater", "", 4),
+    ("NOT_EQUAL", "Not equal", "", 5),
+    ("GREATER_OR_EQUAL", "Greater or equal", "", 6),
+    ("ALWAYS", "Always", "", 7),
+)
+
 cull_modes = (
     ("FRONT", "Front", "", 0x00000001),
     ("BACK", "Back", "", 0x00000002),
@@ -162,4 +173,15 @@ polygon_modes = (
     ("FILL", "Fill", "", 0),
     ("LINE", "Line", "", 1),
     ("POINT", "Point", "", 2),
+)
+
+stencil_operation_values = (
+    ("KEEP", "Keep", "", 0),
+    ("ZERO", "Zero", "", 1),
+    ("REPLACE", "Replace", "", 2),
+    ("INCREMENT_AND_CLAMP", "Increment and clamp", "", 3),
+    ("DECREMENT_AND_CLAMP", "Decrement and clamp", "", 4),
+    ("INVERT", "Invert", "", 5),
+    ("INCREMENT_AND_WRAP", "Increment and wrap", "", 6),
+    ("DECREMENT_AND_WRAP", "Decrement and wrap", "", 7),
 )

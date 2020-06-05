@@ -14,6 +14,7 @@ from .render_pass import *
 classes = (
     render_node_tree.RenderNodeTree,
 
+    pipeline_state.DepthStencilStateNodeSocket,
     pipeline_state.Extent2DNodeSocket,
     pipeline_state.InputAssemblyStateNodeSocket,
     pipeline_state.Offset2DNodeSocket,
@@ -21,12 +22,14 @@ classes = (
     pipeline_state.RasterizationStateNodeSocket,
     pipeline_state.Rect2DNodeSocket,
     pipeline_state.ShaderModuleNodeSocket,
+    pipeline_state.StencilOperationStateNodeSocket,
     pipeline_state.VertexInputAttributeNodeSocket,
     pipeline_state.VertexInputBindingNodeSocket,
     pipeline_state.VertexInputStateNodeSocket,
     pipeline_state.ViewportNodeSocket,
     pipeline_state.ViewportStateNodeSocket,
     
+    pipeline_state.DepthStencilStateNode,
     pipeline_state.Extent2DNode,
     pipeline_state.InputAssemblyStateNode,
     pipeline_state.Offset2DNode,
@@ -34,6 +37,7 @@ classes = (
     pipeline_state.RasterizationStateNode,
     pipeline_state.Rect2DNode,
     pipeline_state.ShaderModuleNode,
+    pipeline_state.StencilOperationStateNode,
     pipeline_state.VertexInputAttributeNode,
     pipeline_state.VertexInputBindingNode,
     pipeline_state.VertexInputStateNode,
