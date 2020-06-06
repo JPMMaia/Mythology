@@ -1,6 +1,7 @@
 import bpy
 
 from .render_node_tree import RenderTreeNode
+from .render_pass import RenderPassNodeSocket, SubpassNodeSocket
 from .vulkan_enums import blend_factor_values, blend_operation_values, color_component_flag_values, compare_operation_values, cull_modes, dynamic_state_values, format_values, front_face, logic_operation_values, polygon_modes, stencil_operation_values
 
 
@@ -84,6 +85,17 @@ class PipelineDynamicStateNodeSocket(bpy.types.NodeSocket):
 
     def draw_color(self, context, node):
         return (0.67, 0.33, 1.0, 1.0)
+
+
+class PipelineNodeSocket(bpy.types.NodeSocket):
+    
+    bl_label = "Pipeline Node Socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.33, 0.25, 0.8, 1.0)
 
 class PipelineShaderStageNodeSocket(bpy.types.NodeSocket):
     
@@ -307,6 +319,27 @@ class Extent2DNode(bpy.types.Node, RenderTreeNode):
 
         layout.prop(self, "width_property")
         layout.prop(self, "height_property")
+
+class GraphicsPipelineStateNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = 'Graphics Pipeline State node'
+
+    def init(self, context):
+        self.inputs.new("PipelineShaderStageNodeSocket", "Stages")
+        self.inputs["Stages"].link_limit = 0
+        self.inputs.new("VertexInputStateNodeSocket", "Vertex Input State")
+        self.inputs.new("InputAssemblyStateNodeSocket", "Input Assembly State")
+        self.inputs.new("ViewportStateNodeSocket", "Viewport State")
+        self.inputs.new("RasterizationStateNodeSocket", "Rasterization State")
+        self.inputs.new("DepthStencilStateNodeSocket", "Depth Stencil State")
+        self.inputs.new("ColorBlendStateNodeSocket", "Color Blend State")
+        self.inputs.new("PipelineDynamicStateNodeSocket", "Dynamic State")
+        self.inputs.new("PipelineShaderStageNodeSocket", "Pipeline Layout") # TODO
+        self.inputs.new("RenderPassNodeSocket", "Render Pass")
+        self.inputs.new("SubpassNodeSocket", "Subpass")
+
+        self.outputs.new("PipelineNodeSocket", "Pipeline")
+
 
 class InputAssemblyStateNode(bpy.types.Node, RenderTreeNode):
 
@@ -590,6 +623,7 @@ pipeline_state_node_categories = [
         nodeitems_utils.NodeItem("DepthStencilStateNode"),
         nodeitems_utils.NodeItem("DynamicStateNode"),
         nodeitems_utils.NodeItem("Extent2DNode"),
+        nodeitems_utils.NodeItem("GraphicsPipelineStateNode"),
         nodeitems_utils.NodeItem("InputAssemblyStateNode"),
         nodeitems_utils.NodeItem("Offset2DNode"),
         nodeitems_utils.NodeItem("PipelineDynamicStateNode"),
