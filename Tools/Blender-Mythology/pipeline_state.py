@@ -1,7 +1,7 @@
 import bpy
 
 from .render_node_tree import RenderTreeNode
-from .vulkan_enums import blend_factor_values, blend_operation_values, color_component_flag_values, compare_operation_values, cull_modes, format_values, front_face, logic_operation_values, polygon_modes, stencil_operation_values
+from .vulkan_enums import blend_factor_values, blend_operation_values, color_component_flag_values, compare_operation_values, cull_modes, dynamic_state_values, format_values, front_face, logic_operation_values, polygon_modes, stencil_operation_values
 
 
 class ColorBlendAttachmentStateNodeSocket(bpy.types.NodeSocket):
@@ -34,6 +34,17 @@ class DepthStencilStateNodeSocket(bpy.types.NodeSocket):
     def draw_color(self, context, node):
         return (0.0, 0.75, 0.25, 1.0)
 
+class DynamicStateNodeSocket(bpy.types.NodeSocket):
+    
+    bl_label = "Dynamic State node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (1.0, 0.67, 0.33, 1.0)
+
+
 class Extent2DNodeSocket(bpy.types.NodeSocket):
     
     bl_label = "Extent 2D node socket"
@@ -63,6 +74,16 @@ class Offset2DNodeSocket(bpy.types.NodeSocket):
 
     def draw_color(self, context, node):
         return (0.25, 0.25, 0.25, 1.0)
+
+class PipelineDynamicStateNodeSocket(bpy.types.NodeSocket):
+    
+    bl_label = "Pipeline Dynamic State node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.67, 0.33, 1.0, 1.0)
 
 class PipelineShaderStageNodeSocket(bpy.types.NodeSocket):
     
@@ -256,6 +277,20 @@ class DepthStencilStateNode(bpy.types.Node, RenderTreeNode):
         layout.prop(self, "min_depth_bounds_property")
         layout.prop(self, "max_depth_bounds_property")
 
+class DynamicStateNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = 'Dynamic State node'
+
+    dynamic_state_property: bpy.props.EnumProperty(name="Value", items=dynamic_state_values)
+
+    def init(self, context):
+
+        self.outputs.new("DynamicStateNodeSocket", "Value")
+
+    def draw_buttons(self, context, layout):
+
+        layout.prop(self, "dynamic_state_property")
+
 
 class Extent2DNode(bpy.types.Node, RenderTreeNode):
 
@@ -303,6 +338,17 @@ class Offset2DNode(bpy.types.Node, RenderTreeNode):
 
         layout.prop(self, "x_property")
         layout.prop(self, "y_property")
+
+class PipelineDynamicStateNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = 'Pipeline Dynamic State node'
+
+    def init(self, context):
+        self.inputs.new("DynamicStateNodeSocket", "Dynamic States")
+        self.inputs["Dynamic States"].link_limit = 0
+
+        self.outputs.new("PipelineDynamicStateNodeSocket", "State")
+
 
 class PipelineShaderStageNode(bpy.types.Node, RenderTreeNode):
 
@@ -542,9 +588,11 @@ pipeline_state_node_categories = [
         nodeitems_utils.NodeItem("ColorBlendAttachmentStateNode"),
         nodeitems_utils.NodeItem("ColorBlendStateNode"),
         nodeitems_utils.NodeItem("DepthStencilStateNode"),
+        nodeitems_utils.NodeItem("DynamicStateNode"),
         nodeitems_utils.NodeItem("Extent2DNode"),
         nodeitems_utils.NodeItem("InputAssemblyStateNode"),
         nodeitems_utils.NodeItem("Offset2DNode"),
+        nodeitems_utils.NodeItem("PipelineDynamicStateNode"),
         nodeitems_utils.NodeItem("PipelineShaderStageNode"),
         nodeitems_utils.NodeItem("RasterizationStateNode"),
         nodeitems_utils.NodeItem("Rect2DNode"),

@@ -51,6 +51,18 @@ cull_modes = (
     ("BACK", "Back", "", 0x00000002),
 )
 
+dynamic_state_values = (
+    ("VIEWPORT", "Viewport", "", 0),
+    ("SCISSOR", "Scissor", "", 1),
+    ("LINE_WIDTH", "Line width", "", 2),
+    ("DEPTH_BIAS", "Depth bias", "", 3),
+    ("BLEND_CONSTANTS", "Blend constants", "", 4),
+    ("DEPTH_BOUNDS", "Depth bounds", "", 5),
+    ("STENCIL_COMPARE_MASK", "Stencil compare mask", "", 6),
+    ("STENCIL_WRITE_MASK", "Stencil write mask", "", 7),
+    ("STENCIL_REFERENCE", "Stencil reference", "", 8),
+)
+
 format_values = (
     ("UNDEFINED", "UNDEFINED", "", 0),
     ("R4G4_UNORM_PACK8", "R4G4_UNORM_PACK8", "", 1),
