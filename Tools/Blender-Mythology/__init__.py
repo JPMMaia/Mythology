@@ -14,6 +14,8 @@ from .render_pass import *
 classes = (
     render_node_tree.RenderNodeTree,
 
+    pipeline_state.ColorBlendAttachmentStateNodeSocket,
+    pipeline_state.ColorBlendStateNodeSocket,
     pipeline_state.DepthStencilStateNodeSocket,
     pipeline_state.Extent2DNodeSocket,
     pipeline_state.InputAssemblyStateNodeSocket,
@@ -29,6 +31,8 @@ classes = (
     pipeline_state.ViewportNodeSocket,
     pipeline_state.ViewportStateNodeSocket,
     
+    pipeline_state.ColorBlendAttachmentStateNode,
+    pipeline_state.ColorBlendStateNode,
     pipeline_state.DepthStencilStateNode,
     pipeline_state.Extent2DNode,
     pipeline_state.InputAssemblyStateNode,

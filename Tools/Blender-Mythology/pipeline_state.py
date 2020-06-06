@@ -1,8 +1,28 @@
 import bpy
 
 from .render_node_tree import RenderTreeNode
-from .vulkan_enums import compare_operation_values, cull_modes, format_values, front_face, polygon_modes, stencil_operation_values
+from .vulkan_enums import blend_factor_values, blend_operation_values, color_component_flag_values, compare_operation_values, cull_modes, format_values, front_face, logic_operation_values, polygon_modes, stencil_operation_values
 
+
+class ColorBlendAttachmentStateNodeSocket(bpy.types.NodeSocket):
+    
+    bl_label = "Color Blender Attachment State node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.8, 0.2, 0.6, 1.0)
+
+class ColorBlendStateNodeSocket(bpy.types.NodeSocket):
+    
+    bl_label = "Color Blender State node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.2, 0.6, 0.8, 1.0)
 
 class DepthStencilStateNodeSocket(bpy.types.NodeSocket):
     
@@ -157,6 +177,55 @@ topology_values = (
     ("TRIANGLE_STRIP_WITH_ADJACENCY", "Triangle Strip With Adjacency", "", 9),
     ("PATCH_LIST", "Patch List", "", 10),
 )
+
+class ColorBlendAttachmentStateNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = 'Color Blend Attachment State node'
+
+    blend_enable_property: bpy.props.BoolProperty(name="Blend Enable", default=False)
+    source_color_blend_factor_property: bpy.props.EnumProperty(name="Source Color Blend Factor", items=blend_factor_values, default="ZERO")
+    destination_color_blend_factor_property: bpy.props.EnumProperty(name="Destination Color Blend Factor", items=blend_factor_values, default="ZERO")
+    color_blend_operation_property: bpy.props.EnumProperty(name="Color Blend Operation", items=blend_operation_values, default="ADD")
+    source_alpha_blend_factor_property: bpy.props.EnumProperty(name="Source Alpha Blend Factor", items=blend_factor_values, default="ZERO")
+    destination_alpha_blend_factor_property: bpy.props.EnumProperty(name="Destination Alpha Blend Factor", items=blend_factor_values, default="ZERO")
+    alpha_blend_operation_property: bpy.props.EnumProperty(name="Alpha Blend Operation", items=blend_operation_values, default="ADD")
+    color_write_mask_property: bpy.props.EnumProperty(name="Color Write Mask", items=color_component_flag_values, default={"R", "G", "B", "A"}, options={"ANIMATABLE", "ENUM_FLAG"})
+
+    def init(self, context):
+
+        self.outputs.new("ColorBlendAttachmentStateNodeSocket", "Attachment State")
+
+    def draw_buttons(self, context, layout):
+
+        layout.prop(self, "blend_enable_property")
+        layout.prop(self, "source_color_blend_factor_property")
+        layout.prop(self, "destination_color_blend_factor_property")
+        layout.prop(self, "color_blend_operation_property")
+        layout.prop(self, "source_alpha_blend_factor_property")
+        layout.prop(self, "destination_alpha_blend_factor_property")
+        layout.prop(self, "alpha_blend_operation_property")
+        layout.prop(self, "color_write_mask_property")
+
+class ColorBlendStateNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = 'Color Blend State node'
+
+    logic_operation_enable_property: bpy.props.BoolProperty(name="Logic Operation Enable", default=False)
+    logic_operation_property: bpy.props.EnumProperty(name="Logic Operation", items=logic_operation_values, default="CLEAR")
+    blend_constants_property: bpy.props.FloatVectorProperty(name="Blend Constants", size=4, default=(0.0, 0.0, 0.0, 0.0))
+
+    def init(self, context):
+        
+        self.inputs.new("ColorBlendAttachmentStateNodeSocket", "Attachments")
+        self.inputs["Attachments"].link_limit = 0
+
+        self.outputs.new("ColorBlendStateNodeSocket", "State")
+
+    def draw_buttons(self, context, layout):
+
+        layout.prop(self, "logic_operation_enable_property")
+        layout.prop(self, "logic_operation_property")
+        layout.prop(self, "blend_constants_property")
 
 class DepthStencilStateNode(bpy.types.Node, RenderTreeNode):
 
@@ -470,6 +539,8 @@ class PipelineStateNodeCategory(nodeitems_utils.NodeCategory):
 
 pipeline_state_node_categories = [
     PipelineStateNodeCategory('PIPELINE_STATE', "Pipeline State", items=[
+        nodeitems_utils.NodeItem("ColorBlendAttachmentStateNode"),
+        nodeitems_utils.NodeItem("ColorBlendStateNode"),
         nodeitems_utils.NodeItem("DepthStencilStateNode"),
         nodeitems_utils.NodeItem("Extent2DNode"),
         nodeitems_utils.NodeItem("InputAssemblyStateNode"),

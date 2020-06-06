@@ -1,3 +1,40 @@
+blend_factor_values = (
+    ("ZERO", "Zero", "", 0),
+    ("ONE", "One", "", 1),
+    ("SRC_COLOR", "Src color", "", 2),
+    ("ONE_MINUS_SRC_COLOR", "One minus src color", "", 3),
+    ("DST_COLOR", "Dst color", "", 4),
+    ("ONE_MINUS_DST_COLOR", "One minus dst color", "", 5),
+    ("SRC_ALPHA", "Src alpha", "", 6),
+    ("ONE_MINUS_SRC_ALPHA", "One minus src alpha", "", 7),
+    ("DST_ALPHA", "Dst alpha", "", 8),
+    ("ONE_MINUS_DST_ALPHA", "One minus dst alpha", "", 9),
+    ("CONSTANT_COLOR", "Constant color", "", 10),
+    ("ONE_MINUS_CONSTANT_COLOR", "One minus constant color", "", 11),
+    ("CONSTANT_ALPHA", "Constant alpha", "", 12),
+    ("ONE_MINUS_CONSTANT_ALPHA", "One minus constant alpha", "", 13),
+    ("SRC_ALPHA_SATURATE", "Src alpha saturate", "", 14),
+    ("SRC1_COLOR", "Src1 color", "", 15),
+    ("ONE_MINUS_SRC1_COLOR", "One minus src1 color", "", 16),
+    ("SRC1_ALPHA", "Src1 alpha", "", 17),
+    ("ONE_MINUS_SRC1_ALPHA", "One minus src1 alpha", "", 18),
+)
+
+blend_operation_values = (
+    ("ADD", "Add", "", 0),
+    ("SUBTRACT", "Subtract", "", 1),
+    ("REVERSE_SUBTRACT", "Reverse_subtract", "", 2),
+    ("MIN", "Min", "", 3),
+    ("MAX", "Max", "", 4),
+)
+
+color_component_flag_values = (
+    ("R", "R", "", 0x00000001),
+    ("G", "G", "", 0x00000002),
+    ("B", "B", "", 0x00000004),
+    ("A", "A", "", 0x00000008),
+)
+
 compare_operation_values = (
     ("NEVER", "Never", "", 0),
     ("LESS", "Less", "", 1),
@@ -167,6 +204,25 @@ format_values = (
 front_face = (
     ("COUNTER_CLOCKWISE", "Counter Clockwise", "", 0),
     ("CLOCKWISE", "Clockwise", "", 1),
+)
+
+logic_operation_values = (
+    ("CLEAR", "Clear", "", 0),
+    ("AND", "And", "", 1),
+    ("AND_REVERSE", "And reverse", "", 2),
+    ("COPY", "Copy", "", 3),
+    ("AND_INVERTED", "And inverted", "", 4),
+    ("NO_OP", "No_op", "", 5),
+    ("XOR", "Xor", "", 6),
+    ("OR", "Or", "", 7),
+    ("NOR", "Nor", "", 8),
+    ("EQUIVALENT", "Equivalent", "", 9),
+    ("INVERT", "Invert", "", 10),
+    ("OR_REVERSE", "Or reverse", "", 11),
+    ("COPY_INVERTED", "Copy inverted", "", 12),
+    ("OR_INVERTED", "Or inverted", "", 13),
+    ("NAND", "Nand", "", 14),
+    ("SET", "Set", "", 15),
 )
 
 polygon_modes = (
