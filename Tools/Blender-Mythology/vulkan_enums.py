@@ -1,3 +1,12 @@
+border_color_values = (
+    ("FLOAT_TRANSPARENT_BLACK", "Float transparent black", "", 0),
+    ("INT_TRANSPARENT_BLACK", "Int transparent black", "", 1),
+    ("FLOAT_OPAQUE_BLACK", "Float opaque black", "", 2),
+    ("INT_OPAQUE_BLACK", "Int opaque black", "", 3),
+    ("FLOAT_OPAQUE_WHITE", "Float opaque white", "", 4),
+    ("INT_OPAQUE_WHITE", "Int opaque white", "", 5),
+)
+
 blend_factor_values = (
     ("ZERO", "Zero", "", 0),
     ("ONE", "One", "", 1),
@@ -51,6 +60,20 @@ cull_modes = (
     ("BACK", "Back", "", 0x00000002),
 )
 
+descriptor_type_values = (
+    ("SAMPLER", "Sampler", "", 0),
+    ("COMBINED_IMAGE_SAMPLER", "Combined image sampler", "", 1),
+    ("SAMPLED_IMAGE", "Sampled image", "", 2),
+    ("STORAGE_IMAGE", "Storage image", "", 3),
+    ("UNIFORM_TEXEL_BUFFER", "Uniform texel buffer", "", 4),
+    ("STORAGE_TEXEL_BUFFER", "Storage texel buffer", "", 5),
+    ("UNIFORM_BUFFER", "Uniform buffer", "", 6),
+    ("STORAGE_BUFFER", "Storage buffer", "", 7),
+    ("UNIFORM_BUFFER_DYNAMIC", "Uniform buffer dynamic", "", 8),
+    ("STORAGE_BUFFER_DYNAMIC", "Storage buffer dynamic", "", 9),
+    ("INPUT_ATTACHMENT", "Input attachment", "", 10),
+)
+
 dynamic_state_values = (
     ("VIEWPORT", "Viewport", "", 0),
     ("SCISSOR", "Scissor", "", 1),
@@ -61,6 +84,11 @@ dynamic_state_values = (
     ("STENCIL_COMPARE_MASK", "Stencil compare mask", "", 6),
     ("STENCIL_WRITE_MASK", "Stencil write mask", "", 7),
     ("STENCIL_REFERENCE", "Stencil reference", "", 8),
+)
+
+filter_values = (
+    ("NEAREST", "Nearest", "", 0),
+    ("LINEAR", "Linear", "", 1),
 )
 
 format_values = (
@@ -183,7 +211,7 @@ format_values = (
     ("R64G64B64_UINT", "R64G64B64_UINT", "", 116),
     ("R64G64B64_SINT", "R64G64B64_SINT", "", 117),
     ("R64G64B64_SFLOAT", "R64G64B64_SFLOAT", "", 118),
-    ("R64G64B64A64_UINT", "R64G64B64A64_UINT", "", 119),
+    ("R64G64B64A64_UINT", "R64G64B64A6filter_values4_UINT", "", 119),
     ("R64G64B64A64_SINT", "R64G64B64A64_SINT", "", 120),
     ("R64G64B64A64_SFLOAT", "R64G64B64A64_SFLOAT", "", 121),
     ("B10G11R11_UFLOAT_PACK32", "B10G11R11_UFLOAT_PACK32", "", 122),
@@ -242,6 +270,29 @@ polygon_modes = (
     ("LINE", "Line", "", 1),
     ("POINT", "Point", "", 2),
 )
+
+sampler_address_move_values = (
+    ("REPEAT", "Repeat", "", 0),
+    ("MIRRORED_REPEAT", "Mirrored repeat", "", 1),
+    ("CLAMP_TO_EDGE", "Clamp to edge", "", 2),
+    ("CLAMP_TO_BORDER", "Clamp to border", "", 3),
+    ("MIRROR_CLAMP_TO_EDGE", "Mirror clamp to edge", "", 4),
+)
+
+sampler_mipmap_mode_values = (
+    ("NEAREST", "Nearest", "", 0),
+    ("LINEAR", "Linear", "", 1),
+)
+
+shader_stage_flag_values = (
+    ("VERTEX", "Vertex", "", 0x00000001),
+    ("TESSELLATION_CONTROL", "Tessellation_control", "", 0x00000002),
+    ("TESSELLATION_EVALUATION", "Tessellation_evaluation", "", 0x00000004),
+    ("GEOMETRY", "Geometry", "", 0x00000008),
+    ("FRAGMENT", "Fragment", "", 0x00000010),
+    ("COMPUTE", "Compute", "", 0x00000020),
+)
+
 
 stencil_operation_values = (
     ("KEEP", "Keep", "", 0),

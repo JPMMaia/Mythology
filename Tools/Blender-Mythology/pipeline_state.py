@@ -2,7 +2,7 @@ import bpy
 
 from .render_node_tree import RenderTreeNode
 from .render_pass import RenderPassNodeSocket, SubpassNodeSocket
-from .vulkan_enums import blend_factor_values, blend_operation_values, color_component_flag_values, compare_operation_values, cull_modes, dynamic_state_values, format_values, front_face, logic_operation_values, polygon_modes, stencil_operation_values
+from .vulkan_enums import border_color_values, blend_factor_values, blend_operation_values, color_component_flag_values, compare_operation_values, cull_modes, descriptor_type_values, dynamic_state_values, filter_values, format_values, front_face, logic_operation_values, polygon_modes, sampler_address_move_values, sampler_mipmap_mode_values, shader_stage_flag_values, stencil_operation_values
 
 
 class ColorBlendAttachmentStateNodeSocket(bpy.types.NodeSocket):
@@ -34,6 +34,27 @@ class DepthStencilStateNodeSocket(bpy.types.NodeSocket):
 
     def draw_color(self, context, node):
         return (0.0, 0.75, 0.25, 1.0)
+
+
+class DescriptorSetLayoutBindingNodeSocket(bpy.types.NodeSocket):
+    
+    bl_label = "Descriptor Set Layout Binding node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (1.0, 0.2, 0.4, 1.0)
+
+class DescriptorSetLayoutNodeSocket(bpy.types.NodeSocket):
+    
+    bl_label = "Descriptor Set Layout node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.2, 0.4, 0.6, 1.0)
 
 class DynamicStateNodeSocket(bpy.types.NodeSocket):
     
@@ -86,6 +107,16 @@ class PipelineDynamicStateNodeSocket(bpy.types.NodeSocket):
     def draw_color(self, context, node):
         return (0.67, 0.33, 1.0, 1.0)
 
+class PipelineLayoutNodeSocket(bpy.types.NodeSocket):
+    
+    bl_label = "Pipeline Layout node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.7, 0.6, 0.2, 1.0)
+
 
 class PipelineNodeSocket(bpy.types.NodeSocket):
     
@@ -107,6 +138,16 @@ class PipelineShaderStageNodeSocket(bpy.types.NodeSocket):
     def draw_color(self, context, node):
         return (0.0, 1.0, 0.0, 1.0)
 
+class PushConstantRangeNodeSocket(bpy.types.NodeSocket):
+    
+    bl_label = "Push Constant Range node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.5, 0.2, 0.9, 1.0)
+
 class RasterizationStateNodeSocket(bpy.types.NodeSocket):
 
     bl_label = "Rasterization State node socket"
@@ -126,6 +167,16 @@ class Rect2DNodeSocket(bpy.types.NodeSocket):
 
     def draw_color(self, context, node):
         return (0.0, 0.25, 0.25, 1.0)
+
+class SamplerNodeSocket(bpy.types.NodeSocket):
+
+    bl_label = "Sampler node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.2, 0.2, 0.2, 1.0)
 
 class ShaderModuleNodeSocket(bpy.types.NodeSocket):
     
@@ -289,6 +340,40 @@ class DepthStencilStateNode(bpy.types.Node, RenderTreeNode):
         layout.prop(self, "min_depth_bounds_property")
         layout.prop(self, "max_depth_bounds_property")
 
+class DescriptorSetLayoutBindingNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = 'Descriptor Set Layout Binding node'
+
+    binding_property: bpy.props.IntProperty(name="Binding", min=0)
+    descriptor_type_property: bpy.props.EnumProperty(name="Descriptor Type", items=descriptor_type_values)
+    descriptor_count_property: bpy.props.IntProperty(name="Descriptor Count", min=1)
+    stage_flags_property: bpy.props.EnumProperty(name="Stage Flags", items=shader_stage_flag_values, options={"ANIMATABLE", "ENUM_FLAG"})
+
+    def init(self, context):
+
+        self.inputs.new("SamplerNodeSocket", "Immutable Samplers")
+
+        self.outputs.new("DescriptorSetLayoutBindingNodeSocket", "Descriptor Set Layout Binding")
+
+    def draw_buttons(self, context, layout):
+
+        layout.prop(self, "binding_property")
+        layout.prop(self, "descriptor_type_property")
+        layout.prop(self, "descriptor_count_property")
+        layout.prop(self, "stage_flags_property")
+
+class DescriptorSetLayoutNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = 'Descriptor Set Layout node'
+
+    def init(self, context):
+        
+        self.inputs.new("DescriptorSetLayoutBindingNodeSocket", "Bindings")
+        self.inputs["Bindings"].link_limit = 0
+
+        self.outputs.new("DescriptorSetLayoutNodeSocket", "Descriptor Set Layout")
+
+
 class DynamicStateNode(bpy.types.Node, RenderTreeNode):
 
     bl_label = 'Dynamic State node'
@@ -334,7 +419,7 @@ class GraphicsPipelineStateNode(bpy.types.Node, RenderTreeNode):
         self.inputs.new("DepthStencilStateNodeSocket", "Depth Stencil State")
         self.inputs.new("ColorBlendStateNodeSocket", "Color Blend State")
         self.inputs.new("PipelineDynamicStateNodeSocket", "Dynamic State")
-        self.inputs.new("PipelineShaderStageNodeSocket", "Pipeline Layout") # TODO
+        self.inputs.new("PipelineLayoutNodeSocket", "Pipeline Layout") # TODO
         self.inputs.new("RenderPassNodeSocket", "Render Pass")
         self.inputs.new("SubpassNodeSocket", "Subpass")
 
@@ -382,6 +467,16 @@ class PipelineDynamicStateNode(bpy.types.Node, RenderTreeNode):
 
         self.outputs.new("PipelineDynamicStateNodeSocket", "State")
 
+class PipelineLayoutNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = 'Pipeline Layout node'
+
+    def init(self, context):
+        self.inputs.new("DescriptorSetLayoutNodeSocket", "Descriptor Set Layouts")
+        self.inputs.new("PushConstantRangeNodeSocket", "Push Constant Ranges")
+        
+        self.outputs.new("PipelineLayoutNodeSocket", "Pipeline Layout")
+
 
 class PipelineShaderStageNode(bpy.types.Node, RenderTreeNode):
 
@@ -390,6 +485,25 @@ class PipelineShaderStageNode(bpy.types.Node, RenderTreeNode):
     def init(self, context):
         self.inputs.new("ShaderModuleNodeSocket", "Shader")
         self.outputs.new("PipelineShaderStageNodeSocket", "Stage")
+
+class PushConstantRangeNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = 'Push Constant Range node'
+
+    stage_flags_property: bpy.props.EnumProperty(name="Stage Flags", items=shader_stage_flag_values, options={"ANIMATABLE", "ENUM_FLAG"})
+    offset_property: bpy.props.IntProperty(name="Offset in bytes", default=0)
+    size_property: bpy.props.IntProperty(name="Size in bytes", default=0)
+
+    def init(self, context):
+        
+        self.outputs.new("PushConstantRangeNodeSocket", "Push Constant Range")
+
+    def draw_buttons(self, context, layout):
+
+        layout.label(text="Stages")
+        layout.prop(self, "stage_flags_property")
+        layout.prop(self, "offset_property")
+        layout.prop(self, "size_property")
 
 class RasterizationStateNode(bpy.types.Node, RenderTreeNode):
 
@@ -431,6 +545,47 @@ class Rect2DNode(bpy.types.Node, RenderTreeNode):
         self.inputs.new("Extent2DNodeSocket", "Extent")
         
         self.outputs.new("Rect2DNodeSocket", "Scissor")
+
+class SamplerNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = 'Sampler node'
+
+    mag_filter_property: bpy.props.EnumProperty(name="Mag Filter", items=filter_values)
+    min_filter_property: bpy.props.EnumProperty(name="Min Filter", items=filter_values)
+    mipmap_mode_property: bpy.props.EnumProperty(name="Mipmap Mode", items=sampler_mipmap_mode_values)
+    address_mode_u_property: bpy.props.EnumProperty(name="Address Mode U", items=sampler_address_move_values)
+    address_mode_v_property: bpy.props.EnumProperty(name="Address Mode V", items=sampler_address_move_values)
+    address_mode_w_property: bpy.props.EnumProperty(name="Address Mode W", items=sampler_address_move_values)
+    mip_lod_bias_property: bpy.props.FloatProperty(name="Mip Lod Bias", default=0.0)
+    anisotropy_enable_property: bpy.props.BoolProperty(name="Anisotropy Enable")
+    max_anisotropy_property: bpy.props.FloatProperty(name="Max Anisotropy", default=0.0)
+    compare_enable_property: bpy.props.BoolProperty(name="Compare Enable")
+    compare_operation_property: bpy.props.EnumProperty(name="Compare Operation", items=compare_operation_values)
+    min_lod_property: bpy.props.FloatProperty(name="Min Lod", default=0.0)
+    max_lod_property: bpy.props.FloatProperty(name="Max Lod", default=0.0)
+    border_color_property: bpy.props.EnumProperty(name="Border Color", items=border_color_values)
+    unnormalized_coordinates_property: bpy.props.BoolProperty(name="Unnormalized Coordinates")
+    
+    
+    def init(self, context):
+        self.outputs.new("SamplerNodeSocket", "Sampler")
+
+    def draw_buttons(self, context, layout):
+        layout.prop(self, "mag_filter_property")
+        layout.prop(self, "min_filter_property")
+        layout.prop(self, "mipmap_mode_property")
+        layout.prop(self, "address_mode_u_property")
+        layout.prop(self, "address_mode_v_property")
+        layout.prop(self, "address_mode_w_property")
+        layout.prop(self, "mip_lod_bias_property")
+        layout.prop(self, "anisotropy_enable_property")
+        layout.prop(self, "max_anisotropy_property")
+        layout.prop(self, "compare_enable_property")
+        layout.prop(self, "compare_operation_property")
+        layout.prop(self, "min_lod_property")
+        layout.prop(self, "max_lod_property")
+        layout.prop(self, "border_color_property")
+        layout.prop(self, "unnormalized_coordinates_property")
 
 
 shader_type_values = [
@@ -621,15 +776,20 @@ pipeline_state_node_categories = [
         nodeitems_utils.NodeItem("ColorBlendAttachmentStateNode"),
         nodeitems_utils.NodeItem("ColorBlendStateNode"),
         nodeitems_utils.NodeItem("DepthStencilStateNode"),
+        nodeitems_utils.NodeItem("DescriptorSetLayoutBindingNode"),
+        nodeitems_utils.NodeItem("DescriptorSetLayoutNode"),
         nodeitems_utils.NodeItem("DynamicStateNode"),
         nodeitems_utils.NodeItem("Extent2DNode"),
         nodeitems_utils.NodeItem("GraphicsPipelineStateNode"),
         nodeitems_utils.NodeItem("InputAssemblyStateNode"),
         nodeitems_utils.NodeItem("Offset2DNode"),
         nodeitems_utils.NodeItem("PipelineDynamicStateNode"),
+        nodeitems_utils.NodeItem("PipelineLayoutNode"),
         nodeitems_utils.NodeItem("PipelineShaderStageNode"),
+        nodeitems_utils.NodeItem("PushConstantRangeNode"),
         nodeitems_utils.NodeItem("RasterizationStateNode"),
         nodeitems_utils.NodeItem("Rect2DNode"),
+        nodeitems_utils.NodeItem("SamplerNode"),
         nodeitems_utils.NodeItem("ShaderModuleNode"),
         nodeitems_utils.NodeItem("StencilOperationStateNode"),
         nodeitems_utils.NodeItem("VertexInputAttributeNode"),
