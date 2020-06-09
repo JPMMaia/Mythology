@@ -409,6 +409,8 @@ class GraphicsPipelineStateNode(bpy.types.Node, RenderTreeNode):
 
     bl_label = 'Graphics Pipeline State node'
 
+    name_property: bpy.props.StringProperty(name="Name")
+
     def init(self, context):
         self.inputs.new("PipelineShaderStageNodeSocket", "Stages")
         self.inputs["Stages"].link_limit = 0
@@ -424,6 +426,9 @@ class GraphicsPipelineStateNode(bpy.types.Node, RenderTreeNode):
         self.inputs.new("SubpassNodeSocket", "Subpass")
 
         self.outputs.new("PipelineNodeSocket", "Pipeline")
+
+    def draw_buttons(self, context, layout):
+        layout.prop(self, "name_property")
 
 
 class InputAssemblyStateNode(bpy.types.Node, RenderTreeNode):
@@ -603,23 +608,23 @@ class ShaderModuleNode(bpy.types.Node, RenderTreeNode):
 
     bl_label = 'Shader Module node'
 
-    shader_file: bpy.props.StringProperty(name="File", subtype="FILE_PATH")
-    language: bpy.props.EnumProperty(items=[("HLSL", "HLSL", "", 0)])
-    shader_type: bpy.props.EnumProperty(name="Type", items=shader_type_values)
-    shader_model: bpy.props.StringProperty(name="Model", default="6_5")
-    entry_point: bpy.props.StringProperty(name="Entry point", default="main")
-    additional_compile_flags: bpy.props.StringProperty(name="Compile flags", description="Additional compile flags")
+    shader_file_property: bpy.props.StringProperty(name="File", subtype="FILE_PATH")
+    language_property: bpy.props.EnumProperty(items=[("HLSL", "HLSL", "", 0)])
+    shader_type_property: bpy.props.EnumProperty(name="Type", items=shader_type_values)
+    shader_model_property: bpy.props.StringProperty(name="Model", default="6_5")
+    entry_point_property: bpy.props.StringProperty(name="Entry point", default="main")
+    additional_compile_flags_property: bpy.props.StringProperty(name="Compile flags", description="Additional compile flags")
 
     def init(self, context):
         self.outputs.new("ShaderModuleNodeSocket", "Shader")
 
     def draw_buttons(self, context, layout):
-        layout.prop(self, "shader_file")
-        layout.prop(self, "language")
-        layout.prop(self, "shader_type")
-        layout.prop(self, "shader_model")
-        layout.prop(self, "entry_point")
-        layout.prop(self, "additional_compile_flags")
+        layout.prop(self, "shader_file_property")
+        layout.prop(self, "language_property")
+        layout.prop(self, "shader_type_property")
+        layout.prop(self, "shader_model_property")
+        layout.prop(self, "entry_point_property")
+        layout.prop(self, "additional_compile_flags_property")
 
 class StencilOperationStateNode(bpy.types.Node, RenderTreeNode):
 
@@ -799,3 +804,94 @@ pipeline_state_node_categories = [
         nodeitems_utils.NodeItem("ViewportStateNode"),
     ]),
 ]
+
+import typing
+
+JSONType = typing.Union[str, int, float, bool, None, typing.Dict[str, typing.Any], typing.List[typing.Any]]
+
+def shader_module_to_json(
+    nodes: typing.List[bpy.types.Node]
+) -> typing.Tuple[typing.List[ShaderModuleNode], JSONType]:
+
+    shader_module_nodes = [node
+                           for node in nodes
+                           if node.bl_idname == "ShaderModuleNode"]
+
+    json = [
+        {
+            "file": shader_module_node.shader_file_property,
+            "language": shader_module_node.language_property,
+            "type": shader_module_node.shader_type_property,
+            "shader_model": shader_module_node.shader_model_property,
+            "entry_point": shader_module_node.entry_point_property,
+            "additional_compile_flags": shader_module_node.additional_compile_flags_property,
+        }
+        for shader_module_node in shader_module_nodes
+    ]
+
+    return (shader_module_nodes, json)
+
+def create_shader_stages_json(
+    pipeline_shader_stage_node_socket: PipelineShaderStageNodeSocket, 
+    shader_modules: typing.Tuple[typing.List[ShaderModuleNode], JSONType]
+) -> JSONType:
+
+    assert len(pipeline_shader_stage_node_socket.links) > 0
+
+    shader_stage_nodes = [link.from_node
+                          for link in pipeline_shader_stage_node_socket.links]
+                                   
+    assert all(len(shader_stage_node.inputs['Shader'].links) == 1
+               for shader_stage_node in shader_stage_nodes)
+
+    shader_module_nodes = [shader_stage_node.inputs['Shader'].links[0].from_node
+                           for shader_stage_node in shader_stage_nodes]
+    
+    shader_module_indices = [next(index 
+                                  for index, node in enumerate(shader_modules[0])
+                                  if node == shader_module_node)
+                             for shader_module_node in shader_module_nodes]
+
+    return [
+        {
+            "shader": shader_module_index
+        }
+        for shader_module_index in shader_module_indices
+    ]
+    
+
+def pipeline_state_to_json(
+    nodes: typing.List[bpy.types.Node],
+    render_passes: typing.List[JSONType],
+    shader_modules: typing.Tuple[typing.List[bpy.types.Node], JSONType]
+) -> JSONType:
+    
+    pipeline_state_nodes = [node
+                            for node in nodes
+                            if node.bl_idname == "GraphicsPipelineStateNode"]
+
+    names = [pipeline_state.name_property
+             for pipeline_state in pipeline_state_nodes]
+
+    stages_per_pipeline_state = [create_shader_stages_json(pipeline_state.inputs['Stages'], shader_modules)
+                                 for pipeline_state in pipeline_state_nodes]
+
+    return [
+        {
+            "name": name,
+            "stages": stages,
+            "vertex_input_state": {},
+            "input_assembly_state": {},
+            "viewport_state": {},
+            "rasterization_state": {},
+            "depth_stencil_state": {},
+            "color_blend_state": {},
+            "dynamic_state": {},
+            "pipeline_layout": 0,
+            "render_pass": 0,
+            "subpass": 0,
+        }
+        for (name, stages) in zip(names, stages_per_pipeline_state)
+    ]
+
+    
