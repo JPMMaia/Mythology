@@ -860,6 +860,124 @@ def create_shader_stages_json(
     ]
     
 
+def create_vertex_input_attribute_json(
+    node: VertexInputAttributeNode
+) -> JSONType:
+
+    return {
+        "location": node.get('location_property', 0),
+        "binding": node.get('binding_property', 0),
+        "format": node.get('format_property', 0),
+        "offset": node.get('offset_property', 0),
+    }
+
+def create_vertex_input_binding_json(
+    node: VertexInputBindingNode
+) -> JSONType:
+
+    return {
+        "binding": node.get('binding_property', 0),
+        "stride": node.get('stride_property', 0),
+        "input_rate": node.get('input_rate_property', 0),
+    }
+
+def create_vertex_input_state_json(
+    node_socket: VertexInputStateNodeSocket
+) -> JSONType:
+
+    if len(node_socket.links) > 0:
+        assert len(node_socket.links) == 1
+
+        state_node = node_socket.links[0].from_node
+
+        return {
+            "bindings": [create_vertex_input_binding_json(link.from_node)
+                         for link in state_node.inputs["Bindings"].links],
+            "attributes": [create_vertex_input_attribute_json(link.from_node)
+                           for link in state_node.inputs["Attributes"].links]
+        }
+
+    else:
+        return {}
+
+def create_input_assembly_state_json(
+    node_socket: InputAssemblyStateNodeSocket
+) -> JSONType:
+
+    if len(node_socket.links) > 0:
+        assert len(node_socket.links) == 1
+
+        state_node = node_socket.links[0].from_node
+
+        return {
+            "topology": state_node.get('topology_property', 0),
+            "primitive_restart_enable": state_node.primitive_restart_enable_property,
+        }
+
+    else:
+        return {}
+
+def create_viewport_json(
+    node: ViewportNode
+) -> JSONType:
+
+    return {
+        "x": node.get("x_property", 0),
+        "y": node.get("y_property", 0),
+        "width": node.get("width_property", 800),
+        "height": node.get("height_property", 600),
+        "minimum": node.get("minimum_property", 0.0),
+        "maximum": node.get("maximum_property", 1.0),
+    }
+
+def create_offset_2d_json(
+    node: Offset2DNode
+) -> JSONType:
+
+    return {
+        "x": node.get("x_property", 0),
+        "y": node.get("y_property", 0),
+    }
+
+def create_extent_2d_json(
+    node: Extent2DNode
+) -> JSONType:
+
+    return {
+        "width": node.get("width_property", 800),
+        "height": node.get("height_property", 600),
+    }
+
+def create_rect_2d_json(
+    node: Rect2DNode
+) -> JSONType:
+
+    return {
+        "offset": create_offset_2d_json(node.inputs["Offset"].links[0].from_node),
+        "extent": create_extent_2d_json(node.inputs["Extent"].links[0].from_node),
+    }
+
+def create_viewport_state_json(
+    node_socket: ViewportStateNodeSocket
+) -> JSONType:
+
+    if len(node_socket.links) > 0:
+        assert len(node_socket.links) == 1
+
+        state_node = node_socket.links[0].from_node
+
+        return {
+            "viewport_count": state_node.viewport_count_property if state_node.dynamic_viewport_property else len(state_node.inputs["Viewports"].links),
+            "scissor_count": state_node.scissor_count_property if state_node.dynamic_scissor_property else len(state_node.inputs["Scissors"].links),
+            "viewports": [create_viewport_json(link.from_node)
+                          for link in state_node.inputs["Viewports"].links],
+            "scissors": [create_rect_2d_json(link.from_node)
+                         for link in state_node.inputs["Scissors"].links]
+        }
+
+    else:
+        return {}
+
 def pipeline_state_to_json(
     nodes: typing.List[bpy.types.Node],
     render_passes: typing.List[JSONType],
@@ -880,9 +998,9 @@ def pipeline_state_to_json(
         {
             "name": name,
             "stages": stages,
-            "vertex_input_state": {},
-            "input_assembly_state": {},
-            "viewport_state": {},
+            "vertex_input_state": create_vertex_input_state_json(pipeline_state.inputs["Vertex Input State"]),
+            "input_assembly_state": create_input_assembly_state_json(pipeline_state.inputs["Input Assembly State"]),
+            "viewport_state": create_viewport_state_json(pipeline_state.inputs["Viewport State"]),
             "rasterization_state": {},
             "depth_stencil_state": {},
             "color_blend_state": {},
@@ -891,7 +1009,7 @@ def pipeline_state_to_json(
             "render_pass": 0,
             "subpass": 0,
         }
-        for (name, stages) in zip(names, stages_per_pipeline_state)
+        for (pipeline_state, name, stages) in zip(pipeline_state_nodes, names, stages_per_pipeline_state)
     ]
 
     
