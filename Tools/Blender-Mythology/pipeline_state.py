@@ -978,6 +978,111 @@ def create_viewport_state_json(
     else:
         return {}
 
+def create_rasterization_state_json(
+    node_socket: RasterizationStateNodeSocket
+) -> JSONType:
+
+    if len(node_socket.links) > 0:
+        assert len(node_socket.links) == 1
+
+        state_node = node_socket.links[0].from_node
+
+        return {
+            "depth_clamp_enable": state_node.get("depth_clamp_enable_property", False),
+            "rasterizer_discard_enable": state_node.get("rasterizer_discard_enable_property", False),
+            "polygon_mode": state_node.get("polygon_mode_property", 0),
+            "cull_mode": state_node.get("cull_mode_property", 0),
+            "front_face": state_node.get("front_face_property", 0),
+            "depth_bias_enable": state_node.get("depth_bias_enable_property", False),
+            "depth_bias_constant_factor": state_node.get("depth_bias_constant_factor_property", 0.0),
+            "depth_bias_clamp": state_node.get("depth_bias_clamp_property", 0.0),
+            "depth_bias_slope_factor": state_node.get("depth_bias_slope_factor_property", 0.0),
+            "line_width_factor": state_node.get("line_width_factor_property", 1.0),
+        }
+
+    else:
+        return {}
+
+def create_stencil_operation_state_json(
+    node_socket: StencilOperationStateNodeSocket
+) -> JSONType:
+
+    if len(node_socket.links) > 0:
+        assert len(node_socket.links) == 1
+
+        state_node = node_socket.links[0].from_node
+
+        return {
+            "fail_operation": state_node.get("fail_operation_property", 0),
+            "pass_operation": state_node.get("pass_operation_property", 0),
+            "depth_fail_operation": state_node.get("depth_fail_operation_property", 0),
+            "compare_operation": state_node.get("compare_operation_property", 0),
+            "compare_mask": state_node.get("compare_mask_property", 2147483647),
+            "write_mask": state_node.get("write_mask_property", 2147483647),
+            "reference": state_node.get("reference_property", 0),
+        }
+
+    else:
+        return {}
+
+def create_depth_stencil_state_json(
+    node_socket: DepthStencilStateNodeSocket
+) -> JSONType:
+
+    if len(node_socket.links) > 0:
+        assert len(node_socket.links) == 1
+
+        state_node = node_socket.links[0].from_node
+
+        return {
+            "depth_test_enable": state_node.get("depth_test_enable_property", False),
+            "depth_write_enable": state_node.get("depth_write_enable_property", False),
+            "compare_operation": state_node.get("compare_operation_property", 0),
+            "depth_bounds_test_enable": state_node.get("depth_bounds_test_enable_property", False),
+            "stencil_test_enable": state_node.get("stencil_test_enable_property", False),
+            "min_depth_bounds": state_node.get("min_depth_bounds_property", 0.0),
+            "max_depth_bounds": state_node.get("max_depth_bounds_property", 1.0),
+            "front_stencil_state": create_stencil_operation_state_json(state_node.inputs["Front Stencil State"]),
+            "back_stencil_state": create_stencil_operation_state_json(state_node.inputs["Back Stencil State"]),
+        }
+
+    else:
+        return {}
+
+def create_color_blend_attachment_state_json(
+    node: ColorBlendAttachmentStateNode
+) -> JSONType:
+
+    return {
+        "blend_enable": node.get("blend_enable_property", False),
+        "source_color_blend_factor": node.get("source_color_blend_factor_property", 0),
+        "destination_color_blend_factor": node.get("destination_color_blend_factor_property", 0),
+        "color_blend_operation": node.get("color_blend_operation_property", 0),
+        "source_alpha_blend_factor": node.get("source_alpha_blend_factor_property", 0),
+        "destination_alpha_blend_factor": node.get("destination_alpha_blend_factor_property", 0),
+        "alpha_blend_operation": node.get("alpha_blend_operation_property", 0),
+    }
+
+def create_color_blend_state_json(
+    node_socket: ColorBlendStateNodeSocket
+) -> JSONType:
+
+    if len(node_socket.links) > 0:
+        assert len(node_socket.links) == 1
+
+        state_node = node_socket.links[0].from_node
+
+        return {
+            "logic_operation_enable": state_node.get("logic_operation_enable_property", False),
+            "logic_operation": state_node.get("logic_operation_property", 0),
+            "blend_constants": [value for value in state_node.get("blend_constants_property", [0.0, 0.0, 0.0, 0.0])],
+            "attachments": [create_color_blend_attachment_state_json(link.from_node)
+                            for link in state_node.inputs["Attachments"].links],
+        }
+
+    else:
+        return {}
+
 def pipeline_state_to_json(
     nodes: typing.List[bpy.types.Node],
     render_passes: typing.List[JSONType],
@@ -1001,9 +1106,9 @@ def pipeline_state_to_json(
             "vertex_input_state": create_vertex_input_state_json(pipeline_state.inputs["Vertex Input State"]),
             "input_assembly_state": create_input_assembly_state_json(pipeline_state.inputs["Input Assembly State"]),
             "viewport_state": create_viewport_state_json(pipeline_state.inputs["Viewport State"]),
-            "rasterization_state": {},
-            "depth_stencil_state": {},
-            "color_blend_state": {},
+            "rasterization_state": create_rasterization_state_json(pipeline_state.inputs["Rasterization State"]),
+            "depth_stencil_state": create_depth_stencil_state_json(pipeline_state.inputs["Depth Stencil State"]),
+            "color_blend_state": create_color_blend_state_json(pipeline_state.inputs["Color Blend State"]),
             "dynamic_state": {},
             "pipeline_layout": 0,
             "render_pass": 0,
