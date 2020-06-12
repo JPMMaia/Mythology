@@ -585,7 +585,9 @@ def subpass_dependency_to_json(subpass_depency_node: SubpassDependencyNode, subp
         "dependency_flags": get_subpass_dependency_input(subpass_depency_node, "Dependency Flags")
     }
 
-def render_pass_to_json(nodes: typing.List[bpy.types.Node]) -> JSONType:
+def render_pass_to_json(
+    nodes: typing.List[bpy.types.Node]
+) -> typing.Tuple[typing.List[RenderPassNode], typing.List[typing.List[SubpassNode]], JSONType]:
     
     render_pass_nodes = [node
                          for node in nodes
@@ -630,5 +632,7 @@ def render_pass_to_json(nodes: typing.List[bpy.types.Node]) -> JSONType:
     dependencies_per_render_pass_jsons = [[subpass_dependency_to_json(subpass_dependency, subpasses_per_render_pass[render_pass_index]) for subpass_dependency in subpass_dependencies]
                                           for render_pass_index, subpass_dependencies in enumerate(subpass_dependencies_per_render_pass)]
 
-    return [{"name": name, "attachments": attachment_jsons, "subpasses": subpass_jsons, "dependencies": dependency_jsons}
+    json = [{"name": name, "attachments": attachment_jsons, "subpasses": subpass_jsons, "dependencies": dependency_jsons}
             for (name, attachment_jsons, subpass_jsons, dependency_jsons) in zip(render_pass_names, attachments_per_render_pass_jsons, subpasses_per_render_pass_jsons, dependencies_per_render_pass_jsons)]
+
+    return (render_pass_nodes, subpasses_per_render_pass, json)

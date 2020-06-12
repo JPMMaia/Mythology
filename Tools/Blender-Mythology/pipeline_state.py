@@ -807,7 +807,105 @@ pipeline_state_node_categories = [
 
 import typing
 
+from .render_pass import RenderPassNode, SubpassNode
+
 JSONType = typing.Union[str, int, float, bool, None, typing.Dict[str, typing.Any], typing.List[typing.Any]]
+
+def create_sampler_json(
+    node: bpy.types.Node
+) -> JSONType:
+
+    return {
+        "mag_filter": node.get("mag_filter_property", 0),
+        "min_filter": node.get("min_filter_property", 0),
+        "mipmap_mode": node.get("mipmap_mode_property", 0),
+        "address_mode_u": node.get("address_mode_u_property", 0),
+        "address_mode_v": node.get("address_mode_v_property", 0),
+        "address_mode_w": node.get("address_mode_w_property", 0),
+        "mip_lod_bias": node.get("mip_lod_bias_property", 0.0),
+        "anisotropy_enable": node.get("anisotropy_enable_property", False),
+        "max_anisotropy": node.get("max_anisotropy_property", 0.0),
+        "compare_enable": node.get("compare_enable_property", False),
+        "compare_operation": node.get("compare_operation_property", 0),
+        "min_lod": node.get("min_lod_property", 0.0),
+        "max_lod": node.get("max_lod_property", 0.0),
+        "border_color": node.get("border_color_property", 0),
+        "unnormalized_coordinates": node.get("unnormalized_coordinates_property", False),
+    }
+
+
+def create_samplers_json(
+    nodes: typing.List[bpy.types.Node]
+) -> typing.Tuple[typing.List[PipelineLayoutNode], JSONType]:
+
+    sampler_nodes = [node
+                     for node in nodes
+                     if node.bl_idname == "SamplerNode"]
+
+    json = [create_sampler_json(sampler_node)
+            for sampler_node in sampler_nodes]
+
+    return (sampler_nodes, json)
+
+
+def create_descriptor_set_layouts_json(
+    nodes: typing.List[bpy.types.Node],
+    samplers: typing.Tuple[typing.List[bpy.types.Node], JSONType],
+) -> typing.Tuple[typing.List[DescriptorSetLayoutNode], JSONType]:
+
+    descriptor_set_layout_nodes = [node
+                                   for node in nodes
+                                   if node.bl_idname == "DescriptorSetLayoutNode"]
+
+    json = [
+        {
+            "bindings": [
+                {
+                    "binding": link.from_node.get("binding_property", 0),
+                    "descriptor_type": link.from_node.get("descriptor_type_property", 0),
+                    "descriptor_count": link.from_node.get("descriptor_count_property", 1),
+                    "stage_flags_property": link.from_node.get("stage_flags_property_property", 0),
+                    "immutable_samplers": [samplers[0].index(sampler_link.from_node)
+                                           for sampler_link in link.from_node.inputs["Immutable Samplers"].links],
+                }
+                for link in node.inputs["Bindings"].links
+            ],
+        }
+        for node in descriptor_set_layout_nodes
+    ]
+
+    return (descriptor_set_layout_nodes, json)
+
+def create_push_constant_range_json(
+    node: PushConstantRangeNode
+) -> JSONType:
+
+    return {
+        "stage_flags": node.get("stage_flags_property", 0),
+        "offset": node.get("offset_property", 0),
+        "size": node.get("size_property", 0),
+    }
+
+def create_pipeline_layouts_json(
+    nodes: typing.List[bpy.types.Node],
+    descriptor_set_layouts: typing.Tuple[typing.List[DescriptorSetLayoutNode], JSONType]
+) -> typing.Tuple[typing.List[PipelineLayoutNode], JSONType]:
+
+    pipeline_layout_nodes = [node
+                             for node in nodes
+                             if node.bl_idname == "PipelineLayoutNode"]
+
+    json = [
+        {
+            "descriptor_set_layouts": [descriptor_set_layouts[0].index(link.from_node)
+                                       for link in node.inputs["Descriptor Set Layouts"].links],
+            "push_constant_ranges": [create_push_constant_range_json(link.from_node)
+                                     for link in node.inputs["Descriptor Set Layouts"].links],
+        }
+        for node in pipeline_layout_nodes
+    ]
+
+    return (pipeline_layout_nodes, json)
 
 def shader_module_to_json(
     nodes: typing.List[bpy.types.Node]
@@ -1083,11 +1181,29 @@ def create_color_blend_state_json(
     else:
         return {}
 
+def create_pipeline_dynamic_state_json(
+    node_socket: PipelineDynamicStateNodeSocket
+) -> JSONType:
+
+    if len(node_socket.links) > 0:
+        assert len(node_socket.links) == 1
+
+        state_node = node_socket.links[0].from_node
+
+        return {
+            "dynamic_states": state_node.get("dynamic_state_property", 0),
+        }
+
+    else:
+        return {}
+
+
 def pipeline_state_to_json(
     nodes: typing.List[bpy.types.Node],
-    render_passes: typing.List[JSONType],
-    shader_modules: typing.Tuple[typing.List[bpy.types.Node], JSONType]
-) -> JSONType:
+    render_passes: typing.Tuple[typing.List[RenderPassNode], typing.List[typing.List[SubpassNode]], JSONType],
+    shader_modules: typing.Tuple[typing.List[ShaderModuleNode], JSONType],
+    pipeline_layouts: typing.Tuple[typing.List[PipelineLayoutNode], JSONType]
+) -> typing.Tuple[typing.List[GraphicsPipelineStateNode], JSONType]:
     
     pipeline_state_nodes = [node
                             for node in nodes
@@ -1099,7 +1215,12 @@ def pipeline_state_to_json(
     stages_per_pipeline_state = [create_shader_stages_json(pipeline_state.inputs['Stages'], shader_modules)
                                  for pipeline_state in pipeline_state_nodes]
 
-    return [
+    render_pass_indices = [render_passes[0].index(pipeline_state.inputs["Render Pass"].links[0].from_node)
+                           for pipeline_state in pipeline_state_nodes]
+    subpass_indices = [render_passes[1][render_pass_index].index(pipeline_state.inputs["Subpass"].links[0].from_node)
+                       for (pipeline_state, render_pass_index) in zip(pipeline_state_nodes, render_pass_indices)]
+
+    json = [
         {
             "name": name,
             "stages": stages,
@@ -1109,12 +1230,14 @@ def pipeline_state_to_json(
             "rasterization_state": create_rasterization_state_json(pipeline_state.inputs["Rasterization State"]),
             "depth_stencil_state": create_depth_stencil_state_json(pipeline_state.inputs["Depth Stencil State"]),
             "color_blend_state": create_color_blend_state_json(pipeline_state.inputs["Color Blend State"]),
-            "dynamic_state": {},
-            "pipeline_layout": 0,
-            "render_pass": 0,
-            "subpass": 0,
+            "dynamic_state": create_pipeline_dynamic_state_json(pipeline_state.inputs["Dynamic State"]),
+            "pipeline_layout": pipeline_layouts[0].index(pipeline_state.inputs["Pipeline Layout"].links[0].from_node),
+            "render_pass": render_pass_index,
+            "subpass": subpass_index,
         }
-        for (pipeline_state, name, stages) in zip(pipeline_state_nodes, names, stages_per_pipeline_state)
+        for (pipeline_state, name, stages, render_pass_index, subpass_index) in zip(pipeline_state_nodes, names, stages_per_pipeline_state, render_pass_indices, subpass_indices)
     ]
+
+    return (pipeline_state_nodes, json)
 
     

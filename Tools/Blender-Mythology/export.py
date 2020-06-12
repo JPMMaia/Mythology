@@ -1,7 +1,7 @@
 import bpy
 import json
 
-from .pipeline_state import pipeline_state_to_json, shader_module_to_json
+from .pipeline_state import create_samplers_json, create_descriptor_set_layouts_json, create_pipeline_layouts_json, pipeline_state_to_json, shader_module_to_json
 from .render_pass import render_pass_to_json
 
 class MythologyExportOperator(bpy.types.Operator):
@@ -15,14 +15,23 @@ class MythologyExportOperator(bpy.types.Operator):
                  for node_group in bpy.data.node_groups
                  for node in node_group.nodes]
 
-        render_passes_json = render_pass_to_json(nodes)
-        print(json.dumps(render_passes_json))
-
+        render_passes = render_pass_to_json(nodes)
         shader_modules = shader_module_to_json(nodes)
-        print(json.dumps(shader_modules[1]))
+        samplers = create_samplers_json(nodes)
+        descriptor_set_layouts = create_descriptor_set_layouts_json(nodes, samplers)
+        pipeline_layouts = create_pipeline_layouts_json(nodes, descriptor_set_layouts)
+        pipeline_states = pipeline_state_to_json(nodes, render_passes, shader_modules, pipeline_layouts)
 
-        pipeline_states_json = pipeline_state_to_json(nodes, render_passes_json, shader_modules)
-        print(json.dumps(pipeline_states_json))        
+        output_json = {
+            "render_passes": render_passes[2],
+            "shader_modules": shader_modules[1],
+            "samplers": samplers[1],
+            "descriptor_set_layouts": descriptor_set_layouts[1],
+            "pipeline_layouts": pipeline_layouts[1],
+            "pipeline_states": pipeline_states[1],
+        }
+
+        print(json.dumps(output_json))
         
         return {'FINISHED'}
 
