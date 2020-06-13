@@ -1,3 +1,23 @@
+access_flag_values = (
+    ("INDIRECT_COMMAND_READ", "Indirect command read", "", 0x00000001),
+    ("INDEX_READ", "Index read", "", 0x00000002),
+    ("VERTEX_ATTRIBUTE_READ", "Vertex attribute read", "", 0x00000004),
+    ("UNIFORM_READ", "Uniform read", "", 0x00000008),
+    ("INPUT_ATTACHMENT_READ", "Input attachment read", "", 0x00000010),
+    ("SHADER_READ", "Shader read", "", 0x00000020),
+    ("SHADER_WRITE", "Shader write", "", 0x00000040),
+    ("COLOR_ATTACHMENT_READ", "Color attachment read", "", 0x00000080),
+    ("COLOR_ATTACHMENT_WRITE", "Color attachment write", "", 0x00000100),
+    ("DEPTH_STENCIL_ATTACHMENT_READ", "Depth stencil attachment read", "", 0x00000200),
+    ("DEPTH_STENCIL_ATTACHMENT_WRITE", "Depth stencil attachment write", "", 0x00000400),
+    ("TRANSFER_READ", "Transfer read", "", 0x00000800),
+    ("TRANSFER_WRITE", "Transfer write", "", 0x00001000),
+    ("HOST_READ", "Host read", "", 0x00002000),
+    ("HOST_WRITE", "Host write", "", 0x00004000),
+    ("MEMORY_READ", "Memory read", "", 0x00008000),
+    ("MEMORY_WRITE", "Memory write", "", 0x00010000),
+)
+
 border_color_values = (
     ("FLOAT_TRANSPARENT_BLACK", "Float transparent black", "", 0),
     ("INT_TRANSPARENT_BLACK", "Int transparent black", "", 1),
@@ -58,6 +78,12 @@ compare_operation_values = (
 cull_modes = (
     ("FRONT", "Front", "", 0x00000001),
     ("BACK", "Back", "", 0x00000002),
+)
+
+dependency_flag_values = (
+    ("BY_REGION", "BY_REGION", "", 0x00000001),
+    ("DEVICE_GROUP", "DEVICE_GROUP", "", 0x00000004),
+    ("VIEW_LOCAL", "VIEW_LOCAL", "", 0x00000002),
 )
 
 descriptor_type_values = (
@@ -246,6 +272,25 @@ front_face = (
     ("CLOCKWISE", "Clockwise", "", 1),
 )
 
+image_layout_values = (
+    ("UNDEFINED", "Undefined", "", 0),
+    ("GENERAL", "General", "", 1),
+    ("COLOR_ATTACHMENT_OPTIMAL", "Color_attachment_optimal", "", 2),
+    ("DEPTH_STENCIL_ATTACHMENT_OPTIMAL", "Depth_stencil_attachment_optimal", "", 3),
+    ("DEPTH_STENCIL_READ_ONLY_OPTIMAL", "Depth_stencil_read_only_optimal", "", 4),
+    ("SHADER_READ_ONLY_OPTIMAL", "Shader_read_only_optimal", "", 5),
+    ("TRANSFER_SRC_OPTIMAL", "Transfer_src_optimal", "", 6),
+    ("TRANSFER_DST_OPTIMAL", "Transfer_dst_optimal", "", 7),
+    ("PREINITIALIZED", "Preinitialized", "", 8),
+    ("DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL", "Depth_read_only_stencil_attachment_optimal", "", 109),
+    ("DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL", "Depth_attachment_stencil_read_only_optimal", "", 110),
+    ("DEPTH_ATTACHMENT_OPTIMAL", "Depth_attachment_optimal", "", 111),
+    ("DEPTH_READ_ONLY_OPTIMAL", "Depth_read_only_optimal", "", 112),
+    ("STENCIL_ATTACHMENT_OPTIMAL", "Stencil_attachment_optimal", "", 113),
+    ("STENCIL_READ_ONLY_OPTIMAL", "Stencil_read_only_optimal", "", 114),
+    ("PRESENT_SRC_KHR", "Present_src_khr", "", 115),
+)
+
 logic_operation_values = (
     ("CLEAR", "Clear", "", 0),
     ("AND", "And", "", 1),
@@ -263,6 +308,26 @@ logic_operation_values = (
     ("OR_INVERTED", "Or inverted", "", 13),
     ("NAND", "Nand", "", 14),
     ("SET", "Set", "", 15),
+)
+
+pipeline_stage_flag_values = (
+    ("TOP_OF_PIPE", "Top_of_pipe", "", 0x00000001),
+    ("DRAW_INDIRECT", "Draw_indirect", "", 0x00000002),
+    ("VERTEX_INPUT", "Vertex_input", "", 0x00000004),
+    ("VERTEX_SHADER", "Vertex_shader", "", 0x00000008),
+    ("TESSELLATION_CONTROL_SHADER", "Tessellation_control_shader", "", 0x00000010),
+    ("TESSELLATION_EVALUATION_SHADER", "Tessellation_evaluation_shader", "", 0x00000020),
+    ("GEOMETRY_SHADER", "Geometry_shader", "", 0x00000040),
+    ("FRAGMENT_SHADER", "Fragment_shader", "", 0x00000080),
+    ("EARLY_FRAGMENT_TESTS", "Early_fragment_tests", "", 0x00000100),
+    ("LATE_FRAGMENT_TESTS", "Late_fragment_tests", "", 0x00000200),
+    ("COLOR_ATTACHMENT_OUTPUT", "Color_attachment_output", "", 0x00000400),
+    ("COMPUTE_SHADER", "Compute_shader", "", 0x00000800),
+    ("TRANSFER", "Transfer", "", 0x00001000),
+    ("BOTTOM_OF_PIPE", "Bottom_of_pipe", "", 0x00002000),
+    ("HOST", "Host", "", 0x00004000),
+    ("ALL_GRAPHICS", "All_graphics", "", 0x00008000),
+    ("ALL_COMMANDS", "All_commands", "", 0x00010000),
 )
 
 polygon_modes = (

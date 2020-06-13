@@ -11,25 +11,7 @@ class AccessFlagsNodeSocket(bpy.types.NodeSocket):
     
     bl_label = "Access Flags Socket"
 
-    enum_values = (
-        ("INDIRECT_COMMAND_READ", "INDIRECT_COMMAND_READ", "", 0x00000001),
-        ("INDEX_READ", "INDEX_READ", "", 0x00000002),
-        ("VERTEX_ATTRIBUTE_READ", "VERTEX_ATTRIBUTE_READ", "", 0x00000004),
-        ("UNIFORM_READ", "UNIFORM_READ", "", 0x00000008),
-        ("INPUT_ATTACHMENT_READ", "INPUT_ATTACHMENT_READ", "", 0x00000010),
-        ("SHADER_READ", "SHADER_READ", "", 0x00000020),
-        ("SHADER_WRITE", "SHADER_WRITE", "", 0x00000040),
-        ("COLOR_ATTACHMENT_READ", "COLOR_ATTACHMENT_READ", "", 0x00000080),
-        ("COLOR_ATTACHMENT_WRITE", "COLOR_ATTACHMENT_WRITE", "", 0x00000100),
-        ("DEPTH_STENCIL_ATTACHMENT_READ", "DEPTH_STENCIL_ATTACHMENT_READ", "", 0x00000200),
-        ("DEPTH_STENCIL_ATTACHMENT_WRITE", "DEPTH_STENCIL_ATTACHMENT_WRITE", "", 0x00000400),
-        ("TRANSFER_READ", "TRANSFER_READ", "", 0x00000800),
-        ("TRANSFER_WRITE", "TRANSFER_WRITE", "", 0x00001000),
-        ("HOST_READ", "HOST_READ", "", 0x00002000),
-        ("HOST_WRITE", "HOST_WRITE", "", 0x00004000),
-        ("MEMORY_READ", "MEMORY_READ", "", 0x00008000),
-        ("MEMORY_WRITE", "MEMORY_WRITE", "", 0x00010000),
-    )
+    enum_values = access_flag_values
 
     default_value: bpy.props.EnumProperty(
         name="Access Flags",
@@ -74,11 +56,7 @@ class DependencyFlagsNodeSocket(bpy.types.NodeSocket):
     
     bl_label = "Dependency Flags Socket"
 
-    enum_values = (
-        ("BY_REGION", "BY_REGION", "", 0x00000001),
-        ("DEVICE_GROUP", "DEVICE_GROUP", "", 0x00000004),
-        ("VIEW_LOCAL", "VIEW_LOCAL", "", 0x00000002),
-    )
+    enum_values = dependency_flag_values
 
     default_value: bpy.props.EnumProperty(
         name="Dependency Flags",
@@ -299,25 +277,7 @@ class PipelineStageFlagsNodeSocket(bpy.types.NodeSocket):
     
     bl_label = "Pipeline Stage Flags Node Socket"
 
-    enum_values = (
-        ("TOP_OF_PIPE", "TOP_OF_PIPE", "", 0x00000001),
-        ("DRAW_INDIRECT", "DRAW_INDIRECT", "", 0x00000002),
-        ("VERTEX_INPUT", "VERTEX_INPUT", "", 0x00000004),
-        ("VERTEX_SHADER", "VERTEX_SHADER", "", 0x00000008),
-        ("TESSELLATION_CONTROL_SHADER", "TESSELLATION_CONTROL_SHADER", "", 0x00000010),
-        ("TESSELLATION_EVALUATION_SHADER", "TESSELLATION_EVALUATION_SHADER", "", 0x00000020),
-        ("GEOMETRY_SHADER", "GEOMETRY_SHADER", "", 0x00000040),
-        ("FRAGMENT_SHADER", "FRAGMENT_SHADER", "", 0x00000080),
-        ("EARLY_FRAGMENT_TESTS", "EARLY_FRAGMENT_TESTS", "", 0x00000100),
-        ("LATE_FRAGMENT_TESTS", "LATE_FRAGMENT_TESTS", "", 0x00000200),
-        ("COLOR_ATTACHMENT_OUTPUT", "COLOR_ATTACHMENT_OUTPUT", "", 0x00000400),
-        ("COMPUTE_SHADER", "COMPUTE_SHADER", "", 0x00000800),
-        ("TRANSFER", "TRANSFER", "", 0x00001000),
-        ("BOTTOM_OF_PIPE", "BOTTOM_OF_PIPE", "", 0x00002000),
-        ("HOST", "HOST", "", 0x00004000),
-        ("ALL_GRAPHICS", "ALL_GRAPHICS", "", 0x00008000),
-        ("ALL_COMMANDS", "ALL_COMMANDS", "", 0x00010000),
-    )
+    enum_values = pipeline_stage_flag_values
 
     default_value: bpy.props.EnumProperty(
         name="Pipeline Stage Flags",
