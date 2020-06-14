@@ -3,7 +3,7 @@ import bpy
 from .common import Rect2DNodeSocket
 from .render_node_tree import RenderTreeNode
 from .resources import ImageNodeSocket, ImageSubresourceRangeNodeSocket
-from .vulkan_enums import access_flag_values, dependency_flag_values, image_layout_values, pipeline_stage_flag_values
+from .vulkan_enums import access_flag_values, dependency_flag_values, image_layout_values, image_layout_values_to_int, pipeline_stage_flag_values
 
 class ClearColorValueNodeSocket(bpy.types.NodeSocket):
     
@@ -137,6 +137,7 @@ class PipelineBarrierNode(bpy.types.Node, RenderTreeNode):
         layout.prop(self, "source_stage_mask_property")
         layout.label(text="Destination Stage Mask")
         layout.prop(self, "destination_stage_mask_property")
+        layout.label(text="Dependency Flags")
         layout.prop(self, "dependency_flags_property")
 
 import nodeitems_utils
@@ -158,3 +159,110 @@ draw_node_categories = [
         nodeitems_utils.NodeItem("PipelineBarrierNode"),
     ]),
 ]
+
+import typing
+
+JSONType = typing.Union[str, int, float, bool, None, typing.Dict[str, typing.Any], typing.List[typing.Any]]
+
+def clear_color_value_node_to_json(
+    node: ClearColorValueNode
+) -> JSONType:
+
+    values_property = node.float_values_property if node.type_property == "FLOAT" else (
+                      node.int_values_property if node.type_property == "INT" else
+                      node.uint_values_property)
+
+    return {
+        "type": node.type_property,
+        "values": [value for value in values_property]
+    }
+
+def clear_color_image_node_to_json(
+    node: ClearColorImageNode
+) -> JSONType:
+
+    return {
+        "image": {"type": "output_image"} if node.inputs["Image"].links[0].from_node.bl_idname == "BeginFrameNode" else {},
+        "image_subresource_ranges": [{"type": "output_image"}] if node.inputs["Image Subresource Ranges"].links[0].from_node.bl_idname == "BeginFrameNode" else [],
+        "clear_color_value": clear_color_value_node_to_json(node.inputs["Clear Color Value"].links[0].from_node),
+    }
+
+def image_layout_to_int(
+    value: str
+) -> int:
+
+    return image_layout_values_to_int[value]
+
+def image_memory_barrier_node_to_json(
+    node: ImageMemoryBarrierNode
+) -> JSONType:
+
+    return {
+        "source_access_mask": node.get("source_access_mask_property", 0),
+        "destination_access_mask": node.get("destination_access_mask_property", 0),
+        "old_layout": image_layout_to_int(node.old_layout_property),
+        "new_layout": image_layout_to_int(node.new_layout_property),
+        "image": {"type": "output_image"} if node.inputs["Image"].links[0].from_node.bl_idname == "BeginFrameNode" else {},
+        "image_subresource_range": {"type": "output_image"} if node.inputs["Image Subresource Range"].links[0].from_node.bl_idname == "BeginFrameNode" else {},
+    }
+
+def pipeline_barrier_node_to_json(
+    node: PipelineBarrierNode
+) -> JSONType:
+
+    return {
+        "type": "Pipeline_barrier",
+        "source_stage_mask": node.get("source_stage_mask_property", 0),
+        "destination_stage_mask": node.get("destination_stage_mask_property", 0),
+        "dependency_flags": node.get("dependency_flags_property", 0),
+        "memory_barriers": [], # TODO
+        "buffer_barriers": [], # TODO
+        "image_barriers": [image_memory_barrier_node_to_json(link.from_node)
+                           for link in node.inputs["Image Barriers"].links],
+    }
+
+def frame_command_node_to_json(
+    node: bpy.types.Node
+) -> JSONType:
+
+    if node.bl_idname == "ClearColorImageNode":
+        return clear_color_image_node_to_json(node)
+    elif node.bl_idname == "PipelineBarrierNode":
+        return pipeline_barrier_node_to_json(node)
+
+    assert False
+
+def get_frame_command_nodes(
+    begin_frame_node: BeginFrameNode
+) -> [bpy.types.Node]:
+
+    frame_command_nodes = []
+
+    current_node = begin_frame_node
+    while current_node.outputs["Execution"].links[0].to_node.bl_idname != "EndFrameNode":
+
+        next_node = current_node.outputs["Execution"].links[0].to_node
+        frame_command_nodes.append(next_node)
+        
+        current_node = next_node
+
+    return frame_command_nodes
+
+def frame_commands_to_json(
+    nodes: typing.List[bpy.types.Node]
+) -> JSONType:
+
+    begin_frame_nodes = [node
+                         for node in nodes
+                         if node.bl_idname == "BeginFrameNode"]
+
+    frame_command_nodes_per_begin_frame_node = [get_frame_command_nodes(node)
+                                                for node in begin_frame_nodes]
+    
+    return [
+        [
+            frame_command_node_to_json(command_node)
+            for command_node in frame_command_nodes_per_begin_frame_node[begin_frame_index]
+        ]
+        for begin_frame_index, begin_frame_node in enumerate(begin_frame_nodes)
+    ]
