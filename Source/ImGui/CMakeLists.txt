@@ -11,7 +11,8 @@ target_module (
     MaiaMythologyImGui
     "mythology.imgui"
     INTERFACE "ImGui.cxx"
-    INTERFACE_DEPENDS "ImGui" "Standard_library" "Vulkan"
+    INTERFACE_DEPENDS "ImGui" "Standard_library" "Vulkan" "maia.renderer.vulkan"
     IMPLEMENTATION "ImGui.cpp"
-    IMPLEMENTATION_DEPENDS "ImGui" "Standard_library" "Vulkan"
+    IMPLEMENTATION_DEPENDS "ImGui" "Standard_library" "Vulkan" "maia.renderer.vulkan"
+)
 )
