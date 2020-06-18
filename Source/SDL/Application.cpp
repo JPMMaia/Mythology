@@ -9,6 +9,8 @@ import mythology.imgui;
 
 import <imgui.h>;
 
+import <nlohmann/json.hpp>;
+
 import <SDL2/SDL.h>;
 
 import <vulkan/vulkan.h>;
@@ -853,7 +855,7 @@ namespace Mythology::SDL
         }
     }
 
-    void run() noexcept
+    void run(nlohmann::json const& pipeline_json) noexcept
     {
         std::filesystem::path const shaders_path = std::filesystem::current_path() / "../shaders";
 

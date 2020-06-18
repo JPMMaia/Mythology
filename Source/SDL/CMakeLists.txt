@@ -10,6 +10,7 @@ target_link_libraries (MaiaMythologySDL PRIVATE Maia::Mythology::ImGui)
 target_link_libraries (MaiaMythologySDL PRIVATE Maia::Mythology::Core)
 
 target_link_libraries (MaiaMythologySDL PRIVATE ImGui::Module)
+target_link_libraries (MaiaMythologySDL PRIVATE nlohmann_json_module)
 target_link_libraries (MaiaMythologySDL PRIVATE Standard_library)
 target_link_libraries (MaiaMythologySDL PRIVATE Vulkan)
 
@@ -28,7 +29,7 @@ target_module (
     MaiaMythologySDL
     "mythology.sdl.application"
     INTERFACE "Application.cxx"
-    INTERFACE_DEPENDS "Standard_library"
+    INTERFACE_DEPENDS "Standard_library" "nlohmann_json_module"
     IMPLEMENTATION "Application.cpp"
-    IMPLEMENTATION_DEPENDS "maia.input" "maia.sdl.vulkan" "mythology.core.vulkan" "mythology.core.utilities" "SDL" "SDL_vulkan" "Standard_library"
+    IMPLEMENTATION_DEPENDS "maia.input" "maia.sdl.vulkan" "mythology.core.vulkan" "mythology.core.utilities" "SDL" "SDL_vulkan" "Standard_library" "nlohmann_json_module"
 )
