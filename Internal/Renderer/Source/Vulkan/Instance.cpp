@@ -10,7 +10,6 @@ import <ostream>;
 import <memory_resource>;
 import <optional>;
 import <span>;
-import <string_view>;
 
 namespace Maia::Renderer::Vulkan
 {
@@ -57,9 +56,9 @@ namespace Maia::Renderer::Vulkan
         {
             .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
             .pNext = next,
-            .pApplicationName = application_description ? application_description->name.data() : nullptr,
+            .pApplicationName = application_description ? application_description->name : nullptr,
             .applicationVersion = application_description ? application_description->version : 0,
-            .pEngineName = engine_description ? engine_description->name.data() : nullptr,
+            .pEngineName = engine_description ? engine_description->name : nullptr,
             .engineVersion = engine_description ? engine_description->version : 0,
             .apiVersion = api_version.value,
         };

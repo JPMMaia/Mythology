@@ -9,7 +9,6 @@ import <iosfwd>;
 import <memory_resource>;
 import <optional>;
 import <span>;
-import <string_view>;
 import <vector>;
 
 namespace Maia::Renderer::Vulkan
@@ -20,13 +19,13 @@ namespace Maia::Renderer::Vulkan
 
     export struct Application_description
     {
-        std::string_view name;
+        char const* name;
         std::uint32_t version;
     };
 
     export struct Engine_description
     {
-        std::string_view name;
+        char const* name;
         std::uint32_t version;
     };
 
