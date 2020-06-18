@@ -4,6 +4,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/CMake/Modules")
 
 add_subdirectory("External/Catch2")
 add_subdirectory("External/Eigen3")
+add_subdirectory("External/nlohmann_json")
 add_subdirectory("External/Standard_library")
 
 add_subdirectory("Source")
