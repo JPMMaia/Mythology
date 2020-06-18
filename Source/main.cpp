@@ -3,14 +3,35 @@
 import mythology.sdl.application;
 import mythology.windowless;
 
+import <nlohmann/json.hpp>;
+
 import <filesystem>;
+import <fstream>;
+
+namespace
+{
+    bool matches(char const* const lhs, char const* const rhs) noexcept
+    {
+        return std::strcmp(lhs, rhs) == 0;
+    }
+
+    nlohmann::json read_json_from_file(std::filesystem::path const& path) noexcept
+    {
+        std::ifstream input_stream{path};
+
+        nlohmann::json json{};
+        input_stream >> json;
+
+        return json;
+    }
+}
 
 constexpr const char* c_usage = 
 R"(Mythology.
 
     Usage:
-        mythology render --output <output_file>
-        mythology window
+        mythology render --pipeline <pipeline_json_file> --output <output_file>
+        mythology window --pipeline <pipeline_json_file>
         mythology [--help]
         mythology --version
 
@@ -31,7 +52,20 @@ int main(int const argc, const char* const* const argv) noexcept
     );*/
 
     //Mythology::Windowless::render_frame("output.ppm");
-    Mythology::SDL::run();
+
+    if (argc >= 4)
+    {
+        if (matches(argv[1], "window"))
+        {
+            if (matches(argv[2], "--pipeline"))
+            {
+                char const* const pipeline_json_file = argv[3];
+
+                nlohmann::json const pipeline_json = read_json_from_file(pipeline_json_file);
+                Mythology::SDL::run(pipeline_json);
+            }
+        }
+    }
 
     return 0;
 }
