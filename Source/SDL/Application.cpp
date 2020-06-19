@@ -2,6 +2,7 @@ module mythology.sdl.application;
 
 import maia.input;
 import maia.renderer.vulkan;
+import maia.renderer.vulkan.serializer;
 import maia.sdl.vulkan;
 import mythology.core.utilities;
 import mythology.core.vulkan;
@@ -985,6 +986,9 @@ namespace Mythology::SDL
 
         VkSurfaceFormatKHR const surface_format = select_surface_format(physical_device, surface);
 
+        Maia::Renderer::Vulkan::Commands_data const commands_data = 
+            Maia::Renderer::Vulkan::create_commands_data(pipeline_json.at("frame_commands"), {});
+
         Application_resources const application_resources{shaders_path, physical_device, device, surface_format.format};
         Render_pass const render_pass = application_resources.render_pass;
         VkPipeline const white_triangle_pipeline = application_resources.white_triangle_pipeline;
@@ -1291,9 +1295,11 @@ namespace Mythology::SDL
                                         .layerCount = 1
                                     };
 
-                                    clear_and_begin_render_pass(command_buffer, render_pass, swapchain_framebuffer, clear_color, swapchain_image, output_image_subresource_range, output_render_area);
+                                    Maia::Renderer::Vulkan::draw(command_buffer.value, swapchain_image.value, output_image_subresource_range, commands_data);
+
+                                    /*clear_and_begin_render_pass(command_buffer, render_pass, swapchain_framebuffer, clear_color, swapchain_image, output_image_subresource_range, output_render_area);
                                     render(command_buffer, white_triangle_pipeline, output_render_area, imgui_resources);
-                                    end_render_pass_and_switch_layout(command_buffer, swapchain_image, output_image_subresource_range, true);
+                                    end_render_pass_and_switch_layout(command_buffer, swapchain_image, output_image_subresource_range, true);*/
                                 }
                             }
                             end_command_buffer(command_buffer);
