@@ -62,6 +62,8 @@ if (MaiaMythology_use_SDL)
 	
 endif()
 
+target_link_libraries(MaiaMythology PRIVATE nlohmann_json_module)
+
 target_sources (MaiaMythology PRIVATE "main.cpp")
 
 install (
