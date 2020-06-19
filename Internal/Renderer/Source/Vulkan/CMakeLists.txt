@@ -345,3 +345,26 @@ target_module (
         "maia.renderer.vulkan.surface"
         "maia.renderer.vulkan.swapchain"
 )
+
+
+
+
+
+add_library (MaiaRendererVulkanSerialization)
+add_library (Maia::Renderer::Vulkan::Serialization ALIAS MaiaRendererVulkanSerialization)
+
+set_target_properties (MaiaRendererVulkanSerialization PROPERTIES LINKER_LANGUAGE CXX)
+
+target_link_libraries (MaiaRendererVulkanSerialization PRIVATE Vulkan MaiaRendererVulkan)
+
+find_package(nlohmann_json REQUIRED)
+target_link_libraries (MaiaRendererVulkanSerialization PRIVATE nlohmann_json_module)
+
+target_module (
+    MaiaRendererVulkanSerialization
+    "maia.renderer.vulkan.serializer"
+    INTERFACE "serialization/Serializer.cxx"
+    INTERFACE_DEPENDS "Standard_library" "Vulkan" "nlohmann_json_module"
+    IMPLEMENTATION "serialization/Serializer.cpp"
+    IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" "nlohmann_json_module"
+)
