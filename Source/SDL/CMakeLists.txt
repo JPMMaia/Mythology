@@ -3,6 +3,7 @@ add_library (Maia::Mythology::SDL ALIAS MaiaMythologySDL)
 
 target_link_libraries (MaiaMythologySDL PRIVATE Maia::Input)
 target_link_libraries (MaiaMythologySDL PRIVATE Maia::Renderer::Vulkan)
+target_link_libraries (MaiaMythologySDL PRIVATE Maia::Renderer::Vulkan::Serialization)
 target_link_libraries (MaiaMythologySDL PRIVATE Maia::Shaders)
 target_link_libraries (MaiaMythologySDL PRIVATE Maia::SDL2)
 
@@ -31,5 +32,5 @@ target_module (
     INTERFACE "Application.cxx"
     INTERFACE_DEPENDS "Standard_library" "nlohmann_json_module"
     IMPLEMENTATION "Application.cpp"
-    IMPLEMENTATION_DEPENDS "maia.input" "maia.sdl.vulkan" "mythology.core.vulkan" "mythology.core.utilities" "SDL" "SDL_vulkan" "Standard_library" "nlohmann_json_module"
+    IMPLEMENTATION_DEPENDS "maia.input" "maia.sdl.vulkan" "mythology.core.vulkan" "mythology.core.utilities" "SDL" "SDL_vulkan" "Standard_library" "nlohmann_json_module" "maia.renderer.vulkan.serializer"
 )

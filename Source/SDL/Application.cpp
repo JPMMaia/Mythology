@@ -984,10 +984,13 @@ namespace Mythology::SDL
         std::pmr::vector<Game_controller> game_controllers;
         game_controllers.reserve(2);
 
-        VkSurfaceFormatKHR const surface_format = select_surface_format(physical_device, surface);
+        std::pmr::vector<VkRenderPass> const render_passes = 
+            Maia::Renderer::Vulkan::create_render_passes(device.value, nullptr, pipeline_json.at("render_passes"), {}, {}, {}, {}, {}, {});
 
         Maia::Renderer::Vulkan::Commands_data const commands_data = 
             Maia::Renderer::Vulkan::create_commands_data(pipeline_json.at("frame_commands"), {});
+
+        VkSurfaceFormatKHR const surface_format = select_surface_format(physical_device, surface);
 
         Application_resources const application_resources{shaders_path, physical_device, device, surface_format.format};
         Render_pass const render_pass = application_resources.render_pass;
