@@ -181,9 +181,12 @@ def clear_color_image_node_to_json(
     node: ClearColorImageNode
 ) -> JSONType:
 
+    assert node.inputs["Image"].links[0].from_node.bl_idname == "BeginFrameNode"
+    assert node.inputs["Image Subresource Ranges"].links[0].from_node.bl_idname == "BeginFrameNode"
+
     return {
-        "image": {"type": "output_image"} if node.inputs["Image"].links[0].from_node.bl_idname == "BeginFrameNode" else {},
-        "image_subresource_ranges": [{"type": "output_image"}] if node.inputs["Image Subresource Ranges"].links[0].from_node.bl_idname == "BeginFrameNode" else [],
+        "type": "Clear_color_image",
+        "subtype": "Dependent",
         "clear_color_value": clear_color_value_node_to_json(node.inputs["Clear Color Value"].links[0].from_node),
     }
 
@@ -197,13 +200,15 @@ def image_memory_barrier_node_to_json(
     node: ImageMemoryBarrierNode
 ) -> JSONType:
 
+    assert node.inputs["Image"].links[0].from_node.bl_idname == "BeginFrameNode"
+    assert node.inputs["Image Subresource Range"].links[0].from_node.bl_idname == "BeginFrameNode"
+
     return {
+        "type": "Dependent",
         "source_access_mask": node.get("source_access_mask_property", 0),
         "destination_access_mask": node.get("destination_access_mask_property", 0),
         "old_layout": image_layout_to_int(node.old_layout_property),
         "new_layout": image_layout_to_int(node.new_layout_property),
-        "image": {"type": "output_image"} if node.inputs["Image"].links[0].from_node.bl_idname == "BeginFrameNode" else {},
-        "image_subresource_range": {"type": "output_image"} if node.inputs["Image Subresource Range"].links[0].from_node.bl_idname == "BeginFrameNode" else {},
     }
 
 def pipeline_barrier_node_to_json(

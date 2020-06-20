@@ -505,12 +505,16 @@ def subpass_to_json(subpass_node: SubpassNode, attachments: typing.List[Attachme
     # TODO implement
     assert len(subpass_node.inputs["Resolve Attachments"].links) == 0
 
+    depth_stencil_attachments = get_attachment_references(subpass_node, "Depth Stencil Attachment", attachments)
+    assert len(depth_stencil_attachments) <= 1
+    depth_stencil_attachment = depth_stencil_attachments[0] if len(depth_stencil_attachments) == 1 else {}
+
     return {
         "pipeline_bind_point": get_subpass_input(subpass_node, "Pipeline Bind Point"),
         "input_attachments": get_attachment_references(subpass_node, "Input Attachments", attachments),
         "color_attachments": get_attachment_references(subpass_node, "Color Attachments", attachments),
         "resolve_attachments": [],
-        "depth_stencil_attachment": get_attachment_references(subpass_node, "Depth Stencil Attachment", attachments),
+        "depth_stencil_attachment": depth_stencil_attachment,
         "preserve_attachments": [attachments.index(link.from_node)
                                  for link in subpass_node.inputs["Preserve Attachments"].links]
     }
