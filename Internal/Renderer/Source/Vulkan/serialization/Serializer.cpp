@@ -1,5 +1,7 @@
 module maia.renderer.vulkan.serializer;
 
+import maia.renderer.vulkan.check;
+
 import <nlohmann/json.hpp>;
 import <vulkan/vulkan.h>;
 
@@ -11,6 +13,318 @@ import <vector>;
 
 namespace Maia::Renderer::Vulkan
 {
+    namespace
+    {
+        std::pmr::vector<VkAttachmentDescription> create_attachments(
+            nlohmann::json const& attachments_json,
+            std::pmr::polymorphic_allocator<VkAttachmentDescription> const& allocator
+        ) noexcept
+        {
+            auto const create_attachment = [] (nlohmann::json const& attachment_json) -> VkAttachmentDescription
+            {
+                return
+                {
+                    .flags = attachment_json.at("flags").get<VkAttachmentDescriptionFlags>(),
+                    .format = attachment_json.at("format").get<VkFormat>(),
+                    .samples = attachment_json.at("samples").get<VkSampleCountFlagBits>(),
+                    .loadOp = attachment_json.at("load_operation").get<VkAttachmentLoadOp>(),
+                    .storeOp = attachment_json.at("store_operation").get<VkAttachmentStoreOp>(),
+                    .stencilLoadOp = attachment_json.at("stencil_load_operation").get<VkAttachmentLoadOp>(),
+                    .stencilStoreOp = attachment_json.at("stencil_store_operation").get<VkAttachmentStoreOp>(),
+                    .initialLayout = attachment_json.at("initial_layout").get<VkImageLayout>(),
+                    .finalLayout = attachment_json.at("final_layout").get<VkImageLayout>(),
+                };
+            };
+
+            std::pmr::vector<VkAttachmentDescription> attachments{allocator};
+            attachments.resize(attachments_json.size());
+
+            std::transform(attachments_json.begin(), attachments_json.end(), attachments.begin(), create_attachment);
+
+            return attachments;
+        }
+
+        VkAttachmentReference create_attachment_reference(
+            nlohmann::json const& attachment_reference_json
+        ) noexcept
+        {
+            return
+            {
+                .attachment = attachment_reference_json.at("attachment").get<uint32_t>(),
+                .layout = attachment_reference_json.at("layout").get<VkImageLayout>(),
+            };
+        };
+
+        std::pmr::vector<VkAttachmentReference> create_attachment_references(
+            nlohmann::json const& attachment_references_json,
+            std::pmr::polymorphic_allocator<VkAttachmentReference> const& allocator
+        ) noexcept
+        {
+            std::pmr::vector<VkAttachmentReference> attachment_references{allocator};
+            attachment_references.resize(attachment_references_json.size());
+
+            std::transform(attachment_references_json.begin(), attachment_references_json.end(), attachment_references.begin(), create_attachment_reference);
+
+            return attachment_references;
+        }
+
+        std::size_t get_attachment_reference_count(
+            nlohmann::json const& subpasses_json
+        ) noexcept
+        {
+            std::size_t count = 0;
+
+            for (nlohmann::json const& subpass_json : subpasses_json)
+            {
+                count += subpass_json.at("input_attachments").size()
+                        + subpass_json.at("color_attachments").size()
+                        + subpass_json.at("resolve_attachments").size()
+                        + (!subpass_json.at("depth_stencil_attachment").empty() ? 1 : 0);
+
+            }
+
+            return count;
+        }
+
+        std::pmr::vector<VkAttachmentReference> create_subpasses_attachment_references(
+            nlohmann::json const& subpasses_json,
+            std::pmr::polymorphic_allocator<VkAttachmentReference> const& allocator
+        ) noexcept
+        {
+            std::pmr::vector<VkAttachmentReference> attachment_references{allocator};
+            attachment_references.reserve(get_attachment_reference_count(subpasses_json));
+
+            for (nlohmann::json const& subpass_json : subpasses_json)
+            {
+                assert(subpass_json.at("resolve_attachments").empty() || (subpass_json.at("resolve_attachments").size() == subpass_json.at("color_attachments").size()));
+
+                std::pmr::vector<VkAttachmentReference> const input_attachments = 
+                    create_attachment_references(subpass_json.at("input_attachments"), allocator);
+                attachment_references.insert(attachment_references.end(), input_attachments.begin(), input_attachments.end());
+
+                std::pmr::vector<VkAttachmentReference> const color_attachments = 
+                    create_attachment_references(subpass_json.at("color_attachments"), allocator);
+                attachment_references.insert(attachment_references.end(), color_attachments.begin(), color_attachments.end());
+
+                std::pmr::vector<VkAttachmentReference> const resolve_attachments =
+                    create_attachment_references(subpass_json.at("resolve_attachments"), allocator);
+                attachment_references.insert(attachment_references.end(), resolve_attachments.begin(), resolve_attachments.end());
+                
+                if (!subpass_json.at("depth_stencil_attachment").empty())
+                {
+                    VkAttachmentReference const depth_stencil_attachment = 
+                        create_attachment_reference(subpass_json.at("depth_stencil_attachment"));
+                    
+                    attachment_references.push_back(depth_stencil_attachment);
+                }
+            }
+
+            return attachment_references;
+        }
+
+        std::pmr::vector<std::uint32_t> create_subpasses_preserve_attachments(
+            nlohmann::json const& subpasses_json,
+            std::pmr::polymorphic_allocator<std::uint32_t> const& allocator
+        ) noexcept
+        {
+            std::pmr::vector<std::uint32_t> preserve_attachments{allocator};
+
+            for (nlohmann::json const& subpass_json : subpasses_json)
+            {
+                for (nlohmann::json const& number_json : subpass_json.at("preserve_attachments"))
+                {
+                    preserve_attachments.push_back(number_json.get<std::uint32_t>());
+                }
+            }
+
+            return preserve_attachments;
+        }
+
+        std::pmr::vector<VkSubpassDescription> create_subpasses(
+            nlohmann::json const& subpasses_json,
+            std::span<VkAttachmentReference const> const attachment_references,
+            std::span<std::uint32_t const> const preserve_attachments,
+            std::pmr::polymorphic_allocator<VkSubpassDescription> const& allocator
+        ) noexcept
+        {
+            std::pmr::vector<VkSubpassDescription> subpasses{allocator};
+            subpasses.reserve(subpasses_json.size());
+
+            VkAttachmentReference const* current_attachment_reference = attachment_references.data();
+            std::uint32_t const* current_preserve_attachment = preserve_attachments.data();
+
+            for (nlohmann::json const& subpass_json : subpasses_json)
+            {
+                assert(subpass_json.at("resolve_attachments").empty() || (subpass_json.at("resolve_attachments").size() == subpass_json.at("color_attachments").size()));
+
+                nlohmann::json const& input_attachments_json = subpass_json.at("input_attachments");
+                nlohmann::json const& color_attachments_json = subpass_json.at("color_attachments");
+                nlohmann::json const& resolve_attachments_json = subpass_json.at("resolve_attachments");
+                nlohmann::json const& depth_stencil_attachment_json = subpass_json.at("depth_stencil_attachment");
+                nlohmann::json const& preserve_attachment_json = subpass_json.at("preserve_attachments");
+
+                VkAttachmentReference const* const input_attachments_pointer =
+                    !input_attachments_json.empty() ? current_attachment_reference : nullptr;
+                current_attachment_reference += input_attachments_json.size();
+
+                VkAttachmentReference const* const color_attachments_pointer =
+                    !color_attachments_json.empty() ? current_attachment_reference : nullptr;
+                current_attachment_reference += color_attachments_json.size();
+
+                VkAttachmentReference const* const resolve_attachment_pointer =
+                    !resolve_attachments_json.empty() ? current_attachment_reference : nullptr;
+                current_attachment_reference += resolve_attachments_json.size();
+
+                VkAttachmentReference const* const depth_stencil_attachment_pointer =
+                    !depth_stencil_attachment_json.empty() ? current_attachment_reference : nullptr;
+                current_attachment_reference += (!depth_stencil_attachment_json.empty() ? 1 : 0);
+
+                std::uint32_t const* const preserve_attachments_pointer =
+                    !preserve_attachment_json.empty() ? current_preserve_attachment : nullptr;
+                current_preserve_attachment += preserve_attachment_json.size();
+
+                subpasses.push_back(
+                    {
+                        .flags = {},
+                        .pipelineBindPoint = subpass_json.at("pipeline_bind_point").get<VkPipelineBindPoint>(),
+                        .inputAttachmentCount = static_cast<std::uint32_t>(input_attachments_json.size()),
+                        .pInputAttachments = input_attachments_pointer,
+                        .colorAttachmentCount = static_cast<std::uint32_t>(color_attachments_json.size()),
+                        .pColorAttachments = color_attachments_pointer,
+                        .pResolveAttachments = resolve_attachment_pointer,
+                        .pDepthStencilAttachment = depth_stencil_attachment_pointer,
+                        .preserveAttachmentCount = static_cast<std::uint32_t>(preserve_attachment_json.size()),
+                        .pPreserveAttachments = preserve_attachments_pointer,
+                    }
+                );
+            }
+
+            return std::move(subpasses);
+        }
+
+        std::pmr::vector<VkSubpassDependency> create_dependencies(
+            nlohmann::json const& dependencies_json,
+            std::pmr::polymorphic_allocator<VkSubpassDependency> const& allocator
+        ) noexcept
+        {
+            auto const create_dependency = [](nlohmann::json const& dependency_json) -> VkSubpassDependency
+            {
+                auto const get_subpass_index = [](nlohmann::json const& subpass_index_json) -> std::uint32_t
+                {
+                    assert(subpass_index_json.is_number_unsigned() || subpass_index_json.get<std::string>() == "external");
+
+                    if (subpass_index_json.is_number_unsigned())
+                    {
+                        return subpass_index_json.get<std::int32_t>();
+                    }
+                    else
+                    {
+                        return VK_SUBPASS_EXTERNAL;   
+                    }
+                };
+
+                return
+                {
+                    .srcSubpass = get_subpass_index(dependency_json.at("source_subpass")),
+                    .dstSubpass = get_subpass_index(dependency_json.at("destination_subpass")),
+                    .srcStageMask = dependency_json.at("source_stage_mask").get<VkPipelineStageFlags>(),
+                    .dstStageMask = dependency_json.at("destination_stage_mask").get<VkPipelineStageFlags>(),
+                    .srcAccessMask = dependency_json.at("source_access_mask").get<VkAccessFlags>(),
+                    .dstAccessMask = dependency_json.at("destination_access_mask").get<VkAccessFlags>(),
+                    .dependencyFlags = dependency_json.at("dependency_flags").get<VkDependencyFlags>(),
+                };
+            };
+
+            std::pmr::vector<VkSubpassDependency> dependencies{allocator};
+            dependencies.resize(dependencies_json.size());
+
+            std::transform(dependencies_json.begin(), dependencies_json.end(), dependencies.begin(), create_dependency);
+
+            return dependencies;
+        }
+    }
+
+    Render_pass_create_info_resources create_render_pass_create_info_resources(
+        nlohmann::json const& render_pass_json,
+        std::pmr::polymorphic_allocator<VkAttachmentDescription> const& attachments_allocator,
+        std::pmr::polymorphic_allocator<VkAttachmentReference> const& attachment_reference_allocator,
+        std::pmr::polymorphic_allocator<std::uint32_t> const& preserve_attachment_allocator,
+        std::pmr::polymorphic_allocator<VkSubpassDescription> const& subpasses_allocator,
+        std::pmr::polymorphic_allocator<VkSubpassDependency> const& dependencies_allocator
+    ) noexcept
+    {
+        std::pmr::vector<VkAttachmentDescription> attachments = create_attachments(render_pass_json.at("attachments"), attachments_allocator);
+        std::pmr::vector<VkAttachmentReference> attachment_references = create_subpasses_attachment_references(render_pass_json.at("subpasses"), attachment_reference_allocator);
+        std::pmr::vector<std::uint32_t> preserve_attachments = create_subpasses_preserve_attachments(render_pass_json.at("subpasses"), preserve_attachment_allocator);
+        std::pmr::vector<VkSubpassDescription> subpasses = create_subpasses(render_pass_json.at("subpasses"), attachment_references, preserve_attachments, subpasses_allocator);
+        std::pmr::vector<VkSubpassDependency> dependencies = create_dependencies(render_pass_json.at("dependencies"), dependencies_allocator);
+        
+        VkRenderPassCreateInfo const create_info
+        {
+            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = {},
+            .attachmentCount = static_cast<std::uint32_t>(attachments.size()),
+            .pAttachments = attachments.data(),
+            .subpassCount = static_cast<std::uint32_t>(subpasses.size()),
+            .pSubpasses = subpasses.data(),
+            .dependencyCount = static_cast<std::uint32_t>(dependencies.size()),
+            .pDependencies = dependencies.data(),
+        };
+
+        return
+        {
+            .attachments = std::move(attachments),
+            .attachment_references = std::move(attachment_references),
+            .preserve_attachments = std::move(preserve_attachments),
+            .subpasses = std::move(subpasses),
+            .dependencies = std::move(dependencies),
+            .create_info = create_info,
+        };
+    }
+
+    std::pmr::vector<VkRenderPass> create_render_passes(
+        VkDevice const device,
+        VkAllocationCallbacks const* const allocation_callbacks,
+        nlohmann::json const& render_passes_json,
+        std::pmr::polymorphic_allocator<VkAttachmentDescription> const& attachments_allocator,
+        std::pmr::polymorphic_allocator<VkAttachmentReference> const& attachment_reference_allocator,
+        std::pmr::polymorphic_allocator<std::uint32_t> const& preserve_attachment_allocator,
+        std::pmr::polymorphic_allocator<VkSubpassDescription> const& subpasses_allocator,
+        std::pmr::polymorphic_allocator<VkSubpassDependency> const& dependencies_allocator,
+        std::pmr::polymorphic_allocator<VkRenderPass> const& allocator
+    ) noexcept
+    {
+        std::pmr::vector<VkRenderPass> render_passes{allocator};
+        render_passes.reserve(render_passes_json.size());
+
+        for (nlohmann::json const& render_pass_json : render_passes_json)       
+        {
+            Render_pass_create_info_resources const create_info_resources = create_render_pass_create_info_resources(
+                render_pass_json,
+                attachments_allocator,
+                attachment_reference_allocator,
+                preserve_attachment_allocator,
+                subpasses_allocator,
+                dependencies_allocator
+            );
+
+            VkRenderPass render_pass = {};
+            check_result(
+                vkCreateRenderPass(
+                    device, 
+                    &create_info_resources.create_info,
+                    allocation_callbacks,
+                    &render_pass
+                )
+            );
+
+            render_passes.push_back(render_pass);
+        }
+
+        return render_passes;
+    }
+
     namespace
     {
         enum class Command_type : std::uint8_t
@@ -192,6 +506,7 @@ namespace Maia::Renderer::Vulkan
             }
             else
             {
+                assert(false && "Command not recognized!");
                 return {};
             }
         }
@@ -368,6 +683,10 @@ namespace Maia::Renderer::Vulkan
 
             case Command_type::Pipeline_barrier:
                 offset_in_bytes += add_pipeline_barrier_command(command_buffer, output_image, output_image_subresource_range, next_command_bytes, {});
+                break;
+
+            default:
+                assert(false && "Unrecognized command!");
                 break;
             }
         }
