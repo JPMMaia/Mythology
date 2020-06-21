@@ -106,7 +106,11 @@ classes = (
     resources.ImageNodeSocket,
     resources.ImageSubresourceRangeNodeSocket,
 
+
+    export.MythologyExportProperties,
+    export.MythologyAddonPreferences,
     export.MythologyExportOperator,
+    export.MythologyExportPanel,
 )
 
 def register():
@@ -121,6 +125,8 @@ def register():
     nodeitems_utils.register_node_categories('PIPELINE_STATE', pipeline_state_node_categories)
 
     bpy.types.NODE_MT_node.append(export.mythology_export_menu)
+
+    bpy.types.Scene.mythology_export_settings = bpy.props.PointerProperty(type=export.MythologyExportProperties)
 
 
 def unregister():

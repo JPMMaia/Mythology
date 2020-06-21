@@ -524,21 +524,22 @@ class SamplerNode(bpy.types.Node, RenderTreeNode):
 
 
 shader_type_values = [
-    ("VS", "Vertex Shader", "", 0),
-    ("GS", "Geometry Shader", "", 1),
-    ("HS", "Hull Shader", "", 2),
-    ("DS", "Domain Shader", "", 3),
-    ("PS", "Pixel Shader", "", 4),
-    ("CS", "Compute Shader", "", 5),
-    ("MS", "Mesh Shader", "", 6),
-    ("AS", "Amplification Shader", "", 7),
+    ("VS", "Vertex Shader", "", 0x00000001),
+    ("GS", "Geometry Shader", "", 0x00000008),
+    ("HS", "Hull Shader", "", 0x00000002),
+    ("DS", "Domain Shader", "", 0x00000004),
+    ("PS", "Pixel Shader", "", 0x00000010),
+    ("CS", "Compute Shader", "", 0x00000020),
+    ("AS", "Amplification Shader", "", 0x00000040),
+    ("MS", "Mesh Shader", "", 0x00000080),
 ]
 
 class ShaderModuleNode(bpy.types.Node, RenderTreeNode):
 
     bl_label = 'Shader Module node'
 
-    shader_file_property: bpy.props.StringProperty(name="File", subtype="FILE_PATH")
+    input_shader_file_property: bpy.props.StringProperty(name="Input Shader File", subtype="FILE_PATH")
+    output_shader_filename_property: bpy.props.StringProperty(name="Output Binary")
     language_property: bpy.props.EnumProperty(items=[("HLSL", "HLSL", "", 0)])
     shader_type_property: bpy.props.EnumProperty(name="Type", items=shader_type_values)
     shader_model_property: bpy.props.StringProperty(name="Model", default="6_5")
@@ -549,7 +550,8 @@ class ShaderModuleNode(bpy.types.Node, RenderTreeNode):
         self.outputs.new("ShaderModuleNodeSocket", "Shader")
 
     def draw_buttons(self, context, layout):
-        layout.prop(self, "shader_file_property")
+        layout.prop(self, "input_shader_file_property")
+        layout.prop(self, "output_shader_filename_property")
         layout.prop(self, "language_property")
         layout.prop(self, "shader_type_property")
         layout.prop(self, "shader_model_property")
@@ -726,6 +728,7 @@ pipeline_state_node_categories = [
     ]),
 ]
 
+import pathlib
 import typing
 
 from .common import create_rect_2d_json
@@ -839,14 +842,9 @@ def shader_module_to_json(
 
     json = [
         {
-            "file": shader_module_node.shader_file_property,
-            "language": shader_module_node.language_property,
-            "type": shader_module_node.shader_type_property,
-            "shader_model": shader_module_node.shader_model_property,
-            "entry_point": shader_module_node.entry_point_property,
-            "additional_compile_flags": shader_module_node.additional_compile_flags_property,
+            "file": node.output_shader_filename_property,
         }
-        for shader_module_node in shader_module_nodes
+        for node in shader_module_nodes
     ]
 
     return (shader_module_nodes, json)
@@ -874,9 +872,11 @@ def create_shader_stages_json(
 
     return [
         {
-            "shader": shader_module_index
+            "shader": shader_module_index,
+            "stage": shader_module.get("shader_type_property", 1),
+            "entry_point": shader_module.get("entry_point_property", "main")
         }
-        for shader_module_index in shader_module_indices
+        for shader_module_index, shader_module in zip(shader_module_indices, shader_module_nodes)
     ]
     
 
