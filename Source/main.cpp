@@ -59,10 +59,10 @@ int main(int const argc, const char* const* const argv) noexcept
         {
             if (matches(argv[2], "--pipeline"))
             {
-                char const* const pipeline_json_file = argv[3];
+                std::filesystem::path const pipeline_json_file_path = argv[3];
 
-                nlohmann::json const pipeline_json = read_json_from_file(pipeline_json_file);
-                Mythology::SDL::run(pipeline_json);
+                nlohmann::json const pipeline_json = read_json_from_file(pipeline_json_file_path);
+                Mythology::SDL::run(pipeline_json, pipeline_json_file_path.parent_path());
             }
         }
     }

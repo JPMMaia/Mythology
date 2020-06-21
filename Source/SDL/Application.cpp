@@ -856,7 +856,10 @@ namespace Mythology::SDL
         }
     }
 
-    void run(nlohmann::json const& pipeline_json) noexcept
+    void run(
+        nlohmann::json const& pipeline_json,
+        std::filesystem::path const& pipeline_json_parent_path
+    ) noexcept
     {
         std::filesystem::path const shaders_path = std::filesystem::current_path() / "../shaders";
 
@@ -986,6 +989,9 @@ namespace Mythology::SDL
 
         std::pmr::vector<VkRenderPass> const render_passes = 
             Maia::Renderer::Vulkan::create_render_passes(device.value, nullptr, pipeline_json.at("render_passes"), {}, {}, {}, {}, {}, {});
+
+        std::pmr::vector<VkShaderModule> const shader_modules = 
+            Maia::Renderer::Vulkan::create_shader_modules(device.value, nullptr, pipeline_json.at("shader_modules"), pipeline_json_parent_path, {});
 
         Maia::Renderer::Vulkan::Commands_data const commands_data = 
             Maia::Renderer::Vulkan::create_commands_data(pipeline_json.at("frame_commands"), {});
