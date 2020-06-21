@@ -4,6 +4,7 @@ import <nlohmann/json.hpp>;
 import <vulkan/vulkan.h>;
 
 import <cstddef>;
+import <filesystem>;
 import <memory_resource>;
 import <vector>;
 
@@ -38,6 +39,15 @@ namespace Maia::Renderer::Vulkan
         std::pmr::polymorphic_allocator<VkSubpassDescription> const& subpasses_allocator,
         std::pmr::polymorphic_allocator<VkSubpassDependency> const& dependencies_allocator,
         std::pmr::polymorphic_allocator<VkRenderPass> const& allocator
+    ) noexcept;
+
+
+    export std::pmr::vector<VkShaderModule> create_shader_modules(
+        VkDevice const device,
+        VkAllocationCallbacks const* const allocation_callbacks,
+        nlohmann::json const& shader_modules_json,
+        std::filesystem::path const& shaders_path,
+        std::pmr::polymorphic_allocator<> const& allocator
     ) noexcept;
 
 

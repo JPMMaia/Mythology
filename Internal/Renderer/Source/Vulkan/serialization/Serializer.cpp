@@ -6,6 +6,8 @@ import <nlohmann/json.hpp>;
 import <vulkan/vulkan.h>;
 
 import <cstddef>;
+import <filesystem>;
+import <fstream>;
 import <memory_resource>;
 import <span>;
 import <string>;
@@ -323,6 +325,87 @@ namespace Maia::Renderer::Vulkan
         }
 
         return render_passes;
+    }
+
+    namespace
+    {
+        std::pmr::vector<std::byte> read_bytes(
+            std::filesystem::path const& file_path,
+            std::pmr::polymorphic_allocator<> const& allocator = {}
+        ) noexcept
+        {
+            std::ifstream input_stream{file_path, std::ios::in | std::ios::binary};
+            assert(input_stream.good());
+
+            input_stream.seekg(0, std::ios::end);
+            auto const size_in_bytes = input_stream.tellg();
+
+            std::pmr::vector<std::byte> buffer{allocator};
+            buffer.resize(size_in_bytes);
+
+            input_stream.seekg(0, std::ios::beg);
+            input_stream.read(reinterpret_cast<char*>(buffer.data()), buffer.size());
+
+            return buffer;
+        }
+
+        template<typename Value_type>
+        std::pmr::vector<Value_type> convert_bytes(
+            std::span<std::byte const> const bytes,
+            std::pmr::polymorphic_allocator<> const& allocator = {}
+        ) noexcept
+        {
+            assert(bytes.size_bytes() % sizeof(Value_type) == 0);
+
+            std::pmr::vector<Value_type> values{allocator};
+            values.resize(bytes.size_bytes() / sizeof(Value_type));
+
+            std::memcpy(values.data(), bytes.data(), bytes.size_bytes());
+
+            return values;
+        }
+    }
+
+    std::pmr::vector<VkShaderModule> create_shader_modules(
+        VkDevice const device,
+        VkAllocationCallbacks const* const allocation_callbacks,
+        nlohmann::json const& shader_modules_json,
+        std::filesystem::path const& shaders_path,
+        std::pmr::polymorphic_allocator<> const& allocator
+    ) noexcept
+    {
+        std::pmr::vector<VkShaderModule> shader_modules{allocator};
+        shader_modules.reserve(shader_modules_json.size());
+
+        for (nlohmann::json const& shader_module_json : shader_modules_json)       
+        {
+            std::string const& shader_file = shader_module_json.at("file").get<std::string>();
+
+            std::pmr::vector<std::uint32_t> const shader_code = convert_bytes<std::uint32_t>(read_bytes(shaders_path / shader_file, allocator), allocator);
+
+            VkShaderModuleCreateInfo const create_info
+            {
+                .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = {},
+                .codeSize = shader_code.size() * sizeof(decltype(shader_code)::value_type),
+                .pCode = shader_code.data(),
+            };
+
+            VkShaderModule shader_module = {};
+            check_result(
+                vkCreateShaderModule(
+                    device,
+                    &create_info,
+                    allocation_callbacks,
+                    &shader_module
+                )
+            );
+
+            shader_modules.push_back(shader_module);
+        }
+
+        return shader_modules;
     }
 
     namespace
