@@ -408,6 +408,165 @@ namespace Maia::Renderer::Vulkan
         return shader_modules;
     }
 
+    std::pmr::vector<VkSampler> create_samplers(
+        VkDevice const device,
+        VkAllocationCallbacks const* const allocation_callbacks,
+        nlohmann::json const& samplers_json,
+        std::pmr::polymorphic_allocator<> const& allocator
+    ) noexcept
+    {
+        std::pmr::vector<VkSampler> samplers{allocator};
+        samplers.reserve(samplers_json.size());
+
+        for (nlohmann::json const& sampler_json : samplers_json)       
+        {
+            VkSamplerCreateInfo const create_info
+            {
+                .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = {},
+                .magFilter = sampler_json.at("mag_filter").get<VkFilter>(),
+                .minFilter = sampler_json.at("min_filter").get<VkFilter>(),
+                .mipmapMode = sampler_json.at("mipmap_mode").get<VkSamplerMipmapMode>(),
+                .addressModeU = sampler_json.at("address_mode_u").get<VkSamplerAddressMode>(),
+                .addressModeV = sampler_json.at("address_mode_v").get<VkSamplerAddressMode>(),
+                .addressModeW = sampler_json.at("address_mode_w").get<VkSamplerAddressMode>(),
+                .mipLodBias = sampler_json.at("mip_lod_bias").get<float>(),
+                .anisotropyEnable = sampler_json.at("anisotropy_enable").get<VkBool32>(),
+                .maxAnisotropy = sampler_json.at("max_anisotropy").get<float>(),
+                .compareEnable = sampler_json.at("compare_enable").get<VkBool32>(),
+                .compareOp = sampler_json.at("compare_operation").get<VkCompareOp>(),
+                .minLod = sampler_json.at("min_lod").get<float>(),
+                .maxLod = sampler_json.at("max_lod").get<float>(),
+                .borderColor = sampler_json.at("border_color").get<VkBorderColor>(),
+                .unnormalizedCoordinates = sampler_json.at("unnormalized_coordinates").get<VkBool32>(),
+            };
+
+            VkSampler sampler = {};
+            check_result(
+                vkCreateSampler(
+                    device,
+                    &create_info,
+                    allocation_callbacks,
+                    &sampler
+                )
+            );
+
+            samplers.push_back(sampler);
+        }
+
+        return samplers;
+    }
+
+    namespace
+    {
+        std::pmr::vector<VkSampler> arrange_immutable_samplers(
+            nlohmann::json const& descriptor_set_layouts_json,
+            std::span<VkSampler const> const samplers,
+            std::pmr::polymorphic_allocator<> const& allocator
+        ) noexcept
+        {
+            std::pmr::vector<VkSampler> immutable_samplers_per_descriptor_set_binding{allocator};
+
+            for (nlohmann::json const& descriptor_set_layout_json : descriptor_set_layouts_json)       
+            {
+                for (nlohmann::json const& immutable_sampler_json : descriptor_set_layout_json.at("immutable_samplers"))
+                {
+                    std::size_t const sampler_index = immutable_sampler_json.get<std::size_t>();
+
+                    immutable_samplers_per_descriptor_set_binding.push_back(
+                        samplers[sampler_index]
+                    );
+                }
+            }
+
+            return immutable_samplers_per_descriptor_set_binding;
+        }
+
+        std::pmr::vector<VkDescriptorSetLayoutBinding> create_descriptor_set_layouts_bindings(
+            nlohmann::json const& descriptor_set_layouts_json,
+            std::span<VkSampler const> const immutable_samplers_per_descriptor_set_binding,
+            std::pmr::polymorphic_allocator<> const& allocator
+        ) noexcept
+        {
+            std::pmr::vector<VkDescriptorSetLayoutBinding> bindings{allocator};
+
+            std::uint32_t start_sampler_index = 0;
+
+            for (nlohmann::json const& descriptor_set_layout_json : descriptor_set_layouts_json)       
+            {
+                nlohmann::json const& immutable_samplers_json = descriptor_set_layout_json.at("immutable_samplers");
+
+                VkDescriptorSetLayoutBinding const binding
+                {
+                    .binding = descriptor_set_layout_json.at("binding").get<std::uint32_t>(),
+                    .descriptorType = descriptor_set_layout_json.at("descriptor_type").get<VkDescriptorType>(),
+                    .descriptorCount = descriptor_set_layout_json.at("descriptor_count").get<std::uint32_t>(),
+                    .stageFlags = descriptor_set_layout_json.at("stage_flags_property").get<VkShaderStageFlags>(),
+                    .pImmutableSamplers = 
+                        !immutable_samplers_json.empty() ?
+                        immutable_samplers_per_descriptor_set_binding.data() + start_sampler_index :
+                        nullptr
+                };
+
+                bindings.push_back(binding);
+
+                start_sampler_index += immutable_samplers_json.size();
+            }
+
+            return bindings;
+        }
+    }
+
+    std::pmr::vector<VkDescriptorSetLayout> create_descriptor_set_layouts(
+        VkDevice const device,
+        VkAllocationCallbacks const* const allocation_callbacks,
+        std::span<VkSampler const> const samplers,
+        nlohmann::json const& descriptor_set_layouts_json,
+        std::pmr::polymorphic_allocator<> const& allocator
+    ) noexcept
+    {
+        std::pmr::vector<VkSampler> const immutable_samplers_per_descriptor_set_binding =
+            arrange_immutable_samplers(descriptor_set_layouts_json, samplers, allocator);
+
+        std::pmr::vector<VkDescriptorSetLayoutBinding> const bindings = 
+            create_descriptor_set_layouts_bindings(descriptor_set_layouts_json, immutable_samplers_per_descriptor_set_binding, allocator);
+
+        std::pmr::vector<VkDescriptorSetLayout> descriptor_set_layouts{allocator};
+        descriptor_set_layouts.reserve(descriptor_set_layouts_json.size());
+
+        std::uint32_t start_binding_index = 0;
+
+        for (nlohmann::json const& descriptor_set_layout_json : descriptor_set_layouts_json)       
+        {
+            std::uint32_t const num_bindings = static_cast<std::uint32_t>(descriptor_set_layout_json.at("bindings").size());
+
+            VkDescriptorSetLayoutCreateInfo const create_info
+            {
+                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = {},
+                .bindingCount = num_bindings,
+                .pBindings = bindings.data() + start_binding_index,
+            };
+
+            VkDescriptorSetLayout descriptor_set_layout = {};
+            check_result(
+                vkCreateDescriptorSetLayout(
+                    device,
+                    &create_info,
+                    allocation_callbacks,
+                    &descriptor_set_layout
+                )
+            );
+
+            descriptor_set_layouts.push_back(descriptor_set_layout);
+            start_binding_index += num_bindings;
+        }
+
+        return descriptor_set_layouts;
+    }
+
     namespace
     {
         enum class Command_type : std::uint8_t

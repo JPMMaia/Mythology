@@ -6,6 +6,7 @@ import <vulkan/vulkan.h>;
 import <cstddef>;
 import <filesystem>;
 import <memory_resource>;
+import <span>;
 import <vector>;
 
 namespace Maia::Renderer::Vulkan
@@ -47,6 +48,23 @@ namespace Maia::Renderer::Vulkan
         VkAllocationCallbacks const* const allocation_callbacks,
         nlohmann::json const& shader_modules_json,
         std::filesystem::path const& shaders_path,
+        std::pmr::polymorphic_allocator<> const& allocator
+    ) noexcept;
+
+
+    export std::pmr::vector<VkSampler> create_samplers(
+        VkDevice device,
+        VkAllocationCallbacks const* allocation_callbacks,
+        nlohmann::json const& samplers_json,
+        std::pmr::polymorphic_allocator<> const& allocator
+    ) noexcept;
+
+
+    export std::pmr::vector<VkDescriptorSetLayout> create_descriptor_set_layouts(
+        VkDevice device,
+        VkAllocationCallbacks const* allocation_callbacks,
+        std::span<VkSampler const> samplers,
+        nlohmann::json const& descriptor_set_layouts_json,
         std::pmr::polymorphic_allocator<> const& allocator
     ) noexcept;
 
