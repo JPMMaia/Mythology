@@ -569,6 +569,116 @@ namespace Maia::Renderer::Vulkan
 
     namespace
     {
+        std::pmr::vector<VkDescriptorSetLayout> arrange_descriptor_set_layouts(
+            nlohmann::json const& pipeline_layouts_json,
+            std::span<VkDescriptorSetLayout const> const descriptor_set_layouts,
+            std::pmr::polymorphic_allocator<> const& allocator
+        ) noexcept
+        {
+            std::pmr::vector<VkDescriptorSetLayout> descriptor_set_layouts_per_pipeline_layout{allocator};
+
+            for (nlohmann::json const& pipeline_layout_json : pipeline_layouts_json)       
+            {
+                for (nlohmann::json const& descriptor_set_layout_json : pipeline_layout_json.at("descriptor_set_layouts"))
+                {
+                    std::size_t const layout_index = descriptor_set_layout_json.get<std::size_t>();
+
+                    descriptor_set_layouts_per_pipeline_layout.push_back(
+                        descriptor_set_layouts[layout_index]
+                    );
+                }
+            }
+
+            return descriptor_set_layouts_per_pipeline_layout;
+        }
+
+        std::pmr::vector<VkPushConstantRange> create_push_constant_ranges(
+            nlohmann::json const& pipeline_layouts_json,
+            std::pmr::polymorphic_allocator<> const& allocator
+        ) noexcept
+        {
+            auto const create_push_constant_range = [](nlohmann::json const& push_constant_range_json) -> VkPushConstantRange
+            {
+                return
+                {
+                    .stageFlags = push_constant_range_json.at("stage_flags").get<VkShaderStageFlags>(),
+                    .offset = push_constant_range_json.at("offset").get<std::uint32_t>(),
+                    .size = push_constant_range_json.at("size").get<std::uint32_t>(),
+                };
+            };
+
+            std::pmr::vector<VkPushConstantRange> push_constant_ranges{allocator};
+
+            for (nlohmann::json const& pipeline_layout_json : pipeline_layouts_json)       
+            {
+                for (nlohmann::json const& push_constant_range_json : pipeline_layout_json.at("push_constant_ranges"))
+                {
+                    push_constant_ranges.push_back(
+                        create_push_constant_range(push_constant_range_json)
+                    );
+                }
+            }
+
+            return push_constant_ranges;
+        }
+    }
+
+    std::pmr::vector<VkPipelineLayout> create_pipeline_layouts(
+        VkDevice const device,
+        VkAllocationCallbacks const* const allocation_callbacks,
+        std::span<VkDescriptorSetLayout const> const descriptor_set_layouts,
+        nlohmann::json const& pipeline_layouts_json,
+        std::pmr::polymorphic_allocator<> const& allocator
+    ) noexcept
+    {
+        std::pmr::vector<VkDescriptorSetLayout> const descriptor_set_layouts_per_pipeline_layout =
+            arrange_descriptor_set_layouts(pipeline_layouts_json, descriptor_set_layouts, allocator);
+
+        std::pmr::vector<VkPushConstantRange> const push_constant_ranges =
+            create_push_constant_ranges(pipeline_layouts_json, allocator);
+
+        std::pmr::vector<VkPipelineLayout> pipeline_layouts{allocator};
+        pipeline_layouts.reserve(pipeline_layouts_json.size());
+
+        std::uint32_t start_descriptor_set_layout_index = 0;
+        std::uint32_t start_push_constant_range_index = 0;
+
+        for (nlohmann::json const& pipeline_layout_json : pipeline_layouts_json)       
+        {
+            std::uint32_t const num_descriptor_set_layouts = static_cast<std::uint32_t>(pipeline_layout_json.at("descriptor_set_layouts").size());
+            std::uint32_t const num_push_constant_ranges = static_cast<std::uint32_t>(pipeline_layout_json.at("push_constant_ranges").size());
+
+            VkPipelineLayoutCreateInfo const create_info
+            {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = {},
+                .setLayoutCount = num_descriptor_set_layouts,
+                .pSetLayouts = descriptor_set_layouts_per_pipeline_layout.data() + start_descriptor_set_layout_index,
+                .pushConstantRangeCount = num_push_constant_ranges,
+                .pPushConstantRanges = push_constant_ranges.data() + start_push_constant_range_index,
+            };
+
+            VkPipelineLayout pipeline_layout = {};
+            check_result(
+                vkCreatePipelineLayout(
+                    device,
+                    &create_info,
+                    allocation_callbacks,
+                    &pipeline_layout
+                )
+            );
+
+            pipeline_layouts.push_back(pipeline_layout);
+            start_descriptor_set_layout_index += num_descriptor_set_layouts;
+            start_push_constant_range_index += num_push_constant_ranges;
+        }
+
+        return pipeline_layouts;
+    }
+
+    namespace
+    {
         enum class Command_type : std::uint8_t
         {
             Clear_color_image,
