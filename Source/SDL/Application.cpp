@@ -993,6 +993,15 @@ namespace Mythology::SDL
         std::pmr::vector<VkShaderModule> const shader_modules = 
             Maia::Renderer::Vulkan::create_shader_modules(device.value, nullptr, pipeline_json.at("shader_modules"), pipeline_json_parent_path, {});
 
+        std::pmr::vector<VkSampler> const samplers = 
+            Maia::Renderer::Vulkan::create_samplers(device.value, nullptr, pipeline_json.at("samplers"), {});
+        
+        std::pmr::vector<VkDescriptorSetLayout> const descriptor_set_layouts = 
+            Maia::Renderer::Vulkan::create_descriptor_set_layouts(device.value, nullptr, samplers, pipeline_json.at("descriptor_set_layouts"), {});
+
+        std::pmr::vector<VkPipelineLayout> const pipeline_layouts = 
+            Maia::Renderer::Vulkan::create_pipeline_layouts(device.value, nullptr, descriptor_set_layouts, pipeline_json.at("pipeline_layouts"), {});
+
         Maia::Renderer::Vulkan::Commands_data const commands_data = 
             Maia::Renderer::Vulkan::create_commands_data(pipeline_json.at("frame_commands"), {});
 
