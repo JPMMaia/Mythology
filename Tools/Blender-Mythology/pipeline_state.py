@@ -1054,6 +1054,7 @@ def create_color_blend_attachment_state_json(
         "source_alpha_blend_factor": node.get("source_alpha_blend_factor_property", 0),
         "destination_alpha_blend_factor": node.get("destination_alpha_blend_factor_property", 0),
         "alpha_blend_operation": node.get("alpha_blend_operation_property", 0),
+        "color_write_mask": node.get("color_write_mask_property", 0x0000000F),
     }
 
 def create_color_blend_state_json(
