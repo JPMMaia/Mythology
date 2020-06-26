@@ -680,20 +680,179 @@ namespace Maia::Renderer::Vulkan
 
     namespace
     {
+
+        VkPipelineShaderStageCreateInfo create_pipeline_shader_stage_create_info(
+            nlohmann::json const& json,
+            std::span<VkShaderModule const> const shader_modules
+        ) noexcept
+        {
+            std::string const& name = json.at("entry_point").get<std::string>();
+
+            return
+            {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = {},
+                .stage = json.at("stage").get<VkShaderStageFlagBits>(),
+                .module = shader_modules[json.at("shader").get<std::size_t>()],
+                .pName = name.c_str(),
+                .pSpecializationInfo = nullptr,
+            };
+        }
+
         std::pmr::vector<VkPipelineShaderStageCreateInfo> create_pipeline_shader_stage_create_infos(
+            nlohmann::json const& pipeline_states_json,
+            std::span<VkShaderModule const> const shader_modules,
+            std::pmr::polymorphic_allocator<> const& allocator
+        ) noexcept
+        {
+            std::pmr::vector<VkPipelineShaderStageCreateInfo> create_infos{allocator};
+
+            for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
+            {
+                for (nlohmann::json const& stage_json : pipeline_states_json.at("stages"))
+                {
+                    create_infos.push_back(
+                        create_pipeline_shader_stage_create_info(stage_json, shader_modules)
+                    );
+                }
+            }
+
+            return create_infos;
+        }
+
+        VkVertexInputBindingDescription create_vertex_input_binding_description(
+            nlohmann::json const& json
+        ) noexcept
+        {
+            return 
+            {
+                .binding = json.at("binding").get<std::uint32_t>(),
+                .stride = json.at("stride").get<std::uint32_t>(),
+                .inputRate = json.at("input_rate").get<VkVertexInputRate>(),
+            };
+        }
+
+        std::pmr::vector<VkVertexInputBindingDescription> create_vertex_input_binding_descriptions(
             nlohmann::json const& pipeline_states_json,
             std::pmr::polymorphic_allocator<> const& allocator
         ) noexcept
         {
-            return {};
+            std::pmr::vector<VkVertexInputBindingDescription> descriptions{allocator};
+
+            for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
+            {
+                for (nlohmann::json const& binding_json : pipeline_states_json.at("vertex_input_state").at("bindings"))
+                {
+                    descriptions.push_back(
+                        create_vertex_input_binding_description(binding_json)
+                    );
+                }
+            }
+
+            return descriptions;
+        }
+
+        VkVertexInputAttributeDescription create_vertex_input_attribute_description(
+            nlohmann::json const& json
+        ) noexcept
+        {
+            return 
+            {
+                .location = json.at("location").get<std::uint32_t>(),
+                .binding = json.at("binding").get<std::uint32_t>(),
+                .format = json.at("format").get<VkFormat>(),
+                .offset = json.at("offset").get<std::uint32_t>(),
+            };
+        }
+
+        std::pmr::vector<VkVertexInputAttributeDescription> create_vertex_input_attribute_descriptions(
+            nlohmann::json const& pipeline_states_json,
+            std::pmr::polymorphic_allocator<> const& allocator
+        ) noexcept
+        {
+            std::pmr::vector<VkVertexInputAttributeDescription> descriptions{allocator};
+
+            for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
+            {
+                for (nlohmann::json const& binding_json : pipeline_states_json.at("vertex_input_state").at("attributes"))
+                {
+                    descriptions.push_back(
+                        create_vertex_input_attribute_description(binding_json)
+                    );
+                }
+            }
+
+            return descriptions;
+        }
+
+
+        VkPipelineVertexInputStateCreateInfo create_pipeline_vertex_input_state_create_info(
+            nlohmann::json const& json,
+            std::span<VkVertexInputBindingDescription const> const bindings,
+            std::span<VkVertexInputAttributeDescription const> const attributes
+        ) noexcept
+        {
+            return 
+            {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = {},
+                .vertexBindingDescriptionCount = static_cast<std::uint32_t>(bindings.size()),
+                .pVertexBindingDescriptions = bindings.data(),
+                .vertexAttributeDescriptionCount = static_cast<std::uint32_t>(attributes.size()),
+                .pVertexAttributeDescriptions = attributes.data(),
+            };
         }
 
         std::pmr::vector<VkPipelineVertexInputStateCreateInfo> create_pipeline_vertex_input_state_create_infos(
             nlohmann::json const& pipeline_states_json,
+            std::span<VkVertexInputBindingDescription const> const bindings,
+            std::span<VkVertexInputAttributeDescription const> const attributes,
             std::pmr::polymorphic_allocator<> const& allocator
         ) noexcept
         {
-            return {};
+            std::pmr::vector<VkPipelineVertexInputStateCreateInfo> create_infos{allocator};
+            create_infos.reserve(pipeline_states_json.size());
+
+            std::size_t start_binding_index = 0;
+            std::size_t start_attribute_index = 0;
+
+            for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
+            {
+                nlohmann::json const& vertex_input_state_json = pipeline_state_json.at("vertex_input_state");
+
+                std::size_t const binding_count = vertex_input_state_json.at("bindings").get<std::size_t>();
+                std::size_t const attribute_count = vertex_input_state_json.at("attributes").get<std::size_t>();
+
+                create_infos.push_back(
+                    create_pipeline_vertex_input_state_create_info(
+                        vertex_input_state_json,
+                        {bindings.data() + start_binding_index, binding_count},
+                        {attributes.data() + start_attribute_index, start_attribute_index}
+                    )
+                );
+
+                start_binding_index += binding_count;
+                start_attribute_index += attribute_count;
+            }
+
+            return create_infos;
+        }
+
+
+        VkPipelineInputAssemblyStateCreateInfo create_pipeline_input_assembly_state_create_info(
+            nlohmann::json const& json
+        ) noexcept
+        {
+            return
+            {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = {},
+                .topology = json.at("topology").get<VkPrimitiveTopology>(),
+                .primitiveRestartEnable = json.at("primitive_restart_enable").get<VkBool32>(),
+            };
         }
 
         std::pmr::vector<VkPipelineInputAssemblyStateCreateInfo> create_pipeline_input_assembly_state_create_infos(
@@ -701,23 +860,212 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& allocator
         ) noexcept
         {
+            std::pmr::vector<VkPipelineInputAssemblyStateCreateInfo> create_infos{allocator};
+
+            for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
+            {
+                create_infos.push_back(
+                    create_pipeline_input_assembly_state_create_info(pipeline_states_json.at("input_assembly_state"))
+                );
+            }
+
+            return create_infos;
+        }
+
+
+        VkPipelineTessellationStateCreateInfo create_pipeline_tessellation_state_create_info(
+            nlohmann::json const& json
+        ) noexcept
+        {
             return {};
         }
 
-        std::pmr::vector<VkPipelineTessellationStateCreateInfo> create_pipeline_tessellation_state_create_infos(
+        std::pmr::vector<std::optional<VkPipelineTessellationStateCreateInfo>> create_pipeline_tessellation_state_create_infos(
             nlohmann::json const& pipeline_states_json,
             std::pmr::polymorphic_allocator<> const& allocator
         ) noexcept
         {
-            return {};
+            std::pmr::vector<std::optional<VkPipelineTessellationStateCreateInfo>> create_infos;
+            create_infos.reserve(pipeline_states_json.size());
+
+            for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
+            {
+                create_infos.push_back(
+                    {}
+                );
+            }
+
+            return create_infos;
+        }
+
+        VkViewport create_viewport(
+            nlohmann::json const& json
+        ) noexcept
+        {
+            return
+            {
+                .x = json.at("x").get<float>(),
+                .y = json.at("y").get<float>(),
+                .width = json.at("width").get<float>(),
+                .height = json.at("height").get<float>(),
+                .minDepth = json.at("minimum").get<float>(),
+                .maxDepth = json.at("maximum").get<float>(),
+            };
+        }
+
+        std::pmr::vector<VkViewport> create_viewports(
+            nlohmann::json const& pipeline_states_json,
+            std::pmr::polymorphic_allocator<> const& allocator
+        ) noexcept
+        {
+            std::pmr::vector<VkViewport> viewports{allocator};
+
+            for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
+            {
+                for (nlohmann::json const& viewport_json : pipeline_states_json.at("viewport_state").at("viewports"))
+                {
+                    viewports.push_back(
+                        create_viewport(viewport_json)
+                    );
+                }
+            }
+
+            return viewports;
+        }
+
+        VkOffset2D create_offset_2d(
+            nlohmann::json const& json
+        ) noexcept
+        {
+            return
+            {
+                .x = json.at("x").get<std::int32_t>(),
+                .y = json.at("y").get<std::int32_t>(),
+            };
+        }
+
+        VkExtent2D create_extent_2d(
+            nlohmann::json const& json
+        ) noexcept
+        {
+            return
+            {
+                .width = json.at("width").get<std::uint32_t>(),
+                .height = json.at("height").get<std::uint32_t>(),
+            };
+        }
+
+        VkRect2D create_rect_2d(
+            nlohmann::json const& json
+        ) noexcept
+        {
+            return
+            {
+                .offset = create_offset_2d(json.at("offset")),
+                .extent = create_extent_2d(json.at("extent")),
+            };
+        }
+
+        std::pmr::vector<VkRect2D> create_scissors(
+            nlohmann::json const& pipeline_states_json,
+            std::pmr::polymorphic_allocator<> const& allocator
+        ) noexcept
+        {
+            std::pmr::vector<VkRect2D> scissors{allocator};
+
+            for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
+            {
+                for (nlohmann::json const& scissor_json : pipeline_states_json.at("viewport_state").at("scissors"))
+                {
+                    scissors.push_back(
+                        create_rect_2d(scissor_json)
+                    );
+                }
+            }
+
+            return scissors;
+        }
+
+
+        VkPipelineViewportStateCreateInfo create_pipeline_viewport_state_create_info(
+            nlohmann::json const& json,
+            std::span<VkViewport const> const viewports,
+            std::span<VkRect2D const> const scissors
+        ) noexcept
+        {
+            assert(json.at("viewports").size() == viewports.size());
+            assert(json.at("scissors").size() == scissors.size());
+            assert((json.at("viewport_count").get<std::uint32_t>() == json.at("viewports").size()) || json.at("viewports").is_null());
+            assert((json.at("scissor_count").get<std::uint32_t>() == json.at("scissors").size()) || json.at("scissors").is_null());
+
+            return
+            {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = {},
+                .viewportCount = json.at("viewport_count").get<std::uint32_t>(),
+                .pViewports = !viewports.empty() ? viewports.data() : nullptr,
+                .scissorCount = json.at("scissor_count").get<std::uint32_t>(),
+                .pScissors = !scissors.empty() ? scissors.data() : nullptr,
+            };
         }
 
         std::pmr::vector<VkPipelineViewportStateCreateInfo> create_pipeline_viewport_state_create_infos(
             nlohmann::json const& pipeline_states_json,
+            std::span<VkViewport const> const viewports,
+            std::span<VkRect2D const> const scissors,
             std::pmr::polymorphic_allocator<> const& allocator
         ) noexcept
         {
-            return {};
+            std::pmr::vector<VkPipelineViewportStateCreateInfo> create_infos{allocator};
+            create_infos.reserve(pipeline_states_json.size());
+
+            std::size_t start_viewport_index = 0;
+            std::size_t start_scissor_index = 0;
+
+            for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
+            {
+                nlohmann::json const& viewport_state_json = pipeline_state_json.at("viewport_state");
+
+                std::size_t const viewport_count = viewport_state_json.at("viewports").size();
+                std::size_t const scissor_count = viewport_state_json.at("scissors").size();
+
+                create_infos.push_back(
+                    create_pipeline_viewport_state_create_info(
+                        pipeline_state_json,
+                        {viewports.data() + start_viewport_index, viewport_count},
+                        {scissors.data() + start_scissor_index, scissor_count}
+                    )
+                );
+
+                start_viewport_index += viewport_count;
+                start_scissor_index += scissor_count;
+            }
+
+            return create_infos;
+        }
+
+
+        VkPipelineRasterizationStateCreateInfo create_pipeline_rasterization_state_create_info(
+            nlohmann::json const& json
+        ) noexcept
+        {
+            return
+            {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = {},
+                .depthClampEnable = json.at("depth_clamp_enable").get<VkBool32>(),
+                .rasterizerDiscardEnable = json.at("rasterizer_discard_enable").get<VkBool32>(),
+                .polygonMode = json.at("polygon_mode").get<VkPolygonMode>(),
+                .cullMode = json.at("cull_mode").get<VkCullModeFlags>(),
+                .frontFace = json.at("front_face").get<VkFrontFace>(),
+                .depthBiasEnable = json.at("depth_bias_enable").get<VkBool32>(),
+                .depthBiasConstantFactor = json.at("depth_bias_constant_factor").get<float>(),
+                .depthBiasClamp = json.at("depth_bias_clamp").get<float>(),
+                .depthBiasSlopeFactor = json.at("depth_bias_slope_factor").get<float>(),
+                .lineWidth = json.at("line_width_factor").get<float>(),
+            };
         }
 
         std::pmr::vector<VkPipelineRasterizationStateCreateInfo> create_pipeline_rasterization_state_create_infos(
@@ -725,7 +1073,37 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& allocator
         ) noexcept
         {
-            return {};
+            std::pmr::vector<VkPipelineRasterizationStateCreateInfo> create_infos{allocator};
+
+            for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
+            {
+                create_infos.push_back(
+                    create_pipeline_rasterization_state_create_info(pipeline_states_json.at("rasterization_state"))
+                );
+            }
+
+            return create_infos;
+        }
+
+
+        VkPipelineMultisampleStateCreateInfo create_pipeline_multisample_state_create_info(
+            nlohmann::json const& json
+        ) noexcept
+        {
+            static std::uint32_t constexpr sample_mask = 0xFFFFFFFF;
+
+            return
+            {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = {},
+                .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+                .sampleShadingEnable = VK_FALSE,
+                .minSampleShading = {},
+                .pSampleMask = &sample_mask,
+                .alphaToCoverageEnable = VK_FALSE,
+                .alphaToOneEnable = VK_FALSE,
+            };
         }
 
         std::pmr::vector<VkPipelineMultisampleStateCreateInfo> create_pipeline_multisample_state_create_infos(
@@ -733,7 +1111,54 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& allocator
         ) noexcept
         {
-            return {};
+            std::pmr::vector<VkPipelineMultisampleStateCreateInfo> create_infos{allocator};
+            create_infos.reserve(pipeline_states_json.size());
+
+            for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
+            {
+                create_infos.push_back(
+                    create_pipeline_multisample_state_create_info({})
+                );
+            }
+
+            return create_infos;
+        }
+
+        VkStencilOpState create_stencil_operation_state(
+            nlohmann::json const& json
+        ) noexcept
+        {
+            return
+            {
+                .failOp = json.at("fail_operation").get<VkStencilOp>(),
+                .passOp = json.at("pass_operation").get<VkStencilOp>(),
+                .depthFailOp = json.at("depth_fail_operation").get<VkStencilOp>(),
+                .compareOp = json.at("compare_operation").get<VkCompareOp>(),
+                .compareMask = json.at("compare_mask").get<std::uint32_t>(),
+                .writeMask = json.at("write_mask").get<std::uint32_t>(),
+                .reference = json.at("reference").get<std::uint32_t>(),
+            };
+        }
+
+        VkPipelineDepthStencilStateCreateInfo create_pipeline_depth_stencil_state_create_info(
+            nlohmann::json const& json
+        ) noexcept
+        {
+            return
+            {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = {},
+                .depthTestEnable = json.at("depth_test_enable").get<VkBool32>(),
+                .depthWriteEnable = json.at("depth_write_enable").get<VkBool32>(),
+                .depthCompareOp = json.at("compare_operation").get<VkCompareOp>(),
+                .depthBoundsTestEnable = json.at("depth_bounds_test_enable").get<VkBool32>(),
+                .stencilTestEnable = json.at("stencil_test_enable").get<VkBool32>(),
+                .front = create_stencil_operation_state(json.at("front_stencil_state")),
+                .back = create_stencil_operation_state(json.at("back_stencil_state")),
+                .minDepthBounds = json.at("min_depth_bounds").get<float>(),
+                .maxDepthBounds = json.at("max_depth_bounds").get<float>(),
+            };
         }
 
         std::pmr::vector<VkPipelineDepthStencilStateCreateInfo> create_pipeline_depth_stencil_state_create_infos(
@@ -741,15 +1166,129 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& allocator
         ) noexcept
         {
-            return {};
+            std::pmr::vector<VkPipelineDepthStencilStateCreateInfo> create_infos{allocator};
+
+            for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
+            {
+                create_infos.push_back(
+                    create_pipeline_depth_stencil_state_create_info(pipeline_states_json.at("depth_stencil_state"))
+                );
+            }
+
+            return create_infos;
         }
 
-        std::pmr::vector<VkPipelineColorBlendStateCreateInfo> create_pipeline_color_blend_state_create_infos(
+
+        VkPipelineColorBlendAttachmentState create_pipeline_color_blend_attachment_state(
+            nlohmann::json const& json
+        ) noexcept
+        {
+            return
+            {
+                .blendEnable = json.at("blend_enable").get<VkBool32>(),
+                .srcColorBlendFactor = json.at("source_color_blend_factor").get<VkBlendFactor>(),
+                .dstColorBlendFactor = json.at("destination_color_blend_factor").get<VkBlendFactor>(),
+                .colorBlendOp = json.at("color_blend_operation").get<VkBlendOp>(),
+                .srcAlphaBlendFactor = json.at("source_alpha_blend_factor").get<VkBlendFactor>(),
+                .dstAlphaBlendFactor = json.at("destination_alpha_blend_factor").get<VkBlendFactor>(),
+                .alphaBlendOp = json.at("alpha_blend_operation").get<VkBlendOp>(),
+                .colorWriteMask = json.at("color_write_mask").get<VkColorComponentFlags>(),
+            };
+        }
+
+        std::pmr::vector<VkPipelineColorBlendAttachmentState> create_pipeline_color_blend_attachment_states(
             nlohmann::json const& pipeline_states_json,
             std::pmr::polymorphic_allocator<> const& allocator
         ) noexcept
         {
-            return {};
+            std::pmr::vector<VkPipelineColorBlendAttachmentState> attachments{allocator};
+
+            for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
+            {
+                for (nlohmann::json const& attachment_json : pipeline_state_json.at("color_blend_state").at("attachments"))
+                {
+                    attachments.push_back(
+                        create_pipeline_color_blend_attachment_state(
+                            attachment_json
+                        )
+                    );
+                }
+            }
+
+            return attachments;
+        }
+
+        VkPipelineColorBlendStateCreateInfo create_pipeline_color_blend_state_create_info(
+            nlohmann::json const& json,
+            std::span<VkPipelineColorBlendAttachmentState const> const attachments
+        ) noexcept
+        {
+            assert(attachments.size() == json.at("attachments").size());
+
+            nlohmann::json const& blend_constants = json.at("blend_constants");
+            assert(blend_constants.size() == 4);
+
+            return
+            {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = {},
+                .logicOpEnable = json.at("logic_operation_enable").get<VkBool32>(),
+                .logicOp = json.at("logic_operation").get<VkLogicOp>(),
+                .attachmentCount = static_cast<std::uint32_t>(attachments.size()),
+                .pAttachments = attachments.data(),
+                .blendConstants = {
+                    static_cast<float>(blend_constants[0]),
+                    static_cast<float>(blend_constants[1]),
+                    static_cast<float>(blend_constants[2]),
+                    static_cast<float>(blend_constants[3])
+                },
+            };
+        }
+
+        std::pmr::vector<VkPipelineColorBlendStateCreateInfo> create_pipeline_color_blend_state_create_infos(
+            nlohmann::json const& pipeline_states_json,
+            std::span<VkPipelineColorBlendAttachmentState const> const attachments,
+            std::pmr::polymorphic_allocator<> const& allocator
+        ) noexcept
+        {
+            std::pmr::vector<VkPipelineColorBlendStateCreateInfo> create_infos{allocator};
+            create_infos.reserve(pipeline_states_json.size());
+
+            std::size_t start_attachment_index = 0;
+
+            for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
+            {
+                nlohmann::json const& color_blend_state_json = pipeline_state_json.at("color_blend_state");
+                
+                std::size_t const attachment_count = color_blend_state_json.at("attachments").size();
+
+                create_infos.push_back(
+                    create_pipeline_color_blend_state_create_info(
+                        pipeline_state_json,
+                        {attachments.data() + start_attachment_index, attachment_count}
+                    )
+                );
+            }
+
+            return create_infos;
+        }
+
+
+        VkPipelineDynamicStateCreateInfo create_pipeline_dynamic_state_create_info(
+            nlohmann::json const& json
+        ) noexcept
+        {
+            // TODO
+
+            return 
+            {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = {},
+                .dynamicStateCount = {},
+                .pDynamicStates = {},
+            };
         }
 
         std::pmr::vector<VkPipelineDynamicStateCreateInfo> create_pipeline_dynamic_state_create_infos(
@@ -757,7 +1296,14 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& allocator
         ) noexcept
         {
-            return {};
+            std::pmr::vector<VkPipelineDynamicStateCreateInfo> create_infos{allocator};
+
+            for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
+            {
+
+            }
+
+            return create_infos;
         }
 
     }
@@ -775,96 +1321,130 @@ namespace Maia::Renderer::Vulkan
         std::pmr::vector<VkPipelineShaderStageCreateInfo> const shader_stages = 
             create_pipeline_shader_stage_create_infos(
                 pipeline_states_json,
+                shader_modules,
                 allocator
         );
+
+        std::pmr::vector<VkVertexInputBindingDescription> const vertex_input_binding_descriptions = 
+            create_vertex_input_binding_descriptions(
+                pipeline_states_json,
+                allocator
+            );
+
+        std::pmr::vector<VkVertexInputAttributeDescription> const vertex_input_attribute_descriptions = 
+            create_vertex_input_attribute_descriptions(
+                pipeline_states_json,
+                allocator
+            );
 
         std::pmr::vector<VkPipelineVertexInputStateCreateInfo> const vertex_input_states = 
             create_pipeline_vertex_input_state_create_infos(
                 pipeline_states_json,
+                vertex_input_binding_descriptions,
+                vertex_input_attribute_descriptions,
                 allocator
-        );
+            );
 
         std::pmr::vector<VkPipelineInputAssemblyStateCreateInfo> const input_assembly_states = 
             create_pipeline_input_assembly_state_create_infos(
                 pipeline_states_json,
                 allocator
-        );
+            );
 
-        std::pmr::vector<VkPipelineTessellationStateCreateInfo> const tessellation_states = 
+        std::pmr::vector<std::optional<VkPipelineTessellationStateCreateInfo>> const tessellation_states = 
             create_pipeline_tessellation_state_create_infos(
                 pipeline_states_json,
                 allocator
-        );
+            );
+
+        std::pmr::vector<VkViewport> const viewports = create_viewports(pipeline_states_json, allocator);
+
+        std::pmr::vector<VkRect2D> const scissors = create_scissors(pipeline_states_json, allocator);
 
         std::pmr::vector<VkPipelineViewportStateCreateInfo> const viewport_states = 
             create_pipeline_viewport_state_create_infos(
                 pipeline_states_json,
+                viewports,
+                scissors,
                 allocator
-        );
+            );
 
         std::pmr::vector<VkPipelineRasterizationStateCreateInfo> const rasterization_states = 
             create_pipeline_rasterization_state_create_infos(
                 pipeline_states_json,
                 allocator
-        );
+            );
 
         std::pmr::vector<VkPipelineMultisampleStateCreateInfo> const multisample_states = 
             create_pipeline_multisample_state_create_infos(
                 pipeline_states_json,
                 allocator
-        );
+            );
 
         std::pmr::vector<VkPipelineDepthStencilStateCreateInfo> const depth_stencil_states = 
             create_pipeline_depth_stencil_state_create_infos(
                 pipeline_states_json,
                 allocator
-        );
+            );
+
+        std::pmr::vector<VkPipelineColorBlendAttachmentState> const color_blend_attachment_states = 
+            create_pipeline_color_blend_attachment_states(
+                pipeline_states_json,
+                allocator
+            );
 
         std::pmr::vector<VkPipelineColorBlendStateCreateInfo> const color_blend_states = 
             create_pipeline_color_blend_state_create_infos(
                 pipeline_states_json,
+                color_blend_attachment_states,
                 allocator
-        );
+            );
 
         std::pmr::vector<VkPipelineDynamicStateCreateInfo> const dynamic_states = 
             create_pipeline_dynamic_state_create_infos(
                 pipeline_states_json,
                 allocator
-        );
+            );
 
 
         std::pmr::vector<VkGraphicsPipelineCreateInfo> create_infos{allocator};
         create_infos.reserve(pipeline_states_json.size());
 
         {
+            std::size_t pipeline_state_index = 0;
             std::size_t start_stage_index = 0; 
 
             for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
             {
+                std::size_t const stage_count = pipeline_state_json.at("stages").size();
+
                 VkGraphicsPipelineCreateInfo const create_info
                 {
                     .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
                     .pNext = nullptr,
                     .flags = {},
-                    .stageCount = {},
-                    .pStages = {},
-                    .pVertexInputState = {},
-                    .pInputAssemblyState = {},
-                    .pTessellationState = {},
-                    .pViewportState = {},
-                    .pRasterizationState = {},
-                    .pMultisampleState = {},
-                    .pDepthStencilState = {},
-                    .pColorBlendState = {},
-                    .pDynamicState = {},
-                    .layout = {},
-                    .renderPass = {},
-                    .subpass = {},
+                    .stageCount = static_cast<std::uint32_t>(stage_count),
+                    .pStages = shader_stages.data() + start_stage_index,
+                    .pVertexInputState = vertex_input_states.data() + pipeline_state_index,
+                    .pInputAssemblyState = input_assembly_states.data() + pipeline_state_index,
+                    .pTessellationState = tessellation_states[pipeline_state_index].has_value() ? &tessellation_states[pipeline_state_index].value() : nullptr,
+                    .pViewportState = viewport_states.data() + pipeline_state_index,
+                    .pRasterizationState = rasterization_states.data() + pipeline_state_index,
+                    .pMultisampleState = multisample_states.data() + pipeline_state_index,
+                    .pDepthStencilState = depth_stencil_states.data() + pipeline_state_index,
+                    .pColorBlendState = color_blend_states.data() + pipeline_state_index,
+                    .pDynamicState = dynamic_states.data() + pipeline_state_index,
+                    .layout = pipeline_layouts[pipeline_state_json.at("pipeline_layout").get<std::size_t>()],
+                    .renderPass = render_passes[pipeline_state_json.at("render_pass").get<std::size_t>()],
+                    .subpass = pipeline_state_json.at("subpass").get<std::uint32_t>(),
                     .basePipelineHandle = {},
                     .basePipelineIndex = {},
                 };
 
                 create_infos.push_back(create_info);
+
+                pipeline_state_index += 1;
+                start_stage_index += stage_count;
             }
         }
 
