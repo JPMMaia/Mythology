@@ -963,9 +963,9 @@ def create_viewport_state_json(
             "viewport_count": state_node.viewport_count_property if state_node.dynamic_viewport_property else len(state_node.inputs["Viewports"].links),
             "scissor_count": state_node.scissor_count_property if state_node.dynamic_scissor_property else len(state_node.inputs["Scissors"].links),
             "viewports": [create_viewport_json(link.from_node)
-                          for link in state_node.inputs["Viewports"].links],
+                          for link in state_node.inputs["Viewports"].links] if not state_node.dynamic_viewport_property else None,
             "scissors": [create_rect_2d_json(link.from_node)
-                         for link in state_node.inputs["Scissors"].links]
+                         for link in state_node.inputs["Scissors"].links] if not state_node.dynamic_scissor_property else None,
         }
 
     else:
