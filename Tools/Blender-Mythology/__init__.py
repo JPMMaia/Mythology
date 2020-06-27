@@ -42,6 +42,7 @@ classes = (
     draw.ClearDepthStencilValueNode,
     draw.ClearSubpassNode,
     draw.ClearValueNode,
+    draw.DrawNode,
     draw.EndFrameNode,
     draw.EndRenderPassNode,
     draw.ImageMemoryBarrierNode,

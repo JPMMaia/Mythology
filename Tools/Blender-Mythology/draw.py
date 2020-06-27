@@ -191,6 +191,28 @@ class ClearValueNode(bpy.types.Node, RenderTreeNode):
         self.outputs.new("ClearValueNodeSocket", "Clear Value")
     
 
+
+class DrawNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Draw node"
+
+    vertex_count_property: bpy.props.IntProperty(name="Vertex Count", default=1, min=1)
+    instance_count_property: bpy.props.IntProperty(name="Instance Count", default=1, min=1)
+    first_vertex_property: bpy.props.IntProperty(name="First Vertex", min=0)
+    first_instance_property: bpy.props.IntProperty(name="First Instance", min=0)
+
+    def init(self, context):
+        self.inputs.new("ExecutionNodeSocket", "Execution")
+        self.outputs.new("ExecutionNodeSocket", "Execution")
+
+    def draw_buttons(self, context, layout):
+
+        layout.prop(self, "vertex_count_property")
+        layout.prop(self, "instance_count_property")
+        layout.prop(self, "first_vertex_property")
+        layout.prop(self, "first_instance_property")
+
+
 class EndFrameNode(bpy.types.Node, RenderTreeNode):
 
     bl_label = "End Frame node"
@@ -284,6 +306,7 @@ draw_node_categories = [
         nodeitems_utils.NodeItem("ClearDepthStencilValueNode"),
         nodeitems_utils.NodeItem("ClearSubpassNode"),
         nodeitems_utils.NodeItem("ClearValueNode"),
+        nodeitems_utils.NodeItem("DrawNode"),
         nodeitems_utils.NodeItem("EndFrameNode"),
         nodeitems_utils.NodeItem("EndRenderPassNode"),
         nodeitems_utils.NodeItem("ImageMemoryBarrierNode"),
