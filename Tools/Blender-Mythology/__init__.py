@@ -36,6 +36,7 @@ classes = (
 
     draw.BeginFrameNode,
     draw.BeginRenderPassNode,
+    draw.BindPipelineNode,
     draw.ClearColorValueNode,
     draw.ClearColorImageNode,
     draw.ClearDepthStencilValueNode,

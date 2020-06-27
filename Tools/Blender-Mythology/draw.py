@@ -1,10 +1,11 @@
 import bpy
 
 from .common import Rect2DNodeSocket
+from .pipeline_state import PipelineNodeSocket
 from .render_node_tree import RenderTreeNode
 from .render_pass import RenderPassNodeSocket, SubpassNodeSocket
 from .resources import ImageNodeSocket, ImageSubresourceRangeNodeSocket
-from .vulkan_enums import access_flag_values, dependency_flag_values, image_layout_values, image_layout_values_to_int, pipeline_stage_flag_values
+from .vulkan_enums import access_flag_values, dependency_flag_values, image_layout_values, image_layout_values_to_int, pipeline_bind_point_values, pipeline_stage_flag_values
 
 
 class ClearColorValueNodeSocket(bpy.types.NodeSocket):
@@ -101,6 +102,20 @@ class BeginRenderPassNode(bpy.types.Node, RenderTreeNode):
         self.inputs["Clear Subpasses"].link_limit = 0
 
         self.outputs.new("ExecutionNodeSocket", "Execution")
+
+class BindPipelineNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Bind Pipeline node"
+
+    pipeline_bind_point_property: bpy.props.EnumProperty(name="Pipeline Bind Point", items=pipeline_bind_point_values)
+
+    def init(self, context):
+        self.inputs.new("ExecutionNodeSocket", "Execution")
+        self.inputs.new("PipelineNodeSocket", "Pipeline")
+        self.outputs.new("ExecutionNodeSocket", "Execution")
+
+    def draw_buttons(self, context, layout):
+        layout.prop(self, "pipeline_bind_point_property")
 
 class ClearColorValueNode(bpy.types.Node, RenderTreeNode):
 
@@ -255,6 +270,7 @@ draw_node_categories = [
     DrawNodeCategory("COMMANDS", "Draw", items=[
         nodeitems_utils.NodeItem("BeginFrameNode"),
         nodeitems_utils.NodeItem("BeginRenderPassNode"),
+        nodeitems_utils.NodeItem("BindPipelineNode"),
         nodeitems_utils.NodeItem("ClearColorValueNode"),
         nodeitems_utils.NodeItem("ClearColorImageNode"),
         nodeitems_utils.NodeItem("ClearDepthStencilValueNode"),

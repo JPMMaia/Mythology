@@ -331,6 +331,11 @@ logic_operation_values = (
     ("SET", "Set", "", 15),
 )
 
+pipeline_bind_point_values = (
+    ("GRAPHICS", "Graphics", "", 0),
+    ("COMPUTE", "Compute", "", 1),
+)
+
 pipeline_stage_flag_values = (
     ("TOP_OF_PIPE", "Top_of_pipe", "", 0x00000001),
     ("DRAW_INDIRECT", "Draw_indirect", "", 0x00000002),
