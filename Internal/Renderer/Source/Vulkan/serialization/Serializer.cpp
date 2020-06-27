@@ -470,13 +470,16 @@ namespace Maia::Renderer::Vulkan
 
             for (nlohmann::json const& descriptor_set_layout_json : descriptor_set_layouts_json)       
             {
-                for (nlohmann::json const& immutable_sampler_json : descriptor_set_layout_json.at("immutable_samplers"))
+                for (nlohmann::json const& binding_json : descriptor_set_layout_json.at("bindings"))
                 {
-                    std::size_t const sampler_index = immutable_sampler_json.get<std::size_t>();
+                    for (nlohmann::json const& immutable_sampler_json : binding_json.at("immutable_samplers"))
+                    {
+                        std::size_t const sampler_index = immutable_sampler_json.get<std::size_t>();
 
-                    immutable_samplers_per_descriptor_set_binding.push_back(
-                        samplers[sampler_index]
-                    );
+                        immutable_samplers_per_descriptor_set_binding.push_back(
+                            samplers[sampler_index]
+                        );
+                    }
                 }
             }
 
@@ -495,23 +498,26 @@ namespace Maia::Renderer::Vulkan
 
             for (nlohmann::json const& descriptor_set_layout_json : descriptor_set_layouts_json)       
             {
-                nlohmann::json const& immutable_samplers_json = descriptor_set_layout_json.at("immutable_samplers");
-
-                VkDescriptorSetLayoutBinding const binding
+                for (nlohmann::json const& binding_json : descriptor_set_layout_json.at("bindings"))       
                 {
-                    .binding = descriptor_set_layout_json.at("binding").get<std::uint32_t>(),
-                    .descriptorType = descriptor_set_layout_json.at("descriptor_type").get<VkDescriptorType>(),
-                    .descriptorCount = descriptor_set_layout_json.at("descriptor_count").get<std::uint32_t>(),
-                    .stageFlags = descriptor_set_layout_json.at("stage_flags_property").get<VkShaderStageFlags>(),
-                    .pImmutableSamplers = 
-                        !immutable_samplers_json.empty() ?
-                        immutable_samplers_per_descriptor_set_binding.data() + start_sampler_index :
-                        nullptr
-                };
+                    nlohmann::json const& immutable_samplers_json = binding_json.at("immutable_samplers");
 
-                bindings.push_back(binding);
+                    VkDescriptorSetLayoutBinding const binding
+                    {
+                        .binding = binding_json.at("binding").get<std::uint32_t>(),
+                        .descriptorType = binding_json.at("descriptor_type").get<VkDescriptorType>(),
+                        .descriptorCount = binding_json.at("descriptor_count").get<std::uint32_t>(),
+                        .stageFlags = binding_json.at("stage_flags_property").get<VkShaderStageFlags>(),
+                        .pImmutableSamplers = 
+                            !immutable_samplers_json.empty() ?
+                            immutable_samplers_per_descriptor_set_binding.data() + start_sampler_index :
+                            nullptr
+                    };
 
-                start_sampler_index += immutable_samplers_json.size();
+                    bindings.push_back(binding);
+
+                    start_sampler_index += immutable_samplers_json.size();
+                }
             }
 
             return bindings;
@@ -680,14 +686,34 @@ namespace Maia::Renderer::Vulkan
 
     namespace
     {
+        std::pmr::vector<std::pmr::string> create_pipeline_shader_stage_names(
+            nlohmann::json const& pipeline_states_json,
+            std::pmr::polymorphic_allocator<> const& allocator
+        ) noexcept
+        {
+            std::pmr::vector<std::pmr::string> stage_names{allocator};
+
+            for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
+            {
+                for (nlohmann::json const& stage_json : pipeline_state_json.at("stages"))
+                {
+                    std::string const& name = stage_json.at("entry_point").get<std::string>();
+
+                    stage_names.push_back(
+                        std::pmr::string{name, allocator}
+                    );
+                }
+            }
+
+            return stage_names;
+        }
 
         VkPipelineShaderStageCreateInfo create_pipeline_shader_stage_create_info(
             nlohmann::json const& json,
-            std::span<VkShaderModule const> const shader_modules
+            std::span<VkShaderModule const> const shader_modules,
+            char const* const name
         ) noexcept
         {
-            std::string const& name = json.at("entry_point").get<std::string>();
-
             return
             {
                 .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -695,7 +721,7 @@ namespace Maia::Renderer::Vulkan
                 .flags = {},
                 .stage = json.at("stage").get<VkShaderStageFlagBits>(),
                 .module = shader_modules[json.at("shader").get<std::size_t>()],
-                .pName = name.c_str(),
+                .pName = name,
                 .pSpecializationInfo = nullptr,
             };
         }
@@ -703,18 +729,23 @@ namespace Maia::Renderer::Vulkan
         std::pmr::vector<VkPipelineShaderStageCreateInfo> create_pipeline_shader_stage_create_infos(
             nlohmann::json const& pipeline_states_json,
             std::span<VkShaderModule const> const shader_modules,
+            std::span<std::pmr::string const> const stage_names,
             std::pmr::polymorphic_allocator<> const& allocator
         ) noexcept
         {
             std::pmr::vector<VkPipelineShaderStageCreateInfo> create_infos{allocator};
 
+            std::size_t stage_name_index = 0;
+
             for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
             {
-                for (nlohmann::json const& stage_json : pipeline_states_json.at("stages"))
+                for (nlohmann::json const& stage_json : pipeline_state_json.at("stages"))
                 {
                     create_infos.push_back(
-                        create_pipeline_shader_stage_create_info(stage_json, shader_modules)
+                        create_pipeline_shader_stage_create_info(stage_json, shader_modules, stage_names[stage_name_index].c_str())
                     );
+
+                    ++stage_name_index;
                 }
             }
 
@@ -742,7 +773,7 @@ namespace Maia::Renderer::Vulkan
 
             for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
             {
-                for (nlohmann::json const& binding_json : pipeline_states_json.at("vertex_input_state").at("bindings"))
+                for (nlohmann::json const& binding_json : pipeline_state_json.at("vertex_input_state").at("bindings"))
                 {
                     descriptions.push_back(
                         create_vertex_input_binding_description(binding_json)
@@ -775,7 +806,7 @@ namespace Maia::Renderer::Vulkan
 
             for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
             {
-                for (nlohmann::json const& binding_json : pipeline_states_json.at("vertex_input_state").at("attributes"))
+                for (nlohmann::json const& binding_json : pipeline_state_json.at("vertex_input_state").at("attributes"))
                 {
                     descriptions.push_back(
                         create_vertex_input_attribute_description(binding_json)
@@ -822,8 +853,8 @@ namespace Maia::Renderer::Vulkan
             {
                 nlohmann::json const& vertex_input_state_json = pipeline_state_json.at("vertex_input_state");
 
-                std::size_t const binding_count = vertex_input_state_json.at("bindings").get<std::size_t>();
-                std::size_t const attribute_count = vertex_input_state_json.at("attributes").get<std::size_t>();
+                std::size_t const binding_count = vertex_input_state_json.at("bindings").size();
+                std::size_t const attribute_count = vertex_input_state_json.at("attributes").size();
 
                 create_infos.push_back(
                     create_pipeline_vertex_input_state_create_info(
@@ -865,7 +896,7 @@ namespace Maia::Renderer::Vulkan
             for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
             {
                 create_infos.push_back(
-                    create_pipeline_input_assembly_state_create_info(pipeline_states_json.at("input_assembly_state"))
+                    create_pipeline_input_assembly_state_create_info(pipeline_state_json.at("input_assembly_state"))
                 );
             }
 
@@ -922,7 +953,7 @@ namespace Maia::Renderer::Vulkan
 
             for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
             {
-                for (nlohmann::json const& viewport_json : pipeline_states_json.at("viewport_state").at("viewports"))
+                for (nlohmann::json const& viewport_json : pipeline_state_json.at("viewport_state").at("viewports"))
                 {
                     viewports.push_back(
                         create_viewport(viewport_json)
@@ -975,7 +1006,7 @@ namespace Maia::Renderer::Vulkan
 
             for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
             {
-                for (nlohmann::json const& scissor_json : pipeline_states_json.at("viewport_state").at("scissors"))
+                for (nlohmann::json const& scissor_json : pipeline_state_json.at("viewport_state").at("scissors"))
                 {
                     scissors.push_back(
                         create_rect_2d(scissor_json)
@@ -1032,7 +1063,7 @@ namespace Maia::Renderer::Vulkan
 
                 create_infos.push_back(
                     create_pipeline_viewport_state_create_info(
-                        pipeline_state_json,
+                        viewport_state_json,
                         {viewports.data() + start_viewport_index, viewport_count},
                         {scissors.data() + start_scissor_index, scissor_count}
                     )
@@ -1078,7 +1109,7 @@ namespace Maia::Renderer::Vulkan
             for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
             {
                 create_infos.push_back(
-                    create_pipeline_rasterization_state_create_info(pipeline_states_json.at("rasterization_state"))
+                    create_pipeline_rasterization_state_create_info(pipeline_state_json.at("rasterization_state"))
                 );
             }
 
@@ -1171,7 +1202,7 @@ namespace Maia::Renderer::Vulkan
             for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
             {
                 create_infos.push_back(
-                    create_pipeline_depth_stencil_state_create_info(pipeline_states_json.at("depth_stencil_state"))
+                    create_pipeline_depth_stencil_state_create_info(pipeline_state_json.at("depth_stencil_state"))
                 );
             }
 
@@ -1265,7 +1296,7 @@ namespace Maia::Renderer::Vulkan
 
                 create_infos.push_back(
                     create_pipeline_color_blend_state_create_info(
-                        pipeline_state_json,
+                        color_blend_state_json,
                         {attachments.data() + start_attachment_index, attachment_count}
                     )
                 );
@@ -1275,32 +1306,68 @@ namespace Maia::Renderer::Vulkan
         }
 
 
-        VkPipelineDynamicStateCreateInfo create_pipeline_dynamic_state_create_info(
-            nlohmann::json const& json
+        std::pmr::vector<VkDynamicState> create_dynamic_states(
+            nlohmann::json const& pipeline_states_json,
+            std::pmr::polymorphic_allocator<> const& allocator
         ) noexcept
         {
-            // TODO
+            std::pmr::vector<VkDynamicState> dynamic_states{allocator};
+
+            for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
+            {
+                for (nlohmann::json const& dynamic_state_json : pipeline_state_json.at("dynamic_state").at("dynamic_states"))
+                {
+                    dynamic_states.push_back(
+                        dynamic_state_json.get<VkDynamicState>()
+                    );
+                }
+            }
+
+            return dynamic_states;
+        }
+
+        VkPipelineDynamicStateCreateInfo create_pipeline_dynamic_state_create_info(
+            nlohmann::json const& json,
+            std::span<VkDynamicState const> const dynamic_states
+        ) noexcept
+        {
+            assert(dynamic_states.size() == json.at("dynamic_states").size());
 
             return 
             {
                 .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
                 .pNext = nullptr,
                 .flags = {},
-                .dynamicStateCount = {},
-                .pDynamicStates = {},
+                .dynamicStateCount = static_cast<std::uint32_t>(dynamic_states.size()),
+                .pDynamicStates = dynamic_states.data(),
             };
         }
 
         std::pmr::vector<VkPipelineDynamicStateCreateInfo> create_pipeline_dynamic_state_create_infos(
             nlohmann::json const& pipeline_states_json,
+            std::span<VkDynamicState const> const dynamic_states,
             std::pmr::polymorphic_allocator<> const& allocator
         ) noexcept
         {
             std::pmr::vector<VkPipelineDynamicStateCreateInfo> create_infos{allocator};
+            create_infos.reserve(pipeline_states_json.size());
+
+            std::size_t start_dynamic_state_index = 0;
 
             for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
             {
+                nlohmann::json const& pipeline_dynamic_state_json = pipeline_state_json.at("dynamic_state");
 
+                std::size_t const dynamic_state_count = pipeline_dynamic_state_json.at("dynamic_states").size();
+
+                create_infos.push_back(
+                    create_pipeline_dynamic_state_create_info(
+                        pipeline_dynamic_state_json,
+                        {dynamic_states.data() + start_dynamic_state_index, dynamic_state_count}
+                    )
+                );
+
+                start_dynamic_state_index += dynamic_state_count;
             }
 
             return create_infos;
@@ -1318,10 +1385,17 @@ namespace Maia::Renderer::Vulkan
         std::pmr::polymorphic_allocator<> const& allocator
     ) noexcept
     {
+        std::pmr::vector<std::pmr::string> const shader_stage_names = 
+            create_pipeline_shader_stage_names(
+                pipeline_states_json,
+                allocator
+            );
+
         std::pmr::vector<VkPipelineShaderStageCreateInfo> const shader_stages = 
             create_pipeline_shader_stage_create_infos(
                 pipeline_states_json,
                 shader_modules,
+                shader_stage_names,
                 allocator
         );
 
@@ -1400,9 +1474,12 @@ namespace Maia::Renderer::Vulkan
                 allocator
             );
 
-        std::pmr::vector<VkPipelineDynamicStateCreateInfo> const dynamic_states = 
+        std::pmr::vector<VkDynamicState> const dynamic_states = create_dynamic_states(pipeline_states_json, allocator);
+
+        std::pmr::vector<VkPipelineDynamicStateCreateInfo> const pipeline_dynamic_states = 
             create_pipeline_dynamic_state_create_infos(
                 pipeline_states_json,
+                dynamic_states,
                 allocator
             );
 
@@ -1433,7 +1510,7 @@ namespace Maia::Renderer::Vulkan
                     .pMultisampleState = multisample_states.data() + pipeline_state_index,
                     .pDepthStencilState = depth_stencil_states.data() + pipeline_state_index,
                     .pColorBlendState = color_blend_states.data() + pipeline_state_index,
-                    .pDynamicState = dynamic_states.data() + pipeline_state_index,
+                    .pDynamicState = pipeline_dynamic_states.data() + pipeline_state_index,
                     .layout = pipeline_layouts[pipeline_state_json.at("pipeline_layout").get<std::size_t>()],
                     .renderPass = render_passes[pipeline_state_json.at("render_pass").get<std::size_t>()],
                     .subpass = pipeline_state_json.at("subpass").get<std::uint32_t>(),
