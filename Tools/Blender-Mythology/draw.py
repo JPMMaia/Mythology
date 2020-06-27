@@ -2,8 +2,10 @@ import bpy
 
 from .common import Rect2DNodeSocket
 from .render_node_tree import RenderTreeNode
+from .render_pass import RenderPassNodeSocket, SubpassNodeSocket
 from .resources import ImageNodeSocket, ImageSubresourceRangeNodeSocket
 from .vulkan_enums import access_flag_values, dependency_flag_values, image_layout_values, image_layout_values_to_int, pipeline_stage_flag_values
+
 
 class ClearColorValueNodeSocket(bpy.types.NodeSocket):
     
@@ -15,6 +17,36 @@ class ClearColorValueNodeSocket(bpy.types.NodeSocket):
     def draw_color(self, context, node):
         return (1.0, 0.0, 0.0, 1.0)
 
+class ClearDepthStencilValueNodeSocket(bpy.types.NodeSocket):
+    
+    bl_label = "Clear Depth Stencil Value node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.0, 0.0, 1.0, 1.0)
+
+class ClearSubpassNodeSocket(bpy.types.NodeSocket):
+    
+    bl_label = "Clear Subpass node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.0, 1.0, 0.0, 1.0)
+
+class ClearValueNodeSocket(bpy.types.NodeSocket):
+    
+    bl_label = "Clear Value node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (1.0, 1.0, 1.0, 1.0)
+
 class ExecutionNodeSocket(bpy.types.NodeSocket):
     
     bl_label = "Execution node socket"
@@ -24,6 +56,16 @@ class ExecutionNodeSocket(bpy.types.NodeSocket):
 
     def draw_color(self, context, node):
         return (1.0, 1.0, 1.0, 1.0)
+
+class FramebufferNodeSocket(bpy.types.NodeSocket):
+    
+    bl_label = "Framebuffer node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.5, 0.5, 0.5, 1.0)
 
 class ImageMemoryBarrierNodeSocket(bpy.types.NodeSocket):
     
@@ -44,6 +86,21 @@ class BeginFrameNode(bpy.types.Node, RenderTreeNode):
         self.outputs.new("ImageNodeSocket", "Output Image")
         self.outputs.new("ImageSubresourceRangeNodeSocket", "Output Image Subresource Range")
         self.outputs.new("Rect2DNodeSocket", "Output Image Area")
+        self.outputs.new("FramebufferNodeSocket", "Output Framebuffer")
+
+class BeginRenderPassNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Begin Render Pass node"
+
+    def init(self, context):
+        self.inputs.new("ExecutionNodeSocket", "Execution")
+        self.inputs.new("RenderPassNodeSocket", "Render Pass")
+        self.inputs.new("FramebufferNodeSocket", "Framebuffer")
+        self.inputs.new("Rect2DNodeSocket", "Render Area")
+        self.inputs.new("ClearSubpassNodeSocket", "Clear Subpasses")
+        self.inputs["Clear Subpasses"].link_limit = 0
+
+        self.outputs.new("ExecutionNodeSocket", "Execution")
 
 class ClearColorValueNode(bpy.types.Node, RenderTreeNode):
 
@@ -83,12 +140,57 @@ class ClearColorImageNode(bpy.types.Node, RenderTreeNode):
 
         self.outputs.new("ExecutionNodeSocket", "Execution")
 
+class ClearDepthStencilValueNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Clear Depth Stencil Value node"
+
+    depth_property: bpy.props.FloatVectorProperty(name="Depth")
+    stencil_property: bpy.props.IntVectorProperty(name="Stencil", min=0)
+
+    def init(self, context):
+        self.outputs.new("ClearDepthStencilValueNodeSocket", "Clear Depth Stencil Value")
+
+    def draw_buttons(self, context, layout):
+
+        layout.prop(self, "depth_property")
+        layout.prop(self, "stencil_property")
+
+class ClearSubpassNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Clear Subpass node"
+
+    def init(self, context):
+        self.inputs.new("ClearValueNodeSocket", "Clear Value")
+        self.inputs.new("SubpassNodeSocket", "Subpass")
+        
+        self.outputs.new("ClearSubpassNodeSocket", "Clear Subpass")
+
+class ClearValueNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Clear Value node"
+
+    def init(self, context):
+        self.inputs.new("ClearColorValueNodeSocket", "Color")
+        self.inputs.new("ClearDepthStencilValueNodeSocket", "Depth Stencil")
+
+        self.outputs.new("ClearValueNodeSocket", "Clear Value")
+    
+
 class EndFrameNode(bpy.types.Node, RenderTreeNode):
 
     bl_label = "End Frame node"
 
     def init(self, context):
         self.inputs.new("ExecutionNodeSocket", "Execution")
+
+
+class EndRenderPassNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "End Render Pass node"
+
+    def init(self, context):
+        self.inputs.new("ExecutionNodeSocket", "Execution")
+        self.outputs.new("ExecutionNodeSocket", "Execution")
 
 class ImageMemoryBarrierNode(bpy.types.Node, RenderTreeNode):
 
@@ -152,9 +254,14 @@ class DrawNodeCategory(nodeitems_utils.NodeCategory):
 draw_node_categories = [
     DrawNodeCategory("COMMANDS", "Draw", items=[
         nodeitems_utils.NodeItem("BeginFrameNode"),
+        nodeitems_utils.NodeItem("BeginRenderPassNode"),
         nodeitems_utils.NodeItem("ClearColorValueNode"),
         nodeitems_utils.NodeItem("ClearColorImageNode"),
+        nodeitems_utils.NodeItem("ClearDepthStencilValueNode"),
+        nodeitems_utils.NodeItem("ClearSubpassNode"),
+        nodeitems_utils.NodeItem("ClearValueNode"),
         nodeitems_utils.NodeItem("EndFrameNode"),
+        nodeitems_utils.NodeItem("EndRenderPassNode"),
         nodeitems_utils.NodeItem("ImageMemoryBarrierNode"),
         nodeitems_utils.NodeItem("PipelineBarrierNode"),
     ]),

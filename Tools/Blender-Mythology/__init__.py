@@ -27,13 +27,22 @@ classes = (
     common.Rect2DNode,
 
     draw.ClearColorValueNodeSocket,
+    draw.ClearDepthStencilValueNodeSocket,
+    draw.ClearSubpassNodeSocket,
+    draw.ClearValueNodeSocket,
     draw.ExecutionNodeSocket,
+    draw.FramebufferNodeSocket,
     draw.ImageMemoryBarrierNodeSocket,
 
     draw.BeginFrameNode,
+    draw.BeginRenderPassNode,
     draw.ClearColorValueNode,
     draw.ClearColorImageNode,
+    draw.ClearDepthStencilValueNode,
+    draw.ClearSubpassNode,
+    draw.ClearValueNode,
     draw.EndFrameNode,
+    draw.EndRenderPassNode,
     draw.ImageMemoryBarrierNode,
     draw.PipelineBarrierNode,
 
