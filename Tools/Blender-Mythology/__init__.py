@@ -46,6 +46,7 @@ classes = (
     draw.EndRenderPassNode,
     draw.ImageMemoryBarrierNode,
     draw.PipelineBarrierNode,
+    draw.SetScreenViewportAndScissorsNode,
 
     pipeline_state.ColorBlendAttachmentStateNodeSocket,
     pipeline_state.ColorBlendStateNodeSocket,

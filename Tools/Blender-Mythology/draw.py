@@ -257,6 +257,14 @@ class PipelineBarrierNode(bpy.types.Node, RenderTreeNode):
         layout.label(text="Dependency Flags")
         layout.prop(self, "dependency_flags_property")
 
+class SetScreenViewportAndScissorsNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Set Screen Viewport And Scissors node"
+
+    def init(self, context):
+        self.inputs.new("ExecutionNodeSocket", "Execution")
+        self.outputs.new("ExecutionNodeSocket", "Execution")
+
 import nodeitems_utils
 
 class DrawNodeCategory(nodeitems_utils.NodeCategory):
@@ -280,6 +288,7 @@ draw_node_categories = [
         nodeitems_utils.NodeItem("EndRenderPassNode"),
         nodeitems_utils.NodeItem("ImageMemoryBarrierNode"),
         nodeitems_utils.NodeItem("PipelineBarrierNode"),
+        nodeitems_utils.NodeItem("SetScreenViewportAndScissorsNode"),
     ]),
 ]
 
