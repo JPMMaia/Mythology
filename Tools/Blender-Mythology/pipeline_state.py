@@ -1084,10 +1084,11 @@ def create_pipeline_dynamic_state_json(
     if len(node_socket.links) > 0:
         assert len(node_socket.links) == 1
 
-        state_node = node_socket.links[0].from_node
+        pipeline_dynamic_state_node = node_socket.links[0].from_node
 
         return {
-            "dynamic_states": state_node.get("dynamic_state_property", 0),
+            "dynamic_states": [link.from_node.get("dynamic_state_property", 0)
+                               for link in pipeline_dynamic_state_node.inputs["Dynamic States"].links],
         }
 
     else:
