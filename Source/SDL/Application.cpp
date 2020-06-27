@@ -1002,6 +1002,16 @@ namespace Mythology::SDL
         std::pmr::vector<VkPipelineLayout> const pipeline_layouts = 
             Maia::Renderer::Vulkan::create_pipeline_layouts(device.value, nullptr, descriptor_set_layouts, pipeline_json.at("pipeline_layouts"), {});
 
+        std::pmr::vector<VkPipeline> const pipeline_states = create_pipeline_states(
+            device.value,
+            nullptr,
+            shader_modules,
+            pipeline_layouts,
+            render_passes,
+            pipeline_json.at("pipeline_states"),
+            {}
+        );
+
         Maia::Renderer::Vulkan::Commands_data const commands_data = 
             Maia::Renderer::Vulkan::create_commands_data(pipeline_json.at("frame_commands"), {});
 
