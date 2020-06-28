@@ -1547,9 +1547,199 @@ namespace Maia::Renderer::Vulkan
     {
         enum class Command_type : std::uint8_t
         {
+            Begin_render_pass,
+            Bind_pipeline,
             Clear_color_image,
-            Pipeline_barrier
+            Draw,
+            End_render_pass,
+            Pipeline_barrier,
+            Set_screen_viewport_and_scissors
         };
+
+        namespace Begin_render_pass
+        {
+            enum class Type : std::uint8_t
+            {
+                Dependent
+            };
+
+            struct Dependent
+            {
+                VkRenderPass render_pass;
+            };
+        }
+
+        std::pmr::vector<std::byte> create_begin_render_pass_data(
+            nlohmann::json const& json,
+            std::span<VkRenderPass const> const render_passes,
+            std::pmr::polymorphic_allocator<> const& allocator
+        ) noexcept
+        {
+            std::string const& type = json.at("subtype").get<std::string>();
+            assert(type == "Dependent");
+
+            Begin_render_pass::Dependent const dependent
+            {
+                .render_pass = render_passes[json.at("render_pass").get<std::size_t>()]
+            };
+
+            Command_type constexpr command_type = Command_type::Begin_render_pass;
+            Begin_render_pass::Type constexpr begin_render_pass_type = Begin_render_pass::Type::Dependent;
+
+            std::pmr::vector<std::byte> data{allocator};
+            data.resize(sizeof(command_type) + sizeof(begin_render_pass_type) + sizeof(dependent));
+            std::memcpy(data.data(), &command_type, sizeof(command_type));
+            std::memcpy(data.data() + sizeof(command_type), &begin_render_pass_type, sizeof(begin_render_pass_type));
+            std::memcpy(data.data() + sizeof(command_type) + sizeof(begin_render_pass_type), &dependent, sizeof(dependent));
+            return data;
+        }
+
+        struct Bind_pipeline
+        {
+            VkPipelineBindPoint bind_point;
+            VkPipeline pipeline;
+        };
+
+        std::pmr::vector<std::byte> create_bind_pipeline_data(
+            nlohmann::json const& json,
+            std::span<VkPipeline const> const pipelines,
+            std::pmr::polymorphic_allocator<> const& allocator
+        ) noexcept
+        {
+            assert(json.at("type").get<std::string>() == "Bind_pipeline");
+
+            Command_type constexpr command_type = Command_type::Bind_pipeline;
+
+            Bind_pipeline const command
+            {
+                .bind_point = json.at("pipeline_bind_point").get<VkPipelineBindPoint>(),
+                .pipeline = pipelines[json.at("pipeline").get<std::size_t>()]
+            };
+
+            std::pmr::vector<std::byte> data{allocator};
+            data.resize(sizeof(command_type) + sizeof(command));
+            std::memcpy(data.data(), &command_type, sizeof(command_type));
+            std::memcpy(data.data() + sizeof(command_type), &command, sizeof(command));
+            return data;
+        }
+
+        namespace Clear_color_image
+        {
+            enum class Type : std::uint8_t
+            {
+                Dependent
+            };
+
+            struct Dependent
+            {
+                VkClearColorValue clear_color_value;
+            };
+        }
+
+        VkClearColorValue create_color_color_value(
+            nlohmann::json const& clear_color_value_json
+        ) noexcept
+        {
+            std::string const& type = clear_color_value_json.at("type").get<std::string>();
+            assert(type == "INT" || type == "UINT" || type == "FLOAT");
+
+            nlohmann::json const& values_json = clear_color_value_json.at("values");
+
+            if (type == "FLOAT")
+            {
+                return
+                {
+                    .float32 = {values_json[0].get<float>(), values_json[1].get<float>(), values_json[2].get<float>(), values_json[3].get<float>()}
+                };
+            }
+            else if (type == "INT")
+            {
+                return
+                {
+                    .int32 = {values_json[0].get<std::int32_t>(), values_json[1].get<std::int32_t>(), values_json[2].get<std::int32_t>(), values_json[3].get<std::int32_t>()}
+                };
+            }
+            else
+            {
+                assert(type == "UINT");
+
+                return
+                {
+                    .uint32 = {values_json[0].get<std::uint32_t>(), values_json[1].get<std::uint32_t>(), values_json[2].get<std::uint32_t>(), values_json[3].get<std::uint32_t>()}
+                };
+            }
+        }
+
+        std::pmr::vector<std::byte> create_color_image_data(
+            nlohmann::json const& command_json,
+            std::pmr::polymorphic_allocator<std::byte> const& allocator
+        ) noexcept
+        {
+            std::string const& subtype = command_json.at("subtype").get<std::string>();
+            assert(subtype == "Dependent");
+
+            Clear_color_image::Dependent const dependent
+            {
+                .clear_color_value = create_color_color_value(command_json.at("clear_color_value"))
+            };
+
+            Command_type constexpr command_type = Command_type::Clear_color_image;
+            Clear_color_image::Type constexpr clear_subtype = Clear_color_image::Type::Dependent;
+
+            std::pmr::vector<std::byte> data{allocator};
+            data.resize(sizeof(Command_type) + sizeof(Clear_color_image::Type) + sizeof(Clear_color_image::Dependent));
+            std::memcpy(data.data(), &command_type, sizeof(command_type));
+            std::memcpy(data.data() + sizeof(command_type), &clear_subtype, sizeof(clear_subtype));
+            std::memcpy(data.data() + sizeof(command_type) + sizeof(clear_subtype), &dependent, sizeof(dependent));
+            return data;
+        }
+
+        struct Draw
+        {
+            std::uint32_t vertex_count;
+            std::uint32_t instance_count;
+            std::uint32_t first_vertex;
+            std::uint32_t first_instance;
+        };
+
+        std::pmr::vector<std::byte> create_draw_data(
+            nlohmann::json const& json,
+            std::pmr::polymorphic_allocator<> const& allocator
+        ) noexcept
+        {
+            assert(json.at("type").get<std::string>() == "Draw");
+
+            Command_type constexpr command_type = Command_type::Draw;
+
+            Draw const command
+            {
+                .vertex_count = json.at("vertex_count").get<std::uint32_t>(),
+                .instance_count = json.at("instance_count").get<std::uint32_t>(),
+                .first_vertex = json.at("first_vertex").get<std::uint32_t>(),
+                .first_instance = json.at("first_instance").get<std::uint32_t>(),
+            };
+
+            std::pmr::vector<std::byte> data{allocator};
+            data.resize(sizeof(command_type) + sizeof(command));
+            std::memcpy(data.data(), &command_type, sizeof(command_type));
+            std::memcpy(data.data() + sizeof(command_type), &command, sizeof(command));
+            return data;
+        }
+
+        std::pmr::vector<std::byte> create_end_render_pass_data(
+            nlohmann::json const& json,
+            std::pmr::polymorphic_allocator<> const& allocator
+        ) noexcept
+        {
+            assert(json.at("type").get<std::string>() == "End_render_pass");
+
+            Command_type constexpr command_type = Command_type::End_render_pass;
+
+            std::pmr::vector<std::byte> data{allocator};
+            data.resize(sizeof(command_type));
+            std::memcpy(data.data(), &command_type, sizeof(command_type));
+            return data;
+        }
 
         namespace Image_memory_barrier
         {
@@ -1635,92 +1825,59 @@ namespace Maia::Renderer::Vulkan
             return data;
         }
 
-        namespace Clear_color_image
-        {
-            enum class Type : std::uint8_t
-            {
-                Dependent
-            };
-
-            struct Dependent
-            {
-                VkClearColorValue clear_color_value;
-            };
-        }
-
-        VkClearColorValue create_color_color_value(
-            nlohmann::json const& clear_color_value_json
+        std::pmr::vector<std::byte> create_set_screen_viewport_and_scissors_data(
+            nlohmann::json const& json,
+            std::pmr::polymorphic_allocator<> const& allocator
         ) noexcept
         {
-            std::string const& type = clear_color_value_json.at("type").get<std::string>();
-            assert(type == "INT" || type == "UINT" || type == "FLOAT");
+            assert(json.at("type").get<std::string>() == "Set_screen_viewport_and_scissors");
 
-            nlohmann::json const& values_json = clear_color_value_json.at("values");
-
-            if (type == "FLOAT")
-            {
-                return
-                {
-                    .float32 = {values_json[0].get<float>(), values_json[1].get<float>(), values_json[2].get<float>(), values_json[3].get<float>()}
-                };
-            }
-            else if (type == "INT")
-            {
-                return
-                {
-                    .int32 = {values_json[0].get<std::int32_t>(), values_json[1].get<std::int32_t>(), values_json[2].get<std::int32_t>(), values_json[3].get<std::int32_t>()}
-                };
-            }
-            else
-            {
-                assert(type == "UINT");
-
-                return
-                {
-                    .uint32 = {values_json[0].get<std::uint32_t>(), values_json[1].get<std::uint32_t>(), values_json[2].get<std::uint32_t>(), values_json[3].get<std::uint32_t>()}
-                };
-            }
-        }
-
-        std::pmr::vector<std::byte> create_color_image_data(
-            nlohmann::json const& command_json,
-            std::pmr::polymorphic_allocator<std::byte> const& allocator
-        ) noexcept
-        {
-            std::string const& subtype = command_json.at("subtype").get<std::string>();
-            assert(subtype == "Dependent");
-
-            Clear_color_image::Dependent const dependent
-            {
-                .clear_color_value = create_color_color_value(command_json.at("clear_color_value"))
-            };
-
-            Command_type constexpr command_type = Command_type::Clear_color_image;
-            Clear_color_image::Type constexpr clear_subtype = Clear_color_image::Type::Dependent;
+            Command_type constexpr command_type = Command_type::Set_screen_viewport_and_scissors;
 
             std::pmr::vector<std::byte> data{allocator};
-            data.resize(sizeof(Command_type) + sizeof(Clear_color_image::Type) + sizeof(Clear_color_image::Dependent));
+            data.resize(sizeof(command_type));
             std::memcpy(data.data(), &command_type, sizeof(command_type));
-            std::memcpy(data.data() + sizeof(command_type), &clear_subtype, sizeof(clear_subtype));
-            std::memcpy(data.data() + sizeof(command_type) + sizeof(clear_subtype), &dependent, sizeof(dependent));
             return data;
         }
 
+
         std::pmr::vector<std::byte> create_command_data(
             nlohmann::json const& command_json,
+            std::span<VkPipeline const> const pipelines,
+            std::span<VkRenderPass const> const render_passes,
             std::pmr::polymorphic_allocator<std::byte> const& allocator
         ) noexcept
         {
             assert(command_json.contains("type"));
             std::string const& type = command_json.at("type").get<std::string>();
 
-            if (type == "Clear_color_image")
+            if (type == "Begin_render_pass")
+            {
+                return create_begin_render_pass_data(command_json, render_passes, allocator);
+            }
+            else if (type == "Bind_pipeline")
+            {
+                return create_bind_pipeline_data(command_json, pipelines, allocator);
+            }
+            else if (type == "Clear_color_image")
             {
                 return create_color_image_data(command_json, allocator);
+            }
+            else if (type == "Draw")
+            {
+                return create_draw_data(command_json, allocator);
+            }
+            else if (type == "End_render_pass")
+            {
+                return create_end_render_pass_data(command_json, allocator);
             }
             else if (type == "Pipeline_barrier")
             {
                 return create_pipeline_barrier(command_json, allocator);
+            }
+            else if (type == "Set_screen_viewport_and_scissors")
+            {
+                return create_set_screen_viewport_and_scissors_data(command_json, allocator);
             }
             else
             {
@@ -1741,6 +1898,8 @@ namespace Maia::Renderer::Vulkan
 
     Commands_data create_commands_data(
         nlohmann::json const& commands_json,
+        std::span<VkPipeline const> const pipelines,
+        std::span<VkRenderPass const> const render_passes,
         std::pmr::polymorphic_allocator<std::byte> const& commands_allocator
     ) noexcept
     {
@@ -1750,7 +1909,7 @@ namespace Maia::Renderer::Vulkan
         {
             for (nlohmann::json const& command_json : draw_list_json)
             {
-                std::pmr::vector<std::byte> const command_data = create_command_data(command_json, commands_allocator);
+                std::pmr::vector<std::byte> const command_data = create_command_data(command_json, pipelines, render_passes, commands_allocator);
 
                 commands_data.insert(commands_data.end(), command_data.begin(), command_data.end());
             }
@@ -1762,6 +1921,62 @@ namespace Maia::Renderer::Vulkan
     namespace
     {
         using Commands_data_offset = size_t;
+
+        Commands_data_offset add_begin_render_pass_command(
+            VkCommandBuffer const command_buffer,
+            VkFramebuffer const framebuffer,
+            VkRect2D const framebuffer_render_area,
+            std::span<std::byte const> const bytes
+        ) noexcept
+        {
+            Commands_data_offset commands_data_offset = 0;
+
+            Begin_render_pass::Type const subtype = read<Begin_render_pass::Type>(bytes.data() + commands_data_offset);
+            commands_data_offset += sizeof(subtype);
+
+            assert(subtype == Begin_render_pass::Type::Dependent);
+
+            Begin_render_pass::Dependent const command = read<Begin_render_pass::Dependent>(bytes.data() + commands_data_offset);
+            commands_data_offset += sizeof(command);
+
+            VkRenderPassBeginInfo const begin_info
+            {
+                .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+                .pNext = nullptr,
+                .renderPass = command.render_pass,
+                .framebuffer = framebuffer,
+                .renderArea = framebuffer_render_area,
+                .clearValueCount = 0,
+                .pClearValues = nullptr,
+            };
+
+            vkCmdBeginRenderPass(
+                command_buffer,
+                &begin_info,
+                VK_SUBPASS_CONTENTS_INLINE
+            );
+
+            return commands_data_offset;
+        }
+
+        Commands_data_offset add_bind_pipeline_command(
+            VkCommandBuffer const command_buffer,
+            std::span<std::byte const> const bytes
+        ) noexcept
+        {
+            Commands_data_offset commands_data_offset = 0;
+
+            Bind_pipeline const command = read<Bind_pipeline>(bytes.data() + commands_data_offset);
+            commands_data_offset += sizeof(command);
+
+            vkCmdBindPipeline(
+                command_buffer,
+                command.bind_point,
+                command.pipeline
+            );
+
+            return commands_data_offset;
+        }
 
         Commands_data_offset add_clear_color_image_command(
             VkCommandBuffer const command_buffer,
@@ -1790,6 +2005,38 @@ namespace Maia::Renderer::Vulkan
             );
 
             return commands_data_offset;
+        }
+
+        Commands_data_offset add_draw_command(
+            VkCommandBuffer const command_buffer,
+            std::span<std::byte const> const bytes
+        ) noexcept
+        {
+            Commands_data_offset commands_data_offset = 0;
+
+            Draw const command = read<Draw>(bytes.data() + commands_data_offset);
+            commands_data_offset += sizeof(command);
+
+            vkCmdDraw(
+                command_buffer,
+                command.vertex_count,
+                command.instance_count,
+                command.first_vertex,
+                command.first_instance
+            );
+
+            return commands_data_offset;
+        }
+
+        Commands_data_offset add_end_render_pass_command(
+            VkCommandBuffer const command_buffer
+        ) noexcept
+        {
+            vkCmdEndRenderPass(
+                command_buffer
+            );
+
+            return 0;
         }
 
         std::pair<Commands_data_offset, std::pmr::vector<VkImageMemoryBarrier>> create_image_memory_barriers(
@@ -1873,12 +2120,52 @@ namespace Maia::Renderer::Vulkan
 
             return commands_data_offset;
         }
+
+        Commands_data_offset add_set_screen_viewport_and_scissors_commands(
+            VkCommandBuffer const command_buffer,
+            VkRect2D const render_area
+        ) noexcept
+        {
+            {
+                std::array<VkViewport, 1> const viewports
+                {
+                    VkViewport
+                    {
+                        .x = static_cast<float>(render_area.offset.x),
+                        .y = static_cast<float>(render_area.offset.y),
+                        .width = static_cast<float>(render_area.extent.width),
+                        .height = static_cast<float>(render_area.extent.height),
+                        .minDepth = 0.0f,
+                        .maxDepth = 1.0f,
+                    }
+                };
+                
+                vkCmdSetViewport(command_buffer, 0, static_cast<std::uint32_t>(viewports.size()), viewports.data());
+            }
+
+            {
+                std::array<VkRect2D, 1> const scissors
+                {
+                    VkRect2D
+                    {
+                        .offset = render_area.offset,
+                        .extent = render_area.extent,
+                    }
+                };
+                
+                vkCmdSetScissor(command_buffer, 0, static_cast<std::uint32_t>(scissors.size()), scissors.data());
+            }
+
+            return 0;
+        }
     }
 
     void draw(
         VkCommandBuffer const command_buffer,
         VkImage const output_image,
         VkImageSubresourceRange const& output_image_subresource_range,
+        VkFramebuffer const output_framebuffer,
+        VkRect2D const output_render_area,
         Commands_data const& commands_data
     ) noexcept
     {
@@ -1895,12 +2182,32 @@ namespace Maia::Renderer::Vulkan
 
             switch (command_type)
             {
+            case Command_type::Begin_render_pass:
+                offset_in_bytes += add_begin_render_pass_command(command_buffer, output_framebuffer, output_render_area, next_command_bytes);
+                break;
+
+            case Command_type::Bind_pipeline:
+                offset_in_bytes += add_bind_pipeline_command(command_buffer, next_command_bytes);
+                break;
+
+            case Command_type::Draw:
+                offset_in_bytes += add_draw_command(command_buffer, next_command_bytes);
+                break;
+
             case Command_type::Clear_color_image:
                 offset_in_bytes += add_clear_color_image_command(command_buffer, output_image, output_image_subresource_range, next_command_bytes);
                 break;
 
+            case Command_type::End_render_pass:
+                offset_in_bytes += add_end_render_pass_command(command_buffer);
+                break;
+
             case Command_type::Pipeline_barrier:
                 offset_in_bytes += add_pipeline_barrier_command(command_buffer, output_image, output_image_subresource_range, next_command_bytes, {});
+                break;
+
+            case Command_type::Set_screen_viewport_and_scissors:
+                offset_in_bytes += add_set_screen_viewport_and_scissors_commands(command_buffer, output_render_area);
                 break;
 
             default:

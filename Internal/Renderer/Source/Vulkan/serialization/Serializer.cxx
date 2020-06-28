@@ -96,13 +96,17 @@ namespace Maia::Renderer::Vulkan
 
     export Commands_data create_commands_data(
         nlohmann::json const& commands_json,
+        std::span<VkPipeline const> pipelines,
+        std::span<VkRenderPass const> render_passes,
         std::pmr::polymorphic_allocator<std::byte> const& commands_allocator
     ) noexcept;
 
     export void draw(
-        VkCommandBuffer const command_buffer,
-        VkImage const output_image,
+        VkCommandBuffer command_buffer,
+        VkImage output_image,
         VkImageSubresourceRange const& output_image_subresource_range,
+        VkFramebuffer output_framebuffer,
+        VkRect2D output_render_area,
         Commands_data const& commands_data
     ) noexcept;
 }
