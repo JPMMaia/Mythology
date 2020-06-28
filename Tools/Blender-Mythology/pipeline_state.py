@@ -1,5 +1,6 @@
 import bpy
 
+from .common import ignore_reroutes
 from .render_node_tree import RenderTreeNode
 from .render_pass import RenderPassNodeSocket, SubpassNodeSocket
 from .vulkan_enums import border_color_values, blend_factor_values, blend_operation_values, color_component_flag_values, compare_operation_values, cull_modes, descriptor_type_values, dynamic_state_values, filter_values, format_values, front_face, logic_operation_values, polygon_modes, sampler_address_move_values, sampler_mipmap_mode_values, shader_stage_flag_values, stencil_operation_values
@@ -1112,9 +1113,9 @@ def pipeline_state_to_json(
     stages_per_pipeline_state = [create_shader_stages_json(pipeline_state.inputs['Stages'], shader_modules)
                                  for pipeline_state in pipeline_state_nodes]
 
-    render_pass_indices = [render_passes[0].index(pipeline_state.inputs["Render Pass"].links[0].from_node)
+    render_pass_indices = [render_passes[0].index(ignore_reroutes(pipeline_state.inputs["Render Pass"].links[0].from_node))
                            for pipeline_state in pipeline_state_nodes]
-    subpass_indices = [render_passes[1][render_pass_index].index(pipeline_state.inputs["Subpass"].links[0].from_node)
+    subpass_indices = [render_passes[1][render_pass_index].index(ignore_reroutes(pipeline_state.inputs["Subpass"].links[0].from_node))
                        for (pipeline_state, render_pass_index) in zip(pipeline_state_nodes, render_pass_indices)]
 
     json = [

@@ -83,7 +83,7 @@ class MythologyExportOperator(bpy.types.Operator):
         descriptor_set_layouts = create_descriptor_set_layouts_json(nodes, samplers)
         pipeline_layouts = create_pipeline_layouts_json(nodes, descriptor_set_layouts)
         pipeline_states = pipeline_state_to_json(nodes, render_passes, shader_modules, pipeline_layouts)
-        frame_commands = frame_commands_to_json(nodes)
+        frame_commands = frame_commands_to_json(nodes, pipeline_states, render_passes)
 
         output_json = {
             "render_passes": render_passes[2],

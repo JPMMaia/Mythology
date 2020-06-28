@@ -1,9 +1,9 @@
 import bpy
 
 from .common import Rect2DNodeSocket
-from .pipeline_state import PipelineNodeSocket
+from .pipeline_state import GraphicsPipelineStateNode, PipelineNodeSocket
 from .render_node_tree import RenderTreeNode
-from .render_pass import RenderPassNodeSocket, SubpassNodeSocket
+from .render_pass import RenderPassNode, RenderPassNodeSocket, SubpassNode, SubpassNodeSocket
 from .resources import ImageNodeSocket, ImageSubresourceRangeNodeSocket
 from .vulkan_enums import access_flag_values, dependency_flag_values, image_layout_values, image_layout_values_to_int, pipeline_bind_point_values, pipeline_stage_flag_values
 
@@ -316,8 +316,35 @@ draw_node_categories = [
 ]
 
 import typing
+from .common import ignore_reroutes
 
 JSONType = typing.Union[str, int, float, bool, None, typing.Dict[str, typing.Any], typing.List[typing.Any]]
+
+def begin_render_pass_node_to_json(
+    node: BeginRenderPassNode,
+    render_passes: typing.Tuple[typing.List[RenderPassNode], typing.List[typing.List[SubpassNode]], JSONType]
+) -> JSONType:
+
+    assert ignore_reroutes(node.inputs["Framebuffer"].links[0].from_node).bl_idname == "BeginFrameNode"
+    assert ignore_reroutes(node.inputs["Render Area"].links[0].from_node).bl_idname == "BeginFrameNode"
+
+    return {
+        "type": "Begin_render_pass",
+        "subtype": "Dependent",
+        "render_pass": render_passes[0].index(ignore_reroutes(node.inputs["Render Pass"].links[0].from_node)),
+    }
+
+def bind_pipeline_node_to_json(
+    node: BindPipelineNode,
+    pipeline_states: typing.Tuple[typing.List[GraphicsPipelineStateNode], JSONType]
+) -> JSONType:
+
+    return {
+        "type": "Bind_pipeline",
+        "pipeline_bind_point": node.get("pipeline_bind_point_property", 0),
+        "pipeline": pipeline_states[0].index(ignore_reroutes(node.inputs["Pipeline"].links[0].from_node)),
+    }
+
 
 def clear_color_value_node_to_json(
     node: ClearColorValueNode
@@ -336,13 +363,33 @@ def clear_color_image_node_to_json(
     node: ClearColorImageNode
 ) -> JSONType:
 
-    assert node.inputs["Image"].links[0].from_node.bl_idname == "BeginFrameNode"
-    assert node.inputs["Image Subresource Ranges"].links[0].from_node.bl_idname == "BeginFrameNode"
+    assert ignore_reroutes(node.inputs["Image"].links[0].from_node).bl_idname == "BeginFrameNode"
+    assert ignore_reroutes(node.inputs["Image Subresource Ranges"].links[0].from_node).bl_idname == "BeginFrameNode"
 
     return {
         "type": "Clear_color_image",
         "subtype": "Dependent",
-        "clear_color_value": clear_color_value_node_to_json(node.inputs["Clear Color Value"].links[0].from_node),
+        "clear_color_value": clear_color_value_node_to_json(ignore_reroutes(node.inputs["Clear Color Value"].links[0].from_node)),
+    }
+
+def draw_node_to_json(
+    node: DrawNode
+) -> JSONType:
+
+    return {
+        "type": "Draw",
+        "vertex_count": node.get("vertex_count_property", 1),
+        "instance_count": node.get("instance_count_property", 1),
+        "first_vertex": node.get("first_vertex_property", 0),
+        "first_instance": node.get("first_instance_property", 0),
+    }
+
+def end_render_pass_node_to_json(
+    node: EndRenderPassNode
+) -> JSONType:
+
+    return {
+        "type": "End_render_pass"
     }
 
 def image_layout_to_int(
@@ -355,8 +402,8 @@ def image_memory_barrier_node_to_json(
     node: ImageMemoryBarrierNode
 ) -> JSONType:
 
-    assert node.inputs["Image"].links[0].from_node.bl_idname == "BeginFrameNode"
-    assert node.inputs["Image Subresource Range"].links[0].from_node.bl_idname == "BeginFrameNode"
+    assert ignore_reroutes(node.inputs["Image"].links[0].from_node).bl_idname == "BeginFrameNode"
+    assert ignore_reroutes(node.inputs["Image Subresource Range"].links[0].from_node).bl_idname == "BeginFrameNode"
 
     return {
         "type": "Dependent",
@@ -381,14 +428,34 @@ def pipeline_barrier_node_to_json(
                            for link in node.inputs["Image Barriers"].links],
     }
 
-def frame_command_node_to_json(
-    node: bpy.types.Node
+def set_screen_viewport_and_scissors_node_to_json(
+    node: SetScreenViewportAndScissorsNode
 ) -> JSONType:
 
-    if node.bl_idname == "ClearColorImageNode":
+    return {
+        "type": "Set_screen_viewport_and_scissors"
+    }
+
+def frame_command_node_to_json(
+    node: bpy.types.Node,
+    pipeline_states: typing.Tuple[typing.List[GraphicsPipelineStateNode], JSONType],
+    render_passes: typing.Tuple[typing.List[RenderPassNode], typing.List[typing.List[SubpassNode]], JSONType]
+) -> JSONType:
+
+    if node.bl_idname == "BeginRenderPassNode":
+        return begin_render_pass_node_to_json(node, render_passes)
+    elif node.bl_idname == "BindPipelineNode":
+        return bind_pipeline_node_to_json(node, pipeline_states)
+    elif node.bl_idname == "ClearColorImageNode":
         return clear_color_image_node_to_json(node)
+    elif node.bl_idname == "DrawNode":
+        return draw_node_to_json(node)
+    elif node.bl_idname == "EndRenderPassNode":
+        return end_render_pass_node_to_json(node)
     elif node.bl_idname == "PipelineBarrierNode":
         return pipeline_barrier_node_to_json(node)
+    elif node.bl_idname == "SetScreenViewportAndScissorsNode":
+        return set_screen_viewport_and_scissors_node_to_json(node)
 
     assert False
 
@@ -409,7 +476,9 @@ def get_frame_command_nodes(
     return frame_command_nodes
 
 def frame_commands_to_json(
-    nodes: typing.List[bpy.types.Node]
+    nodes: typing.List[bpy.types.Node],
+    pipeline_states: typing.Tuple[typing.List[GraphicsPipelineStateNode], JSONType],
+    render_passes: typing.Tuple[typing.List[RenderPassNode], typing.List[typing.List[SubpassNode]], JSONType]
 ) -> JSONType:
 
     begin_frame_nodes = [node
@@ -421,7 +490,7 @@ def frame_commands_to_json(
     
     return [
         [
-            frame_command_node_to_json(command_node)
+            frame_command_node_to_json(command_node, pipeline_states, render_passes)
             for command_node in frame_command_nodes_per_begin_frame_node[begin_frame_index]
         ]
         for begin_frame_index, begin_frame_node in enumerate(begin_frame_nodes)

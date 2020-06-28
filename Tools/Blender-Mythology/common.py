@@ -2,6 +2,18 @@ import bpy
 
 from .render_node_tree import RenderTreeNode
 
+def ignore_reroutes(node: bpy.types.Node) -> bpy.types.Node:
+
+    current_node = node
+
+    while current_node.bl_idname == "NodeReroute":
+        previous_node = current_node.inputs["Input"].links[0].from_node
+        current_node = previous_node
+
+    assert current_node.bl_idname != "NodeReroute"
+    return current_node
+
+
 class Extent2DNodeSocket(bpy.types.NodeSocket):
     
     bl_label = "Extent 2D node socket"
