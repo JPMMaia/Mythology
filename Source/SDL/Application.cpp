@@ -1012,13 +1012,17 @@ namespace Mythology::SDL
             {}
         );
 
-        Maia::Renderer::Vulkan::Commands_data const commands_data = 
-            Maia::Renderer::Vulkan::create_commands_data(pipeline_json.at("frame_commands"), {});
+        Maia::Renderer::Vulkan::Commands_data const commands_data = Maia::Renderer::Vulkan::create_commands_data(
+            pipeline_json.at("frame_commands"),
+            pipeline_states,
+            render_passes,
+            {}
+        );
 
         VkSurfaceFormatKHR const surface_format = select_surface_format(physical_device, surface);
 
         Application_resources const application_resources{shaders_path, physical_device, device, surface_format.format};
-        Render_pass const render_pass = application_resources.render_pass;
+        Render_pass const render_pass = {render_passes[0]}; // TODO fix hack
         VkPipeline const white_triangle_pipeline = application_resources.white_triangle_pipeline;
 
         struct Clip_position
@@ -1129,7 +1133,15 @@ namespace Mythology::SDL
         destroy_shader_module(device, imgui_fragment_shader_module);
         destroy_shader_module(device, imgui_vertex_shader_module);
 
-        Swapchain_resources swapchain_resources{physical_device, device, surface, surface_format, std::array<Queue_family_index, 2>{graphics_queue_family_index, present_queue_family_index}, render_pass};
+        Swapchain_resources swapchain_resources
+        {
+            physical_device,
+            device,
+            surface,
+            surface_format,
+            std::array<Queue_family_index, 2>{graphics_queue_family_index, present_queue_family_index},
+            render_pass
+        };
         
         Wait_device_idle_lock const wait_device_idle_lock{device};
 
@@ -1323,7 +1335,14 @@ namespace Mythology::SDL
                                         .layerCount = 1
                                     };
 
-                                    Maia::Renderer::Vulkan::draw(command_buffer.value, swapchain_image.value, output_image_subresource_range, commands_data);
+                                    Maia::Renderer::Vulkan::draw(
+                                        command_buffer.value,
+                                        swapchain_image.value,
+                                        output_image_subresource_range,
+                                        swapchain_framebuffer.value,
+                                        output_render_area,
+                                        commands_data
+                                    );
 
                                     /*clear_and_begin_render_pass(command_buffer, render_pass, swapchain_framebuffer, clear_color, swapchain_image, output_image_subresource_range, output_render_area);
                                     render(command_buffer, white_triangle_pipeline, output_render_area, imgui_resources);
