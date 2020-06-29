@@ -858,7 +858,8 @@ namespace Mythology::SDL
 
     void run(
         nlohmann::json const& pipeline_json,
-        std::filesystem::path const& pipeline_json_parent_path
+        std::filesystem::path const& pipeline_json_parent_path,
+        std::filesystem::path const& gltf_file_path
     ) noexcept
     {
         std::filesystem::path const shaders_path = std::filesystem::current_path() / "../shaders";

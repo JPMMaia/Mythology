@@ -53,16 +53,20 @@ int main(int const argc, const char* const* const argv) noexcept
 
     //Mythology::Windowless::render_frame("output.ppm");
 
-    if (argc >= 4)
+    if (argc >= 6)
     {
         if (matches(argv[1], "window"))
         {
             if (matches(argv[2], "--pipeline"))
             {
-                std::filesystem::path const pipeline_json_file_path = argv[3];
+                if (matches(argv[4], "--gltf"))
+                {
+                    std::filesystem::path const pipeline_json_file_path = argv[3];
+                    std::filesystem::path const gltf_file_path = argv[5];
 
-                nlohmann::json const pipeline_json = read_json_from_file(pipeline_json_file_path);
-                Mythology::SDL::run(pipeline_json, pipeline_json_file_path.parent_path());
+                    nlohmann::json const pipeline_json = read_json_from_file(pipeline_json_file_path);
+                    Mythology::SDL::run(pipeline_json, pipeline_json_file_path.parent_path(), gltf_file_path);
+                }
             }
         }
     }
