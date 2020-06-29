@@ -43,9 +43,6 @@ target_sources(MaiaUtilities
 		
 		"Maia/Utilities/Helpers/Helpers.hpp"
 
-		"Maia/Utilities/glTF/gltf.hpp"
-		"Maia/Utilities/glTF/gltf.cpp"
-
 		"Maia/Utilities/Math/MathHelpers.hpp"
 
 		"Maia/Utilities/Threading/ThreadPool.hpp"
@@ -79,3 +76,5 @@ write_basic_package_version_file ("${CMAKE_CURRENT_BINARY_DIR}/MaiaUtilitiesConf
 install (FILES "MaiaUtilitiesConfig.cmake" "${CMAKE_CURRENT_BINARY_DIR}/MaiaUtilitiesConfigVersion.cmake"
 	DESTINATION "lib/cmake/Maia/Utilities"
 )
+
+add_subdirectory("Maia/Utilities/glTF")

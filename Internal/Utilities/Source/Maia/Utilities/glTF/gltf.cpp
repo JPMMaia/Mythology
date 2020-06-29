@@ -1,71 +1,83 @@
-#include "gltf.hpp"
+module maia.utilities.gltf;
+
+import <array>;
+import <cassert>;
+import <cmath>;
+import <cstddef>;
+import <memory_resource>;
+import <optional>;
+import <string>;
+import <unordered_map>;
+import <variant>;
+import <vector>;
+
+import <nlohmann/json.hpp>;
 
 namespace nlohmann
 {
 	template <>
-	struct adl_serializer<Eigen::Vector3f>
+	struct adl_serializer<Maia::Utilities::glTF::Vector3f>
 	{
-		static void to_json(json& j, Eigen::Vector3f const& value)
+		static void to_json(json& j, Maia::Utilities::glTF::Vector3f const& value)
 		{
 			assert(false);
 		}
 
-		static void from_json(const json& j, Eigen::Vector3f& value)
+		static void from_json(const json& j, Maia::Utilities::glTF::Vector3f& value)
 		{
-			for (std::size_t i = 0; i < 3; ++i)
-			{
-				value(i) = j.at(i).get<float>();
-			}
+			value.x = j.at(0).get<float>();
+			value.y = j.at(1).get<float>();
+			value.z = j.at(2).get<float>();
 		}
 	};
 
 	template <>
-	struct adl_serializer<Eigen::Vector4f>
+	struct adl_serializer<Maia::Utilities::glTF::Vector4f>
 	{
-		static void to_json(json& j, Eigen::Vector4f const& value)
+		static void to_json(json& j, Maia::Utilities::glTF::Vector4f const& value)
 		{
 			assert(false);
 		}
 
-		static void from_json(const json& j, Eigen::Vector4f& value)
+		static void from_json(const json& j, Maia::Utilities::glTF::Vector4f& value)
 		{
-			for (std::size_t i = 0; i < 4; ++i)
-			{
-				value(i) = j.at(i).get<float>();
-			}
+			value.x = j.at(0).get<float>();
+			value.y = j.at(1).get<float>();
+			value.z = j.at(2).get<float>();
+			value.w = j.at(3).get<float>();
 		}
 	};
 
 	template <>
-	struct adl_serializer<Eigen::Quaternionf>
+	struct adl_serializer<Maia::Utilities::glTF::Quaternionf>
 	{
-		static void to_json(json& j, Eigen::Quaternionf const& value)
+		static void to_json(json& j, Maia::Utilities::glTF::Quaternionf const& value)
 		{
 			assert(false);
 		}
 
-		static void from_json(const json& j, Eigen::Quaternionf& value)
+		static void from_json(const json& j, Maia::Utilities::glTF::Quaternionf& value)
 		{
-			value.x() = j.at(0).get<float>();
-			value.y() = j.at(1).get<float>();
-			value.z() = j.at(2).get<float>();
-			value.w() = j.at(3).get<float>();
+			value.x = j.at(0).get<float>();
+			value.y = j.at(1).get<float>();
+			value.z = j.at(2).get<float>();
+			value.w = j.at(3).get<float>();
 		}
 	};
 
 	template <>
-	struct adl_serializer<Eigen::Matrix4f>
+	struct adl_serializer<Maia::Utilities::glTF::Matrix4f>
 	{
-		static void to_json(json& j, Eigen::Matrix4f const& value)
+		static void to_json(json& j, Maia::Utilities::glTF::Matrix4f const& value)
 		{
 			assert(false);
 		}
 
-		static void from_json(const json& j, Eigen::Matrix4f& value)
+		static void from_json(const json& j, Maia::Utilities::glTF::Matrix4f& value)
 		{
 			for (std::size_t i = 0; i < 16; ++i)
 			{
-				value(i) = j.at(i).get<float>();
+				value.values[i] = j.at(i).get<float>();
 			}
 		}
 	};
@@ -132,28 +144,44 @@ namespace Maia::Utilities::glTF
 	namespace
 	{
 		template <class Value_type>
-		void get_to_if_exists(nlohmann::json const& json, std::string_view key, std::optional<Value_type>& value)
+		Value_type get_value(nlohmann::json const& json, char const* const key) noexcept
 		{
-			nlohmann::json::const_iterator const location = json.find(key);
-
-			if (location != json.end())
-				value = location->get<Value_type>();
-			else
-				value = {};
+			return json.at(key).get<Value_type>();
 		}
 
 		template <class Value_type>
-		void replace_default_if_exists(nlohmann::json const& json, std::string_view key, Value_type& value)
+		std::optional<Value_type> get_optional_value(nlohmann::json const& json, char const* const key) noexcept
 		{
 			nlohmann::json::const_iterator const location = json.find(key);
 
 			if (location != json.end())
-				value = location->get<Value_type>();
+			{
+				return location->get<Value_type>();
+			}
+			else
+			{
+				return {};
+			}
+		}
+
+		template <class Value_type>
+		Value_type get_optional_value_or(nlohmann::json const& json, char const* key, Value_type const value) noexcept
+		{
+			nlohmann::json::const_iterator const location = json.find(key);
+
+			if (location != json.end())
+			{
+				return location->get<Value_type>();
+			}
+			else
+			{
+				return value;
+			}
 		}
 	}
 
 
-	std::uint8_t size_of(Component_type component_type)
+	std::uint8_t size_of(Component_type component_type) noexcept
 	{
 		switch (component_type)
 		{
@@ -171,20 +199,21 @@ namespace Maia::Utilities::glTF
 	}
 
 
-	void from_json(nlohmann::json const& json, Accessor& value)
+	Accessor accessor_from_json(nlohmann::json const& json) noexcept
 	{
-		get_to_if_exists(json, "bufferView", value.buffer_view_index);
-		json.at("componentType").get_to(value.component_type);
-		json.at("count").get_to(value.count);
-		json.at("type").get_to(value.type);
-		
-		if (value.type == Accessor::Type::Vector3)
+		Accessor::Type const type = get_value<Accessor::Type>(json, "type");
+
+		return
 		{
-			get_to_if_exists(json, "max", value.max);
-			get_to_if_exists(json, "min", value.min);
-		}
+			.buffer_view_index = get_optional_value<Index>(json, "bufferView"),
+			.component_type = get_value<Component_type>(json, "componentType"),
+			.count = get_value<std::size_t>(json, "count"),
+			.type = type,
+			.max = type == Accessor::Type::Vector3 ? get_optional_value<Vector3f>(json, "max") : std::optional<Vector3f>{},
+			.min = type == Accessor::Type::Vector3 ? get_optional_value<Vector3f>(json, "min") : std::optional<Vector3f>{}
+		};
 	}
-	std::uint8_t size_of(Accessor::Type accessor_type)
+	std::uint8_t size_of(Accessor::Type accessor_type) noexcept
 	{
 		switch (accessor_type)
 		{
@@ -200,52 +229,70 @@ namespace Maia::Utilities::glTF
 	}
 
 
-	void from_json(nlohmann::json const& json, Buffer& value)
+	Buffer buffer_from_json(nlohmann::json const& json, std::pmr::polymorphic_allocator<> const& allocator) noexcept
 	{
-		get_to_if_exists(json, "uri", value.uri);
-		json.at("byteLength").get_to(value.byte_length);
+		return
+		{
+			.uri = get_optional_value<std::pmr::string>(json, "uri"),
+			.byte_length = get_value<std::size_t>(json, "byteLength"),
+		};
 	}
 
 
-	void from_json(nlohmann::json const& json, Buffer_view& value)
+	Buffer_view buffer_view_from_json(nlohmann::json const& json) noexcept
 	{
-		json.at("buffer").get_to(value.buffer_index);
-		replace_default_if_exists(json, "byteOffset", value.byte_offset);
-		json.at("byteLength").get_to(value.byte_length);
+		return
+		{
+			.buffer_index = get_value<Index>(json, "buffer"),
+			.byte_offset = get_optional_value_or<Index>(json, "byteOffset", 0),
+			.byte_length = get_value<std::size_t>(json, "byteLength"),
+		};
 	}
 
 
-	void from_json(nlohmann::json const& json, PbrMetallicRoughness& value)
+	PbrMetallicRoughness pbr_metallic_roughness_from_json(nlohmann::json const& json) noexcept
 	{
-		replace_default_if_exists(json, "baseColorFactor", value.base_color_factor);
-		replace_default_if_exists(json, "metallicFactor", value.metallic_factor);
-		replace_default_if_exists(json, "roughnessFactor", value.roughness_factor);
+		return
+		{
+			.base_color_factor = get_optional_value_or<Vector4f>(json, "baseColorFactor", {1.0f, 1.0f, 1.0f, 1.0f}),
+			.metallic_factor = get_optional_value_or<float>(json, "metallicFactor", 1.0f),
+			.roughness_factor = get_optional_value_or<float>(json, "roughnessFactor", 1.0f),
+		};
 	}
 
 
-	void from_json(nlohmann::json const& json, Material& value)
+	Material material_from_json(nlohmann::json const& json, std::pmr::polymorphic_allocator<> const& allocator) noexcept
 	{
-		get_to_if_exists(json, "name", value.name);
-		replace_default_if_exists(json, "pbrMetallicRoughness", value.pbr_metallic_roughness);
-		replace_default_if_exists(json, "emissiveFactor", value.emissive_factor);
-		replace_default_if_exists(json, "alphaMode", value.alpha_mode);
-		replace_default_if_exists(json, "alphaCutoff", value.alpha_cutoff);
-		replace_default_if_exists(json, "doubleSided", value.double_sided);
+		return
+		{
+			.name = get_optional_value<std::pmr::string>(json, "name"),
+			.pbr_metallic_roughness = pbr_metallic_roughness_from_json(json.at("pbrMetallicRoughness")),
+			.emissive_factor = get_optional_value_or<Vector3f>(json, "emissiveFactor", {0.0f, 0.0f, 0.0f}),
+			.alpha_mode = get_optional_value_or<std::pmr::string>(json, "alphaMode", "OPAQUE"),
+			.alpha_cutoff = get_optional_value_or<float>(json, "alphaCutoff", 0.5f),
+			.double_sided = get_optional_value_or<bool>(json, "doubleSided", false),
+		};
 	}
 
 
-	void from_json(nlohmann::json const& json, Primitive& value)
+	Primitive primitive_from_json(nlohmann::json const& json, std::pmr::polymorphic_allocator<> const& allocator) noexcept
 	{
-		json.at("attributes").get_to(value.attributes);
-		get_to_if_exists(json, "indices", value.indices_index);
-		get_to_if_exists(json, "material", value.material_index);
+		return
+		{
+			.attributes = get_value<std::pmr::unordered_map<std::pmr::string, Index>>(json, "attributes"),
+			.indices_index = get_optional_value<Index>(json, "indices"),
+			.material_index = get_optional_value<Index>(json, "material"),
+		};
 	}
 
 
-	void from_json(nlohmann::json const& json, Mesh& value)
+	Mesh from_json(nlohmann::json const& json, std::pmr::polymorphic_allocator<> const& allocator) noexcept
 	{
-		get_to_if_exists<std::string>(json, "name", value.name);
-		json.at("primitives").get_to(value.primitives);
+		return
+		{
+			.primitives = get_value<std::pmr::vector<Primitive>>(json, "primitives"),
+			.name = get_optional_value<std::pmr::string>(json, "name"),
+		};
 	}
 
 
@@ -253,116 +300,181 @@ namespace Maia::Utilities::glTF
 	{
 		struct Transform
 		{
-			Eigen::Vector3f translation;
-			Eigen::Quaternionf rotation;
-			Eigen::Vector3f scale;
+			Vector3f translation;
+			Quaternionf rotation;
+			Vector3f scale;
 		};
 
-		Transform decompose(Eigen::Matrix4f const& matrix)
+		Transform decompose(Matrix4f const matrix) noexcept
 		{
-			const Eigen::Affine3f transform{ matrix };
+			std::array<float, 16> matrix_values = matrix.values;
 
-			Eigen::Matrix3f rotationMatrix;
-			Eigen::Matrix3f scaleMatrix;
-			transform.computeRotationScaling(&rotationMatrix, &scaleMatrix);
+			Vector3f const translation = {matrix_values[12], matrix_values[13], matrix_values[14]};
+			matrix_values[12] = matrix_values[13] = matrix_values[14] = 0.0f;
 
-			const Eigen::Vector3f translation{ transform.translation() };
-			const Eigen::Quaternionf rotation{ rotationMatrix };
-			const Eigen::Vector3f scale{ scale(0, 0), scale(1, 1), scale(2, 2) };
+			Vector3f const column_0 = {matrix_values[0], matrix_values[1], matrix_values[2]};
+			Vector3f const column_1 = {matrix_values[4], matrix_values[5], matrix_values[6]};
+			Vector3f const column_2 = {matrix_values[8], matrix_values[9], matrix_values[10]};
 
-			return { translation, rotation, scale };
+			auto const length_of = [](Vector3f const vector) -> float
+			{
+				return std::sqrt(vector.x*vector.x + vector.y*vector.y + vector.z*vector.z);
+			};
+
+			Vector3f const scale = {length_of(column_0), length_of(column_1), length_of(column_2)};
+
+			matrix_values[0] /= scale.x;
+			matrix_values[1] /= scale.x;
+			matrix_values[2] /= scale.x;
+			matrix_values[4] /= scale.y;
+			matrix_values[5] /= scale.y;
+			matrix_values[6] /= scale.y;
+			matrix_values[8] /= scale.z;
+			matrix_values[9] /= scale.z;
+			matrix_values[10] /= scale.z;
+
+			float const rotation_w = std::sqrt(1.0f + matrix_values[0] + matrix_values[5] + matrix_values[10]) / 2.0f;
+			Quaternionf const rotation
+			{
+				.x = (matrix_values[6] - matrix_values[9]) / (4.0f * rotation_w),
+				.y = (matrix_values[8] - matrix_values[2]) / (4.0f * rotation_w),
+				.z = (matrix_values[5] - matrix_values[4]) /(4.0f * rotation_w),
+				.w = rotation_w,
+			};
+
+			return
+			{
+				.translation = translation,
+				.rotation = rotation,
+				.scale = scale,
+			};
 		}
 	}
 
-	void from_json(nlohmann::json const& json, Node& value)
+	Node node_from_json(nlohmann::json const& json, std::pmr::polymorphic_allocator<> const& allocator) noexcept
 	{
-		nlohmann::json::const_iterator const matrixLocation = json.find("matrix");
+		std::optional<Index> const mesh_index = get_optional_value<Index>(json, "mesh");
+		std::optional<Index> const camera_index = get_optional_value<Index>(json, "camera");
+		std::optional<std::pmr::vector<Index>> child_indices = get_optional_value<std::pmr::vector<Index>>(json, "children");
+		std::optional<std::pmr::string> name = get_optional_value<std::pmr::string>(json, "name");
 
-		if (matrixLocation != json.end())
+		nlohmann::json::const_iterator const matrix_location = json.find("matrix");
+
+		if (matrix_location != json.end())
 		{
 			assert(json.find("rotation") == json.end());
 			assert(json.find("scale") == json.end());
 			assert(json.find("translation") == json.end());
 
-			const Eigen::Matrix4f matrix = matrixLocation->get<Eigen::Matrix4f>();
+			Matrix4f const matrix = matrix_location->get<Matrix4f>();
+			Transform const transform = decompose(matrix);
 
-			const Transform transform = decompose(matrix);
-			value.translation = transform.translation;
-			value.rotation = transform.rotation;
-			value.scale = transform.scale;
+			return
+			{
+				.name = std::move(name),
+				.mesh_index = mesh_index,
+				.camera_index = camera_index,
+				.child_indices = std::move(child_indices),
+				.rotation = transform.rotation,
+				.scale = transform.scale,
+				.translation = transform.translation,
+			};
 		}
 		else
 		{
-			replace_default_if_exists(json, "rotation", value.rotation);
-			replace_default_if_exists(json, "scale", value.scale);
-			replace_default_if_exists(json, "translation", value.translation);
+			return
+			{
+				.name = std::move(name),
+				.mesh_index = mesh_index,
+				.camera_index = camera_index,
+				.child_indices = std::move(child_indices),
+				.rotation = get_optional_value_or<Quaternionf>(json, "rotation", {.x = 0.0f, .y = 0.0f, .z = 0.0f, .w = 1.0f}),
+				.scale = get_optional_value_or<Vector3f>(json, "scale", {.x = 1.0f, .y = 1.0f, .z = 1.0f}),
+				.translation = get_optional_value_or<Vector3f>(json, "translation", {.x = 0.0f, .y = 0.0f, .z = 0.0f}),
+			};
 		}
-
-		get_to_if_exists(json, "mesh", value.mesh_index);
-		get_to_if_exists(json, "camera", value.camera_index);
-		get_to_if_exists(json, "children", value.child_indices);
-		get_to_if_exists(json, "name", value.name);
 	}
 
 
-	void from_json(nlohmann::json const& json, Camera::Orthographic& value)
+	Camera::Orthographic orthographic_camera_from_json(nlohmann::json const& json) noexcept
 	{
-		json.at("xmag").get_to(value.horizontal_magnification);
-		json.at("ymag").get_to(value.vertical_magnification);
-		json.at("znear").get_to(value.near_z);
-		json.at("zfar").get_to(value.far_z);
+		return
+		{
+			.horizontal_magnification = get_value<float>(json, "xmag"),
+			.vertical_magnification = get_value<float>(json, "ymag"),
+			.near_z = get_value<float>(json, "znear"),
+			.far_z = get_value<float>(json, "zfar"),
+		};
 	}
 
-	void from_json(nlohmann::json const& json, Camera::Perspective& value)
+	Camera::Perspective perspective_camera_from_json(nlohmann::json const& json) noexcept
 	{
-		get_to_if_exists(json, "aspectRatio", value.aspect_ratio);
-		json.at("yfov").get_to(value.vertical_field_of_view);
-		json.at("znear").get_to(value.near_z);
-		get_to_if_exists(json, "zfar", value.far_z);
+		return
+		{
+			.aspect_ratio = get_optional_value<float>(json, "aspectRatio"),
+			.vertical_field_of_view = get_value<float>(json, "yfov"),
+			.near_z = get_value<float>(json, "znear"),
+			.far_z = get_optional_value<float>(json, "zfar"),
+		};
 	}
 
-	void from_json(nlohmann::json const& json, Camera& value)
+	Camera camera_from_json(nlohmann::json const& json, std::pmr::polymorphic_allocator<> const& allocator) noexcept
 	{
-		json.at("type").get_to(value.type);
-		get_to_if_exists(json, "name", value.name);
+		assert(json.contains("orthographic") || json.contains("perspective"));
+
+		Camera::Type const type = get_value<Camera::Type>(json, "type");
+		std::optional<std::pmr::string> const name = get_optional_value<std::pmr::string>(json, "name");
 		
 		{
 			nlohmann::json::const_iterator const orthographic_location = json.find("orthographic");
 
 			if (orthographic_location != json.end())
 			{
-				value.projection = orthographic_location->get<Camera::Orthographic>();
+				return
+				{
+					.type = type,
+					.name = name,
+					.projection = orthographic_camera_from_json(*orthographic_location),
+				};
 			}
 			else
 			{
 				nlohmann::json::const_iterator const perspective_location = json.find("perspective");
-
-				if (perspective_location == json.end())
-					throw std::invalid_argument{ "Either orthographic or perspective must be defined!" };
-
-				value.projection = perspective_location->get<Camera::Perspective>();
+				
+				return
+				{
+					.type = type,
+					.name = name,
+					.projection = perspective_camera_from_json(*perspective_location),
+				};
 			}
 		}
 	}
 
 
-	void from_json(nlohmann::json const& json, Scene& value)
+	Scene scene_from_json(nlohmann::json const& json, std::pmr::polymorphic_allocator<> const& allocator) noexcept
 	{
-		get_to_if_exists(json, "name", value.name);
-		get_to_if_exists(json, "nodes", value.nodes);
+		return
+		{
+			.name = get_optional_value<std::pmr::string>(json, "names"),
+			.nodes = get_optional_value<std::pmr::vector<Index>>(json, "nodes"),
+		};
 	}
 
 
-	void from_json(nlohmann::json const& json, Gltf& value)
+	Gltf gltf_from_json(nlohmann::json const& json, std::pmr::polymorphic_allocator<> const& allocator) noexcept
 	{
-		get_to_if_exists(json, "accessors", value.accessors);
-		get_to_if_exists(json, "buffers", value.buffers);
-		get_to_if_exists(json, "bufferViews", value.buffer_views);
-		get_to_if_exists(json, "cameras", value.cameras);
-		get_to_if_exists(json, "materials", value.materials);
-		get_to_if_exists(json, "meshes", value.meshes);
-		get_to_if_exists(json, "nodes", value.nodes);
-		get_to_if_exists(json, "scene", value.scene_index);
-		get_to_if_exists(json, "scenes", value.scenes);
+		return
+		{
+			.accessors = get_optional_value<std::pmr::vector<Accessor>>(json, "accessors"),
+			.buffers = get_optional_value<std::pmr::vector<Buffer>>(json, "buffers"),
+			.buffer_views = get_optional_value<std::pmr::vector<Buffer_view>>(json, "bufferViews"),
+			.cameras = get_optional_value<std::pmr::vector<Camera>>(json, "cameras"),
+			.materials = get_optional_value<std::pmr::vector<Material>>(json, "materials"),
+			.meshes = get_optional_value<std::pmr::vector<Mesh>>(json, "meshes"),
+			.nodes = get_optional_value<std::pmr::vector<Node>>(json, "nodes"),
+			.scene_index = get_optional_value<Index>(json, "scene"),
+			.scenes = get_optional_value<std::pmr::vector<Scene>>(json, "scenes"),
+		};
 	}
 }
