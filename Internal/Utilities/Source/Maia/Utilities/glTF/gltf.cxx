@@ -13,9 +13,9 @@ import <nlohmann/json.hpp>;
 
 namespace Maia::Utilities::glTF
 {
-	using Index = std::size_t;
+	export using Index = std::size_t;
 
-	enum class Component_type
+	export enum class Component_type
 	{
 		Byte = 5120,
 		Unsigned_byte = 5121,
@@ -27,14 +27,14 @@ namespace Maia::Utilities::glTF
 	
 	std::uint8_t size_of(Component_type component_type) noexcept;
 
-	struct Vector3f
+	export struct Vector3f
 	{
 		float x{0.0f};
 		float y{0.0f};
 		float z{0.0f};
 	};
 
-	struct Vector4f
+	export struct Vector4f
 	{
 		float x{0.0f};
 		float y{0.0f};
@@ -42,7 +42,7 @@ namespace Maia::Utilities::glTF
 		float w{0.0f};
 	};
 
-	struct Quaternionf
+	export struct Quaternionf
 	{
 		float x{0.0f};
 		float y{0.0f};
@@ -50,12 +50,12 @@ namespace Maia::Utilities::glTF
 		float w{1.0f};
 	};
 
-	struct Matrix4f
+	export struct Matrix4f
 	{
 		std::array<float, 16> values;
 	};
 
-	struct Accessor
+	export struct Accessor
 	{
 		enum class Type
 		{
@@ -81,7 +81,7 @@ namespace Maia::Utilities::glTF
 	std::uint8_t size_of(Accessor::Type accessor_type) noexcept;
 
 
-	struct Buffer
+	export struct Buffer
 	{
 		std::optional<std::pmr::string> uri;
 		std::size_t byte_length;
@@ -91,7 +91,7 @@ namespace Maia::Utilities::glTF
 	void to_json(nlohmann::json& json, Buffer const& value) noexcept;
 
 
-	struct Buffer_view
+	export struct Buffer_view
 	{
 		Index buffer_index;
 		std::size_t byte_offset{0};
@@ -102,21 +102,21 @@ namespace Maia::Utilities::glTF
 	void to_json(nlohmann::json& json, Buffer_view const& value) noexcept;
 
 
-	struct PbrMetallicRoughness
+	export struct Pbr_metallic_roughness
 	{
 		Vector4f base_color_factor{1.0f, 1.0f, 1.0f, 1.0f};
 		float metallic_factor{1.0f};
 		float roughness_factor{1.0f};
 	};
 
-	PbrMetallicRoughness pbr_metallic_roughness_from_json(nlohmann::json const& json) noexcept;
-	void to_json(nlohmann::json& json, PbrMetallicRoughness const& value) noexcept;
+	Pbr_metallic_roughness pbr_metallic_roughness_from_json(nlohmann::json const& json) noexcept;
+	void to_json(nlohmann::json& json, Pbr_metallic_roughness const& value) noexcept;
 
 
-	struct Material
+	export struct Material
 	{
 		std::optional<std::pmr::string> name;
-		PbrMetallicRoughness pbr_metallic_roughness{};
+		Pbr_metallic_roughness pbr_metallic_roughness{};
 		Vector3f emissive_factor{0.0f, 0.0f, 0.0f};
 		std::pmr::string alpha_mode{"OPAQUE"};
 		float alpha_cutoff{0.5f};
@@ -127,7 +127,7 @@ namespace Maia::Utilities::glTF
 	void to_json(nlohmann::json& json, Material const& value) noexcept;
 
 
-	struct Primitive
+	export struct Primitive
 	{
 		std::pmr::unordered_map<std::pmr::string, Index> attributes;
 		std::optional<Index> indices_index;
@@ -138,7 +138,7 @@ namespace Maia::Utilities::glTF
 	void to_json(nlohmann::json& json, Primitive const& value) noexcept;
 
 
-	struct Mesh
+	export struct Mesh
 	{
 		std::pmr::vector<Primitive> primitives;
 		std::optional<std::pmr::string> name;
@@ -148,7 +148,7 @@ namespace Maia::Utilities::glTF
 	void to_json(nlohmann::json& json, Mesh const& value) noexcept;
 
 
-	struct Camera
+	export struct Camera
 	{
 		enum class Type
 		{
@@ -181,13 +181,13 @@ namespace Maia::Utilities::glTF
 	void to_json(nlohmann::json& json, Camera const& value) noexcept;
 
 
-	struct Node
+	export struct Node
 	{
 		std::optional<std::pmr::string> name;
 
 		std::optional<Index> mesh_index;
 		std::optional<Index> camera_index;
-		std::optional<std::pmr::vector<Index>> child_indices;
+		std::pmr::vector<Index> child_indices;
 
 		Quaternionf rotation{0.0f, 0.0f, 0.0f, 1.0f};
 		Vector3f scale{1.0f, 1.0f, 1.0f};
@@ -198,7 +198,7 @@ namespace Maia::Utilities::glTF
 	void to_json(nlohmann::json& json, Node const& value) noexcept;
 
 
-	struct Scene
+	export struct Scene
 	{
 		std::optional<std::pmr::string> name;
 		std::optional<std::pmr::vector<Index>> nodes;
@@ -208,20 +208,20 @@ namespace Maia::Utilities::glTF
 	void to_json(nlohmann::json& json, Scene const& value) noexcept;
 
 
-	struct Gltf
+	export struct Gltf
 	{
-		std::optional<std::pmr::vector<Accessor>> accessors;
-		std::optional<std::pmr::vector<Buffer>> buffers;
-		std::optional<std::pmr::vector<Buffer_view>> buffer_views;
-		std::optional<std::pmr::vector<Camera>> cameras;
-		std::optional<std::pmr::vector<Material>> materials;
-		std::optional<std::pmr::vector<Mesh>> meshes;
-		std::optional<std::pmr::vector<Node>> nodes;
+		std::pmr::vector<Accessor> accessors;
+		std::pmr::vector<Buffer> buffers;
+		std::pmr::vector<Buffer_view> buffer_views;
+		std::pmr::vector<Camera> cameras;
+		std::pmr::vector<Material> materials;
+		std::pmr::vector<Mesh> meshes;
+		std::pmr::vector<Node> nodes;
 		std::optional<Index> scene_index;
-		std::optional<std::pmr::vector<Scene>> scenes;
+		std::pmr::vector<Scene> scenes;
 	};
 
-	Gltf gltf_from_json(nlohmann::json const& json, std::pmr::polymorphic_allocator<> const& allocator) noexcept;
+	export Gltf gltf_from_json(nlohmann::json const& json, std::pmr::polymorphic_allocator<> const& allocator) noexcept;
 	void to_json(nlohmann::json& json, Gltf const& value) noexcept;
 
 }

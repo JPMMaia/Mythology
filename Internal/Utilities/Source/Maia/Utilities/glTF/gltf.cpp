@@ -144,6 +144,12 @@ namespace Maia::Utilities::glTF
 	namespace
 	{
 		template <class Value_type>
+		Value_type get_value(nlohmann::json const& json) noexcept
+		{
+			return json.get<Value_type>();
+		}
+
+		template <class Value_type>
 		Value_type get_value(nlohmann::json const& json, char const* const key) noexcept
 		{
 			return json.at(key).get<Value_type>();
@@ -177,6 +183,112 @@ namespace Maia::Utilities::glTF
 			{
 				return value;
 			}
+		}
+
+		std::pmr::string get_string_value(
+			nlohmann::json const& json,
+			std::pmr::polymorphic_allocator<> const& allocator) noexcept
+		{
+			std::string const& value = json.get<std::string>();
+
+			return {value.begin(), value.end(), allocator};
+		}
+		
+		template <class Value_type, class Function_type>
+		std::pmr::vector<Value_type> get_vector_from_json(
+			nlohmann::json const& json,
+			Function_type&& element_from_json,
+			std::pmr::polymorphic_allocator<> const& allocator
+		) noexcept
+		{
+			std::pmr::vector<Value_type> elements{allocator};
+			elements.reserve(json.size());
+
+			for (nlohmann::json const& element_json : json)
+			{
+				elements.push_back(
+					element_from_json(element_json)
+				);
+			}
+
+			return elements;
+		}
+
+		template <class Value_type, class Function_type>
+		std::pmr::vector<Value_type> get_vector_from_json(
+			nlohmann::json const& json,
+			char const* const key,
+			Function_type&& element_from_json,
+			std::pmr::polymorphic_allocator<> const& allocator
+		) noexcept
+		{
+			auto const iterator = json.find(key);
+
+			if (iterator != json.end())
+			{
+				return get_vector_from_json<Value_type>(*iterator, std::forward<Function_type>(element_from_json), allocator);
+			}
+			else
+			{
+				return {};
+			}
+		}
+
+		template <class Value_type, class Function_type>
+		std::optional<Value_type> get_optional_value(
+			nlohmann::json const& json,
+			char const* const key,
+			Function_type&& to_value
+		) noexcept
+		{
+			auto const iterator = json.find(key);
+
+			if (iterator != json.end())
+			{
+				return to_value(*iterator);
+			}
+			else
+			{
+				return {};
+			}
+		}
+
+		template <class Value_type, class Function_type>
+		Value_type get_optional_value_or(
+			nlohmann::json const& json,
+			char const* const key,
+			Value_type&& default_value,
+			Function_type&& to_value
+		) noexcept
+		{
+			auto const iterator = json.find(key);
+
+			if (iterator != json.end())
+			{
+				return to_value(*iterator);
+			}
+			else
+			{
+				return std::forward<Value_type>(default_value);
+			}
+		}
+
+		template <class Key_type, class Value_type, class To_key_function_type, class To_value_function_type>
+		std::pmr::unordered_map<Key_type, Value_type> get_unordered_map_from_json(
+			nlohmann::json const& json,
+			To_key_function_type&& to_key,
+			To_value_function_type&& to_value,
+			std::pmr::polymorphic_allocator<> const& allocator
+		) noexcept
+		{
+			std::pmr::unordered_map<Key_type, Value_type> map{allocator};
+
+			for (auto const& element : json.items())
+			{
+				map.emplace(element.key(), element.value());
+			}
+
+			return map;
 		}
 	}
 
@@ -231,9 +343,14 @@ namespace Maia::Utilities::glTF
 
 	Buffer buffer_from_json(nlohmann::json const& json, std::pmr::polymorphic_allocator<> const& allocator) noexcept
 	{
+		auto const to_string = [&allocator](nlohmann::json const& json) -> std::pmr::string
+		{
+			return get_string_value(json, allocator);
+		};
+
 		return
 		{
-			.uri = get_optional_value<std::pmr::string>(json, "uri"),
+			.uri = get_optional_value<std::pmr::string>(json, "uri", to_string),
 			.byte_length = get_value<std::size_t>(json, "byteLength"),
 		};
 	}
@@ -250,7 +367,7 @@ namespace Maia::Utilities::glTF
 	}
 
 
-	PbrMetallicRoughness pbr_metallic_roughness_from_json(nlohmann::json const& json) noexcept
+	Pbr_metallic_roughness pbr_metallic_roughness_from_json(nlohmann::json const& json) noexcept
 	{
 		return
 		{
@@ -263,12 +380,17 @@ namespace Maia::Utilities::glTF
 
 	Material material_from_json(nlohmann::json const& json, std::pmr::polymorphic_allocator<> const& allocator) noexcept
 	{
+		auto const to_string = [&allocator](nlohmann::json const& json) -> std::pmr::string
+		{
+			return get_string_value(json, allocator);
+		};
+
 		return
 		{
-			.name = get_optional_value<std::pmr::string>(json, "name"),
+			.name = get_optional_value<std::pmr::string>(json, "name", to_string),
 			.pbr_metallic_roughness = pbr_metallic_roughness_from_json(json.at("pbrMetallicRoughness")),
 			.emissive_factor = get_optional_value_or<Vector3f>(json, "emissiveFactor", {0.0f, 0.0f, 0.0f}),
-			.alpha_mode = get_optional_value_or<std::pmr::string>(json, "alphaMode", "OPAQUE"),
+			.alpha_mode = get_optional_value_or<std::pmr::string>(json, "alphaMode", {"OPAQUE", allocator}, to_string),
 			.alpha_cutoff = get_optional_value_or<float>(json, "alphaCutoff", 0.5f),
 			.double_sided = get_optional_value_or<bool>(json, "doubleSided", false),
 		};
@@ -277,21 +399,41 @@ namespace Maia::Utilities::glTF
 
 	Primitive primitive_from_json(nlohmann::json const& json, std::pmr::polymorphic_allocator<> const& allocator) noexcept
 	{
+		auto const to_index = [](nlohmann::json const& json) -> Index
+		{
+			return json.get<Index>();
+		};
+
+		auto const to_string = [&allocator](nlohmann::json const& json) -> std::pmr::string
+		{
+			return get_string_value(json, allocator);
+		};
+
 		return
 		{
-			.attributes = get_value<std::pmr::unordered_map<std::pmr::string, Index>>(json, "attributes"),
+			.attributes = get_unordered_map_from_json<std::pmr::string, Index>(json.at("attributes"), to_string, to_index, allocator),
 			.indices_index = get_optional_value<Index>(json, "indices"),
 			.material_index = get_optional_value<Index>(json, "material"),
 		};
 	}
 
 
-	Mesh from_json(nlohmann::json const& json, std::pmr::polymorphic_allocator<> const& allocator) noexcept
+	Mesh mesh_from_json(nlohmann::json const& json, std::pmr::polymorphic_allocator<> const& allocator) noexcept
 	{
+		auto const to_primitive = [&allocator](nlohmann::json const& json) -> Primitive
+		{
+			return primitive_from_json(json, allocator);
+		};
+
+		auto const to_string = [&allocator](nlohmann::json const& json) -> std::pmr::string
+		{
+			return get_string_value(json, allocator);
+		};
+
 		return
 		{
-			.primitives = get_value<std::pmr::vector<Primitive>>(json, "primitives"),
-			.name = get_optional_value<std::pmr::string>(json, "name"),
+			.primitives = get_vector_from_json<Primitive>(json.at("primitives"), to_primitive, allocator),
+			.name = get_optional_value<std::pmr::string>(json, "name", to_string),
 		};
 	}
 
@@ -353,10 +495,20 @@ namespace Maia::Utilities::glTF
 
 	Node node_from_json(nlohmann::json const& json, std::pmr::polymorphic_allocator<> const& allocator) noexcept
 	{
+		auto const to_index = [](nlohmann::json const& json) -> Index
+		{
+			return json.get<Index>();
+		};
+
+		auto const to_string = [&allocator](nlohmann::json const& json) -> std::pmr::string
+		{
+			return get_string_value(json, allocator);
+		};
+
 		std::optional<Index> const mesh_index = get_optional_value<Index>(json, "mesh");
 		std::optional<Index> const camera_index = get_optional_value<Index>(json, "camera");
-		std::optional<std::pmr::vector<Index>> child_indices = get_optional_value<std::pmr::vector<Index>>(json, "children");
-		std::optional<std::pmr::string> name = get_optional_value<std::pmr::string>(json, "name");
+		std::pmr::vector<Index> child_indices = get_vector_from_json<Index>(json, "children", to_index, allocator);
+		std::optional<std::pmr::string> name = get_optional_value<std::pmr::string>(json, "name", to_string);
 
 		nlohmann::json::const_iterator const matrix_location = json.find("matrix");
 
@@ -422,8 +574,13 @@ namespace Maia::Utilities::glTF
 	{
 		assert(json.contains("orthographic") || json.contains("perspective"));
 
+		auto const to_string = [&allocator](nlohmann::json const& json) -> std::pmr::string
+		{
+			return get_string_value(json, allocator);
+		};
+
 		Camera::Type const type = get_value<Camera::Type>(json, "type");
-		std::optional<std::pmr::string> const name = get_optional_value<std::pmr::string>(json, "name");
+		std::optional<std::pmr::string> const name = get_optional_value<std::pmr::string>(json, "name", to_string);
 		
 		{
 			nlohmann::json::const_iterator const orthographic_location = json.find("orthographic");
@@ -454,27 +611,55 @@ namespace Maia::Utilities::glTF
 
 	Scene scene_from_json(nlohmann::json const& json, std::pmr::polymorphic_allocator<> const& allocator) noexcept
 	{
+		auto const to_index = [](nlohmann::json const& json) -> Index
+		{
+			return json.get<Index>();
+		};
+
+		auto const to_string = [&allocator](nlohmann::json const& json) -> std::pmr::string
+		{
+			return get_string_value(json, allocator);
+		};
+
 		return
 		{
-			.name = get_optional_value<std::pmr::string>(json, "names"),
-			.nodes = get_optional_value<std::pmr::vector<Index>>(json, "nodes"),
+			.name = get_optional_value<std::pmr::string>(json, "names", to_string),
+			.nodes = get_vector_from_json<Index>(json, "nodes", to_index, allocator),
 		};
 	}
 
+	namespace
+	{
+		template <class Value_type>
+		std::pmr::vector<Value_type> get_allocated_elements_from_json(
+			nlohmann::json const& json,
+			char const* const key,
+			Value_type (*element_from_json) (nlohmann::json const&, std::pmr::polymorphic_allocator<> const&),
+			std::pmr::polymorphic_allocator<> const& allocator
+		) noexcept
+		{
+			auto const to_value = [&element_from_json, &allocator](nlohmann::json const& json) -> Value_type
+			{
+				return element_from_json(json, allocator);
+			};
+
+			return get_vector_from_json<Value_type>(json, key, to_value, allocator);
+		}
+	}
 
 	Gltf gltf_from_json(nlohmann::json const& json, std::pmr::polymorphic_allocator<> const& allocator) noexcept
 	{
 		return
 		{
-			.accessors = get_optional_value<std::pmr::vector<Accessor>>(json, "accessors"),
-			.buffers = get_optional_value<std::pmr::vector<Buffer>>(json, "buffers"),
-			.buffer_views = get_optional_value<std::pmr::vector<Buffer_view>>(json, "bufferViews"),
-			.cameras = get_optional_value<std::pmr::vector<Camera>>(json, "cameras"),
-			.materials = get_optional_value<std::pmr::vector<Material>>(json, "materials"),
-			.meshes = get_optional_value<std::pmr::vector<Mesh>>(json, "meshes"),
-			.nodes = get_optional_value<std::pmr::vector<Node>>(json, "nodes"),
+			.accessors = get_vector_from_json<Accessor>(json, "accessors", accessor_from_json, allocator),
+			.buffers = get_allocated_elements_from_json(json, "buffers", buffer_from_json, allocator),
+			.buffer_views = get_vector_from_json<Buffer_view>(json, "bufferViews", buffer_view_from_json, allocator),
+			.cameras = get_allocated_elements_from_json(json, "cameras", camera_from_json, allocator),
+			.materials = get_allocated_elements_from_json(json, "materials", material_from_json, allocator),
+			.meshes = get_allocated_elements_from_json(json, "meshes", mesh_from_json, allocator),
+			.nodes = get_allocated_elements_from_json(json, "nodes", node_from_json, allocator),
 			.scene_index = get_optional_value<Index>(json, "scene"),
-			.scenes = get_optional_value<std::pmr::vector<Scene>>(json, "scenes"),
+			.scenes = get_allocated_elements_from_json(json, "scenes", scene_from_json, allocator),
 		};
 	}
 }
