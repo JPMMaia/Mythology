@@ -18,6 +18,7 @@ namespace
     nlohmann::json read_json_from_file(std::filesystem::path const& path) noexcept
     {
         std::ifstream input_stream{path};
+        assert(input_stream.good());
 
         nlohmann::json json{};
         input_stream >> json;
