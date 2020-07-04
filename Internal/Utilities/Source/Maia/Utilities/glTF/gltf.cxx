@@ -90,6 +90,11 @@ namespace Maia::Utilities::glTF
 	Buffer buffer_from_json(nlohmann::json const& json, std::pmr::polymorphic_allocator<> const& allocator) noexcept;
 	void to_json(nlohmann::json& json, Buffer const& value) noexcept;
 
+	export std::pmr::vector<std::byte> read_buffer_data(
+		Buffer const& buffer,
+		std::pmr::polymorphic_allocator<> const& allocator
+	) noexcept;
+
 
 	export struct Buffer_view
 	{

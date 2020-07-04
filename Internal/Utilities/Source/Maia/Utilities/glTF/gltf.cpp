@@ -4,6 +4,9 @@ import <array>;
 import <cassert>;
 import <cmath>;
 import <cstddef>;
+import <cstdint>;
+import <filesystem>;
+import <fstream>;
 import <memory_resource>;
 import <optional>;
 import <string>;
@@ -353,6 +356,106 @@ namespace Maia::Utilities::glTF
 			.uri = get_optional_value<std::pmr::string>(json, "uri", to_string),
 			.byte_length = get_value<std::size_t>(json, "byteLength"),
 		};
+	}
+
+	namespace
+	{
+		std::pmr::vector<std::byte> decode_base64(
+			std::string_view const input,
+			std::size_t const output_size,
+			std::pmr::polymorphic_allocator<> const& allocator
+		) noexcept
+		{
+			std::array<std::uint8_t, 128> constexpr reverse_table
+			{
+				64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
+				64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
+				64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 62, 64, 64, 64, 63,
+				52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 64, 64, 64, 64, 64, 64,
+				64,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14,
+				15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 64, 64, 64, 64, 64,
+				64, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+				41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 64, 64, 64, 64, 64
+			};
+
+			std::pmr::vector<std::byte> output{allocator};
+			output.reserve(output_size);
+
+			{
+				std::uint32_t bits{0};
+				std::uint8_t bit_count{0};
+
+				for (char const c : input)
+				{
+					if (std::isspace(c) || c == '=')
+					{
+						continue;
+					}
+
+					assert(c > 0);
+					assert(reverse_table[c] < 64);
+
+					bits = (bits << 6) | reverse_table[c];
+					bit_count += 6;
+
+					if (bit_count >= 8)
+					{
+						bit_count -= 8;
+						output.push_back(static_cast<std::byte>((bits >> bit_count) & 0xFF));
+					}
+				}
+			}
+
+			assert(output.size() == output_size);
+
+			return output;
+		}
+
+		std::pmr::vector<std::byte> generate_byte_data(
+			std::string_view const uri,
+			std::size_t const byte_length,
+			std::pmr::polymorphic_allocator<> const& allocator
+		) noexcept
+		{
+			if (uri.compare(0, 5, "data:") == 0)
+			{
+				char const* const base64_prefix{"data:application/octet-stream;base64,"};
+				std::size_t const base64_prefix_size{std::strlen(base64_prefix)};
+				assert((uri.compare(0, base64_prefix_size, base64_prefix) == 0) && "Uri format not supported");
+
+				std::string_view const data_view{uri.data() + base64_prefix_size, uri.size() - base64_prefix_size};
+				return decode_base64(data_view, byte_length, allocator);
+			}
+			else
+			{
+				std::filesystem::path const file_path{uri};
+				assert(std::filesystem::exists(file_path) && "Couldn't open file");
+				assert(std::filesystem::file_size(file_path) == byte_length);
+
+				std::pmr::vector<std::byte> file_content{allocator};
+				file_content.resize(byte_length);
+
+				{
+					std::basic_ifstream<std::byte> file_stream{file_path, std::ios::binary};
+					assert(file_stream.good());
+
+					file_stream.read(file_content.data(), byte_length);
+					assert(file_stream.good());
+				}
+
+				return file_content;
+			}
+		}
+	}
+
+	std::pmr::vector<std::byte> read_buffer_data(
+		Buffer const& buffer,
+		std::pmr::polymorphic_allocator<> const& allocator
+	) noexcept
+	{
+		assert(buffer.uri.has_value());
+
+		return generate_byte_data(*buffer.uri, buffer.byte_length, allocator);
 	}
 
 
