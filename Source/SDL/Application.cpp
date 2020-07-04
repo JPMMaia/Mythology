@@ -4,6 +4,7 @@ import maia.input;
 import maia.renderer.vulkan;
 import maia.renderer.vulkan.serializer;
 import maia.sdl.vulkan;
+import maia.utilities.gltf;
 import mythology.core.utilities;
 import mythology.core.vulkan;
 import mythology.imgui;
@@ -42,6 +43,17 @@ namespace Mythology::SDL
 {
     namespace
     {
+        nlohmann::json read_json_from_file(std::filesystem::path const& path) noexcept
+        {
+            std::ifstream input_stream{path};
+            assert(input_stream.good());
+
+            nlohmann::json json{};
+            input_stream >> json;
+
+            return json;
+        }
+
         class SDL_application
         {
         public:
@@ -863,6 +875,8 @@ namespace Mythology::SDL
     ) noexcept
     {
         std::filesystem::path const shaders_path = std::filesystem::current_path() / "../shaders";
+
+        Maia::Utilities::glTF::Gltf const gltf = Maia::Utilities::glTF::gltf_from_json(read_json_from_file(gltf_file_path), {});
 
         SDL_application sdl_application;
         
