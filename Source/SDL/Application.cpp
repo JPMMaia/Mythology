@@ -931,6 +931,7 @@ namespace Mythology::SDL
                 VkDeviceSize size;
             };
 
+            Mesh_id mesh_id;
             VkBuffer buffer;
             std::pmr::vector<Buffer_range> attribute_buffer_ranges;
         };
@@ -993,6 +994,7 @@ namespace Mythology::SDL
 
                     primitives.push_back(
                         {
+                            .mesh_id = mesh_id,
                             .buffer = buffer,
                             .attribute_buffer_ranges = std::move(attribute_buffer_ranges)
                         }
@@ -1011,8 +1013,6 @@ namespace Mythology::SDL
     ) noexcept
     {
         std::filesystem::path const shaders_path = std::filesystem::current_path() / "../shaders";
-
-        Maia::Utilities::glTF::Gltf const gltf = Maia::Utilities::glTF::gltf_from_json(read_json_from_file(gltf_file_path), {});
 
         SDL_application sdl_application;
         
