@@ -866,6 +866,142 @@ namespace Mythology::SDL
                 }
             }
         }
+
+        void upload_buffer_data(
+            VkDevice const device,
+            VkDeviceMemory const device_memory,
+            std::span<Buffer_pool_node const> const buffer_nodes,
+            VkMemoryPropertyFlags const memory_properties,
+            Maia::Utilities::glTF::Gltf const& gltf,
+            std::filesystem::path const& gltf_directory
+        ) noexcept
+        {
+            for (std::size_t buffer_index = 0; buffer_index < gltf.buffers.size(); ++buffer_index)
+            {
+                Maia::Utilities::glTF::Buffer const gltf_buffer = gltf.buffers[buffer_index];
+                Buffer_pool_node const buffer_node = buffer_nodes[buffer_index];
+
+                std::pmr::vector<std::byte> const buffer_data = Maia::Utilities::glTF::read_buffer_data(gltf_buffer, gltf_directory, {});
+
+                auto const copy_buffer_data = [&buffer_data](void* const destination_data) -> void
+                {
+                    std::size_t const size_bytes = buffer_data.size() * sizeof(decltype(buffer_data)::value_type);
+                    std::memcpy(destination_data, buffer_data.data(), size_bytes);
+                };
+
+                upload_data(
+                    {device},
+                    device_memory,
+                    buffer_node.offset(),
+                    buffer_node.size(),
+                    memory_properties,
+                    {},
+                    copy_buffer_data);
+            }
+        }
+
+        // TODO bounding box?
+        struct Mesh_id
+        {
+            std::uint32_t value;
+        };
+
+        std::pmr::vector<Mesh_id> create_mesh_ids(
+            Maia::Utilities::glTF::Gltf const& gltf,
+            Mesh_id const first_mesh_id,
+            std::pmr::polymorphic_allocator<> const& allocator
+        ) noexcept
+        {
+            std::pmr::vector<Mesh_id> mesh_ids{allocator};
+            mesh_ids.resize(gltf.meshes.size());
+
+            for (std::uint32_t index = 0; index < gltf.meshes.size(); ++index)
+            {
+                mesh_ids[index] = {first_mesh_id.value + index};
+            }
+
+            return mesh_ids;
+        }
+
+        struct Primitive
+        {
+            struct Buffer_range
+            {
+                VkDeviceSize offset;
+                VkDeviceSize size;
+            };
+
+            VkBuffer buffer;
+            std::pmr::vector<Buffer_range> attribute_buffer_ranges;
+        };
+
+        std::size_t count_primitives(
+            Maia::Utilities::glTF::Gltf const& gltf
+        ) noexcept
+        {
+            std::size_t count = 0;
+
+            for (Maia::Utilities::glTF::Mesh const& mesh : gltf.meshes)
+            {
+                count += mesh.primitives.size();
+            }
+
+            return count;
+        }
+
+        std::pmr::vector<Primitive> create_primitives(
+            Maia::Utilities::glTF::Gltf const& gltf,
+            std::span<Mesh_id const> const mesh_ids,
+            std::span<VkBuffer const> const buffers,
+            std::pmr::polymorphic_allocator<> const& allocator
+        ) noexcept
+        {
+            using namespace Maia::Utilities::glTF;
+
+            std::pmr::vector<Primitive> primitives{allocator};
+            primitives.reserve(count_primitives(gltf));
+
+            for (std::size_t mesh_index = 0; mesh_index < gltf.meshes.size(); ++mesh_index)
+            {
+                Mesh const& mesh = gltf.meshes[mesh_index];
+                Mesh_id const mesh_id = mesh_ids[mesh_index];
+
+                for (Maia::Utilities::glTF::Primitive const& primitive : mesh.primitives)
+                {
+                    // TODO assert that all attributes reference the same buffer
+
+                    std::size_t const buffer_index = 
+                        gltf.buffer_views[*gltf.accessors[primitive.attributes.at("position")].buffer_view_index].buffer_index;
+                    VkBuffer const buffer = buffers[buffer_index];
+
+                    std::pmr::vector<Primitive::Buffer_range> attribute_buffer_ranges{allocator};
+                    attribute_buffer_ranges.reserve(primitive.attributes.size());
+
+                    for (std::pair<std::pmr::string, std::size_t> const& attribute : primitive.attributes)
+                    {
+                        Accessor const& accessor = gltf.accessors[attribute.second];
+                        // TODO accessor stride, offset, count
+                        Buffer_view const& buffer_view = gltf.buffer_views[*accessor.buffer_view_index];
+
+                        attribute_buffer_ranges.push_back(
+                            {
+                                .offset = buffer_view.byte_offset,
+                                .size = buffer_view.byte_length,
+                            }
+                        );
+                    }
+
+                    primitives.push_back(
+                        {
+                            .buffer = buffer,
+                            .attribute_buffer_ranges = std::move(attribute_buffer_ranges)
+                        }
+                    );
+                }
+            }
+
+            return primitives;
+        }
     }
 
     void run(
@@ -1033,6 +1169,33 @@ namespace Mythology::SDL
             render_passes,
             {}
         );
+
+        Maia::Utilities::glTF::Gltf const gltf = Maia::Utilities::glTF::gltf_from_json(read_json_from_file(gltf_file_path), {});
+        Buffer_pool_memory_resource gltf_buffer_memory_resource = create_geometry_buffer_pool(get_phisical_device_memory_properties(physical_device).value, device.value);
+
+        {
+            std::pmr::vector<Buffer_pool_node> buffer_nodes;
+            buffer_nodes.reserve(gltf.buffers.size());
+
+            for (Maia::Utilities::glTF::Buffer const& gltf_buffer : gltf.buffers)
+            {
+                VkDeviceSize const bytes_to_allocate = gltf_buffer.byte_length;
+                VkDeviceSize constexpr alignment = 0;
+                VkBufferUsageFlags constexpr buffer_usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+                std::optional<Buffer_pool_node> const buffer_node = gltf_buffer_memory_resource.allocate(bytes_to_allocate, alignment, buffer_usage);
+                assert(buffer_node.has_value());
+
+                buffer_nodes.push_back(*buffer_node);
+            }
+
+            std::filesystem::path const gltf_directory = gltf_file_path.parent_path();
+            VkDeviceMemory const device_memory = gltf_buffer_memory_resource.device_memory();
+            VkMemoryPropertyFlags const memory_properties = gltf_buffer_memory_resource.memory_properties();
+
+            upload_buffer_data(device.value, device_memory, buffer_nodes, memory_properties, gltf, gltf_directory);
+
+            std::pmr::vector<Mesh_id> const mesh_ids = create_mesh_ids(gltf, Mesh_id{0}, {});
+        }
 
         VkSurfaceFormatKHR const surface_format = select_surface_format(physical_device, surface);
 
