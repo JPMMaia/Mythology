@@ -413,6 +413,7 @@ namespace Maia::Utilities::glTF
 
 		std::pmr::vector<std::byte> generate_byte_data(
 			std::string_view const uri,
+			std::filesystem::path const& prefix_path,
 			std::size_t const byte_length,
 			std::pmr::polymorphic_allocator<> const& allocator
 		) noexcept
@@ -428,7 +429,7 @@ namespace Maia::Utilities::glTF
 			}
 			else
 			{
-				std::filesystem::path const file_path{uri};
+				std::filesystem::path const file_path{prefix_path / uri};
 				assert(std::filesystem::exists(file_path) && "Couldn't open file");
 				assert(std::filesystem::file_size(file_path) == byte_length);
 
@@ -450,12 +451,13 @@ namespace Maia::Utilities::glTF
 
 	std::pmr::vector<std::byte> read_buffer_data(
 		Buffer const& buffer,
+		std::filesystem::path const& prefix_path,
 		std::pmr::polymorphic_allocator<> const& allocator
 	) noexcept
 	{
 		assert(buffer.uri.has_value());
 
-		return generate_byte_data(*buffer.uri, buffer.byte_length, allocator);
+		return generate_byte_data(*buffer.uri, prefix_path, buffer.byte_length, allocator);
 	}
 
 

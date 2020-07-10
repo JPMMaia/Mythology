@@ -2,6 +2,7 @@ export module maia.utilities.gltf;
 
 import <array>;
 import <cstddef>;
+import <filesystem>;
 import <memory_resource>;
 import <optional>;
 import <string>;
@@ -92,6 +93,7 @@ namespace Maia::Utilities::glTF
 
 	export std::pmr::vector<std::byte> read_buffer_data(
 		Buffer const& buffer,
+		std::filesystem::path const& prefix_path,
 		std::pmr::polymorphic_allocator<> const& allocator
 	) noexcept;
 
