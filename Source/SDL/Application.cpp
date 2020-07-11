@@ -900,6 +900,16 @@ namespace Mythology::SDL
             }
         }
 
+        struct Material_type_id
+        {
+            std::uint32_t value;
+        };
+
+        struct Material_instance
+        {
+            Material_type_id type_id;
+        };
+
         // TODO bounding box?
         struct Mesh_id
         {
@@ -932,6 +942,7 @@ namespace Mythology::SDL
             };
 
             Mesh_id mesh_id;
+            Material_instance material_instance;
             VkBuffer buffer;
             std::pmr::vector<Buffer_range> attribute_buffer_ranges;
         };
@@ -954,6 +965,8 @@ namespace Mythology::SDL
             Maia::Utilities::glTF::Gltf const& gltf,
             std::span<Mesh_id const> const mesh_ids,
             std::span<VkBuffer const> const buffers,
+            std::span<Material_instance const> const material_instances,
+            Material_instance const default_material_instance,
             std::pmr::polymorphic_allocator<> const& allocator
         ) noexcept
         {
@@ -992,9 +1005,15 @@ namespace Mythology::SDL
                         );
                     }
 
+                    Material_instance const material_instance = 
+                        primitive.material_index.has_value() ?
+                        material_instances[*primitive.material_index] :
+                        default_material_instance;
+
                     primitives.push_back(
                         {
                             .mesh_id = mesh_id,
+                            .material_instance = material_instance,
                             .buffer = buffer,
                             .attribute_buffer_ranges = std::move(attribute_buffer_ranges)
                         }
