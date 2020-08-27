@@ -23,23 +23,16 @@ namespace Maia::Renderer::Vulkan
 
     export Render_pass_create_info_resources create_render_pass_create_info_resources(
         nlohmann::json const& render_pass_json,
-        std::pmr::polymorphic_allocator<VkAttachmentDescription> const& attachments_allocator,
-        std::pmr::polymorphic_allocator<VkAttachmentReference> const& attachment_reference_allocator,
-        std::pmr::polymorphic_allocator<std::uint32_t> const& preserve_attachment_allocator,
-        std::pmr::polymorphic_allocator<VkSubpassDescription> const& subpasses_allocator,
-        std::pmr::polymorphic_allocator<VkSubpassDependency> const& dependencies_allocator
+        std::pmr::polymorphic_allocator<> const& output_allocator,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
     ) noexcept;
 
     export std::pmr::vector<VkRenderPass> create_render_passes(
         VkDevice device,
         VkAllocationCallbacks const* allocation_callbacks,
         nlohmann::json const& render_passes_json,
-        std::pmr::polymorphic_allocator<VkAttachmentDescription> const& attachments_allocator,
-        std::pmr::polymorphic_allocator<VkAttachmentReference> const& attachment_reference_allocator,
-        std::pmr::polymorphic_allocator<std::uint32_t> const& preserve_attachment_allocator,
-        std::pmr::polymorphic_allocator<VkSubpassDescription> const& subpasses_allocator,
-        std::pmr::polymorphic_allocator<VkSubpassDependency> const& dependencies_allocator,
-        std::pmr::polymorphic_allocator<VkRenderPass> const& allocator
+        std::pmr::polymorphic_allocator<> const& output_allocator,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
     ) noexcept;
 
 
@@ -48,7 +41,8 @@ namespace Maia::Renderer::Vulkan
         VkAllocationCallbacks const* const allocation_callbacks,
         nlohmann::json const& shader_modules_json,
         std::filesystem::path const& shaders_path,
-        std::pmr::polymorphic_allocator<> const& allocator
+        std::pmr::polymorphic_allocator<> const& output_allocator,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
     ) noexcept;
 
 
@@ -56,7 +50,7 @@ namespace Maia::Renderer::Vulkan
         VkDevice device,
         VkAllocationCallbacks const* allocation_callbacks,
         nlohmann::json const& samplers_json,
-        std::pmr::polymorphic_allocator<> const& allocator
+        std::pmr::polymorphic_allocator<> const& output_allocator
     ) noexcept;
 
 
@@ -65,7 +59,7 @@ namespace Maia::Renderer::Vulkan
         VkAllocationCallbacks const* allocation_callbacks,
         std::span<VkSampler const> samplers,
         nlohmann::json const& descriptor_set_layouts_json,
-        std::pmr::polymorphic_allocator<> const& allocator
+        std::pmr::polymorphic_allocator<> const& output_allocator
     ) noexcept;
 
 
@@ -74,7 +68,8 @@ namespace Maia::Renderer::Vulkan
         VkAllocationCallbacks const* allocation_callbacks,
         std::span<VkDescriptorSetLayout const> descriptor_set_layouts,
         nlohmann::json const& pipeline_layouts_json,
-        std::pmr::polymorphic_allocator<> const& allocator
+        std::pmr::polymorphic_allocator<> const& output_allocator,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
     ) noexcept;
 
 
@@ -85,7 +80,8 @@ namespace Maia::Renderer::Vulkan
         std::span<VkPipelineLayout const> pipeline_layouts,
         std::span<VkRenderPass const> render_passes,
         nlohmann::json const& pipeline_states_json,
-        std::pmr::polymorphic_allocator<> const& allocator
+        std::pmr::polymorphic_allocator<> const& output_allocator,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
     ) noexcept;
 
 
@@ -98,7 +94,8 @@ namespace Maia::Renderer::Vulkan
         nlohmann::json const& commands_json,
         std::span<VkPipeline const> pipelines,
         std::span<VkRenderPass const> render_passes,
-        std::pmr::polymorphic_allocator<std::byte> const& commands_allocator
+        std::pmr::polymorphic_allocator<std::byte> const& output_allocator,
+        std::pmr::polymorphic_allocator<std::byte> const& temporaries_allocator
     ) noexcept;
 
     export void draw(
@@ -107,6 +104,7 @@ namespace Maia::Renderer::Vulkan
         VkImageSubresourceRange const& output_image_subresource_range,
         VkFramebuffer output_framebuffer,
         VkRect2D output_render_area,
-        Commands_data const& commands_data
+        Commands_data const& commands_data,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
     ) noexcept;
 }
