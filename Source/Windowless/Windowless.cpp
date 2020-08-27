@@ -4,6 +4,7 @@ import mythology.core.utilities;
 import mythology.core.vulkan;
 import maia.renderer.vulkan;
 
+import <nlohmann/json.hpp>;
 import <vulkan/vulkan.h>;
 
 import <cassert>;
@@ -167,8 +168,12 @@ namespace Mythology::Windowless
         };
     }
 
-    void render_frame(
-        std::filesystem::path const& output_filename
+    std::pmr::vector<std::byte> render_frame(
+        nlohmann::json const& pipeline_json,
+        std::filesystem::path const& pipeline_json_parent_path,
+        std::filesystem::path const& gltf_file_path,
+        std::pmr::polymorphic_allocator<std::byte> const& output_allocator,
+        std::pmr::polymorphic_allocator<std::byte> const& temporaries_allocator
     ) noexcept
     {
         using namespace Mythology::Core::Vulkan;
@@ -194,6 +199,40 @@ namespace Mythology::Windowless
         Framebuffer const framebuffer = application_resources.framebuffer;
         VkPipeline const white_triangle_pipeline = application_resources.white_triangle_pipeline;
 
+        std::pmr::vector<VkRenderPass> const render_passes = 
+            Maia::Renderer::Vulkan::create_render_passes(device.value, nullptr, pipeline_json.at("render_passes"), output_allocator, temporaries_allocator);
+
+        std::pmr::vector<VkShaderModule> const shader_modules = 
+            Maia::Renderer::Vulkan::create_shader_modules(device.value, nullptr, pipeline_json.at("shader_modules"), pipeline_json_parent_path, output_allocator, temporaries_allocator);
+
+        std::pmr::vector<VkSampler> const samplers = 
+            Maia::Renderer::Vulkan::create_samplers(device.value, nullptr, pipeline_json.at("samplers"), output_allocator);
+        
+        std::pmr::vector<VkDescriptorSetLayout> const descriptor_set_layouts = 
+            Maia::Renderer::Vulkan::create_descriptor_set_layouts(device.value, nullptr, samplers, pipeline_json.at("descriptor_set_layouts"), output_allocator);
+
+        std::pmr::vector<VkPipelineLayout> const pipeline_layouts = 
+            Maia::Renderer::Vulkan::create_pipeline_layouts(device.value, nullptr, descriptor_set_layouts, pipeline_json.at("pipeline_layouts"), output_allocator, temporaries_allocator);
+
+        std::pmr::vector<VkPipeline> const pipeline_states = create_pipeline_states(
+            device.value,
+            nullptr,
+            shader_modules,
+            pipeline_layouts,
+            render_passes,
+            pipeline_json.at("pipeline_states"),
+            output_allocator,
+            temporaries_allocator
+        );
+
+        Maia::Renderer::Vulkan::Commands_data const commands_data = Maia::Renderer::Vulkan::create_commands_data(
+            pipeline_json.at("frame_commands"),
+            pipeline_states,
+            render_passes,
+            output_allocator,
+            temporaries_allocator
+        );
+
         {
             std::pmr::vector<Command_buffer> const command_buffers = 
                 allocate_command_buffers(
@@ -201,7 +240,8 @@ namespace Mythology::Windowless
                     command_pool,
                     VK_COMMAND_BUFFER_LEVEL_PRIMARY,
                     1,
-                    {}
+                    output_allocator,
+                    temporaries_allocator
                 );
             assert(command_buffers.size() == 1);
             Command_buffer const command_buffer = command_buffers.front();
@@ -219,7 +259,7 @@ namespace Mythology::Windowless
                     .extent = {color_image_extent.width, color_image_extent.height}
                 };
 
-                render(command_buffer, render_pass, framebuffer, clear_color, white_triangle_pipeline, color_image, output_render_area);
+                // TODO render(command_buffer, render_pass, framebuffer, clear_color, white_triangle_pipeline, color_image, output_render_area);
             }
             end_command_buffer(command_buffer);
 
@@ -228,18 +268,15 @@ namespace Mythology::Windowless
         check_result(
             wait_for_all_fences(device, {&fence, 1}, Timeout_nanoseconds{100000}));
 
-        {
-            VkSubresourceLayout const color_image_layout = get_subresource_layout(
-                device,
-                color_image,
-                {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .mipLevel = 0, .arrayLayer = 0}
-            );
+        VkSubresourceLayout const color_image_layout = get_subresource_layout(
+            device,
+            color_image,
+            {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .mipLevel = 0, .arrayLayer = 0}
+        );
 
-            std::pmr::vector<std::byte> const color_image_data = 
-                read_memory(device, color_image_device_memory, color_image_layout);
+        std::pmr::vector<std::byte> const color_image_data = 
+            read_memory(device, color_image_device_memory, color_image_layout, output_allocator);
 
-            std::ofstream output_file{output_filename};
-            write_p3(output_file, color_image_data, color_image_layout, color_image_extent);
-        }        
+        return color_image_data;       
     }
 }
