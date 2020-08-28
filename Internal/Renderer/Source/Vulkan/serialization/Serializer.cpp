@@ -288,7 +288,7 @@ namespace Maia::Renderer::Vulkan
         VkAllocationCallbacks const* const allocation_callbacks,
         nlohmann::json const& render_passes_json,
         std::pmr::polymorphic_allocator<> const& output_allocator,
-        std::pmr::polymorphic_allocator<> const& temporaries_allocator,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
     ) noexcept
     {
         std::pmr::vector<VkRenderPass> render_passes{output_allocator};
@@ -1907,7 +1907,7 @@ namespace Maia::Renderer::Vulkan
         {
             for (nlohmann::json const& command_json : draw_list_json)
             {
-                std::pmr::vector<std::byte> const command_data = create_command_data(command_json, pipelines, render_passes, temporaries_allocator);
+                std::pmr::vector<std::byte> const command_data = create_command_data(command_json, pipelines, render_passes, temporaries_allocator, temporaries_allocator);
 
                 commands_data.insert(commands_data.end(), command_data.begin(), command_data.end());
             }
