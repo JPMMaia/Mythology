@@ -3,6 +3,7 @@ module mythology.windowless;
 import mythology.core.utilities;
 import mythology.core.vulkan;
 import maia.renderer.vulkan;
+import maia.renderer.vulkan.serializer;
 
 import <nlohmann/json.hpp>;
 import <vulkan/vulkan.h>;
@@ -240,8 +241,8 @@ namespace Mythology::Windowless
                     command_pool,
                     VK_COMMAND_BUFFER_LEVEL_PRIMARY,
                     1,
-                    output_allocator,
-                    temporaries_allocator
+                    {},
+                    output_allocator
                 );
             assert(command_buffers.size() == 1);
             Command_buffer const command_buffer = command_buffers.front();
