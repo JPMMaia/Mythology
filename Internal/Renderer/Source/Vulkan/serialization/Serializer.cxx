@@ -59,7 +59,8 @@ namespace Maia::Renderer::Vulkan
         VkAllocationCallbacks const* allocation_callbacks,
         std::span<VkSampler const> samplers,
         nlohmann::json const& descriptor_set_layouts_json,
-        std::pmr::polymorphic_allocator<> const& output_allocator
+        std::pmr::polymorphic_allocator<> const& output_allocator,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
     ) noexcept;
 
 
