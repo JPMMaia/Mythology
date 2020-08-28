@@ -210,7 +210,7 @@ namespace Mythology::Windowless
             Maia::Renderer::Vulkan::create_samplers(device.value, nullptr, pipeline_json.at("samplers"), output_allocator);
         
         std::pmr::vector<VkDescriptorSetLayout> const descriptor_set_layouts = 
-            Maia::Renderer::Vulkan::create_descriptor_set_layouts(device.value, nullptr, samplers, pipeline_json.at("descriptor_set_layouts"), output_allocator);
+            Maia::Renderer::Vulkan::create_descriptor_set_layouts(device.value, nullptr, samplers, pipeline_json.at("descriptor_set_layouts"), output_allocator, temporaries_allocator);
 
         std::pmr::vector<VkPipelineLayout> const pipeline_layouts = 
             Maia::Renderer::Vulkan::create_pipeline_layouts(device.value, nullptr, descriptor_set_layouts, pipeline_json.at("pipeline_layouts"), output_allocator, temporaries_allocator);
