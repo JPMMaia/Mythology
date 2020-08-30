@@ -32,8 +32,18 @@ target_sources (MythologyScreenshotTest
 install(
 	FILES
 		"clear_color/clear_blue_pipeline.json"
-	TYPE DATA
+	DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/test_assets"
 	COMPONENT "test_assets"
+)
+
+add_custom_command(
+	OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/test_assets"
+	COMMAND "${CMAKE_COMMAND}" "--install" "${CMAKE_BINARY_DIR}" "--component" "test_assets"
+)
+
+add_custom_target(
+	install_test_assets
+	DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/test_assets"
 )
 
 include (CTest)

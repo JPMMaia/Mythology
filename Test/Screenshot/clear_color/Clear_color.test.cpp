@@ -30,7 +30,8 @@ namespace Mythology::Windowless::Test
 {
 	SCENARIO("Render a frame with a clear color")
 	{
-		std::filesystem::path const pipeline_json_file_path = "../share/clear_blue_pipeline.json";
+		std::filesystem::path const working_directory = std::filesystem::current_path();
+		std::filesystem::path const pipeline_json_file_path = working_directory / "test_assets/clear_blue_pipeline.json";
 		REQUIRE(std::filesystem::exists(pipeline_json_file_path));
 
 		nlohmann::json const pipeline_json = read_json_from_file(pipeline_json_file_path);
