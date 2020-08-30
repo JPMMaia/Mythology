@@ -9,6 +9,7 @@ import <cstddef>;
 import <filesystem>;
 import <fstream>;
 import <memory_resource>;
+import <optional>;
 import <span>;
 import <string>;
 import <vector>;
@@ -2169,7 +2170,7 @@ namespace Maia::Renderer::Vulkan
         VkCommandBuffer const command_buffer,
         VkImage const output_image,
         VkImageSubresourceRange const& output_image_subresource_range,
-        VkFramebuffer const output_framebuffer,
+        std::optional<VkFramebuffer> const output_framebuffer,
         VkRect2D const output_render_area,
         Commands_data const& commands_data,
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
@@ -2189,7 +2190,8 @@ namespace Maia::Renderer::Vulkan
             switch (command_type)
             {
             case Command_type::Begin_render_pass:
-                offset_in_bytes += add_begin_render_pass_command(command_buffer, output_framebuffer, output_render_area, next_command_bytes);
+                assert(output_framebuffer.has_value());
+                offset_in_bytes += add_begin_render_pass_command(command_buffer, *output_framebuffer, output_render_area, next_command_bytes);
                 break;
 
             case Command_type::Bind_pipeline:

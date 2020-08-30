@@ -6,6 +6,7 @@ import <vulkan/vulkan.h>;
 import <cstddef>;
 import <filesystem>;
 import <memory_resource>;
+import <optional>;
 import <span>;
 import <vector>;
 
@@ -103,7 +104,7 @@ namespace Maia::Renderer::Vulkan
         VkCommandBuffer command_buffer,
         VkImage output_image,
         VkImageSubresourceRange const& output_image_subresource_range,
-        VkFramebuffer output_framebuffer,
+        std::optional<VkFramebuffer> output_framebuffer,
         VkRect2D output_render_area,
         Commands_data const& commands_data,
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
