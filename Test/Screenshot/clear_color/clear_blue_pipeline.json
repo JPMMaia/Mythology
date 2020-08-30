@@ -1,0 +1,59 @@
+{
+    "render_passes": [],
+    "shader_modules": [],
+    "samplers": [],
+    "descriptor_set_layouts": [],
+    "pipeline_layouts": [],
+    "pipeline_states": [],
+    "frame_commands": [
+        [
+            {
+                "type": "Pipeline_barrier",
+                "source_stage_mask": 1,
+                "destination_stage_mask": 4096,
+                "dependency_flags": 0,
+                "memory_barriers": [],
+                "buffer_barriers": [],
+                "image_barriers": [
+                    {
+                        "type": "Dependent",
+                        "source_access_mask": 0,
+                        "destination_access_mask": 4096,
+                        "old_layout": 0,
+                        "new_layout": 7
+                    }
+                ]
+            },
+            {
+                "type": "Clear_color_image",
+                "subtype": "Dependent",
+                "clear_color_value": {
+                    "type": "UINT",
+                    "values": [
+                        10,
+                        28,
+                        192,
+                        255
+                    ]
+                }
+            },
+            {
+                "type": "Pipeline_barrier",
+                "source_stage_mask": 4096,
+                "destination_stage_mask": 8192,
+                "dependency_flags": 0,
+                "memory_barriers": [],
+                "buffer_barriers": [],
+                "image_barriers": [
+                    {
+                        "type": "Dependent",
+                        "source_access_mask": 4096,
+                        "destination_access_mask": 0,
+                        "old_layout": 7,
+                        "new_layout": 1000001002
+                    }
+                ]
+            }
+        ]
+    ]
+}

@@ -1,6 +1,6 @@
-project (MythologyScreenshotTest)
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../../Internal/Utilities/CMake/Modules")
+list(APPEND CMAKE_MODULE_PATH
+	"${CMAKE_CURRENT_LIST_DIR}/../../Internal/Utilities/CMake/Modules"
+)
 
 add_executable (MythologyScreenshotTest)
 add_executable (Mythology::ScreenshotTest ALIAS MythologyScreenshotTest)
@@ -26,8 +26,16 @@ target_link_libraries (MythologyScreenshotTest PRIVATE Standard_library)
 target_sources (MythologyScreenshotTest 
 	PRIVATE
 		"main.cpp"
-		"Triangle.test.cpp"
+		"clear_color/Clear_color.test.cpp"
 )
 
+install(
+	FILES
+		"clear_color/clear_blue_pipeline.json"
+	TYPE DATA
+	COMPONENT "test_assets"
+)
+
+include (CTest)
 include (Catch)
 catch_discover_tests (MythologyScreenshotTest)
