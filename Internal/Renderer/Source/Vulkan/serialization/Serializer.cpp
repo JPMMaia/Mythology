@@ -1520,22 +1520,29 @@ namespace Maia::Renderer::Vulkan
             }
         }
 
-        std::pmr::vector<VkPipeline> pipelines{output_allocator};
-        pipelines.resize(pipeline_states_json.size());
+        if (!create_infos.empty())
+        {
+            std::pmr::vector<VkPipeline> pipelines{output_allocator};
+            pipelines.resize(pipeline_states_json.size());
 
-        assert(create_infos.size() == pipelines.size());
-        check_result(
-            vkCreateGraphicsPipelines(
-                device,
-                VK_NULL_HANDLE,
-                static_cast<std::uint32_t>(create_infos.size()),
-                create_infos.data(),
-                allocation_callbacks,
-                pipelines.data()
-            )
-        );
+            assert(create_infos.size() == pipelines.size());
+            check_result(
+                vkCreateGraphicsPipelines(
+                    device,
+                    VK_NULL_HANDLE,
+                    static_cast<std::uint32_t>(create_infos.size()),
+                    create_infos.data(),
+                    allocation_callbacks,
+                    pipelines.data()
+                )
+            );
 
-        return pipelines;
+            return pipelines;
+        }
+        else
+        {
+            return {};
+        }
     }
 
     namespace
