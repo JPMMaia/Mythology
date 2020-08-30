@@ -92,16 +92,12 @@ namespace Mythology::Windowless
                 Physical_device const physical_device,
                 Device const device,
                 VkFormat const color_image_format,
-                VkExtent3D const color_image_extent) noexcept :
+                VkExtent3D const color_image_extent,
+                std::optional<VkRenderPass> const render_pass) noexcept :
                 device{device},
                 device_memory_and_color_image(Mythology::Core::Vulkan::create_device_memory_and_color_image(physical_device, device, color_image_format, color_image_extent)),
-                pipeline_layout{create_pipeline_layout(device.value, empty_pipeline_layout_create_info(), {})},
-                render_pass{create_render_pass(device, color_image_format)},
-                triangle_vertex_shader_module{create_shader_module(device, {}, convert_bytes<std::uint32_t>(read_bytes(shaders_path / "Triangle.vertex.spv")))},
-                white_fragment_shader_module{create_shader_module(device, {}, convert_bytes<std::uint32_t>(read_bytes(shaders_path / "White.fragment.spv")))},
-                white_triangle_pipeline{create_vertex_and_fragment_pipeline(device, {}, pipeline_layout, render_pass.value, 0, 1, triangle_vertex_shader_module.value, white_fragment_shader_module.value)},
                 color_image_view{create_image_view(device, {}, device_memory_and_color_image.color_image, VK_IMAGE_VIEW_TYPE_2D, color_image_format, {}, {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1}, {})},
-                framebuffer{create_framebuffer(device, {}, render_pass, {&color_image_view.value, 1}, {color_image_extent.width, color_image_extent.height, 1}, {})}
+                framebuffer{render_pass.has_value() ? create_framebuffer(device, {}, {*render_pass}, {&color_image_view.value, 1}, {color_image_extent.width, color_image_extent.height, 1}, {}).value : std::optional<VkFramebuffer>{}}
             {
             }
             Application_resources(Application_resources const&) = delete;
@@ -113,34 +109,9 @@ namespace Mythology::Windowless
                     destroy_image_view(device, color_image_view, {});
                 }
 
-                if (framebuffer.value != VK_NULL_HANDLE)
+                if (framebuffer.has_value() && *framebuffer != VK_NULL_HANDLE)
                 {
-                    destroy_framebuffer(device, framebuffer, {});
-                }
-
-                if (white_triangle_pipeline != VK_NULL_HANDLE)
-                {
-                    vkDestroyPipeline(device.value, white_triangle_pipeline, nullptr);
-                }
-
-                if (triangle_vertex_shader_module.value != VK_NULL_HANDLE)
-                {
-                    destroy_shader_module(device, triangle_vertex_shader_module);
-                }
-
-                if (white_fragment_shader_module.value != VK_NULL_HANDLE)
-                {
-                    destroy_shader_module(device, white_fragment_shader_module);
-                }
-
-                if (render_pass.value != VK_NULL_HANDLE)
-                {
-                    destroy_render_pass(device, render_pass, {});
-                }
-
-                if (pipeline_layout != VK_NULL_HANDLE)
-                {
-                    destroy_pipeline_layout(device.value, pipeline_layout, {});
+                    destroy_framebuffer(device, {*framebuffer}, {});
                 }
 
                 if (this->device_memory_and_color_image.color_image.value != VK_NULL_HANDLE)
@@ -159,20 +130,16 @@ namespace Mythology::Windowless
 
             Device device;
             Mythology::Core::Vulkan::Device_memory_and_color_image device_memory_and_color_image;
-            VkPipelineLayout pipeline_layout;
-            Render_pass render_pass;
-            Shader_module triangle_vertex_shader_module;
-            Shader_module white_fragment_shader_module;
-            VkPipeline white_triangle_pipeline;
             Image_view color_image_view;
-            Framebuffer framebuffer;
+            std::optional<VkFramebuffer> framebuffer;
         };
     }
 
     std::pmr::vector<std::byte> render_frame(
+        Frame_dimensions const frame_dimensions,
         nlohmann::json const& pipeline_json,
         std::filesystem::path const& pipeline_json_parent_path,
-        std::filesystem::path const& gltf_file_path,
+        std::optional<std::filesystem::path> const& gltf_file_path,
         std::pmr::polymorphic_allocator<std::byte> const& output_allocator,
         std::pmr::polymorphic_allocator<std::byte> const& temporaries_allocator
     ) noexcept
@@ -191,17 +158,16 @@ namespace Mythology::Windowless
         
         Queue const queue = get_device_queue(device, graphics_queue_family_index, 0);
         
-        VkFormat constexpr color_image_format = VK_FORMAT_R8G8B8A8_UINT;
-        VkExtent3D constexpr color_image_extent{16, 16, 1};
-        Application_resources const application_resources{shaders_path, physical_device, device, color_image_format, color_image_extent};
-        VkDeviceMemory const color_image_device_memory = application_resources.device_memory_and_color_image.device_memory;
-        Image const color_image = application_resources.device_memory_and_color_image.color_image;
-        Render_pass const render_pass = application_resources.render_pass;
-        Framebuffer const framebuffer = application_resources.framebuffer;
-        VkPipeline const white_triangle_pipeline = application_resources.white_triangle_pipeline;
-
         std::pmr::vector<VkRenderPass> const render_passes = 
             Maia::Renderer::Vulkan::create_render_passes(device.value, nullptr, pipeline_json.at("render_passes"), output_allocator, temporaries_allocator);
+
+        VkFormat constexpr color_image_format = VK_FORMAT_R8G8B8A8_UINT;
+        VkExtent3D const color_image_extent{frame_dimensions.width, frame_dimensions.height, 1};
+        std::optional<VkRenderPass> const framebuffer_render_pass = !render_passes.empty() ? render_passes[0] : std::optional<VkRenderPass>{};
+        Application_resources const application_resources{shaders_path, physical_device, device, color_image_format, color_image_extent, framebuffer_render_pass};
+        VkDeviceMemory const color_image_device_memory = application_resources.device_memory_and_color_image.device_memory;
+        VkImage const color_image = application_resources.device_memory_and_color_image.color_image.value;
+        std::optional<VkFramebuffer> const framebuffer = application_resources.framebuffer;
 
         std::pmr::vector<VkShaderModule> const shader_modules = 
             Maia::Renderer::Vulkan::create_shader_modules(device.value, nullptr, pipeline_json.at("shader_modules"), pipeline_json_parent_path, output_allocator, temporaries_allocator);
@@ -260,7 +226,24 @@ namespace Mythology::Windowless
                     .extent = {color_image_extent.width, color_image_extent.height}
                 };
 
-                // TODO render(command_buffer, render_pass, framebuffer, clear_color, white_triangle_pipeline, color_image, output_render_area);
+                VkImageSubresourceRange const output_image_subresource_range
+                {
+                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, 
+                    .baseMipLevel = 0,
+                    .levelCount = 1, 
+                    .baseArrayLayer = 0,
+                    .layerCount = 1
+                };
+
+                Maia::Renderer::Vulkan::draw(
+                    command_buffer.value,
+                    color_image,
+                    output_image_subresource_range,
+                    framebuffer,
+                    output_render_area,
+                    commands_data,
+                    temporaries_allocator
+                );
             }
             end_command_buffer(command_buffer);
 
@@ -271,7 +254,7 @@ namespace Mythology::Windowless
 
         VkSubresourceLayout const color_image_layout = get_subresource_layout(
             device,
-            color_image,
+            {color_image},
             {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .mipLevel = 0, .arrayLayer = 0}
         );
 
