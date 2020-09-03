@@ -24,6 +24,7 @@ target_header (Standard_library "functional" "${standard_library_root}/functiona
 target_header (Standard_library "future" "${standard_library_root}/future")
 target_header (Standard_library "iosfwd" "${standard_library_root}/iosfwd")
 target_header (Standard_library "iostream" "${standard_library_root}/iostream")
+target_header (Standard_library "istream" "${standard_library_root}/istream")
 target_header (Standard_library "iterator" "${standard_library_root}/iterator")
 target_header (Standard_library "limits" "${standard_library_root}/limits")
 target_header (Standard_library "map" "${standard_library_root}/map")
