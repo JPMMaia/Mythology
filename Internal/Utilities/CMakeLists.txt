@@ -6,6 +6,7 @@ add_subdirectory("External/Catch2")
 add_subdirectory("External/Eigen3")
 add_subdirectory("External/nlohmann_json")
 add_subdirectory("External/Standard_library")
+add_subdirectory("External/Stb")
 
 add_subdirectory("Source")
 add_subdirectory("Test")
