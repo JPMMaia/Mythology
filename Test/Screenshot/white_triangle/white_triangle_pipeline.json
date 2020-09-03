@@ -1,0 +1,295 @@
+{
+    "render_passes": [
+        {
+            "name": "Render_pass_0",
+            "attachments": [
+                {
+                    "flags": 0,
+                    "format": 50,
+                    "samples": 1,
+                    "load_operation": 2,
+                    "store_operation": 1,
+                    "stencil_load_operation": 2,
+                    "stencil_store_operation": 1,
+                    "initial_layout": 0,
+                    "final_layout": 2
+                }
+            ],
+            "subpasses": [
+                {
+                    "pipeline_bind_point": 0,
+                    "input_attachments": [],
+                    "color_attachments": [
+                        {
+                            "attachment": 0,
+                            "layout": 2
+                        }
+                    ],
+                    "resolve_attachments": [],
+                    "depth_stencil_attachment": {},
+                    "preserve_attachments": []
+                }
+            ],
+            "dependencies": [
+                {
+                    "source_subpass": 0,
+                    "destination_subpass": "external",
+                    "source_stage_mask": 1024,
+                    "destination_stage_mask": 8192,
+                    "source_access_mask": 256,
+                    "destination_access_mask": 0,
+                    "dependency_flags": 0
+                },
+                {
+                    "source_subpass": "external",
+                    "destination_subpass": 0,
+                    "source_stage_mask": 1,
+                    "destination_stage_mask": 1024,
+                    "source_access_mask": 0,
+                    "destination_access_mask": 256,
+                    "dependency_flags": 0
+                }
+            ]
+        }
+    ],
+    "shader_modules": [
+        {
+            "file": "White.fragment.spv"
+        },
+        {
+            "file": "Triangle.vertex.spv"
+        }
+    ],
+    "samplers": [
+        {
+            "mag_filter": 0,
+            "min_filter": 0,
+            "mipmap_mode": 0,
+            "address_mode_u": 0,
+            "address_mode_v": 0,
+            "address_mode_w": 0,
+            "mip_lod_bias": 0.0,
+            "anisotropy_enable": false,
+            "max_anisotropy": 0.0,
+            "compare_enable": false,
+            "compare_operation": 0,
+            "min_lod": 0.0,
+            "max_lod": 0.0,
+            "border_color": 0,
+            "unnormalized_coordinates": false
+        }
+    ],
+    "descriptor_set_layouts": [
+        {
+            "bindings": [
+                {
+                    "binding": 0,
+                    "descriptor_type": 0,
+                    "descriptor_count": 1,
+                    "stage_flags_property": 0,
+                    "immutable_samplers": [
+                        0
+                    ]
+                }
+            ]
+        }
+    ],
+    "pipeline_layouts": [
+        {
+            "descriptor_set_layouts": [],
+            "push_constant_ranges": []
+        }
+    ],
+    "pipeline_states": [
+        {
+            "name": "Red_triangle_pipeline",
+            "stages": [
+                {
+                    "shader": 0,
+                    "stage": 16,
+                    "entry_point": "main"
+                },
+                {
+                    "shader": 1,
+                    "stage": 1,
+                    "entry_point": "main"
+                }
+            ],
+            "vertex_input_state": {
+                "bindings": [],
+                "attributes": []
+            },
+            "input_assembly_state": {
+                "topology": 3,
+                "primitive_restart_enable": false
+            },
+            "viewport_state": {
+                "viewport_count": 1,
+                "scissor_count": 1,
+                "viewports": null,
+                "scissors": null
+            },
+            "rasterization_state": {
+                "depth_clamp_enable": 0,
+                "rasterizer_discard_enable": 0,
+                "polygon_mode": 0,
+                "cull_mode": 2,
+                "front_face": 0,
+                "depth_bias_enable": false,
+                "depth_bias_constant_factor": 0.0,
+                "depth_bias_clamp": 0.0,
+                "depth_bias_slope_factor": 0.0,
+                "line_width_factor": 1.0
+            },
+            "depth_stencil_state": {
+                "depth_test_enable": 0,
+                "depth_write_enable": 0,
+                "compare_operation": 0,
+                "depth_bounds_test_enable": 0,
+                "stencil_test_enable": 0,
+                "min_depth_bounds": 0.0,
+                "max_depth_bounds": 1.0,
+                "front_stencil_state": {
+                    "fail_operation": 0,
+                    "pass_operation": 0,
+                    "depth_fail_operation": 0,
+                    "compare_operation": 0,
+                    "compare_mask": 2147483647,
+                    "write_mask": 2147483647,
+                    "reference": 0
+                },
+                "back_stencil_state": {
+                    "fail_operation": 0,
+                    "pass_operation": 0,
+                    "depth_fail_operation": 0,
+                    "compare_operation": 0,
+                    "compare_mask": 2147483647,
+                    "write_mask": 2147483647,
+                    "reference": 0
+                }
+            },
+            "color_blend_state": {
+                "logic_operation_enable": false,
+                "logic_operation": 0,
+                "blend_constants": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "attachments": [
+                    {
+                        "blend_enable": false,
+                        "source_color_blend_factor": 0,
+                        "destination_color_blend_factor": 0,
+                        "color_blend_operation": 0,
+                        "source_alpha_blend_factor": 0,
+                        "destination_alpha_blend_factor": 0,
+                        "alpha_blend_operation": 0,
+                        "color_write_mask": 15
+                    }
+                ]
+            },
+            "dynamic_state": {
+                "dynamic_states": [
+                    1,
+                    0
+                ]
+            },
+            "pipeline_layout": 0,
+            "render_pass": 0,
+            "subpass": 0
+        }
+    ],
+    "frame_commands": [
+        [
+            {
+                "type": "Pipeline_barrier",
+                "source_stage_mask": 1,
+                "destination_stage_mask": 4096,
+                "dependency_flags": 0,
+                "memory_barriers": [],
+                "buffer_barriers": [],
+                "image_barriers": [
+                    {
+                        "type": "Dependent",
+                        "source_access_mask": 0,
+                        "destination_access_mask": 4096,
+                        "old_layout": 0,
+                        "new_layout": 7
+                    }
+                ]
+            },
+            {
+                "type": "Clear_color_image",
+                "subtype": "Dependent",
+                "clear_color_value": {
+                    "type": "UINT",
+                    "values": [
+                        0,
+                        0,
+                        0,
+                        255
+                    ]
+                }
+            },
+            {
+                "type": "Pipeline_barrier",
+                "source_stage_mask": 4096,
+                "destination_stage_mask": 1024,
+                "dependency_flags": 0,
+                "memory_barriers": [],
+                "buffer_barriers": [],
+                "image_barriers": [
+                    {
+                        "type": "Dependent",
+                        "source_access_mask": 4096,
+                        "destination_access_mask": 256,
+                        "old_layout": 7,
+                        "new_layout": 2
+                    }
+                ]
+            },
+            {
+                "type": "Begin_render_pass",
+                "subtype": "Dependent",
+                "render_pass": 0
+            },
+            {
+                "type": "Bind_pipeline",
+                "pipeline_bind_point": 0,
+                "pipeline": 0
+            },
+            {
+                "type": "Set_screen_viewport_and_scissors"
+            },
+            {
+                "type": "Draw",
+                "vertex_count": 3,
+                "instance_count": 1,
+                "first_vertex": 0,
+                "first_instance": 0
+            },
+            {
+                "type": "End_render_pass"
+            },
+            {
+                "type": "Pipeline_barrier",
+                "source_stage_mask": 1024,
+                "destination_stage_mask": 8192,
+                "dependency_flags": 0,
+                "memory_barriers": [],
+                "buffer_barriers": [],
+                "image_barriers": [
+                    {
+                        "type": "Dependent",
+                        "source_access_mask": 256,
+                        "destination_access_mask": 0,
+                        "old_layout": 2,
+                        "new_layout": 1000001002
+                    }
+                ]
+            }
+        ]
+    ]
+}

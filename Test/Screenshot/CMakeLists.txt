@@ -19,6 +19,7 @@ add_module_dependency (MythologyScreenshotTest "nlohmann_json")
 
 target_include_directories(MythologyScreenshotTest PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 
+target_link_libraries (MythologyScreenshotTest PRIVATE Maia::Mythology::Image)
 target_link_libraries (MythologyScreenshotTest PRIVATE Maia::Mythology::Windowless)
 
 target_link_libraries (MythologyScreenshotTest PRIVATE Standard_library)
@@ -27,11 +28,18 @@ target_sources (MythologyScreenshotTest
 	PRIVATE
 		"main.cpp"
 		"clear_color/Clear_color.test.cpp"
+		"white_triangle/White_triangle.test.cpp"
 )
 
 install(
 	FILES
 		"clear_color/clear_blue_pipeline.json"
+		
+		"white_triangle/white_triangle_expected_output.png"
+		"white_triangle/white_triangle_pipeline.json"
+		"white_triangle/Triangle.vertex.spv"
+		"white_triangle/White.fragment.spv"
+
 	DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/test_assets"
 	COMPONENT "test_assets"
 )
