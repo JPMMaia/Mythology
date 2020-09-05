@@ -1,7 +1,6 @@
 module mythology.core.vulkan;
 
 import maia.renderer.vulkan;
-import mythology.imgui;
 
 import <vulkan/vulkan.h>;
 
@@ -33,7 +32,8 @@ namespace Mythology::Core::Vulkan
 
         auto const is_layer_to_enable = [](VkLayerProperties const& properties) -> bool
         {
-            return std::strcmp(properties.layerName, "VK_LAYER_KHRONOS_validation") == 0;
+            return 
+                std::strcmp(properties.layerName, "VK_LAYER_KHRONOS_validation") == 0;
         };
 
         auto const get_layer_name = [](VkLayerProperties const& properties)
@@ -55,8 +55,9 @@ namespace Mythology::Core::Vulkan
         std::pmr::vector<char const*> extensions_to_enable;
         extensions_to_enable.reserve(required_extensions.size() + 5);
         extensions_to_enable.assign(required_extensions.begin(), required_extensions.end());
+        extensions_to_enable.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
-        std::array<VkValidationFeatureEnableEXT, 1> constexpr validation_features_to_enable
+        std::array<VkValidationFeatureEnableEXT, 2> constexpr validation_features_to_enable
         {
             VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT
         };
