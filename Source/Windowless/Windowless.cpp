@@ -236,7 +236,11 @@ namespace Mythology::Windowless
         std::pmr::vector<VkRenderPass> const render_passes = 
             Maia::Renderer::Vulkan::create_render_passes(device.value, nullptr, pipeline_json.at("render_passes"), output_allocator, temporaries_allocator);
 
-        VkFormat constexpr color_image_format = VK_FORMAT_R8G8B8A8_UINT;
+        VkFormat const color_image_format = 
+            !render_passes.empty() ?
+            pipeline_json.at("render_passes")[0].at("attachments")[0].at("format").get<VkFormat>() :
+            VK_FORMAT_R8G8B8A8_UINT;
+
         VkExtent3D const color_image_extent{frame_dimensions.width, frame_dimensions.height, 1};
         std::optional<VkRenderPass> const framebuffer_render_pass = !render_passes.empty() ? render_passes[0] : std::optional<VkRenderPass>{};
         Application_resources const application_resources{shaders_path, physical_device, device, color_image_format, color_image_extent, framebuffer_render_pass};
