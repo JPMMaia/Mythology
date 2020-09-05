@@ -10,9 +10,11 @@ import <vulkan/vulkan.h>;
 
 import <cassert>;
 import <cstring>;
+import <exception>;
 import <filesystem>;
 import <fstream>;
 import <functional>;
+import <iostream>;
 import <memory_resource>;
 import <optional>;
 import <span>;
@@ -26,6 +28,62 @@ namespace Mythology::Windowless
 {
     namespace
     {
+        VkBool32 terminate_if_error(
+            VkDebugUtilsMessageSeverityFlagBitsEXT const message_severity,
+            VkDebugUtilsMessageTypeFlagsEXT const message_types,
+            VkDebugUtilsMessengerCallbackDataEXT const* callback_data,
+            void* user_data
+        ) noexcept
+        {
+            if (message_severity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+            {
+                std::cerr << callback_data->pMessage << std::endl;
+                std::terminate();
+            }
+                
+            return VK_FALSE;
+        }
+
+        VkDebugUtilsMessengerEXT create_debug_messenger(
+            VkInstance const instance,
+            PFN_vkDebugUtilsMessengerCallbackEXT debug_callback,
+            VkAllocationCallbacks const* vulkan_allocator
+        ) noexcept
+        {
+            VkDebugUtilsMessengerCreateInfoEXT const create_info
+            {
+                .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+                .messageSeverity = 
+                    VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+                    VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                    VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+                .messageType = 
+                    VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                    VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                    VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+                .pfnUserCallback = debug_callback,
+                .pUserData = nullptr,
+            };
+            
+            VkDebugUtilsMessengerEXT debug_messenger = {};
+
+            PFN_vkCreateDebugUtilsMessengerEXT create_debug_utils_messenger =
+                reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
+                    vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT")
+                );
+
+            check_result(
+                create_debug_utils_messenger(
+                    instance,
+                    &create_info,
+                    vulkan_allocator,
+                    &debug_messenger
+                )
+            );
+
+            return debug_messenger;
+        }
+
         struct Device_resources
         {
             explicit Device_resources(API_version const api_version) noexcept
@@ -33,6 +91,8 @@ namespace Mythology::Windowless
                 using namespace Mythology::Core::Vulkan;
 
                 this->instance = create_instance(Application_description{"Mythology", 1}, Engine_description{"Mythology Engine", 1}, api_version);
+
+                this->debug_messenger = create_debug_messenger(this->instance.value, terminate_if_error, nullptr);
 
                 this->physical_device = select_physical_device(this->instance);
                 
@@ -68,6 +128,20 @@ namespace Mythology::Windowless
                     destroy_device(this->device);
                 }
 
+                if (this->debug_messenger != VK_NULL_HANDLE)
+                {
+                    PFN_vkDestroyDebugUtilsMessengerEXT destroy_debug_utils_messenger =
+                        reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
+                            vkGetInstanceProcAddr(this->instance.value, "vkDestroyDebugUtilsMessengerEXT")
+                        );
+
+                    destroy_debug_utils_messenger(
+                        this->instance.value,
+                        this->debug_messenger,
+                        nullptr
+                    );
+                }
+
                 if (this->instance.value != VK_NULL_HANDLE)
                 {
                     destroy_instance(this->instance);
@@ -78,6 +152,7 @@ namespace Mythology::Windowless
             Device_resources& operator=(Device_resources&&) = delete;
 
             Instance instance = {};
+            VkDebugUtilsMessengerEXT debug_messenger = {};
             Physical_device physical_device = {};
             Queue_family_index graphics_queue_family_index = {};
             Device device = {};
