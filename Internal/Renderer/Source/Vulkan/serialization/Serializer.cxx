@@ -86,6 +86,36 @@ namespace Maia::Renderer::Vulkan
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     ) noexcept;
 
+    
+    export struct Pipeline_resources
+    {
+        Pipeline_resources(
+            VkDevice device,
+            VkAllocationCallbacks const* allocation_callbacks,
+            nlohmann::json const& pipeline_json,
+            std::filesystem::path const& pipeline_json_parent_path,
+            std::pmr::polymorphic_allocator<> const& output_allocator,
+            std::pmr::polymorphic_allocator<> const& temporaries_allocator
+        ) noexcept;
+
+        Pipeline_resources(Pipeline_resources const&) noexcept = delete;
+        Pipeline_resources(Pipeline_resources&& other) noexcept;
+        
+        ~Pipeline_resources() noexcept;
+
+        Pipeline_resources& operator=(Pipeline_resources const&) noexcept = delete;
+        Pipeline_resources& operator=(Pipeline_resources&& other) noexcept;
+
+        VkDevice device;
+        VkAllocationCallbacks const* allocation_callbacks;
+        std::pmr::vector<VkRenderPass> render_passes;
+        std::pmr::vector<VkShaderModule> shader_modules;
+        std::pmr::vector<VkSampler> samplers;
+        std::pmr::vector<VkDescriptorSetLayout> descriptor_set_layouts;
+        std::pmr::vector<VkPipelineLayout> pipeline_layouts;
+        std::pmr::vector<VkPipeline> pipeline_states;
+    };
+
 
     export struct Commands_data
     {

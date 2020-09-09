@@ -1546,6 +1546,148 @@ namespace Maia::Renderer::Vulkan
         }
     }
 
+    Pipeline_resources::Pipeline_resources(
+        VkDevice const device,
+        VkAllocationCallbacks const* const allocation_callbacks,
+        nlohmann::json const& pipeline_json,
+        std::filesystem::path const& pipeline_json_parent_path,
+        std::pmr::polymorphic_allocator<> const& output_allocator,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
+    ) noexcept :
+        device{device},
+        allocation_callbacks{allocation_callbacks}
+    {
+        this->render_passes = 
+            pipeline_json.contains("render_passes") ?
+            Maia::Renderer::Vulkan::create_render_passes(
+                device,
+                allocation_callbacks,
+                pipeline_json.at("render_passes"),
+                output_allocator,
+                temporaries_allocator
+            ) :
+            std::pmr::vector<VkRenderPass>{output_allocator};
+
+        this->shader_modules = 
+            pipeline_json.contains("shader_modules") ?
+            Maia::Renderer::Vulkan::create_shader_modules(
+                device,
+                allocation_callbacks,
+                pipeline_json.at("shader_modules"),
+                pipeline_json_parent_path,
+                output_allocator,
+                temporaries_allocator
+            ) :
+            std::pmr::vector<VkShaderModule>{output_allocator};
+
+        this->samplers = 
+            pipeline_json.contains("samplers") ?
+            Maia::Renderer::Vulkan::create_samplers(
+                device,
+                allocation_callbacks,
+                pipeline_json.at("samplers"),
+                output_allocator
+            ) :
+            std::pmr::vector<VkSampler>{output_allocator};
+        
+        this->descriptor_set_layouts = 
+            pipeline_json.contains("descriptor_set_layouts") ?
+            Maia::Renderer::Vulkan::create_descriptor_set_layouts(
+                device,
+                allocation_callbacks,
+                samplers,
+                pipeline_json.at("descriptor_set_layouts"),
+                output_allocator,
+                temporaries_allocator
+            ) :
+            std::pmr::vector<VkDescriptorSetLayout>{output_allocator};
+
+        this->pipeline_layouts = 
+            pipeline_json.contains("pipeline_layouts") ?
+            Maia::Renderer::Vulkan::create_pipeline_layouts(
+                device,
+                allocation_callbacks,
+                descriptor_set_layouts,
+                pipeline_json.at("pipeline_layouts"),
+                output_allocator,
+                temporaries_allocator
+            ) :
+            std::pmr::vector<VkPipelineLayout>{output_allocator};
+
+        this->pipeline_states = 
+            pipeline_json.contains("pipeline_states") ?
+            create_pipeline_states(
+                device,
+                allocation_callbacks,
+                shader_modules,
+                pipeline_layouts,
+                render_passes,
+                pipeline_json.at("pipeline_states"),
+                output_allocator,
+                temporaries_allocator
+            ) :
+            std::pmr::vector<VkPipeline>{output_allocator};
+    }
+
+    Pipeline_resources::Pipeline_resources(Pipeline_resources&& other) noexcept :
+        device{other.device},
+        allocation_callbacks{other.allocation_callbacks},
+        render_passes{std::exchange(other.render_passes, {})},
+        shader_modules{std::exchange(other.shader_modules, {})},
+        samplers{std::exchange(other.samplers, {})},
+        descriptor_set_layouts{std::exchange(other.descriptor_set_layouts, {})},
+        pipeline_layouts{std::exchange(other.pipeline_layouts, {})},
+        pipeline_states{std::exchange(other.pipeline_states, {})}
+    {
+    }
+
+    Pipeline_resources::~Pipeline_resources() noexcept
+    {
+        for (VkPipeline const pipeline_state : pipeline_states)
+        {
+            vkDestroyPipeline(this->device, pipeline_state, this->allocation_callbacks);
+        }
+
+        for (VkPipelineLayout const pipeline_layout : pipeline_layouts)
+        {
+            vkDestroyPipelineLayout(this->device, pipeline_layout, this->allocation_callbacks);
+        }
+
+        for (VkDescriptorSetLayout const descriptor_set_layout : descriptor_set_layouts)
+        {
+            vkDestroyDescriptorSetLayout(this->device, descriptor_set_layout, this->allocation_callbacks);
+        }
+        
+        for (VkSampler const sampler : samplers)
+        {
+            vkDestroySampler(this->device, sampler, this->allocation_callbacks);
+        }
+
+        for (VkShaderModule const shader_module : shader_modules)
+        {
+            vkDestroyShaderModule(this->device, shader_module, this->allocation_callbacks);
+        }
+
+        for (VkRenderPass const render_passe : render_passes)
+        {
+            vkDestroyRenderPass(this->device, render_passe, this->allocation_callbacks);
+        }
+    }
+
+    Pipeline_resources& Pipeline_resources::operator=(Pipeline_resources&& other) noexcept
+    {
+        this->device = other.device;
+        this->allocation_callbacks = other.allocation_callbacks;
+        std::swap(this->render_passes, other.render_passes);
+        std::swap(this->shader_modules, other.shader_modules);
+        std::swap(this->samplers, other.samplers);
+        std::swap(this->descriptor_set_layouts, other.descriptor_set_layouts);
+        std::swap(this->pipeline_layouts, other.pipeline_layouts);
+        std::swap(this->pipeline_states, other.pipeline_states);
+
+        return *this;
+    }
+
     namespace
     {
         enum class Command_type : std::uint8_t
