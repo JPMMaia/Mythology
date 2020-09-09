@@ -1,4 +1,7 @@
 {
+    "output_image": {
+        "format": 41
+    },
     "render_passes": [],
     "shader_modules": [],
     "samplers": [],

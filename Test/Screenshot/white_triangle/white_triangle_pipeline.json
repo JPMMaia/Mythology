@@ -1,11 +1,17 @@
 {
+    "output_image": {
+        "format": 41
+    },
+    "output_framebuffer": {
+        "render_pass": 0
+    },
     "render_passes": [
         {
             "name": "Render_pass_0",
             "attachments": [
                 {
                     "flags": 0,
-                    "format": 50,
+                    "format": 41,
                     "samples": 1,
                     "load_operation": 2,
                     "store_operation": 1,

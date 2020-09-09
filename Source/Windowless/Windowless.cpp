@@ -236,13 +236,10 @@ namespace Mythology::Windowless
         std::pmr::vector<VkRenderPass> const render_passes = 
             Maia::Renderer::Vulkan::create_render_passes(device.value, nullptr, pipeline_json.at("render_passes"), output_allocator, temporaries_allocator);
 
-        VkFormat const color_image_format = 
-            !render_passes.empty() ?
-            pipeline_json.at("render_passes")[0].at("attachments")[0].at("format").get<VkFormat>() :
-            VK_FORMAT_R8G8B8A8_UINT;
+        VkFormat const color_image_format = pipeline_json.at("output_image").at("format").get<VkFormat>();
 
         VkExtent3D const color_image_extent{frame_dimensions.width, frame_dimensions.height, 1};
-        std::optional<VkRenderPass> const framebuffer_render_pass = !render_passes.empty() ? render_passes[0] : std::optional<VkRenderPass>{};
+        std::optional<VkRenderPass> const framebuffer_render_pass = !render_passes.empty() ? render_passes[pipeline_json.at("output_framebuffer").at("render_pass").get<std::size_t>()] : std::optional<VkRenderPass>{};
         Application_resources const application_resources{shaders_path, physical_device, device, color_image_format, color_image_extent, framebuffer_render_pass};
         VkDeviceMemory const color_image_device_memory = application_resources.device_memory_and_color_image.device_memory;
         VkImage const color_image = application_resources.device_memory_and_color_image.color_image.value;
