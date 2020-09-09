@@ -232,46 +232,30 @@ namespace Mythology::Windowless
         Command_pool const command_pool = device_resources.command_pool;
         
         Queue const queue = get_device_queue(device, graphics_queue_family_index, 0);
-        
-        std::pmr::vector<VkRenderPass> const render_passes = 
-            Maia::Renderer::Vulkan::create_render_passes(device.value, nullptr, pipeline_json.at("render_passes"), output_allocator, temporaries_allocator);
+
+        Maia::Renderer::Vulkan::Pipeline_resources const pipeline_resources
+        {
+            device.value,
+            nullptr,
+            pipeline_json,
+            pipeline_json_parent_path,
+            temporaries_allocator,
+            temporaries_allocator
+        };
 
         VkFormat const color_image_format = pipeline_json.at("output_image").at("format").get<VkFormat>();
 
         VkExtent3D const color_image_extent{frame_dimensions.width, frame_dimensions.height, 1};
-        std::optional<VkRenderPass> const framebuffer_render_pass = !render_passes.empty() ? render_passes[pipeline_json.at("output_framebuffer").at("render_pass").get<std::size_t>()] : std::optional<VkRenderPass>{};
+        std::optional<VkRenderPass> const framebuffer_render_pass = !pipeline_resources.render_passes.empty() ? pipeline_resources.render_passes[pipeline_json.at("output_framebuffer").at("render_pass").get<std::size_t>()] : std::optional<VkRenderPass>{};
         Application_resources const application_resources{shaders_path, physical_device, device, color_image_format, color_image_extent, framebuffer_render_pass};
         VkDeviceMemory const color_image_device_memory = application_resources.device_memory_and_color_image.device_memory;
         VkImage const color_image = application_resources.device_memory_and_color_image.color_image.value;
         std::optional<VkFramebuffer> const framebuffer = application_resources.framebuffer;
 
-        std::pmr::vector<VkShaderModule> const shader_modules = 
-            Maia::Renderer::Vulkan::create_shader_modules(device.value, nullptr, pipeline_json.at("shader_modules"), pipeline_json_parent_path, output_allocator, temporaries_allocator);
-
-        std::pmr::vector<VkSampler> const samplers = 
-            Maia::Renderer::Vulkan::create_samplers(device.value, nullptr, pipeline_json.at("samplers"), output_allocator);
-        
-        std::pmr::vector<VkDescriptorSetLayout> const descriptor_set_layouts = 
-            Maia::Renderer::Vulkan::create_descriptor_set_layouts(device.value, nullptr, samplers, pipeline_json.at("descriptor_set_layouts"), output_allocator, temporaries_allocator);
-
-        std::pmr::vector<VkPipelineLayout> const pipeline_layouts = 
-            Maia::Renderer::Vulkan::create_pipeline_layouts(device.value, nullptr, descriptor_set_layouts, pipeline_json.at("pipeline_layouts"), output_allocator, temporaries_allocator);
-
-        std::pmr::vector<VkPipeline> const pipeline_states = create_pipeline_states(
-            device.value,
-            nullptr,
-            shader_modules,
-            pipeline_layouts,
-            render_passes,
-            pipeline_json.at("pipeline_states"),
-            output_allocator,
-            temporaries_allocator
-        );
-
         Maia::Renderer::Vulkan::Commands_data const commands_data = Maia::Renderer::Vulkan::create_commands_data(
             pipeline_json.at("frame_commands"),
-            pipeline_states,
-            render_passes,
+            pipeline_resources.pipeline_states,
+            pipeline_resources.render_passes,
             output_allocator,
             temporaries_allocator
         );
