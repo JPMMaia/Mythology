@@ -15,4 +15,3 @@ target_module (
     IMPLEMENTATION "ImGui.cpp"
     IMPLEMENTATION_DEPENDS "ImGui" "Standard_library" "Vulkan" "maia.renderer.vulkan"
 )
-)
