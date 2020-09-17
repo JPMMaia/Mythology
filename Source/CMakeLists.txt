@@ -55,6 +55,8 @@ add_subdirectory ("ImGui")
 add_subdirectory ("Windowless")
 target_link_libraries (MaiaMythology PRIVATE Maia::Mythology::Windowless)
 
+add_subdirectory ("Image")
+
 if (MaiaMythology_use_SDL)
 
 	add_subdirectory ("SDL")
