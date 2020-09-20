@@ -17,7 +17,7 @@ namespace Maia::ECS
 	
 	std::ostream& operator<<(std::ostream& output_stream, Component_group_mask const value) noexcept
 	{
-		output_stream << value.value;
+		//output_stream << value.value;
 
 		return output_stream;
 	}

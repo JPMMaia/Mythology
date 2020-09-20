@@ -35,6 +35,7 @@ target_module (
 		"maia.ecs.component"
     IMPLEMENTATION "Component_group_mask.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library"
+        "maia.ecs.component"
 )
 
 target_module (
