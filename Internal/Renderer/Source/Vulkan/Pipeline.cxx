@@ -2,6 +2,7 @@ export module maia.renderer.vulkan.pipeline;
 
 import <vulkan/vulkan.h>;
 
+import <array>;
 import <memory_resource>;
 import <span>;
 import <vector>;
