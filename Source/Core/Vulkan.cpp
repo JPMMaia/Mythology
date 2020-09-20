@@ -165,16 +165,16 @@ namespace Mythology::Core::Vulkan
     {
         std::array<float, 1> constexpr queue_priorities{1.0f};
 
-        std::pmr::vector<Device_queue_create_info> const queue_create_infos = [queue_family_indices, &queue_priorities]() -> std::pmr::vector<Device_queue_create_info>
+        std::pmr::vector<VkDeviceQueueCreateInfo> const queue_create_infos = [queue_family_indices, &queue_priorities]() -> std::pmr::vector<VkDeviceQueueCreateInfo>
         {
-            std::pmr::vector<Device_queue_create_info> queue_create_infos;
+            std::pmr::vector<VkDeviceQueueCreateInfo> queue_create_infos;
             queue_create_infos.resize(queue_family_indices.size());
 
             std::transform(
                 queue_family_indices.begin(),
                 queue_family_indices.end(),
                 queue_create_infos.begin(),
-                [queue_priorities](Queue_family_index const index) -> Device_queue_create_info { return create_device_queue_create_info(index.value, 1, queue_priorities); }
+                [queue_priorities](Queue_family_index const index) -> VkDeviceQueueCreateInfo { return create_device_queue_create_info(index.value, 1, queue_priorities); }
             );
 
             return queue_create_infos;

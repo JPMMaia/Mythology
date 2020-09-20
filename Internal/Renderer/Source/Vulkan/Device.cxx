@@ -52,12 +52,12 @@ namespace Maia::Renderer::Vulkan
     }
 
 
-    export struct Device_queue_create_info
+    export struct VkDeviceQueueCreateInfo
     {
         VkDeviceQueueCreateInfo value;
     };
 
-    export Device_queue_create_info create_device_queue_create_info(std::uint32_t queue_family_index, std::uint32_t queue_count, std::span<float const> queue_priorities) noexcept;
+    export VkDeviceQueueCreateInfo create_device_queue_create_info(std::uint32_t queue_family_index, std::uint32_t queue_count, std::span<float const> queue_priorities) noexcept;
 
 
     export struct Device
@@ -65,7 +65,7 @@ namespace Maia::Renderer::Vulkan
         VkDevice value = VK_NULL_HANDLE;
     };
 
-    export Device create_device(VkPhysicalDevice physical_device, std::span<Device_queue_create_info const> queue_create_infos, std::span<char const* const> enabled_extensions) noexcept;
+    export Device create_device(VkPhysicalDevice physical_device, std::span<VkDeviceQueueCreateInfo const> queue_create_infos, std::span<char const* const> enabled_extensions) noexcept;
     export void destroy_device(Device device, VkAllocationCallbacks const* allocator = {}) noexcept;
 
 

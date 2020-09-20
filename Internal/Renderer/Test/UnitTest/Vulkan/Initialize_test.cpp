@@ -115,9 +115,9 @@ namespace Maia::Renderer::Vulkan::Unit_test
 
 			std::array<float, 1> const queue_priorities{ 1.0f };
 
-			std::pmr::vector<Device_queue_create_info> const queue_create_infos = [&queue_family_properties, &queue_priorities]() -> std::pmr::vector<Device_queue_create_info>
+			std::pmr::vector<VkDeviceQueueCreateInfo> const queue_create_infos = [&queue_family_properties, &queue_priorities]() -> std::pmr::vector<VkDeviceQueueCreateInfo>
 			{
-				std::pmr::vector<Device_queue_create_info> queue_create_infos;
+				std::pmr::vector<VkDeviceQueueCreateInfo> queue_create_infos;
 				queue_create_infos.reserve(queue_family_properties.size());
 
 				assert(queue_family_properties.size() <= std::numeric_limits<std::uint32_t>::max());

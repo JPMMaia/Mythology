@@ -54,7 +54,7 @@ namespace Maia::Renderer::Vulkan
     }
 
 
-    Device_queue_create_info create_device_queue_create_info(std::uint32_t const queue_family_index, std::uint32_t const queue_count, std::span<float const> const queue_priorities) noexcept
+    VkDeviceQueueCreateInfo create_device_queue_create_info(std::uint32_t const queue_family_index, std::uint32_t const queue_count, std::span<float const> const queue_priorities) noexcept
     {
         assert(queue_count == queue_priorities.size());
 
@@ -69,18 +69,15 @@ namespace Maia::Renderer::Vulkan
     }
 
 
-    Device create_device(VkPhysicalDevice const physical_device, std::span<Device_queue_create_info const> const queue_create_infos, std::span<char const* const> const enabled_extensions) noexcept
+    Device create_device(VkPhysicalDevice const physical_device, std::span<VkDeviceQueueCreateInfo const> const queue_create_infos, std::span<char const* const> const enabled_extensions) noexcept
     {
-        static_assert(std::is_standard_layout_v<Device_queue_create_info>, "Must be standard layout so that Device_queue_create_info and Device_queue_create_info.value are pointer-interconvertible");
-        static_assert(sizeof(Device_queue_create_info) == sizeof(VkDeviceQueueCreateInfo), "Device_queue_create_info must only contain VkDeviceQueueCreateInfo since using Device_queue_create_info* as a contiguous array");
-
         VkDeviceCreateInfo const create_info
         {
             .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
             .pNext = nullptr,
             .flags = 0,
             .queueCreateInfoCount = static_cast<std::uint32_t>(queue_create_infos.size()),
-            .pQueueCreateInfos = reinterpret_cast<VkDeviceQueueCreateInfo const*>(queue_create_infos.data()),
+            .pQueueCreateInfos = queue_create_infos.data(),
             .enabledExtensionCount = static_cast<std::uint32_t>(enabled_extensions.size()),
             .ppEnabledExtensionNames = enabled_extensions.data(),
             .pEnabledFeatures = nullptr
