@@ -33,15 +33,15 @@ namespace Maia::Renderer::Vulkan
 
     bool has_graphics_capabilities(VkQueueFamilyProperties const& queue_family_properties) noexcept
     {
-        return queue_family_properties.value.queueFlags | VkQueueFlagBits::VK_QUEUE_GRAPHICS_BIT;
+        return queue_family_properties.queueFlags | VkQueueFlagBits::VK_QUEUE_GRAPHICS_BIT;
     }
     bool has_compute_capabilities(VkQueueFamilyProperties const& queue_family_properties) noexcept
     {
-        return queue_family_properties.value.queueFlags | VkQueueFlagBits::VK_QUEUE_COMPUTE_BIT;
+        return queue_family_properties.queueFlags | VkQueueFlagBits::VK_QUEUE_COMPUTE_BIT;
     }
     bool has_transfer_capabilities(VkQueueFamilyProperties const& queue_family_properties) noexcept
     {
-        return queue_family_properties.value.queueFlags | VkQueueFlagBits::VK_QUEUE_TRANSFER_BIT;
+        return queue_family_properties.queueFlags | VkQueueFlagBits::VK_QUEUE_TRANSFER_BIT;
     }
 
     bool operator==(Queue_family_index const lhs, Queue_family_index const rhs) noexcept
