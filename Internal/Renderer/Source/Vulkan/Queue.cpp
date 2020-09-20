@@ -57,7 +57,7 @@ namespace Maia::Renderer::Vulkan
                 queue.value,
                 1,
                 &submit_info,
-                fence.has_value() ? fence->value : VK_NULL_HANDLE
+                fence.has_value() ? *fence : VK_NULL_HANDLE
             )
         );
     }
