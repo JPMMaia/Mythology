@@ -478,12 +478,12 @@ namespace Mythology::SDL
                     destroy_fence(this->device, fence, {});
                 }
 
-                for (Semaphore const semaphore : finished_frames_semaphores)
+                for (VkSemaphore const semaphore : finished_frames_semaphores)
                 {
                     destroy_semaphore(this->device, semaphore, {});
                 }
 
-                for (Semaphore const semaphore : available_frames_semaphores)
+                for (VkSemaphore const semaphore : available_frames_semaphores)
                 {
                     destroy_semaphore(this->device, semaphore, {});
                 }
@@ -493,8 +493,8 @@ namespace Mythology::SDL
             Synchronization_resources& operator=(Synchronization_resources&&) noexcept = delete;
 
             VkDevice device;
-            std::pmr::vector<Semaphore> available_frames_semaphores;
-            std::pmr::vector<Semaphore> finished_frames_semaphores;
+            std::pmr::vector<VkSemaphore> available_frames_semaphores;
+            std::pmr::vector<VkSemaphore> finished_frames_semaphores;
             std::pmr::vector<VkFence> available_frames_fences;
         };
 
@@ -1073,8 +1073,8 @@ namespace Mythology::SDL
 
         std::size_t constexpr pipeline_length = 3;
         Synchronization_resources synchronization_resources{pipeline_length, device};
-        std::span<Semaphore> const available_frames_semaphores = synchronization_resources.available_frames_semaphores;
-        std::span<Semaphore> const finished_frames_semaphores = synchronization_resources.finished_frames_semaphores;
+        std::span<VkSemaphore> const available_frames_semaphores = synchronization_resources.available_frames_semaphores;
+        std::span<VkSemaphore> const finished_frames_semaphores = synchronization_resources.finished_frames_semaphores;
         std::span<VkFence> const available_frames_fences = synchronization_resources.available_frames_fences;
 
         Queue const graphics_queue = get_device_queue(device, graphics_queue_family_index, 0);
@@ -1487,7 +1487,7 @@ namespace Mythology::SDL
 
                     if (is_fence_signaled(device, available_frames_fence))
                     {
-                        Semaphore const available_frame_semaphore = available_frames_semaphores[frame_index.value];
+                        VkSemaphore const available_frame_semaphore = available_frames_semaphores[frame_index.value];
                         std::optional<Swapchain_image_index> const swapchain_image_index =
                             acquire_next_image(device, swapchain_resources.swapchain, 0, available_frame_semaphore, {});
 
@@ -1548,7 +1548,7 @@ namespace Mythology::SDL
                             }
                             end_command_buffer(command_buffer);
 
-                            Semaphore const finished_frame_semaphore = finished_frames_semaphores[frame_index.value];
+                            VkSemaphore const finished_frame_semaphore = finished_frames_semaphores[frame_index.value];
                             {
                                 std::array<VkPipelineStageFlags, 1> constexpr wait_destination_stage_masks = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
                                 reset_fences(device, {&available_frames_fence, 1});

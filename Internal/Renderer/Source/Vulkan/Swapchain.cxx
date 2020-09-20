@@ -2,7 +2,6 @@ export module maia.renderer.vulkan.swapchain;
 
 import maia.renderer.vulkan.image;
 import maia.renderer.vulkan.queue;
-import maia.renderer.vulkan.semaphore;
 import maia.renderer.vulkan.surface;
 
 import <vulkan/vulkan.h>;
@@ -68,7 +67,7 @@ namespace Maia::Renderer::Vulkan
         VkDevice device,
         Swapchain swapchain,
         std::uint64_t timeout,
-        std::optional<Semaphore> semaphore,
+        std::optional<VkSemaphore> semaphore,
         std::optional<VkFence> fence
     ) noexcept;
 

@@ -1,6 +1,5 @@
 export module maia.renderer.vulkan.semaphore;
 
-
 import <vulkan/vulkan.h>;
 
 import <memory_resource>;
@@ -10,17 +9,12 @@ import <vector>;
 
 namespace Maia::Renderer::Vulkan
 {
-    export struct Semaphore
-    {
-        VkSemaphore value;
-    };
-
     export struct Semaphore_value
     {
         std::uint64_t value = 0;
     };
 
-    export Semaphore create_semaphore(
+    export VkSemaphore create_semaphore(
         VkDevice device,
         VkSemaphoreType semaphore_type,
         Semaphore_value initial_value = {},
@@ -28,19 +22,19 @@ namespace Maia::Renderer::Vulkan
         VkAllocationCallbacks const* allocator = {}
     ) noexcept;
 
-    export std::pmr::vector<Semaphore> create_semaphores(
+    export std::pmr::vector<VkSemaphore> create_semaphores(
         std::size_t count,
         VkDevice device,
         VkSemaphoreType semaphore_type,
         Semaphore_value initial_value = {},
         VkSemaphoreCreateFlags flags = {},
         VkAllocationCallbacks const* vulkan_allocator = {},
-        std::pmr::polymorphic_allocator<Semaphore> vector_allocator = {}
+        std::pmr::polymorphic_allocator<VkSemaphore> vector_allocator = {}
     ) noexcept;
 
     export void destroy_semaphore(
         VkDevice device,
-        Semaphore semaphore,
+        VkSemaphore semaphore,
         VkAllocationCallbacks const* allocator
     ) noexcept;
 }

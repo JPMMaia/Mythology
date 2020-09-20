@@ -1,7 +1,6 @@
 export module maia.renderer.vulkan.queue;
 
 import maia.renderer.vulkan.command_buffer;
-import maia.renderer.vulkan.semaphore;
 
 import <vulkan/vulkan.h>;
 
@@ -25,10 +24,10 @@ namespace Maia::Renderer::Vulkan
     
     export void queue_submit(
         Queue queue,
-        std::span<Semaphore const> semaphores_to_wait,
+        std::span<VkSemaphore const> semaphores_to_wait,
         std::span<VkPipelineStageFlags const> wait_destination_stage_mask,
         std::span<Command_buffer const> command_buffers,
-        std::span<Semaphore const> semaphores_to_signal,
+        std::span<VkSemaphore const> semaphores_to_signal,
         std::optional<VkFence> fence
     ) noexcept;
 }
