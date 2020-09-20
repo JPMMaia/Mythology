@@ -1,6 +1,5 @@
 export module maia.renderer.vulkan.command_buffer;
 
-import maia.renderer.vulkan.allocation_callbacks;
 import maia.renderer.vulkan.command_pool;
 import maia.renderer.vulkan.device;
 import maia.renderer.vulkan.render_pass;
@@ -25,7 +24,7 @@ namespace Maia::Renderer::Vulkan
         Command_pool command_pool,
         VkCommandBufferLevel level,
         std::uint32_t command_buffer_count,
-        std::optional<Allocation_callbacks> vulkan_allocator,
+        VkAllocationCallbacks const* vulkan_allocator,
         std::pmr::polymorphic_allocator<Command_buffer> const& pmr_allocator = {}
     ) noexcept;
 

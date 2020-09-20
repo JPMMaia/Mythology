@@ -1,6 +1,5 @@
 export module maia.renderer.vulkan.swapchain;
 
-import maia.renderer.vulkan.allocation_callbacks;
 import maia.renderer.vulkan.device;
 import maia.renderer.vulkan.fence;
 import maia.renderer.vulkan.image;
@@ -45,13 +44,13 @@ namespace Maia::Renderer::Vulkan
         VkPresentModeKHR present_mode = VK_PRESENT_MODE_IMMEDIATE_KHR,
         bool clipped = true,
         Swapchain old_swapchain = {},
-        std::optional<Allocation_callbacks> allocator = {}
+        VkAllocationCallbacks const* allocator = {}
     ) noexcept;
 
     export void destroy_swapchain(
         Device device,
         Swapchain swapchain,
-        std::optional<Allocation_callbacks> allocator = {}
+        VkAllocationCallbacks const* allocator = {}
     ) noexcept;
 
 

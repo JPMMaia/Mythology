@@ -1,6 +1,5 @@
 module maia.renderer.vulkan.semaphore;
 
-import maia.renderer.vulkan.allocation_callbacks;
 import maia.renderer.vulkan.check;
 import maia.renderer.vulkan.device;
 
@@ -18,7 +17,7 @@ namespace Maia::Renderer::Vulkan
         VkSemaphoreType const semaphore_type,
         Semaphore_value const initial_value,
         VkSemaphoreCreateFlags const flags,
-        std::optional<Allocation_callbacks> const allocator
+        VkAllocationCallbacks const* const allocator
     ) noexcept
     {
         VkSemaphoreTypeCreateInfo const type_create_info
@@ -41,7 +40,7 @@ namespace Maia::Renderer::Vulkan
             vkCreateSemaphore(
                 device.value, 
                 &create_info,
-                allocator.has_value() ? &allocator->value : nullptr,
+                allocator,
                 &semaphore
             )
         );
@@ -55,7 +54,7 @@ namespace Maia::Renderer::Vulkan
         VkSemaphoreType const semaphore_type,
         Semaphore_value const initial_value,
         VkSemaphoreCreateFlags const flags,
-        std::optional<Allocation_callbacks> const vulkan_allocator,
+        VkAllocationCallbacks const* const vulkan_allocator,
         std::pmr::polymorphic_allocator<Semaphore> vector_allocator
     ) noexcept
     {
@@ -74,13 +73,13 @@ namespace Maia::Renderer::Vulkan
     void destroy_semaphore(
         Device const device,
         Semaphore const semaphore,
-        std::optional<Allocation_callbacks> const allocator
+        VkAllocationCallbacks const* const allocator
     ) noexcept
     {
         vkDestroySemaphore(
             device.value,
             semaphore.value,
-            allocator.has_value() ? &allocator->value : nullptr
+            allocator
         );
     }
 }

@@ -1,6 +1,5 @@
 module maia.renderer.vulkan.swapchain;
 
-import maia.renderer.vulkan.allocation_callbacks;
 import maia.renderer.vulkan.check;
 import maia.renderer.vulkan.device;
 import maia.renderer.vulkan.fence;
@@ -36,7 +35,7 @@ namespace Maia::Renderer::Vulkan
         VkPresentModeKHR const present_mode,
         bool const clipped,
         Swapchain const old_swapchain,
-        std::optional<Allocation_callbacks> const allocator
+        VkAllocationCallbacks const* const allocator
     ) noexcept
     {
         static_assert(std::is_standard_layout_v<Queue_family_index>, "Must be standard layout so that Queue_family_index and Queue_family_index.value are pointer-interconvertible");
@@ -69,7 +68,7 @@ namespace Maia::Renderer::Vulkan
             vkCreateSwapchainKHR(
                 device.value,
                 &create_info,
-                allocator.has_value() ? &allocator->value : nullptr,
+                allocator,
                 &swapchain
             )
         );
@@ -80,13 +79,13 @@ namespace Maia::Renderer::Vulkan
     void destroy_swapchain(
         Device const device,
         Swapchain const swapchain,
-        std::optional<Allocation_callbacks> const allocator
+        VkAllocationCallbacks const* const allocator
     ) noexcept
     {
         vkDestroySwapchainKHR(
             device.value,
             swapchain.value,
-            allocator.has_value() ? &allocator->value : nullptr
+            allocator
         );
     }
 

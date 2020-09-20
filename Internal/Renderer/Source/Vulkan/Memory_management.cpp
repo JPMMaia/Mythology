@@ -1,6 +1,5 @@
 module maia.renderer.vulkan.memory_management;
 
-import maia.renderer.vulkan.allocation_callbacks;
 import maia.renderer.vulkan.buffer;
 import maia.renderer.vulkan.device;
 import maia.renderer.vulkan.device_memory;

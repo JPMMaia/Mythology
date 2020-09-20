@@ -1,6 +1,5 @@
 export module maia.renderer.vulkan.command_pool;
 
-import maia.renderer.vulkan.allocation_callbacks;
 import maia.renderer.vulkan.device;
 
 import <vulkan/vulkan.h>;
@@ -18,7 +17,7 @@ namespace Maia::Renderer::Vulkan
         Device device,
         VkCommandPoolCreateFlags flags,
         Queue_family_index queue_family_index,
-        std::optional<Allocation_callbacks> allocator
+        VkAllocationCallbacks const* allocator
     ) noexcept;
 
     export void reset_command_pool(
@@ -30,6 +29,6 @@ namespace Maia::Renderer::Vulkan
     export void destroy_command_pool(
         Device device,
         Command_pool command_pool,
-        std::optional<Allocation_callbacks> allocator
+        VkAllocationCallbacks const* allocator
     ) noexcept;
 }

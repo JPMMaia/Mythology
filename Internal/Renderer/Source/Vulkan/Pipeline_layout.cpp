@@ -1,6 +1,5 @@
 module maia.renderer.vulkan.pipeline_layout;
 
-import maia.renderer.vulkan.allocation_callbacks;
 import maia.renderer.vulkan.check;
 import maia.renderer.vulkan.device;
 

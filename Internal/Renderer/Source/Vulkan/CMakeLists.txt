@@ -15,13 +15,6 @@ target_module (
 
 target_module (
     MaiaRendererVulkan
-    "maia.renderer.vulkan.allocation_callbacks"
-    INTERFACE "Allocation_callbacks.cxx"
-    INTERFACE_DEPENDS "Vulkan"
-)
-
-target_module (
-    MaiaRendererVulkan
     "maia.renderer.vulkan.instance"
     INTERFACE "Instance.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
@@ -70,11 +63,9 @@ target_module (
     "maia.renderer.vulkan.fence"
     INTERFACE "Fence.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
-        "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.device"
     IMPLEMENTATION "Fence.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan"
-        "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.check"
         "maia.renderer.vulkan.device"
 )
@@ -84,11 +75,9 @@ target_module (
     "maia.renderer.vulkan.semaphore"
     INTERFACE "Semaphore.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
-        "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.device"
     IMPLEMENTATION "Semaphore.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan"
-        "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.check"
         "maia.renderer.vulkan.device"
 )
@@ -126,11 +115,9 @@ target_module (
     "maia.renderer.vulkan.pipeline_layout"
     INTERFACE "Pipeline_layout.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
-        "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.device"
     IMPLEMENTATION "Pipeline_layout.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" 
-        "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.check"
         "maia.renderer.vulkan.device"
 )
@@ -140,11 +127,9 @@ target_module (
     "maia.renderer.vulkan.buffer"
     INTERFACE "Buffer.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
-        "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.device"
     IMPLEMENTATION "Buffer.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan"
-        "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.check"
         "maia.renderer.vulkan.device"
 )
@@ -154,11 +139,9 @@ target_module (
     "maia.renderer.vulkan.image"
     INTERFACE "Image.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
-        "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.device"
     IMPLEMENTATION "Image.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan"
-        "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.check"
         "maia.renderer.vulkan.device"
 )
@@ -168,14 +151,12 @@ target_module (
     "maia.renderer.vulkan.device_memory"
     INTERFACE "Device_memory.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
-        "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.buffer"
         "maia.renderer.vulkan.device"
         "maia.renderer.vulkan.image"
         "maia.renderer.vulkan.physical_device"
     IMPLEMENTATION "Device_memory.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" 
-        "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.buffer"
         "maia.renderer.vulkan.check"
         "maia.renderer.vulkan.device"
@@ -188,11 +169,9 @@ target_module (
     "maia.renderer.vulkan.render_pass"
     INTERFACE "Render_pass.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
-        "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.device"
     IMPLEMENTATION "Render_pass.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" 
-        "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.check"
         "maia.renderer.vulkan.device"
 )
@@ -202,11 +181,9 @@ target_module (
     "maia.renderer.vulkan.shader_module"
     INTERFACE "Shader_module.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
-        "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.device"
     IMPLEMENTATION "Shader_module.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" 
-        "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.check"
         "maia.renderer.vulkan.device"
 )
@@ -216,11 +193,9 @@ target_module (
     "maia.renderer.vulkan.command_pool"
     INTERFACE "Command_pool.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
-        "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.device"
     IMPLEMENTATION "Command_pool.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" 
-        "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.check"
         "maia.renderer.vulkan.device"
 )
@@ -230,13 +205,11 @@ target_module (
     "maia.renderer.vulkan.command_buffer"
     INTERFACE "Command_buffer.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
-        "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.command_pool"
         "maia.renderer.vulkan.device"
         "maia.renderer.vulkan.render_pass"
     IMPLEMENTATION "Command_buffer.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" 
-        "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.check"
         "maia.renderer.vulkan.command_pool"
         "maia.renderer.vulkan.device"
@@ -272,7 +245,6 @@ target_module (
     "maia.renderer.vulkan.swapchain"
     INTERFACE "Swapchain.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
-        "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.device"
         "maia.renderer.vulkan.fence"
         "maia.renderer.vulkan.image"
@@ -281,7 +253,6 @@ target_module (
         "maia.renderer.vulkan.surface"
     IMPLEMENTATION "Swapchain.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" 
-        "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.check"
         "maia.renderer.vulkan.device"
         "maia.renderer.vulkan.fence"
@@ -299,7 +270,6 @@ target_module (
         "maia.renderer.vulkan.device_memory"
     IMPLEMENTATION "Memory_management.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan"
-        "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.buffer"
         "maia.renderer.vulkan.device"
         "maia.renderer.vulkan.device_memory"
@@ -312,7 +282,6 @@ target_module (
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
     IMPLEMENTATION "Descriptor_pool.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan"
-        "maia.renderer.vulkan.allocation_callbacks"
 )
 
 target_module (
@@ -320,7 +289,6 @@ target_module (
     "maia.renderer.vulkan"
     INTERFACE "Module.cxx"
     INTERFACE_DEPENDS
-        "maia.renderer.vulkan.allocation_callbacks"
         "maia.renderer.vulkan.buffer"
         "maia.renderer.vulkan.check"
         "maia.renderer.vulkan.command_buffer"

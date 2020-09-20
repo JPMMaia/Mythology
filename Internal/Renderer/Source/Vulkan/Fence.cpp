@@ -1,6 +1,5 @@
 module maia.renderer.vulkan.fence;
 
-import maia.renderer.vulkan.allocation_callbacks;
 import maia.renderer.vulkan.check;
 import maia.renderer.vulkan.device;
 
@@ -16,7 +15,7 @@ namespace Maia::Renderer::Vulkan
     Fence create_fence(
         Device const device,
         VkFenceCreateFlags const flags,
-        std::optional<Allocation_callbacks> const allocator
+        VkAllocationCallbacks const* const allocator
     ) noexcept
     {
         VkFenceCreateInfo const create_info
@@ -31,7 +30,7 @@ namespace Maia::Renderer::Vulkan
             vkCreateFence(
                 device.value,
                 &create_info,
-                allocator.has_value() ? &allocator->value : nullptr,
+                allocator,
                 &fence
             )
         );
@@ -43,7 +42,7 @@ namespace Maia::Renderer::Vulkan
         std::size_t const count,
         Device const device,
         VkFenceCreateFlags const flags,
-        std::optional<Allocation_callbacks> const vulkan_allocator,
+        VkAllocationCallbacks const* const vulkan_allocator,
         std::pmr::polymorphic_allocator<Fence> vector_allocator
     )
     {
@@ -62,13 +61,13 @@ namespace Maia::Renderer::Vulkan
     void destroy_fence(
         Device const device,
         Fence const fence,
-        std::optional<Allocation_callbacks> const allocator
+        VkAllocationCallbacks const* const allocator
     ) noexcept
     {
         vkDestroyFence(
             device.value,
             fence.value,
-            allocator.has_value() ? &allocator->value : nullptr
+            allocator
         );
     }
 

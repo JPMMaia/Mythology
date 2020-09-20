@@ -1,6 +1,5 @@
 module maia.renderer.vulkan.image;
 
-import maia.renderer.vulkan.allocation_callbacks;
 import maia.renderer.vulkan.check;
 import maia.renderer.vulkan.device;
 
@@ -34,7 +33,7 @@ namespace Maia::Renderer::Vulkan
 
     Image create_image(
         Device const device,
-        std::optional<Allocation_callbacks> const allocator,
+        VkAllocationCallbacks const* const allocator,
         VkImageType const image_type,
         VkFormat const format,
         VkExtent3D const extent,
@@ -68,19 +67,19 @@ namespace Maia::Renderer::Vulkan
             .initialLayout = initial_layout,
         };
 
-        return {create_image(device.value, create_info, allocator.has_value() ? &allocator->value : nullptr)};
+        return {create_image(device.value, create_info, allocator)};
     }
 
     void destroy_image(
         Device const device,
         Image const image,
-        std::optional<Allocation_callbacks> const allocator
+        VkAllocationCallbacks const* const allocator
     ) noexcept
     {
         vkDestroyImage(
             device.value,
             image.value,
-            allocator.has_value() ? &allocator->value : nullptr
+            allocator
         );
     }
 
@@ -110,7 +109,7 @@ namespace Maia::Renderer::Vulkan
         VkFormat const format,
         Component_mapping const components,
         VkImageSubresourceRange const subresource_range,
-        std::optional<Allocation_callbacks> const allocator
+        VkAllocationCallbacks const* const allocator
     ) noexcept
     {
         VkImageViewCreateInfo const create_info
@@ -130,7 +129,7 @@ namespace Maia::Renderer::Vulkan
             vkCreateImageView(
                 device.value,
                 &create_info,
-                allocator.has_value() ? &allocator->value : nullptr,
+                allocator,
                 &image_view
             )
         );
@@ -141,13 +140,13 @@ namespace Maia::Renderer::Vulkan
     void destroy_image_view(
         Device const device,
         Image_view const image_view,
-        std::optional<Allocation_callbacks> const allocator
+        VkAllocationCallbacks const* const allocator
     ) noexcept
     {
         vkDestroyImageView(
             device.value,
             image_view.value,
-            allocator.has_value() ? &allocator->value : nullptr
+            allocator
         );
     }
 }

@@ -1,6 +1,5 @@
 export module maia.renderer.vulkan.image;
 
-import maia.renderer.vulkan.allocation_callbacks;
 import maia.renderer.vulkan.device;
 
 import <vulkan/vulkan.h>;
@@ -35,7 +34,7 @@ namespace Maia::Renderer::Vulkan
 
     export Image create_image(
         Device device,
-        std::optional<Allocation_callbacks> allocator,
+        VkAllocationCallbacks const* allocator,
         VkImageType image_type,
         VkFormat format,
         VkExtent3D extent,
@@ -53,7 +52,7 @@ namespace Maia::Renderer::Vulkan
     export void destroy_image(
         Device device,
         Image image,
-        std::optional<Allocation_callbacks> allocator
+        VkAllocationCallbacks const* allocator
     ) noexcept;
 
     
@@ -88,12 +87,12 @@ namespace Maia::Renderer::Vulkan
         VkFormat format,
         Component_mapping components,
         VkImageSubresourceRange subresource_range,
-        std::optional<Allocation_callbacks> allocator
+        VkAllocationCallbacks const* allocator
     ) noexcept;
 
     export void destroy_image_view(
         Device device,
         Image_view image_view,
-        std::optional<Allocation_callbacks> allocator
+        VkAllocationCallbacks const* allocator
     ) noexcept;
 }

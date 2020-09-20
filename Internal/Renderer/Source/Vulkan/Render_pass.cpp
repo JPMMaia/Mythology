@@ -1,6 +1,5 @@
 module maia.renderer.vulkan.render_pass;
 
-import maia.renderer.vulkan.allocation_callbacks;
 import maia.renderer.vulkan.check;
 import maia.renderer.vulkan.device;
 
@@ -16,7 +15,7 @@ namespace Maia::Renderer::Vulkan
         std::span<VkAttachmentDescription const> const attachment_descriptions,
         std::span<VkSubpassDescription const> const subpass_descriptions,
         std::span<VkSubpassDependency const> const subpass_dependencies,
-        std::optional<Allocation_callbacks> const allocator
+        VkAllocationCallbacks const* const allocator
     ) noexcept
     {
         VkRenderPassCreateInfo const create_info
@@ -37,7 +36,7 @@ namespace Maia::Renderer::Vulkan
             vkCreateRenderPass(
                 device.value,
                 &create_info,
-                allocator.has_value() ? &allocator->value : nullptr,
+                allocator,
                 &render_pass
             )
         );
@@ -48,13 +47,13 @@ namespace Maia::Renderer::Vulkan
     void destroy_render_pass(
         Device const device,
         Render_pass const render_pass,
-        std::optional<Allocation_callbacks> const allocator
+        VkAllocationCallbacks const* const allocator
     ) noexcept
     {
         vkDestroyRenderPass(
             device.value,
             render_pass.value,
-            allocator.has_value() ? &allocator->value : nullptr
+            allocator
         );
     }
 
@@ -80,7 +79,7 @@ namespace Maia::Renderer::Vulkan
         Render_pass const render_pass,
         std::span<VkImageView const> const attachments,
         Framebuffer_dimensions const dimensions,
-        std::optional<Allocation_callbacks> const allocator
+        VkAllocationCallbacks const* const allocator
     ) noexcept
     {
         VkFramebufferCreateInfo const create_info
@@ -101,7 +100,7 @@ namespace Maia::Renderer::Vulkan
             vkCreateFramebuffer(
                 device.value,
                 &create_info,
-                allocator.has_value() ? &allocator->value : nullptr,
+                allocator,
                 &framebuffer
             )
         );
@@ -112,13 +111,13 @@ namespace Maia::Renderer::Vulkan
     void destroy_framebuffer(
         Device const device,
         Framebuffer const framebuffer,
-        std::optional<Allocation_callbacks> const allocator
+        VkAllocationCallbacks const* const allocator
     ) noexcept
     {
         vkDestroyFramebuffer(
             device.value, 
             framebuffer.value,
-            allocator.has_value() ? &allocator->value : nullptr
+            allocator
         );
     }
 }

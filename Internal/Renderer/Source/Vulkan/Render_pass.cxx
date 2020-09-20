@@ -1,6 +1,5 @@
 export module maia.renderer.vulkan.render_pass;
 
-import maia.renderer.vulkan.allocation_callbacks;
 import maia.renderer.vulkan.device;
 import maia.renderer.vulkan.device;
 
@@ -22,13 +21,13 @@ namespace Maia::Renderer::Vulkan
         std::span<VkAttachmentDescription const> attachment_descriptions,
         std::span<VkSubpassDescription const> subpass_descriptions,
         std::span<VkSubpassDependency const> subpass_dependencies,
-        std::optional<Allocation_callbacks> allocator
+        VkAllocationCallbacks const* allocator
     ) noexcept;
 
     export void destroy_render_pass(
         Device device,
         Render_pass render_pass,
-        std::optional<Allocation_callbacks> allocator
+        VkAllocationCallbacks const* allocator
     ) noexcept;
 
 
@@ -56,12 +55,12 @@ namespace Maia::Renderer::Vulkan
         Render_pass render_pass,
         std::span<VkImageView const> attachments,
         Framebuffer_dimensions dimensions,
-        std::optional<Allocation_callbacks> allocator
+        VkAllocationCallbacks const* allocator
     ) noexcept;
 
     export void destroy_framebuffer(
         Device device,
         Framebuffer framebuffer,
-        std::optional<Allocation_callbacks> allocator
+        VkAllocationCallbacks const* allocator
     ) noexcept;
 }

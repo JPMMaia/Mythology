@@ -1,6 +1,5 @@
 export module maia.renderer.vulkan.buffer;
 
-import maia.renderer.vulkan.allocation_callbacks;
 import maia.renderer.vulkan.device;
 
 import <vulkan/vulkan.h>;

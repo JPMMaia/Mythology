@@ -1,6 +1,5 @@
 export module maia.renderer.vulkan.shader_module;
 
-import maia.renderer.vulkan.allocation_callbacks;
 import maia.renderer.vulkan.device;
 
 import <vulkan/vulkan.h>;
@@ -21,10 +20,10 @@ namespace Maia::Renderer::Vulkan
         Device device,
         VkShaderModuleCreateFlags flags,
         std::span<uint32_t const> code,
-        std::optional<Allocation_callbacks> allocator = {}) noexcept;
+        VkAllocationCallbacks const* allocator = {}) noexcept;
 
     export void destroy_shader_module(
         Device device,
         Shader_module shader_module,
-        std::optional<Allocation_callbacks> allocator = {}) noexcept;
+        VkAllocationCallbacks const* allocator = {}) noexcept;
 }

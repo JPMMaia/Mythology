@@ -1,6 +1,5 @@
 module maia.renderer.vulkan.device;
 
-import maia.renderer.vulkan.allocation_callbacks;
 import maia.renderer.vulkan.check;
 import maia.renderer.vulkan.physical_device;
 
@@ -98,8 +97,8 @@ namespace Maia::Renderer::Vulkan
         return {device};
     }
 
-    void destroy_device(Device const device, std::optional<Allocation_callbacks> const allocator) noexcept
+    void destroy_device(Device const device, VkAllocationCallbacks const* const allocator) noexcept
     {
-        vkDestroyDevice(device.value, allocator.has_value() ? &allocator->value : nullptr);
+        vkDestroyDevice(device.value, allocator);
     }
 }

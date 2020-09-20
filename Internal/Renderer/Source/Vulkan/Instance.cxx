@@ -1,6 +1,5 @@
 export module maia.renderer.vulkan.instance;
 
-import maia.renderer.vulkan.allocation_callbacks;
 
 import <vulkan/vulkan.h>;
 
@@ -51,6 +50,6 @@ namespace Maia::Renderer::Vulkan
 
     export void destroy_instance(
         Instance instance,
-        std::optional<Allocation_callbacks> allocator = {}
+        VkAllocationCallbacks const* allocator = {}
     ) noexcept;
 }
