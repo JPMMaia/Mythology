@@ -1,8 +1,5 @@
 export module maia.renderer.vulkan.command_buffer;
 
-import maia.renderer.vulkan.command_pool;
-import maia.renderer.vulkan.render_pass;
-
 import <vulkan/vulkan.h>;
 
 import <cstdint>;

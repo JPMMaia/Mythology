@@ -192,10 +192,11 @@ target_module (
     PUBLIC
     "maia.renderer.vulkan.command_buffer"
     INTERFACE "Command_buffer.cxx"
-    INTERFACE_DEPENDS "Standard_library" "Vulkan"
+    INTERFACE_DEPENDS "Standard_library" "Vulkan" "maia.renderer.vulkan.device"
     IMPLEMENTATION "Command_buffer.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" 
         "maia.renderer.vulkan.check"
+        "maia.renderer.vulkan.device"
 )
 
 target_module (
@@ -249,7 +250,7 @@ target_module (
     INTERFACE "Descriptor_pool.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
     IMPLEMENTATION "Descriptor_pool.cpp"
-    IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan"
+    IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" "maia.renderer.vulkan.check"
 )
 
 target_module (

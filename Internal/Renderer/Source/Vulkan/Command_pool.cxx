@@ -2,6 +2,8 @@ export module maia.renderer.vulkan.command_pool;
 
 import <vulkan/vulkan.h>;
 
+import maia.renderer.vulkan.device;
+
 namespace Maia::Renderer::Vulkan
 {
     export VkCommandPool create_command_pool(
