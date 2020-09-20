@@ -43,7 +43,7 @@ namespace Maia::Renderer::Vulkan
     ) noexcept
     {
         check_result(
-            vkResetCommandPool(device, command_pool.value, flags));
+            vkResetCommandPool(device, command_pool, flags));
     }
 
     void destroy_command_pool(
@@ -54,7 +54,7 @@ namespace Maia::Renderer::Vulkan
     {
         vkDestroyCommandPool(
             device, 
-            command_pool.value,
+            command_pool,
             allocator
         );
     }

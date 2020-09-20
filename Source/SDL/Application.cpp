@@ -447,7 +447,7 @@ namespace Mythology::SDL
             Command_pools_resources(Command_pools_resources&&) noexcept = delete;
             ~Command_pools_resources() noexcept
             {
-                if (this->command_pool.value != VK_NULL_HANDLE)
+                if (this->command_pool != VK_NULL_HANDLE)
                 {
                     destroy_command_pool(this->device, this->command_pool, {});
                 }

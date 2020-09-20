@@ -27,7 +27,7 @@ namespace Maia::Renderer::Vulkan
         {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
             .pNext = nullptr,
-            .commandPool = command_pool.value,
+            .commandPool = command_pool,
             .level = level,
             .commandBufferCount = command_buffer_count,
         };
@@ -62,7 +62,7 @@ namespace Maia::Renderer::Vulkan
     {
         vkFreeCommandBuffers(
             device, 
-            command_pool.value, 
+            command_pool, 
             static_cast<uint32_t>(command_buffers.size()),
             command_buffers.data()
         );

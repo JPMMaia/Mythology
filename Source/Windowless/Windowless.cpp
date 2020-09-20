@@ -113,7 +113,7 @@ namespace Mythology::Windowless
             Device_resources(Device_resources&&) = delete;
             ~Device_resources() noexcept
             {
-                if (this->command_pool.value != VK_NULL_HANDLE)
+                if (this->command_pool != VK_NULL_HANDLE)
                 {
                     destroy_command_pool(this->device, this->command_pool, {});
                 }
