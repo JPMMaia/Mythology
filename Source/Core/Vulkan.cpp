@@ -81,15 +81,15 @@ namespace Mythology::Core::Vulkan
             &validation_features);
     }
 
-    Physical_device select_physical_device(VkInstance const instance) noexcept
+    VkPhysicalDevice select_physical_device(VkInstance const instance) noexcept
     {
-        std::pmr::vector<Physical_device> const physical_devices = enumerate_physical_devices(instance);
+        std::pmr::vector<VkPhysicalDevice> const physical_devices = enumerate_physical_devices(instance);
 
         return physical_devices[0];
     }
 
         Queue_family_index find_graphics_queue_family_index(
-        Physical_device const physical_device
+        VkPhysicalDevice const physical_device
     ) noexcept
     {
         std::pmr::vector<Queue_family_properties> const queue_family_properties = 
@@ -106,7 +106,7 @@ namespace Mythology::Core::Vulkan
     }
 
     Queue_family_index find_present_queue_family_index(
-        Physical_device const physical_device,
+        VkPhysicalDevice const physical_device,
         Surface const surface,
         std::optional<Queue_family_index> const preference
     ) noexcept
@@ -136,7 +136,7 @@ namespace Mythology::Core::Vulkan
     namespace
     {
         std::pmr::vector<char const*> select_device_extensions(
-            Physical_device const physical_device,
+            VkPhysicalDevice const physical_device,
             std::function<bool(VkExtensionProperties)> const& is_extension_to_enable
         ) noexcept
         {
@@ -159,7 +159,7 @@ namespace Mythology::Core::Vulkan
     }
 
     Device create_device(
-        Physical_device const physical_device,
+        VkPhysicalDevice const physical_device,
         std::span<Queue_family_index const> const queue_family_indices,
         std::function<bool(VkExtensionProperties)> const& is_extension_to_enable) noexcept
     {
@@ -225,7 +225,7 @@ namespace Mythology::Core::Vulkan
     }
 
     Device_memory_and_color_image create_device_memory_and_color_image(
-        Physical_device const physical_device,
+        VkPhysicalDevice const physical_device,
         Device const device,
         VkFormat const format,
         VkExtent3D const extent

@@ -28,52 +28,48 @@ namespace Maia::Renderer::Vulkan
     }
 
 
-    std::ostream& operator<<(std::ostream& output_stream, Physical_device const physical_device) noexcept
+    std::ostream& operator<<(std::ostream& output_stream, VkPhysicalDevice const physical_device) noexcept
     {
         VkPhysicalDeviceProperties properties = {};
-        vkGetPhysicalDeviceProperties(physical_device.value, &properties);
+        vkGetPhysicalDeviceProperties(physical_device, &properties);
 
         output_stream << properties;
 
         return output_stream;
     }
 
-    std::pmr::vector<Physical_device> enumerate_physical_devices(VkInstance const instance, std::pmr::polymorphic_allocator<Physical_device> const& allocator) noexcept
+    std::pmr::vector<VkPhysicalDevice> enumerate_physical_devices(VkInstance const instance, std::pmr::polymorphic_allocator<VkPhysicalDevice> const& allocator) noexcept
     {
         std::uint32_t physical_device_count = 0;
         check_result(
             vkEnumeratePhysicalDevices(instance, &physical_device_count, NULL));
 
-
-        std::pmr::vector<Physical_device> physical_devices{physical_device_count, allocator};
-
-        static_assert(std::is_standard_layout_v<Physical_device>, "Must be standard layout so that Physical_device and Physical_device.value are pointer-interconvertible");
-        static_assert(sizeof(Physical_device) == sizeof(VkPhysicalDevice), "Physical_device must only contain VkPhysicalDevice since using Physical_device* as a contiguous array");
+        std::pmr::vector<VkPhysicalDevice> physical_devices{physical_device_count, allocator};
         check_result(
-            vkEnumeratePhysicalDevices(instance, &physical_device_count, reinterpret_cast<VkPhysicalDevice*>(physical_devices.data())));
+            vkEnumeratePhysicalDevices(instance, &physical_device_count, physical_devices.data()));
 
         return physical_devices;
     }
 
 
-    Physical_device_features get_physical_device_properties(Physical_device const physical_device) noexcept
+    Physical_device_features get_physical_device_properties(VkPhysicalDevice const physical_device) noexcept
     {
         VkPhysicalDeviceFeatures features = {};
-        vkGetPhysicalDeviceFeatures(physical_device.value, &features);
+        vkGetPhysicalDeviceFeatures(physical_device, &features);
 
         return { features };
     }
 
     std::pmr::vector<VkExtensionProperties> enumerate_physical_device_extension_properties(
-        Physical_device const physical_device,
+        VkPhysicalDevice const physical_device,
         std::optional<char const*> const layer_name,
-        std::pmr::polymorphic_allocator<Physical_device> const& allocator
+        std::pmr::polymorphic_allocator<VkPhysicalDevice> const& allocator
     ) noexcept
     {
         std::uint32_t property_count = 0;
         check_result(
             vkEnumerateDeviceExtensionProperties(
-                physical_device.value,
+                physical_device,
                 layer_name.has_value() ? *layer_name : nullptr,
                 &property_count,
                 nullptr
@@ -83,7 +79,7 @@ namespace Maia::Renderer::Vulkan
         std::pmr::vector<VkExtensionProperties> properties{property_count, allocator};
         check_result(
             vkEnumerateDeviceExtensionProperties(
-                physical_device.value,
+                physical_device,
                 layer_name.has_value() ? *layer_name : nullptr,
                 &property_count,
                 properties.data()

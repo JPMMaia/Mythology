@@ -22,20 +22,20 @@ namespace Mythology::Core::Vulkan
         API_version api_version,
         std::span<char const* const> required_extensions = {}) noexcept;
     
-    export Physical_device select_physical_device(VkInstance instance) noexcept;
+    export VkPhysicalDevice select_physical_device(VkInstance instance) noexcept;
 
     export Queue_family_index find_graphics_queue_family_index(
-        Physical_device physical_device
+        VkPhysicalDevice physical_device
     ) noexcept;
 
     export Queue_family_index find_present_queue_family_index(
-        Physical_device physical_device,
+        VkPhysicalDevice physical_device,
         Surface surface,
         std::optional<Queue_family_index> preference = {}
     ) noexcept;
     
     export Device create_device(
-        Physical_device physical_device,
+        VkPhysicalDevice physical_device,
         std::span<Queue_family_index const> queue_family_indices,
         std::function<bool(VkExtensionProperties)> const& is_extension_to_enable) noexcept;
 
@@ -46,7 +46,7 @@ namespace Mythology::Core::Vulkan
     };
 
     export Device_memory_and_color_image create_device_memory_and_color_image(
-        Physical_device physical_device,
+        VkPhysicalDevice physical_device,
         Device device,
         VkFormat format,
         VkExtent3D extent

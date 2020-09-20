@@ -1,6 +1,5 @@
 export module maia.renderer.vulkan.device;
 
-import maia.renderer.vulkan.physical_device;
 
 import <vulkan/vulkan.h>;
 
@@ -18,8 +17,8 @@ namespace Maia::Renderer::Vulkan
         VkQueueFamilyProperties value;
     };
 
-    export std::uint32_t get_physical_device_queue_family_count(Physical_device physical_device) noexcept;
-    export std::pmr::vector<Queue_family_properties> get_physical_device_queue_family_properties(Physical_device physical_device, std::pmr::polymorphic_allocator<Physical_device> const& allocator = {}) noexcept;
+    export std::uint32_t get_physical_device_queue_family_count(VkPhysicalDevice physical_device) noexcept;
+    export std::pmr::vector<Queue_family_properties> get_physical_device_queue_family_properties(VkPhysicalDevice physical_device, std::pmr::polymorphic_allocator<VkPhysicalDevice> const& allocator = {}) noexcept;
 
     export bool has_graphics_capabilities(Queue_family_properties const& queue_family_properties) noexcept;
     export bool has_compute_capabilities(Queue_family_properties const& queue_family_properties) noexcept;
@@ -72,7 +71,7 @@ namespace Maia::Renderer::Vulkan
         VkDevice value = VK_NULL_HANDLE;
     };
 
-    export Device create_device(Physical_device physical_device, std::span<Device_queue_create_info const> queue_create_infos, std::span<char const* const> enabled_extensions) noexcept;
+    export Device create_device(VkPhysicalDevice physical_device, std::span<Device_queue_create_info const> queue_create_infos, std::span<char const* const> enabled_extensions) noexcept;
     export void destroy_device(Device device, VkAllocationCallbacks const* allocator = {}) noexcept;
 
 

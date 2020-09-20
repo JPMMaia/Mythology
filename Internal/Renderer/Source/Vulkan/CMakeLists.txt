@@ -26,18 +26,16 @@ target_module (
     MaiaRendererVulkan
     "maia.renderer.vulkan.physical_device"
     INTERFACE "Physical_device.cxx"
-    INTERFACE_DEPENDS "Standard_library" "Vulkan"
+    INTERFACE_DEPENDS "Standard_library" "Vulkan" "maia.renderer.vulkan.instance"
     IMPLEMENTATION "Physical_device.cpp"
-    IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" "maia.renderer.vulkan.check"
+    IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" "maia.renderer.vulkan.check" "maia.renderer.vulkan.instance"
 )
 
 target_module (
     MaiaRendererVulkan
     "maia.renderer.vulkan.device"
     INTERFACE "Device.cxx"
-    INTERFACE_DEPENDS "Standard_library" "Vulkan" "maia.renderer.vulkan.physical_device"
     IMPLEMENTATION "Device.cpp"
-    IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" "maia.renderer.vulkan.check" "maia.renderer.vulkan.physical_device"
 )
 
 target_module (
@@ -154,14 +152,12 @@ target_module (
         "maia.renderer.vulkan.buffer"
         "maia.renderer.vulkan.device"
         "maia.renderer.vulkan.image"
-        "maia.renderer.vulkan.physical_device"
     IMPLEMENTATION "Device_memory.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" 
         "maia.renderer.vulkan.buffer"
         "maia.renderer.vulkan.check"
         "maia.renderer.vulkan.device"
         "maia.renderer.vulkan.image"
-        "maia.renderer.vulkan.physical_device"
 )
 
 target_module (
@@ -232,12 +228,10 @@ target_module (
     INTERFACE "Surface.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
         "maia.renderer.vulkan.device"
-        "maia.renderer.vulkan.physical_device"
     IMPLEMENTATION "Surface.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" 
         "maia.renderer.vulkan.check"
         "maia.renderer.vulkan.device"
-        "maia.renderer.vulkan.physical_device"
 )
 
 target_module (

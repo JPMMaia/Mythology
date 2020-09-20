@@ -3,7 +3,6 @@ module maia.renderer.vulkan.device_memory;
 import maia.renderer.vulkan.buffer;
 import maia.renderer.vulkan.check;
 import maia.renderer.vulkan.image;
-import maia.renderer.vulkan.physical_device;
 
 import <vulkan/vulkan.h>;
 
@@ -156,10 +155,10 @@ namespace Maia::Renderer::Vulkan
     }
 
 
-    Physical_device_memory_properties get_phisical_device_memory_properties(Physical_device const physical_device) noexcept
+    Physical_device_memory_properties get_phisical_device_memory_properties(VkPhysicalDevice const physical_device) noexcept
     {
         Physical_device_memory_properties memory_properties = {};
-        vkGetPhysicalDeviceMemoryProperties(physical_device.value, &memory_properties.value);
+        vkGetPhysicalDeviceMemoryProperties(physical_device, &memory_properties.value);
         return memory_properties;
     }
 

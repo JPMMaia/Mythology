@@ -13,14 +13,9 @@ namespace Maia::Renderer::Vulkan
     export std::ostream& operator<<(std::ostream& output_stream, VkPhysicalDeviceProperties const& physical_device_properties) noexcept;
 
 
-    export struct Physical_device
-    {
-        VkPhysicalDevice value = VK_NULL_HANDLE;
-    };
+    export std::ostream& operator<<(std::ostream& output_stream, VkPhysicalDevice physical_device) noexcept;
 
-    export std::ostream& operator<<(std::ostream& output_stream, Physical_device physical_device) noexcept;
-
-    export std::pmr::vector<Physical_device> enumerate_physical_devices(VkInstance instance, std::pmr::polymorphic_allocator<Physical_device> const& allocator = {}) noexcept;
+    export std::pmr::vector<VkPhysicalDevice> enumerate_physical_devices(VkInstance instance, std::pmr::polymorphic_allocator<VkPhysicalDevice> const& allocator = {}) noexcept;
 
 
     export struct Physical_device_features
@@ -28,11 +23,11 @@ namespace Maia::Renderer::Vulkan
         VkPhysicalDeviceFeatures value;
     };
 
-    export Physical_device_features get_physical_device_properties(Physical_device physical_device) noexcept;
+    export Physical_device_features get_physical_device_properties(VkPhysicalDevice physical_device) noexcept;
 
     export std::pmr::vector<VkExtensionProperties> enumerate_physical_device_extension_properties(
-        Physical_device physical_device,
+        VkPhysicalDevice physical_device,
         std::optional<char const*> layer_name,
-        std::pmr::polymorphic_allocator<Physical_device> const& allocator = {}
+        std::pmr::polymorphic_allocator<VkPhysicalDevice> const& allocator = {}
     ) noexcept;
 }

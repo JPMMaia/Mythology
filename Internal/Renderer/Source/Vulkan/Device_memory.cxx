@@ -1,6 +1,5 @@
 export module maia.renderer.vulkan.device_memory;
 
-import maia.renderer.vulkan.physical_device;
 
 import <vulkan/vulkan.h>;
 
@@ -50,7 +49,7 @@ namespace Maia::Renderer::Vulkan
     ) noexcept;
 
     export Physical_device_memory_properties get_phisical_device_memory_properties(
-        Physical_device const physical_device
+        VkPhysicalDevice const physical_device
     ) noexcept;
 
 

@@ -96,11 +96,11 @@ namespace Maia::Renderer::Vulkan::Unit_test
 		std::array<char const*, 1> const enabled_layers { "VK_LAYER_KHRONOS_validation" };
 		Instance const instance = create_instance(enabled_layers, {});
 
-		std::pmr::vector<Physical_device> const physical_devices = enumerate_physical_devices(instance);
+		std::pmr::vector<VkPhysicalDevice> const physical_devices = enumerate_physical_devices(instance);
 
 		std::cout << "Physical devices:\n\n";
 		std::for_each(std::begin(physical_devices), std::end(physical_devices), 
-			[](Physical_device const physical_device) -> void { std::cout << physical_device << '\n'; });
+			[](VkPhysicalDevice const physical_device) -> void { std::cout << physical_device << '\n'; });
 		std::cout << '\n';
 
 		{
@@ -109,7 +109,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 		}
 
 		{
-			Physical_device const physical_device = physical_devices[0];
+			VkPhysicalDevice const physical_device = physical_devices[0];
 
 			std::pmr::vector<Queue_family_properties> const queue_family_properties = get_physical_device_queue_family_properties(physical_device);
 

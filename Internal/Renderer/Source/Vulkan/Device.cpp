@@ -1,7 +1,6 @@
 module maia.renderer.vulkan.device;
 
 import maia.renderer.vulkan.check;
-import maia.renderer.vulkan.physical_device;
 
 import <vulkan/vulkan.h>;
 
@@ -15,14 +14,14 @@ import <vector>;
 
 namespace Maia::Renderer::Vulkan
 {
-    std::uint32_t get_physical_device_queue_family_count(Physical_device const physical_device) noexcept
+    std::uint32_t get_physical_device_queue_family_count(VkPhysicalDevice const physical_device) noexcept
     {
         std::uint32_t queue_family_property_count = 0;
-        vkGetPhysicalDeviceQueueFamilyProperties(physical_device.value, &queue_family_property_count, nullptr);
+        vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_property_count, nullptr);
         return queue_family_property_count;
     }
 
-    std::pmr::vector<Queue_family_properties> get_physical_device_queue_family_properties(Physical_device const physical_device, std::pmr::polymorphic_allocator<Physical_device> const& allocator) noexcept
+    std::pmr::vector<Queue_family_properties> get_physical_device_queue_family_properties(VkPhysicalDevice const physical_device, std::pmr::polymorphic_allocator<VkPhysicalDevice> const& allocator) noexcept
     {
         std::uint32_t queue_family_property_count = get_physical_device_queue_family_count(physical_device);
 
@@ -30,7 +29,7 @@ namespace Maia::Renderer::Vulkan
 
         static_assert(std::is_standard_layout_v<Queue_family_properties>, "Must be standard layout so that Queue_family_properties and Queue_family_properties.value are pointer-interconvertible");
         static_assert(sizeof(Queue_family_properties) == sizeof(VkQueueFamilyProperties), "Queue_family_properties must only contain VkQueueFamilyProperties since using Queue_family_properties* as a contiguous array");
-        vkGetPhysicalDeviceQueueFamilyProperties(physical_device.value, &queue_family_property_count, reinterpret_cast<VkQueueFamilyProperties*>(queue_family_propertiess.data()));
+        vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_property_count, reinterpret_cast<VkQueueFamilyProperties*>(queue_family_propertiess.data()));
 
         return queue_family_propertiess;
     }
@@ -73,7 +72,7 @@ namespace Maia::Renderer::Vulkan
     }
 
 
-    Device create_device(Physical_device const physical_device, std::span<Device_queue_create_info const> const queue_create_infos, std::span<char const* const> const enabled_extensions) noexcept
+    Device create_device(VkPhysicalDevice const physical_device, std::span<Device_queue_create_info const> const queue_create_infos, std::span<char const* const> const enabled_extensions) noexcept
     {
         static_assert(std::is_standard_layout_v<Device_queue_create_info>, "Must be standard layout so that Device_queue_create_info and Device_queue_create_info.value are pointer-interconvertible");
         static_assert(sizeof(Device_queue_create_info) == sizeof(VkDeviceQueueCreateInfo), "Device_queue_create_info must only contain VkDeviceQueueCreateInfo since using Device_queue_create_info* as a contiguous array");
@@ -92,7 +91,7 @@ namespace Maia::Renderer::Vulkan
 
         VkDevice device = {};
         check_result(
-            vkCreateDevice(physical_device.value, &create_info, nullptr, &device));
+            vkCreateDevice(physical_device, &create_info, nullptr, &device));
 
         return {device};
     }

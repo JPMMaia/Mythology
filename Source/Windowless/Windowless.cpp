@@ -153,7 +153,7 @@ namespace Mythology::Windowless
 
             VkInstance instance = {};
             VkDebugUtilsMessengerEXT debug_messenger = {};
-            Physical_device physical_device = {};
+            VkPhysicalDevice physical_device = {};
             Queue_family_index graphics_queue_family_index = {};
             Device device = {};
             Fence fence = {};
@@ -164,7 +164,7 @@ namespace Mythology::Windowless
         {
             explicit Application_resources(
                 std::filesystem::path const shaders_path,
-                Physical_device const physical_device,
+                VkPhysicalDevice const physical_device,
                 Device const device,
                 VkFormat const color_image_format,
                 VkExtent3D const color_image_extent,
@@ -225,7 +225,7 @@ namespace Mythology::Windowless
         std::filesystem::path const shaders_path = std::filesystem::current_path() / "../shaders";
 
         Device_resources const device_resources{make_api_version(1, 2, 0)};
-        Physical_device const physical_device = device_resources.physical_device;
+        VkPhysicalDevice const physical_device = device_resources.physical_device;
         Device const device = device_resources.device;
         Queue_family_index const graphics_queue_family_index = device_resources.graphics_queue_family_index;
         Fence const fence = device_resources.fence;

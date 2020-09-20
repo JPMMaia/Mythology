@@ -149,7 +149,7 @@ namespace Mythology::SDL
         }
 
         VkSurfaceFormatKHR select_surface_format(
-            Physical_device const physical_device,
+            VkPhysicalDevice const physical_device,
             Surface const surface
         ) noexcept
         {
@@ -178,7 +178,7 @@ namespace Mythology::SDL
         }
 
         VkPresentModeKHR select_present_mode(
-            Physical_device const physical_device,
+            VkPhysicalDevice const physical_device,
             Surface const surface
         ) noexcept
         {
@@ -214,7 +214,7 @@ namespace Mythology::SDL
         }
 
         Swapchain create_swapchain(
-            Physical_device const physical_device,
+            VkPhysicalDevice const physical_device,
             Device const device,
             Surface const surface,
             VkSurfaceFormatKHR const surface_format,
@@ -341,7 +341,7 @@ namespace Mythology::SDL
             Device_resources& operator=(Device_resources&&) = delete;
 
             VkInstance instance = {};
-            Physical_device physical_device = {};
+            VkPhysicalDevice physical_device = {};
             Surface surface = {};
             Queue_family_index graphics_queue_family_index = {};
             Queue_family_index present_queue_family_index = {};
@@ -369,7 +369,7 @@ namespace Mythology::SDL
         struct Swapchain_resources
         {
             Swapchain_resources(
-                Physical_device const physical_device,
+                VkPhysicalDevice const physical_device,
                 Device const device,
                 Surface const surface,
                 VkSurfaceFormatKHR const surface_format,
@@ -611,7 +611,7 @@ namespace Mythology::SDL
         {
             Application_resources(
                 std::filesystem::path const shaders_path,
-                Physical_device const physical_device,
+                VkPhysicalDevice const physical_device,
                 Device const device,
                 VkFormat const image_format) noexcept :
                 device{device},
@@ -1063,7 +1063,7 @@ namespace Mythology::SDL
         }
 
         Device_resources const device_resources{make_api_version(1, 2, 0), *window.get()};
-        Physical_device const physical_device = device_resources.physical_device;
+        VkPhysicalDevice const physical_device = device_resources.physical_device;
         Device const device = device_resources.device;
         Queue_family_index const graphics_queue_family_index = device_resources.graphics_queue_family_index;
         Queue_family_index const present_queue_family_index = device_resources.present_queue_family_index;
