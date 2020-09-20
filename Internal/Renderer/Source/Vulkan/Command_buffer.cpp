@@ -115,7 +115,7 @@ namespace Maia::Renderer::Vulkan
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
             .pNext = nullptr,
             .renderPass = render_pass,
-            .framebuffer = framebuffer.value,
+            .framebuffer = framebuffer,
             .renderArea = render_area,
             .clearValueCount = static_cast<uint32_t>(clear_values.size()),
             .pClearValues = clear_values.data(),

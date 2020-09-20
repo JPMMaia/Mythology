@@ -115,7 +115,7 @@ namespace Maia::Renderer::Vulkan
     {
         vkDestroyFramebuffer(
             device, 
-            framebuffer.value,
+            framebuffer,
             allocator
         );
     }

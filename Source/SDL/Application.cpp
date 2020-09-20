@@ -1536,7 +1536,7 @@ namespace Mythology::SDL
                                         command_buffer,
                                         swapchain_image,
                                         output_image_subresource_range,
-                                        swapchain_framebuffer.value,
+                                        swapchain_framebuffer,
                                         output_render_area,
                                         commands_data
                                     );
