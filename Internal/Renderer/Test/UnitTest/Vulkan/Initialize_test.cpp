@@ -172,7 +172,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 
 			REQUIRE(memory_type_index.has_value());
 
-			Device_memory const device_memory =
+			VkDeviceMemory const device_memory =
 				allocate_memory(device, color_image_memory_requirements.size, *memory_type_index, {});
 
 			bind_memory(device, color_image, device_memory, 0);
