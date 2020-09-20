@@ -118,7 +118,7 @@ namespace Mythology::Windowless
                     destroy_command_pool(this->device, this->command_pool, {});
                 }
 
-                if (this->fence.value != VK_NULL_HANDLE)
+                if (this->fence != VK_NULL_HANDLE)
                 {
                     destroy_fence(this->device, this->fence, {});
                 }

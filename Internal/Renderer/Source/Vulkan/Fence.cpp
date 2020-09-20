@@ -65,7 +65,7 @@ namespace Maia::Renderer::Vulkan
     {
         vkDestroyFence(
             device,
-            fence.value,
+            fence,
             allocator
         );
     }
@@ -75,7 +75,7 @@ namespace Maia::Renderer::Vulkan
         VkFence const fence
     ) noexcept
     {
-        VkResult const state = vkGetFenceStatus(device, fence.value);
+        VkResult const state = vkGetFenceStatus(device, fence);
 
         if (state == VK_ERROR_DEVICE_LOST)
         {
