@@ -1,7 +1,6 @@
 module maia.renderer.vulkan.swapchain;
 
 import maia.renderer.vulkan.check;
-import maia.renderer.vulkan.fence;
 import maia.renderer.vulkan.image;
 import maia.renderer.vulkan.queue;
 import maia.renderer.vulkan.semaphore;
@@ -132,7 +131,7 @@ namespace Maia::Renderer::Vulkan
         Swapchain const swapchain,
         std::uint64_t const timeout,
         std::optional<Semaphore> const semaphore,
-        std::optional<Fence> const fence
+        std::optional<VkFence> const fence
     ) noexcept
     {
         std::uint32_t swapchain_image_index = 0;

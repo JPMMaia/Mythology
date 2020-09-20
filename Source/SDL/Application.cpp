@@ -473,7 +473,7 @@ namespace Mythology::SDL
             Synchronization_resources(Synchronization_resources&&) noexcept = delete;
             ~Synchronization_resources() noexcept
             {
-                for (Fence const fence : available_frames_fences)
+                for (VkFence const fence : available_frames_fences)
                 {
                     destroy_fence(this->device, fence, {});
                 }
@@ -495,7 +495,7 @@ namespace Mythology::SDL
             VkDevice device;
             std::pmr::vector<Semaphore> available_frames_semaphores;
             std::pmr::vector<Semaphore> finished_frames_semaphores;
-            std::pmr::vector<Fence> available_frames_fences;
+            std::pmr::vector<VkFence> available_frames_fences;
         };
 
         Maia::Input::Keyboard_state get_keyboard_state() noexcept
@@ -1075,7 +1075,7 @@ namespace Mythology::SDL
         Synchronization_resources synchronization_resources{pipeline_length, device};
         std::span<Semaphore> const available_frames_semaphores = synchronization_resources.available_frames_semaphores;
         std::span<Semaphore> const finished_frames_semaphores = synchronization_resources.finished_frames_semaphores;
-        std::span<Fence> const available_frames_fences = synchronization_resources.available_frames_fences;
+        std::span<VkFence> const available_frames_fences = synchronization_resources.available_frames_fences;
 
         Queue const graphics_queue = get_device_queue(device, graphics_queue_family_index, 0);
         Queue const present_queue = get_device_queue(device, present_queue_family_index, 0);
@@ -1483,7 +1483,7 @@ namespace Mythology::SDL
                 ::ImGui::Render();
 
                 {
-                    Fence const available_frames_fence = available_frames_fences[frame_index.value];
+                    VkFence const available_frames_fence = available_frames_fences[frame_index.value];
 
                     if (is_fence_signaled(device, available_frames_fence))
                     {

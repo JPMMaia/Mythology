@@ -2,7 +2,6 @@ module maia.renderer.vulkan.queue;
 
 import maia.renderer.vulkan.check;
 import maia.renderer.vulkan.command_buffer;
-import maia.renderer.vulkan.fence;
 import maia.renderer.vulkan.semaphore;
 
 import <vulkan/vulkan.h>;
@@ -37,7 +36,7 @@ namespace Maia::Renderer::Vulkan
         std::span<VkPipelineStageFlags const> const wait_destination_stage_mask,
         std::span<Command_buffer const> const command_buffers,
         std::span<Semaphore const> const semaphores_to_signal,
-        std::optional<Fence> const fence
+        std::optional<VkFence> const fence
     ) noexcept
     {
         assert(semaphores_to_wait.size() == wait_destination_stage_mask.size());

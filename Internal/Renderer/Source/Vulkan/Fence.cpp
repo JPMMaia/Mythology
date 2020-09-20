@@ -11,7 +11,7 @@ import <vector>;
 
 namespace Maia::Renderer::Vulkan
 {
-    Fence create_fence(
+    VkFence create_fence(
         VkDevice const device,
         VkFenceCreateFlags const flags,
         VkAllocationCallbacks const* const allocator
@@ -37,15 +37,15 @@ namespace Maia::Renderer::Vulkan
         return {fence};
     }
 
-    std::pmr::vector<Fence> create_fences(
+    std::pmr::vector<VkFence> create_fences(
         std::size_t const count,
         VkDevice const device,
         VkFenceCreateFlags const flags,
         VkAllocationCallbacks const* const vulkan_allocator,
-        std::pmr::polymorphic_allocator<Fence> vector_allocator
+        std::pmr::polymorphic_allocator<VkFence> vector_allocator
     )
     {
-        std::pmr::vector<Fence> fences{std::move(vector_allocator)};
+        std::pmr::vector<VkFence> fences{std::move(vector_allocator)};
         fences.resize(count);
 
         for (std::size_t index = 0; index < count; ++index)
@@ -59,7 +59,7 @@ namespace Maia::Renderer::Vulkan
 
     void destroy_fence(
         VkDevice const device,
-        Fence const fence,
+        VkFence const fence,
         VkAllocationCallbacks const* const allocator
     ) noexcept
     {
@@ -72,7 +72,7 @@ namespace Maia::Renderer::Vulkan
 
     bool is_fence_signaled(
         VkDevice const device,
-        Fence const fence
+        VkFence const fence
     ) noexcept
     {
         VkResult const state = vkGetFenceStatus(device, fence.value);
@@ -87,35 +87,29 @@ namespace Maia::Renderer::Vulkan
 
     void reset_fences(
         VkDevice const device,
-        std::span<Fence const> const fences
+        std::span<VkFence const> const fences
     ) noexcept
     {
-        static_assert(std::is_standard_layout_v<Fence>, "Must be standard layout so that Fence and Fence.value are pointer-interconvertible");
-        static_assert(sizeof(Fence) == sizeof(VkFence), "Fence must only contain VkFence since using Fence* as a contiguous array");
-
         check_result(
             vkResetFences(
                 device,
                 static_cast<uint32_t>(fences.size()),
-                reinterpret_cast<VkFence const*>(fences.data())
+                fences.data()
             )
         );
     }
 
     VkResult wait_for_all_fences(
         VkDevice const device,
-        std::span<Fence const> const fences,
+        std::span<VkFence const> const fences,
         Timeout_nanoseconds const timeout
     ) noexcept
     {
-        static_assert(std::is_standard_layout_v<Fence>, "Must be standard layout so that Fence and Fence.value are pointer-interconvertible");
-        static_assert(sizeof(Fence) == sizeof(VkFence), "Fence must only contain VkFence since using Fence* as a contiguous array");
-
         VkResult const result = 
             vkWaitForFences(
                 device, 
                 static_cast<uint32_t>(fences.size()),
-                reinterpret_cast<VkFence const*>(fences.data()),
+                fences.data(),
                 VK_TRUE,
                 timeout.value
             );
@@ -133,18 +127,15 @@ namespace Maia::Renderer::Vulkan
 
     VkResult wait_for_any_fence(
         VkDevice const device,
-        std::span<Fence const> const fences,
+        std::span<VkFence const> const fences,
         Timeout_nanoseconds const timeout
     ) noexcept
     {
-        static_assert(std::is_standard_layout_v<Fence>, "Must be standard layout so that Fence and Fence.value are pointer-interconvertible");
-        static_assert(sizeof(Fence) == sizeof(VkFence), "Fence must only contain VkFence since using Fence* as a contiguous array");
-
         VkResult const result = 
             vkWaitForFences(
                 device, 
                 static_cast<uint32_t>(fences.size()),
-                reinterpret_cast<VkFence const*>(fences.data()),
+                fences.data(),
                 VK_FALSE,
                 timeout.value
             );

@@ -83,12 +83,10 @@ target_module (
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
         "maia.renderer.vulkan.check"
         "maia.renderer.vulkan.command_buffer"
-        "maia.renderer.vulkan.fence"
         "maia.renderer.vulkan.semaphore"
     IMPLEMENTATION "Queue.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan"
         "maia.renderer.vulkan.command_buffer"
-        "maia.renderer.vulkan.fence"
         "maia.renderer.vulkan.semaphore"
 )
 
@@ -215,7 +213,6 @@ target_module (
     "maia.renderer.vulkan.swapchain"
     INTERFACE "Swapchain.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
-        "maia.renderer.vulkan.fence"
         "maia.renderer.vulkan.image"
         "maia.renderer.vulkan.queue"
         "maia.renderer.vulkan.semaphore"
@@ -223,7 +220,6 @@ target_module (
     IMPLEMENTATION "Swapchain.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" 
         "maia.renderer.vulkan.check"
-        "maia.renderer.vulkan.fence"
         "maia.renderer.vulkan.image"
         "maia.renderer.vulkan.queue"
         "maia.renderer.vulkan.semaphore"

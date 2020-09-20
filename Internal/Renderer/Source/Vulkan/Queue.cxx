@@ -1,7 +1,6 @@
 export module maia.renderer.vulkan.queue;
 
 import maia.renderer.vulkan.command_buffer;
-import maia.renderer.vulkan.fence;
 import maia.renderer.vulkan.semaphore;
 
 import <vulkan/vulkan.h>;
@@ -30,6 +29,6 @@ namespace Maia::Renderer::Vulkan
         std::span<VkPipelineStageFlags const> wait_destination_stage_mask,
         std::span<Command_buffer const> command_buffers,
         std::span<Semaphore const> semaphores_to_signal,
-        std::optional<Fence> fence
+        std::optional<VkFence> fence
     ) noexcept;
 }

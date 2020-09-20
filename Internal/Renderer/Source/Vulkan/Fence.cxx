@@ -10,39 +10,34 @@ import <vector>;
 
 namespace Maia::Renderer::Vulkan
 {
-    export struct Fence
-    {
-        VkFence value;
-    };
-
-    export Fence create_fence(
+    export VkFence create_fence(
         VkDevice device,
         VkFenceCreateFlags flags,
         VkAllocationCallbacks const* allocator = {}
     ) noexcept;
 
-    export std::pmr::vector<Fence> create_fences(
+    export std::pmr::vector<VkFence> create_fences(
         std::size_t count,
         VkDevice device,
         VkFenceCreateFlags flags,
         VkAllocationCallbacks const* vulkan_allocator = {},
-        std::pmr::polymorphic_allocator<Fence> vector_allocator = {}
+        std::pmr::polymorphic_allocator<VkFence> vector_allocator = {}
     );
 
     export void destroy_fence(
         VkDevice device,
-        Fence fence,
+        VkFence fence,
         VkAllocationCallbacks const* allocator
     ) noexcept;
 
     export bool is_fence_signaled(
         VkDevice device,
-        Fence fence
+        VkFence fence
     ) noexcept;
 
     export void reset_fences(
         VkDevice device,
-        std::span<Fence const> fences
+        std::span<VkFence const> fences
     ) noexcept;
 
     export struct Timeout_nanoseconds
@@ -52,19 +47,19 @@ namespace Maia::Renderer::Vulkan
 
     export VkResult wait_for_all_fences(
         VkDevice device,
-        std::span<Fence const> fences,
+        std::span<VkFence const> fences,
         Timeout_nanoseconds timeout
     ) noexcept;
 
     export VkResult wait_for_any_fence(
         VkDevice device,
-        std::span<Fence const> fences,
+        std::span<VkFence const> fences,
         Timeout_nanoseconds timeout
     ) noexcept;
 
     export struct Wait_for_all_fences_lock
     {
-        Wait_for_all_fences_lock(VkDevice const device, std::span<Fence const> const fences, Timeout_nanoseconds const timeout) noexcept :
+        Wait_for_all_fences_lock(VkDevice const device, std::span<VkFence const> const fences, Timeout_nanoseconds const timeout) noexcept :
             device{device},
             fences{fences},
             timeout{timeout}
@@ -81,7 +76,7 @@ namespace Maia::Renderer::Vulkan
         Wait_for_all_fences_lock& operator=(Wait_for_all_fences_lock&&) noexcept = delete;
 
         VkDevice device;
-        std::span<Fence const> fences;
+        std::span<VkFence const> fences;
         Timeout_nanoseconds timeout;
     };
 }

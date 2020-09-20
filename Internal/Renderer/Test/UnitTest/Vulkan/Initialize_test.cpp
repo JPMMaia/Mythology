@@ -310,7 +310,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 				}
 				end_command_buffer(command_buffer);
 
-				Fence const fence = create_fence(device, {}, {});
+				VkFence const fence = create_fence(device, {}, {});
 
 				Queue const queue = get_device_queue(device, *queue_family_index, 0);
 				queue_submit(queue, {}, {}, {&command_buffer, 1}, {}, fence);
