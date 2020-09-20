@@ -231,7 +231,7 @@ namespace Mythology::Windowless
         VkFence const fence = device_resources.fence;
         Command_pool const command_pool = device_resources.command_pool;
         
-        Queue const queue = get_device_queue(device, graphics_queue_family_index, 0);
+        VkQueue const queue = get_device_queue(device, graphics_queue_family_index, 0);
 
         Maia::Renderer::Vulkan::Pipeline_resources const pipeline_resources
         {

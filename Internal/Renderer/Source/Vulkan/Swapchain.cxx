@@ -1,7 +1,6 @@
 export module maia.renderer.vulkan.swapchain;
 
 import maia.renderer.vulkan.image;
-import maia.renderer.vulkan.queue;
 import maia.renderer.vulkan.surface;
 
 import <vulkan/vulkan.h>;
@@ -73,7 +72,7 @@ namespace Maia::Renderer::Vulkan
 
 
     export VkResult queue_present(
-        Queue queue,
+        VkQueue queue,
         std::span<VkSemaphore const> semaphores_to_wait,
         Swapchain swapchain,
         Swapchain_image_index swapchain_image_index

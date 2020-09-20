@@ -1077,8 +1077,8 @@ namespace Mythology::SDL
         std::span<VkSemaphore> const finished_frames_semaphores = synchronization_resources.finished_frames_semaphores;
         std::span<VkFence> const available_frames_fences = synchronization_resources.available_frames_fences;
 
-        Queue const graphics_queue = get_device_queue(device, graphics_queue_family_index, 0);
-        Queue const present_queue = get_device_queue(device, present_queue_family_index, 0);
+        VkQueue const graphics_queue = get_device_queue(device, graphics_queue_family_index, 0);
+        VkQueue const present_queue = get_device_queue(device, present_queue_family_index, 0);
 
         Command_pools_resources const command_pool_resources{device, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, graphics_queue_family_index};
         Command_pool const command_pool = command_pool_resources.command_pool;

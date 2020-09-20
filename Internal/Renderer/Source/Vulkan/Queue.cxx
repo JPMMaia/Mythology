@@ -10,12 +10,7 @@ import <span>;
 
 namespace Maia::Renderer::Vulkan
 {
-    export struct Queue
-    {
-        VkQueue value = VK_NULL_HANDLE;
-    };
-
-    export Queue get_device_queue(
+    export VkQueue get_device_queue(
         VkDevice device,
         Queue_family_index queue_family_index,
         std::uint32_t queue_index
@@ -23,7 +18,7 @@ namespace Maia::Renderer::Vulkan
 
     
     export void queue_submit(
-        Queue queue,
+        VkQueue queue,
         std::span<VkSemaphore const> semaphores_to_wait,
         std::span<VkPipelineStageFlags const> wait_destination_stage_mask,
         std::span<Command_buffer const> command_buffers,

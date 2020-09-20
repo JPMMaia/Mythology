@@ -12,7 +12,7 @@ import <span>;
 
 namespace Maia::Renderer::Vulkan
 {
-    Queue get_device_queue(
+    VkQueue get_device_queue(
         VkDevice const device,
         Queue_family_index const queue_family_index,
         std::uint32_t const queue_index
@@ -30,7 +30,7 @@ namespace Maia::Renderer::Vulkan
     }
 
     void queue_submit(
-        Queue queue,
+        VkQueue queue,
         std::span<VkSemaphore const> const semaphores_to_wait,
         std::span<VkPipelineStageFlags const> const wait_destination_stage_mask,
         std::span<Command_buffer const> const command_buffers,
