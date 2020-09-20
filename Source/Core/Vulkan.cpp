@@ -257,7 +257,7 @@ namespace Mythology::Core::Vulkan
         return {device_memory, color_image};
     }
 
-    Render_pass create_render_pass(VkDevice const device, VkFormat const color_image_format) noexcept
+    VkRenderPass create_render_pass(VkDevice const device, VkFormat const color_image_format) noexcept
     {
         VkAttachmentDescription const color_attachment_description
         {
@@ -398,7 +398,7 @@ namespace Mythology::Core::Vulkan
 
     void clear_and_begin_render_pass(
         VkCommandBuffer const command_buffer,
-        Render_pass const render_pass,
+        VkRenderPass const render_pass,
         Framebuffer const framebuffer,
         VkClearColorValue const clear_color,
         VkImage const output_image,

@@ -52,7 +52,7 @@ namespace Mythology::Core::Vulkan
         VkExtent3D extent
     ) noexcept;
 
-    export Render_pass create_render_pass(
+    export VkRenderPass create_render_pass(
         VkDevice device,
         VkFormat color_image_format) noexcept;
 
@@ -69,7 +69,7 @@ namespace Mythology::Core::Vulkan
 
     export void clear_and_begin_render_pass(
         VkCommandBuffer command_buffer,
-        Render_pass render_pass,
+        VkRenderPass render_pass,
         Framebuffer framebuffer,
         VkClearColorValue clear_color,
         VkImage output_image,

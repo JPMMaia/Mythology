@@ -350,7 +350,7 @@ namespace Mythology::SDL
 
         std::pmr::vector<Framebuffer> create_swapchain_framebuffers(
             VkDevice const device,
-            Render_pass const render_pass,
+            VkRenderPass const render_pass,
             std::span<VkImageView const> const swapchain_image_views,
             Framebuffer_dimensions const framebuffer_dimensions
         ) noexcept
@@ -374,7 +374,7 @@ namespace Mythology::SDL
                 Surface const surface,
                 VkSurfaceFormatKHR const surface_format,
                 std::span<Queue_family_index const> const queue_family_indices,
-                Render_pass const render_pass,
+                VkRenderPass const render_pass,
                 std::optional<Swapchain> const old_swapchain = {}) noexcept :
                 device{device},
                 swapchain{create_swapchain(physical_device, device, surface, surface_format, queue_family_indices, old_swapchain)},
@@ -619,7 +619,7 @@ namespace Mythology::SDL
                 render_pass{create_render_pass(device, image_format)},
                 triangle_vertex_shader_module{create_shader_module(device, {}, convert_bytes<std::uint32_t>(read_bytes(shaders_path / "Triangle.vertex.spv")))},
                 white_fragment_shader_module{create_shader_module(device, {}, convert_bytes<std::uint32_t>(read_bytes(shaders_path / "White.fragment.spv")))},
-                white_triangle_pipeline{create_vertex_and_fragment_pipeline(device, {}, pipeline_layout, render_pass.value, 0, 1, triangle_vertex_shader_module.value, white_fragment_shader_module.value)}
+                white_triangle_pipeline{create_vertex_and_fragment_pipeline(device, {}, pipeline_layout, render_pass, 0, 1, triangle_vertex_shader_module.value, white_fragment_shader_module.value)}
             {
             }
             Application_resources(Application_resources const&) = delete;
@@ -641,7 +641,7 @@ namespace Mythology::SDL
                     destroy_shader_module(device, white_fragment_shader_module);
                 }
 
-                if (render_pass.value != VK_NULL_HANDLE)
+                if (render_pass != VK_NULL_HANDLE)
                 {
                     destroy_render_pass(device, render_pass, {});
                 }
@@ -657,7 +657,7 @@ namespace Mythology::SDL
 
             VkDevice device;
             VkPipelineLayout pipeline_layout;
-            Render_pass render_pass;
+            VkRenderPass render_pass;
             Shader_module triangle_vertex_shader_module;
             Shader_module white_fragment_shader_module;
             VkPipeline white_triangle_pipeline;
@@ -1219,7 +1219,7 @@ namespace Mythology::SDL
         VkSurfaceFormatKHR const surface_format = select_surface_format(physical_device, surface);
 
         Application_resources const application_resources{shaders_path, physical_device, device, surface_format.format};
-        Render_pass const render_pass = {render_passes[0]}; // TODO fix hack
+        VkRenderPass const render_pass = {render_passes[0]}; // TODO fix hack
         VkPipeline const white_triangle_pipeline = application_resources.white_triangle_pipeline;
 
         struct Clip_position
@@ -1299,7 +1299,7 @@ namespace Mythology::SDL
             get_phisical_device_memory_properties(physical_device).value,
             device,
             descriptor_pool,
-            render_pass.value,
+            render_pass,
             0,
             imgui_vertex_shader_module.value,
             imgui_fragment_shader_module.value,

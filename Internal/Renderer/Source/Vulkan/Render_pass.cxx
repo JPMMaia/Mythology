@@ -9,12 +9,7 @@ import <span>;
 
 namespace Maia::Renderer::Vulkan
 {
-    export struct Render_pass
-    {
-        VkRenderPass value;
-    };
-
-    export Render_pass create_render_pass(
+    export VkRenderPass create_render_pass(
         VkDevice device,
         std::span<VkAttachmentDescription const> attachment_descriptions,
         std::span<VkSubpassDescription const> subpass_descriptions,
@@ -24,14 +19,14 @@ namespace Maia::Renderer::Vulkan
 
     export void destroy_render_pass(
         VkDevice device,
-        Render_pass render_pass,
+        VkRenderPass render_pass,
         VkAllocationCallbacks const* allocator
     ) noexcept;
 
 
     export VkExtent2D get_render_area_granularity(
         VkDevice device,
-        Render_pass render_pass
+        VkRenderPass render_pass
     ) noexcept;
 
 
@@ -50,7 +45,7 @@ namespace Maia::Renderer::Vulkan
     export Framebuffer create_framebuffer(
         VkDevice device,
         VkFramebufferCreateFlags flags,
-        Render_pass render_pass,
+        VkRenderPass render_pass,
         std::span<VkImageView const> attachments,
         Framebuffer_dimensions dimensions,
         VkAllocationCallbacks const* allocator

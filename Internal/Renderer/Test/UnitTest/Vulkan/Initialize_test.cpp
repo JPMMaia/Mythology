@@ -28,7 +28,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 {
 	namespace
 	{
-		Render_pass create_render_pass(VkDevice const device, VkFormat const color_image_format) noexcept
+		VkRenderPass create_render_pass(VkDevice const device, VkFormat const color_image_format) noexcept
 		{
 			VkAttachmentDescription const color_attachment_description
 			{
@@ -188,7 +188,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 				{}
 			);
 
-			Render_pass const render_pass = create_render_pass(
+			VkRenderPass const render_pass = create_render_pass(
 				device,
 				color_image_format
 			);

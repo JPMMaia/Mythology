@@ -9,7 +9,7 @@ import <span>;
 
 namespace Maia::Renderer::Vulkan
 {
-    Render_pass create_render_pass(
+    VkRenderPass create_render_pass(
         VkDevice const device,
         std::span<VkAttachmentDescription const> const attachment_descriptions,
         std::span<VkSubpassDescription const> const subpass_descriptions,
@@ -45,13 +45,13 @@ namespace Maia::Renderer::Vulkan
 
     void destroy_render_pass(
         VkDevice const device,
-        Render_pass const render_pass,
+        VkRenderPass const render_pass,
         VkAllocationCallbacks const* const allocator
     ) noexcept
     {
         vkDestroyRenderPass(
             device,
-            render_pass.value,
+            render_pass,
             allocator
         );
     }
@@ -59,13 +59,13 @@ namespace Maia::Renderer::Vulkan
 
     VkExtent2D get_render_area_granularity(
         VkDevice device,
-        Render_pass render_pass
+        VkRenderPass render_pass
     ) noexcept
     {
         VkExtent2D granularity = {};
         vkGetRenderAreaGranularity(
             device,
-            render_pass.value,
+            render_pass,
             &granularity
         );
         return granularity;
@@ -75,7 +75,7 @@ namespace Maia::Renderer::Vulkan
     Framebuffer create_framebuffer(
         VkDevice const device,
         VkFramebufferCreateFlags const flags,
-        Render_pass const render_pass,
+        VkRenderPass const render_pass,
         std::span<VkImageView const> const attachments,
         Framebuffer_dimensions const dimensions,
         VkAllocationCallbacks const* const allocator
@@ -86,7 +86,7 @@ namespace Maia::Renderer::Vulkan
             .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
             .pNext = nullptr,
             .flags = flags,
-            .renderPass = render_pass.value,
+            .renderPass = render_pass,
             .attachmentCount = static_cast<uint32_t>(attachments.size()),
             .pAttachments = attachments.data(),
             .width = dimensions.width,
