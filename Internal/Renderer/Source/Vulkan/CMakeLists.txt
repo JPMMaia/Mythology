@@ -26,9 +26,9 @@ target_module (
     MaiaRendererVulkan
     "maia.renderer.vulkan.physical_device"
     INTERFACE "Physical_device.cxx"
-    INTERFACE_DEPENDS "Standard_library" "Vulkan" "maia.renderer.vulkan.instance"
+    INTERFACE_DEPENDS "Standard_library" "Vulkan"
     IMPLEMENTATION "Physical_device.cpp"
-    IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" "maia.renderer.vulkan.check" "maia.renderer.vulkan.instance"
+    IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" "maia.renderer.vulkan.check"
 )
 
 target_module (
