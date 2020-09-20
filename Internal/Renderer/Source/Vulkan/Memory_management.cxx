@@ -49,7 +49,7 @@ namespace Maia::Renderer::Vulkan
 
     private:
 
-        std::pmr::unordered_multimap<Memory_type_index, Chunk> m_chunks;
+        std::pmr::unordered_multimap<Memory_type_index, Chunk, Memory_type_index_hash> m_chunks;
         VkDevice m_device;
         VkDeviceSize m_blocks_size;
         VkAllocationCallbacks const* m_vulkan_allocator;
@@ -148,7 +148,7 @@ namespace Maia::Renderer::Vulkan
 
     private:
 
-        std::pmr::unordered_multimap<Memory_type_index, Chunk> m_chunks;
+        std::pmr::unordered_multimap<Memory_type_index, Chunk, Memory_type_index_hash> m_chunks;
         VkDevice m_device;
         VkDeviceSize m_maximum_block_size;
         VkDeviceSize m_minimum_block_size;

@@ -151,11 +151,8 @@ namespace Maia::Renderer::Vulkan
         VkDeviceMemory m_device_memory = {};
         void* m_mapped_memory = nullptr;
     };
-}
 
-namespace std
-{
-    export template<> struct hash<Maia::Renderer::Vulkan::Memory_type_index>
+    export struct Memory_type_index_hash
     {
         using value_type = Maia::Renderer::Vulkan::Memory_type_index;
 
