@@ -92,9 +92,11 @@ target_module (
     "maia.renderer.vulkan.queue"
     INTERFACE "Queue.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
-        "maia.renderer.vulkan.check"
+        "maia.renderer.vulkan.device"
     IMPLEMENTATION "Queue.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan"
+        "maia.renderer.vulkan.check"
+        "maia.renderer.vulkan.device"
 )
 
 target_module (

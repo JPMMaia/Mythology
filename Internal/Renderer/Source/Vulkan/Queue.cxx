@@ -1,5 +1,7 @@
 export module maia.renderer.vulkan.queue;
 
+import maia.renderer.vulkan.device;
+
 import <vulkan/vulkan.h>;
 
 import <cstdint>;

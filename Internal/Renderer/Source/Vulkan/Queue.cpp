@@ -20,7 +20,7 @@ namespace Maia::Renderer::Vulkan
         VkQueue queue = {};
         vkGetDeviceQueue(
             device,
-            queue_family_index,
+            queue_family_index.value,
             queue_index,
             &queue
         );
