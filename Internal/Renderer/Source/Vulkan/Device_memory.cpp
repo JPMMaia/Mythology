@@ -120,19 +120,21 @@ namespace Maia::Renderer::Vulkan
 
     std::ostream& operator<<(std::ostream& output_stream, VkMemoryType const& memory_type) noexcept
     {
+        /*
         output_stream << "Memory type:\n";
         output_stream << "\tProperty flags: " << to_string<VkMemoryPropertyFlagBits>(memory_type.propertyFlags) << '\n';
         output_stream << "\tHeap index: " << memory_type.heapIndex << '\n';
-
+        */
         return output_stream;
     }
 
     std::ostream& operator<<(std::ostream& output_stream, VkMemoryHeap const& memory_heap) noexcept
     {
+        /*
         output_stream << "Memory heap:\n";
         output_stream << "\tSize: " << memory_heap.size;
         output_stream << "\tFlags: " << to_string<VkMemoryHeapFlagBits>(memory_heap.flags);
-
+        */
         return output_stream;
     }
 
