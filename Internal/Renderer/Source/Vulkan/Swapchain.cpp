@@ -1,7 +1,6 @@
 module maia.renderer.vulkan.swapchain;
 
 import maia.renderer.vulkan.check;
-import maia.renderer.vulkan.device;
 import maia.renderer.vulkan.fence;
 import maia.renderer.vulkan.image;
 import maia.renderer.vulkan.queue;
@@ -19,7 +18,7 @@ import <vector>;
 namespace Maia::Renderer::Vulkan
 {
     Swapchain create_swapchain(
-        Device const device,
+        VkDevice const device,
         VkSwapchainCreateFlagsKHR const flags,
         Min_image_count const min_image_count,
         Surface const surface,
@@ -66,7 +65,7 @@ namespace Maia::Renderer::Vulkan
         VkSwapchainKHR swapchain = {};
         check_result(
             vkCreateSwapchainKHR(
-                device.value,
+                device,
                 &create_info,
                 allocator,
                 &swapchain
@@ -77,13 +76,13 @@ namespace Maia::Renderer::Vulkan
     }
 
     void destroy_swapchain(
-        Device const device,
+        VkDevice const device,
         Swapchain const swapchain,
         VkAllocationCallbacks const* const allocator
     ) noexcept
     {
         vkDestroySwapchainKHR(
-            device.value,
+            device,
             swapchain.value,
             allocator
         );
@@ -91,7 +90,7 @@ namespace Maia::Renderer::Vulkan
 
 
     std::pmr::vector<VkImage> get_swapchain_images(
-        Device const device,
+        VkDevice const device,
         Swapchain const swapchain,
         std::pmr::polymorphic_allocator<VkSurfaceFormatKHR> const allocator
     ) noexcept
@@ -99,7 +98,7 @@ namespace Maia::Renderer::Vulkan
         std::uint32_t swapchain_image_count = 0;
         check_result(
             vkGetSwapchainImagesKHR(
-                device.value,
+                device,
                 swapchain.value,
                 &swapchain_image_count,
                 nullptr
@@ -112,7 +111,7 @@ namespace Maia::Renderer::Vulkan
 
             check_result(
                 vkGetSwapchainImagesKHR(
-                    device.value,
+                    device,
                     swapchain.value,
                     &swapchain_image_count,
                     swapchain_images.data()
@@ -129,7 +128,7 @@ namespace Maia::Renderer::Vulkan
 
 
     std::optional<Swapchain_image_index> acquire_next_image(
-        Device const device,
+        VkDevice const device,
         Swapchain const swapchain,
         std::uint64_t const timeout,
         std::optional<Semaphore> const semaphore,
@@ -139,7 +138,7 @@ namespace Maia::Renderer::Vulkan
         std::uint32_t swapchain_image_index = 0;
 
         VkResult const status = vkAcquireNextImageKHR(
-            device.value,
+            device,
             swapchain.value,
             timeout,
             semaphore.has_value() ? semaphore->value : VK_NULL_HANDLE,

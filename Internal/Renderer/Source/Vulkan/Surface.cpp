@@ -1,7 +1,6 @@
 module maia.renderer.vulkan.surface;
 
 import maia.renderer.vulkan.check;
-import maia.renderer.vulkan.device;
 import maia.renderer.vulkan.instance;
 import maia.renderer.vulkan.physical_device;
 

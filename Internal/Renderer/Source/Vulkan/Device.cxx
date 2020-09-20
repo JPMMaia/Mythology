@@ -55,18 +55,13 @@ namespace Maia::Renderer::Vulkan
     export VkDeviceQueueCreateInfo create_device_queue_create_info(std::uint32_t queue_family_index, std::uint32_t queue_count, std::span<float const> queue_priorities) noexcept;
 
 
-    export struct Device
-    {
-        VkDevice value = VK_NULL_HANDLE;
-    };
-
-    export Device create_device(VkPhysicalDevice physical_device, std::span<VkDeviceQueueCreateInfo const> queue_create_infos, std::span<char const* const> enabled_extensions) noexcept;
-    export void destroy_device(Device device, VkAllocationCallbacks const* allocator = {}) noexcept;
+    export VkDevice create_device(VkPhysicalDevice physical_device, std::span<VkDeviceQueueCreateInfo const> queue_create_infos, std::span<char const* const> enabled_extensions) noexcept;
+    export void destroy_device(VkDevice device, VkAllocationCallbacks const* allocator = {}) noexcept;
 
 
     export struct Wait_device_idle_lock
     {
-        Wait_device_idle_lock(Device const device) noexcept :
+        Wait_device_idle_lock(VkDevice const device) noexcept :
             device{device}
         {
         }
@@ -74,12 +69,12 @@ namespace Maia::Renderer::Vulkan
         Wait_device_idle_lock(Wait_device_idle_lock&&) noexcept = delete;
         ~Wait_device_idle_lock() noexcept
         {
-            vkDeviceWaitIdle(device.value);
+            vkDeviceWaitIdle(device);
         }
 
         Wait_device_idle_lock& operator=(Wait_device_idle_lock const&) noexcept = delete;
         Wait_device_idle_lock& operator=(Wait_device_idle_lock&&) noexcept = delete;
 
-        Device device;
+        VkDevice device;
     };
 }

@@ -69,7 +69,7 @@ namespace Maia::Renderer::Vulkan
     }
 
 
-    Device create_device(VkPhysicalDevice const physical_device, std::span<VkDeviceQueueCreateInfo const> const queue_create_infos, std::span<char const* const> const enabled_extensions) noexcept
+    VkDevice create_device(VkPhysicalDevice const physical_device, std::span<VkDeviceQueueCreateInfo const> const queue_create_infos, std::span<char const* const> const enabled_extensions) noexcept
     {
         VkDeviceCreateInfo const create_info
         {
@@ -83,15 +83,15 @@ namespace Maia::Renderer::Vulkan
             .pEnabledFeatures = nullptr
         };
 
-        VkDevice device = {};
+        VkDevice device = VK_NULL_HANDLE;
         check_result(
             vkCreateDevice(physical_device, &create_info, nullptr, &device));
 
         return {device};
     }
 
-    void destroy_device(Device const device, VkAllocationCallbacks const* const allocator) noexcept
+    void destroy_device(VkDevice const device, VkAllocationCallbacks const* const allocator) noexcept
     {
-        vkDestroyDevice(device.value, allocator);
+        vkDestroyDevice(device, allocator);
     }
 }

@@ -1,7 +1,6 @@
 export module maia.renderer.vulkan.command_buffer;
 
 import maia.renderer.vulkan.command_pool;
-import maia.renderer.vulkan.device;
 import maia.renderer.vulkan.render_pass;
 
 import <vulkan/vulkan.h>;
@@ -20,7 +19,7 @@ namespace Maia::Renderer::Vulkan
     };
 
     export std::pmr::vector<Command_buffer> allocate_command_buffers(
-        Device device,
+        VkDevice device,
         Command_pool command_pool,
         VkCommandBufferLevel level,
         std::uint32_t command_buffer_count,
@@ -34,7 +33,7 @@ namespace Maia::Renderer::Vulkan
     ) noexcept;
 
     export void free_command_buffers(
-        Device device,
+        VkDevice device,
         Command_pool command_pool,
         std::span<Command_buffer const> command_buffers
     ) noexcept;

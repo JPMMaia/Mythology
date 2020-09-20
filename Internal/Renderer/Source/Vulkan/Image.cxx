@@ -1,6 +1,5 @@
 export module maia.renderer.vulkan.image;
 
-import maia.renderer.vulkan.device;
 
 import <vulkan/vulkan.h>;
 
@@ -33,7 +32,7 @@ namespace Maia::Renderer::Vulkan
     ) noexcept;
 
     export Image create_image(
-        Device device,
+        VkDevice device,
         VkAllocationCallbacks const* allocator,
         VkImageType image_type,
         VkFormat format,
@@ -50,14 +49,14 @@ namespace Maia::Renderer::Vulkan
     ) noexcept;
 
     export void destroy_image(
-        Device device,
+        VkDevice device,
         Image image,
         VkAllocationCallbacks const* allocator
     ) noexcept;
 
     
     export VkSubresourceLayout get_subresource_layout(
-        Device device,
+        VkDevice device,
         Image image,
         VkImageSubresource subresource
     ) noexcept;
@@ -80,7 +79,7 @@ namespace Maia::Renderer::Vulkan
     };
 
     export Image_view create_image_view(
-        Device device,
+        VkDevice device,
         VkImageViewCreateFlags flags,
         Image image,
         VkImageViewType view_type,
@@ -91,7 +90,7 @@ namespace Maia::Renderer::Vulkan
     ) noexcept;
 
     export void destroy_image_view(
-        Device device,
+        VkDevice device,
         Image_view image_view,
         VkAllocationCallbacks const* allocator
     ) noexcept;

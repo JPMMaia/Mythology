@@ -2,7 +2,6 @@ module maia.renderer.vulkan.queue;
 
 import maia.renderer.vulkan.check;
 import maia.renderer.vulkan.command_buffer;
-import maia.renderer.vulkan.device;
 import maia.renderer.vulkan.fence;
 import maia.renderer.vulkan.semaphore;
 
@@ -16,14 +15,14 @@ import <span>;
 namespace Maia::Renderer::Vulkan
 {
     Queue get_device_queue(
-        Device const device,
+        VkDevice const device,
         Queue_family_index const queue_family_index,
         std::uint32_t const queue_index
     ) noexcept
     {
         VkQueue queue = {};
         vkGetDeviceQueue(
-            device.value,
+            device,
             queue_family_index.value,
             queue_index,
             &queue

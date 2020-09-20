@@ -2,7 +2,6 @@ module maia.renderer.vulkan.command_buffer;
 
 import maia.renderer.vulkan.check;
 import maia.renderer.vulkan.command_pool;
-import maia.renderer.vulkan.device;
 import maia.renderer.vulkan.render_pass;
 
 import <vulkan/vulkan.h>;
@@ -16,7 +15,7 @@ import <vector>;
 namespace Maia::Renderer::Vulkan
 {
     std::pmr::vector<Command_buffer> allocate_command_buffers(
-        Device const device,
+        VkDevice const device,
         Command_pool const command_pool,
         VkCommandBufferLevel const level,
         std::uint32_t const command_buffer_count,
@@ -39,7 +38,7 @@ namespace Maia::Renderer::Vulkan
         static_assert(sizeof(Command_buffer) == sizeof(VkCommandBuffer), "Command_buffer must only contain VkCommandBuffer since using Command_buffer* as a contiguous array");
         check_result(
             vkAllocateCommandBuffers(
-                device.value,
+                device,
                 &allocate_info,
                 reinterpret_cast<VkCommandBuffer*>(command_buffers.data())
             )
@@ -59,7 +58,7 @@ namespace Maia::Renderer::Vulkan
     }
 
     void free_command_buffers(
-        Device const device,
+        VkDevice const device,
         Command_pool const command_pool,
         std::span<Command_buffer const> const command_buffers
     ) noexcept
@@ -68,7 +67,7 @@ namespace Maia::Renderer::Vulkan
         static_assert(sizeof(Command_buffer) == sizeof(VkCommandBuffer), "Command_buffer must only contain VkCommandBuffer since using Command_buffer* as a contiguous array");
 
         vkFreeCommandBuffers(
-            device.value, 
+            device, 
             command_pool.value, 
             static_cast<uint32_t>(command_buffers.size()),
             reinterpret_cast<VkCommandBuffer const*>(command_buffers.data())

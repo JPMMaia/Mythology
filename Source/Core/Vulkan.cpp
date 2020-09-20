@@ -158,7 +158,7 @@ namespace Mythology::Core::Vulkan
         }
     }
 
-    Device create_device(
+    VkDevice create_device(
         VkPhysicalDevice const physical_device,
         std::span<Queue_family_index const> const queue_family_indices,
         std::function<bool(VkExtensionProperties)> const& is_extension_to_enable) noexcept
@@ -226,7 +226,7 @@ namespace Mythology::Core::Vulkan
 
     Device_memory_and_color_image create_device_memory_and_color_image(
         VkPhysicalDevice const physical_device,
-        Device const device,
+        VkDevice const device,
         VkFormat const format,
         VkExtent3D const extent
     ) noexcept
@@ -247,17 +247,17 @@ namespace Mythology::Core::Vulkan
         );
 
         Physical_device_memory_properties const physical_device_memory_properties = get_phisical_device_memory_properties(physical_device);
-        Memory_requirements const color_image_memory_requirements = get_memory_requirements(device.value, color_image.value);
+        Memory_requirements const color_image_memory_requirements = get_memory_requirements(device, color_image.value);
         Memory_type_info const color_image_memory_type_info = get_memory_type_info(physical_device_memory_properties, color_image_memory_requirements);
 
         VkDeviceMemory const device_memory =
-            allocate_memory(device.value, color_image_memory_requirements.value.size, color_image_memory_type_info.memory_type_index, {});
-        bind_memory(device.value, color_image.value, device_memory, 0);
+            allocate_memory(device, color_image_memory_requirements.value.size, color_image_memory_type_info.memory_type_index, {});
+        bind_memory(device, color_image.value, device_memory, 0);
 
         return {device_memory, color_image};
     }
 
-    Render_pass create_render_pass(Device const device, VkFormat const color_image_format) noexcept
+    Render_pass create_render_pass(VkDevice const device, VkFormat const color_image_format) noexcept
     {
         VkAttachmentDescription const color_attachment_description
         {
@@ -313,7 +313,7 @@ namespace Mythology::Core::Vulkan
     }
 
     VkPipeline create_vertex_and_fragment_pipeline(
-        Device const device,
+        VkDevice const device,
         std::optional<VkPipelineCache> const pipeline_cache,
         VkPipelineLayout const pipeline_layout,
         VkRenderPass const render_pass,
@@ -393,7 +393,7 @@ namespace Mythology::Core::Vulkan
             .basePipelineIndex = -1,
         };
 
-        return create_graphics_pipeline(device.value, graphics_pipeline_create_info, pipeline_cache.has_value() ? *pipeline_cache : VK_NULL_HANDLE);
+        return create_graphics_pipeline(device, graphics_pipeline_create_info, pipeline_cache.has_value() ? *pipeline_cache : VK_NULL_HANDLE);
     }
 
     void clear_and_begin_render_pass(
@@ -571,7 +571,7 @@ namespace Mythology::Core::Vulkan
     }
 
     std::pmr::vector<std::byte> read_memory(
-        Device const device,
+        VkDevice const device,
         VkDeviceMemory const device_memory,
         VkSubresourceLayout const subresource_layout,
         std::pmr::polymorphic_allocator<std::byte> const& allocator
@@ -581,7 +581,7 @@ namespace Mythology::Core::Vulkan
         memory_data.resize(subresource_layout.size);
 
         {
-            Mapped_memory const mapped_memory{device.value, device_memory, subresource_layout.offset, subresource_layout.size};
+            Mapped_memory const mapped_memory{device, device_memory, subresource_layout.offset, subresource_layout.size};
             std::memcpy(memory_data.data(), mapped_memory.data(), memory_data.size());
         }
 

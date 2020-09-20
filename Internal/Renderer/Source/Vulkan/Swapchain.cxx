@@ -1,6 +1,5 @@
 export module maia.renderer.vulkan.swapchain;
 
-import maia.renderer.vulkan.device;
 import maia.renderer.vulkan.fence;
 import maia.renderer.vulkan.image;
 import maia.renderer.vulkan.queue;
@@ -28,7 +27,7 @@ namespace Maia::Renderer::Vulkan
     };
 
     export Swapchain create_swapchain(
-        Device device,
+        VkDevice device,
         VkSwapchainCreateFlagsKHR flags,
         Min_image_count min_image_count,
         Surface surface,
@@ -48,14 +47,14 @@ namespace Maia::Renderer::Vulkan
     ) noexcept;
 
     export void destroy_swapchain(
-        Device device,
+        VkDevice device,
         Swapchain swapchain,
         VkAllocationCallbacks const* allocator = {}
     ) noexcept;
 
 
     export std::pmr::vector<VkImage> get_swapchain_images(
-        Device device,
+        VkDevice device,
         Swapchain swapchain,
         std::pmr::polymorphic_allocator<VkSurfaceFormatKHR> allocator = {}
     ) noexcept;
@@ -67,7 +66,7 @@ namespace Maia::Renderer::Vulkan
     };
 
     export std::optional<Swapchain_image_index> acquire_next_image(
-        Device device,
+        VkDevice device,
         Swapchain swapchain,
         std::uint64_t timeout,
         std::optional<Semaphore> semaphore,

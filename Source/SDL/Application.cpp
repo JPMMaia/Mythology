@@ -215,7 +215,7 @@ namespace Mythology::SDL
 
         Swapchain create_swapchain(
             VkPhysicalDevice const physical_device,
-            Device const device,
+            VkDevice const device,
             Surface const surface,
             VkSurfaceFormatKHR const surface_format,
             std::span<Queue_family_index const> const queue_family_indices,
@@ -253,7 +253,7 @@ namespace Mythology::SDL
         }
 
         std::pmr::vector<VkImageView> create_swapchain_image_views(
-            Device const device,
+            VkDevice const device,
             std::span<VkImage const> const images,
             VkFormat const format
         ) noexcept
@@ -321,7 +321,7 @@ namespace Mythology::SDL
             Device_resources(Device_resources&&) = delete;
             ~Device_resources() noexcept
             {
-                if (this->device.value != VK_NULL_HANDLE)
+                if (this->device != VK_NULL_HANDLE)
                 {
                     destroy_device(this->device);
                 }
@@ -345,11 +345,11 @@ namespace Mythology::SDL
             Surface surface = {};
             Queue_family_index graphics_queue_family_index = {};
             Queue_family_index present_queue_family_index = {};
-            Device device = {};
+            VkDevice device = VK_NULL_HANDLE;
         };
 
         std::pmr::vector<Framebuffer> create_swapchain_framebuffers(
-            Device const device,
+            VkDevice const device,
             Render_pass const render_pass,
             std::span<VkImageView const> const swapchain_image_views,
             Framebuffer_dimensions const framebuffer_dimensions
@@ -370,7 +370,7 @@ namespace Mythology::SDL
         {
             Swapchain_resources(
                 VkPhysicalDevice const physical_device,
-                Device const device,
+                VkDevice const device,
                 Surface const surface,
                 VkSurfaceFormatKHR const surface_format,
                 std::span<Queue_family_index const> const queue_family_indices,
@@ -403,7 +403,7 @@ namespace Mythology::SDL
 
                 for (VkImageView const image_view : this->image_views)
                 {
-                    vkDestroyImageView(this->device.value, image_view, nullptr);
+                    vkDestroyImageView(this->device, image_view, nullptr);
                 }
 
                 if (this->swapchain.value != VK_NULL_HANDLE)
@@ -425,7 +425,7 @@ namespace Mythology::SDL
                 return *this;
             }
 
-            Device device = {};
+            VkDevice device = VK_NULL_HANDLE;
             Swapchain swapchain = {};
             std::pmr::vector<VkImage> images;
             std::pmr::vector<VkImageView> image_views;
@@ -436,7 +436,7 @@ namespace Mythology::SDL
         struct Command_pools_resources
         {
             Command_pools_resources(
-                Device const device,
+                VkDevice const device,
                 VkCommandPoolCreateFlags const flags,
                 Queue_family_index const queue_family_index) noexcept :
                 device{device},
@@ -456,13 +456,13 @@ namespace Mythology::SDL
             Command_pools_resources& operator=(Command_pools_resources const&) noexcept = delete;
             Command_pools_resources& operator=(Command_pools_resources&&) noexcept = delete;
 
-            Device device = {};
+            VkDevice device = VK_NULL_HANDLE;
             Command_pool command_pool = {};
         };
 
         struct Synchronization_resources
         {
-            Synchronization_resources(std::size_t const count, Device const device) noexcept :
+            Synchronization_resources(std::size_t const count, VkDevice const device) noexcept :
                 device{device},
                 available_frames_semaphores{create_semaphores(count, device, VK_SEMAPHORE_TYPE_BINARY)},
                 finished_frames_semaphores{create_semaphores(count, device, VK_SEMAPHORE_TYPE_BINARY)},
@@ -492,7 +492,7 @@ namespace Mythology::SDL
             Synchronization_resources& operator=(Synchronization_resources const&) noexcept = delete;
             Synchronization_resources& operator=(Synchronization_resources&&) noexcept = delete;
 
-            Device device;
+            VkDevice device;
             std::pmr::vector<Semaphore> available_frames_semaphores;
             std::pmr::vector<Semaphore> finished_frames_semaphores;
             std::pmr::vector<Fence> available_frames_fences;
@@ -612,10 +612,10 @@ namespace Mythology::SDL
             Application_resources(
                 std::filesystem::path const shaders_path,
                 VkPhysicalDevice const physical_device,
-                Device const device,
+                VkDevice const device,
                 VkFormat const image_format) noexcept :
                 device{device},
-                pipeline_layout{create_pipeline_layout(device.value, empty_pipeline_layout_create_info())},
+                pipeline_layout{create_pipeline_layout(device, empty_pipeline_layout_create_info())},
                 render_pass{create_render_pass(device, image_format)},
                 triangle_vertex_shader_module{create_shader_module(device, {}, convert_bytes<std::uint32_t>(read_bytes(shaders_path / "Triangle.vertex.spv")))},
                 white_fragment_shader_module{create_shader_module(device, {}, convert_bytes<std::uint32_t>(read_bytes(shaders_path / "White.fragment.spv")))},
@@ -628,7 +628,7 @@ namespace Mythology::SDL
             {
                 if (white_triangle_pipeline != VK_NULL_HANDLE)
                 {
-                    vkDestroyPipeline(device.value, white_triangle_pipeline, nullptr);
+                    vkDestroyPipeline(device, white_triangle_pipeline, nullptr);
                 }
 
                 if (triangle_vertex_shader_module.value != VK_NULL_HANDLE)
@@ -648,14 +648,14 @@ namespace Mythology::SDL
 
                 if (pipeline_layout != VK_NULL_HANDLE)
                 {
-                    destroy_pipeline_layout(device.value, pipeline_layout, {});
+                    destroy_pipeline_layout(device, pipeline_layout, {});
                 }
             }
 
             Application_resources& operator=(Application_resources const&) = delete;
             Application_resources& operator=(Application_resources&&) = delete;
 
-            Device device;
+            VkDevice device;
             VkPipelineLayout pipeline_layout;
             Render_pass render_pass;
             Shader_module triangle_vertex_shader_module;
@@ -672,7 +672,7 @@ namespace Mythology::SDL
 
         Device_memory_and_buffer create_device_memory_and_buffer(
             Physical_device_memory_properties const& physical_device_memory_properties,
-            Device const device,
+            VkDevice const device,
             VkDeviceSize const allocation_size, 
             VkBufferUsageFlags const usage,
             VkBufferCreateFlags const flags = {},
@@ -681,9 +681,9 @@ namespace Mythology::SDL
             VkAllocationCallbacks const* const allocator = nullptr
         ) noexcept
         {
-            VkBuffer const buffer = create_buffer(device.value, allocation_size, usage, flags, sharing_mode, queue_family_indices);
+            VkBuffer const buffer = create_buffer(device, allocation_size, usage, flags, sharing_mode, queue_family_indices);
 
-            Memory_requirements const memory_requirements = get_memory_requirements(device.value, buffer);
+            Memory_requirements const memory_requirements = get_memory_requirements(device, buffer);
             Memory_type_bits const memory_type_bits = get_memory_type_bits(memory_requirements);
 
             std::optional<Memory_type_index_and_properties> const memory_type_index_and_properties = find_memory_type(
@@ -694,10 +694,10 @@ namespace Mythology::SDL
             assert(memory_type_index_and_properties.has_value());
 
             VkDeviceMemory const device_memory =
-                allocate_memory(device.value, memory_requirements.value.size, memory_type_index_and_properties->type_index, allocator);
+                allocate_memory(device, memory_requirements.value.size, memory_type_index_and_properties->type_index, allocator);
 
             VkDeviceSize const device_offset = 0;
-            bind_memory(device.value, buffer, device_memory, device_offset);
+            bind_memory(device, buffer, device_memory, device_offset);
 
             VkMemoryPropertyFlags const memory_property_flags =
                 physical_device_memory_properties.value.memoryTypes[memory_type_index_and_properties->type_index.value].propertyFlags;
@@ -706,16 +706,16 @@ namespace Mythology::SDL
         }
 
         void destroy_device_memory_and_buffer(
-            Device const device,
+            VkDevice const device,
             Device_memory_and_buffer const device_memory_and_buffer,
             VkAllocationCallbacks const* const allocator = nullptr) noexcept
         {
-            destroy_buffer(device.value, device_memory_and_buffer.buffer, allocator);
-            free_memory(device.value, device_memory_and_buffer.memory, allocator);
+            destroy_buffer(device, device_memory_and_buffer.buffer, allocator);
+            free_memory(device, device_memory_and_buffer.memory, allocator);
         }
 
         void upload_data(
-            Device const device,
+            VkDevice const device,
             VkDeviceMemory const device_memory,
             VkDeviceSize const memory_offset,
             VkDeviceSize const memory_size,
@@ -727,7 +727,7 @@ namespace Mythology::SDL
             assert(memory_property_flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
             {
-                Mapped_memory const mapped_memory{device.value, device_memory, memory_offset, memory_size, map_flags};
+                Mapped_memory const mapped_memory{device, device_memory, memory_offset, memory_size, map_flags};
 
                 copy_data(mapped_memory.data());
             }
@@ -744,7 +744,7 @@ namespace Mythology::SDL
                 };
 
                 check_result(
-                    vkFlushMappedMemoryRanges(device.value, 1, &mapped_memory_range));
+                    vkFlushMappedMemoryRanges(device, 1, &mapped_memory_range));
             }
         }
 
@@ -1064,7 +1064,7 @@ namespace Mythology::SDL
 
         Device_resources const device_resources{make_api_version(1, 2, 0), *window.get()};
         VkPhysicalDevice const physical_device = device_resources.physical_device;
-        Device const device = device_resources.device;
+        VkDevice const device = device_resources.device;
         Queue_family_index const graphics_queue_family_index = device_resources.graphics_queue_family_index;
         Queue_family_index const present_queue_family_index = device_resources.present_queue_family_index;
         Surface const surface = device_resources.surface;
@@ -1158,22 +1158,22 @@ namespace Mythology::SDL
         game_controllers.reserve(2);
 
         std::pmr::vector<VkRenderPass> const render_passes = 
-            Maia::Renderer::Vulkan::create_render_passes(device.value, nullptr, pipeline_json.at("render_passes"), {}, {}, {}, {}, {}, {});
+            Maia::Renderer::Vulkan::create_render_passes(device, nullptr, pipeline_json.at("render_passes"), {}, {}, {}, {}, {}, {});
 
         std::pmr::vector<VkShaderModule> const shader_modules = 
-            Maia::Renderer::Vulkan::create_shader_modules(device.value, nullptr, pipeline_json.at("shader_modules"), pipeline_json_parent_path, {});
+            Maia::Renderer::Vulkan::create_shader_modules(device, nullptr, pipeline_json.at("shader_modules"), pipeline_json_parent_path, {});
 
         std::pmr::vector<VkSampler> const samplers = 
-            Maia::Renderer::Vulkan::create_samplers(device.value, nullptr, pipeline_json.at("samplers"), {});
+            Maia::Renderer::Vulkan::create_samplers(device, nullptr, pipeline_json.at("samplers"), {});
         
         std::pmr::vector<VkDescriptorSetLayout> const descriptor_set_layouts = 
-            Maia::Renderer::Vulkan::create_descriptor_set_layouts(device.value, nullptr, samplers, pipeline_json.at("descriptor_set_layouts"), {});
+            Maia::Renderer::Vulkan::create_descriptor_set_layouts(device, nullptr, samplers, pipeline_json.at("descriptor_set_layouts"), {});
 
         std::pmr::vector<VkPipelineLayout> const pipeline_layouts = 
-            Maia::Renderer::Vulkan::create_pipeline_layouts(device.value, nullptr, descriptor_set_layouts, pipeline_json.at("pipeline_layouts"), {});
+            Maia::Renderer::Vulkan::create_pipeline_layouts(device, nullptr, descriptor_set_layouts, pipeline_json.at("pipeline_layouts"), {});
 
         std::pmr::vector<VkPipeline> const pipeline_states = create_pipeline_states(
-            device.value,
+            device,
             nullptr,
             shader_modules,
             pipeline_layouts,
@@ -1190,7 +1190,7 @@ namespace Mythology::SDL
         );
 
         Maia::Utilities::glTF::Gltf const gltf = Maia::Utilities::glTF::gltf_from_json(read_json_from_file(gltf_file_path), {});
-        Buffer_pool_memory_resource gltf_buffer_memory_resource = create_geometry_buffer_pool(get_phisical_device_memory_properties(physical_device).value, device.value);
+        Buffer_pool_memory_resource gltf_buffer_memory_resource = create_geometry_buffer_pool(get_phisical_device_memory_properties(physical_device).value, device);
 
         {
             std::pmr::vector<Buffer_pool_node> buffer_nodes;
@@ -1211,7 +1211,7 @@ namespace Mythology::SDL
             VkDeviceMemory const device_memory = gltf_buffer_memory_resource.device_memory();
             VkMemoryPropertyFlags const memory_properties = gltf_buffer_memory_resource.memory_properties();
 
-            upload_buffer_data(device.value, device_memory, buffer_nodes, memory_properties, gltf, gltf_directory);
+            upload_buffer_data(device, device_memory, buffer_nodes, memory_properties, gltf, gltf_directory);
 
             std::pmr::vector<Mesh_id> const mesh_ids = create_mesh_ids(gltf, Mesh_id{0}, {});
         }
@@ -1281,13 +1281,13 @@ namespace Mythology::SDL
         };
 
         VkDescriptorPool descriptor_pool = create_descriptor_pool(
-            device.value,
+            device,
             descriptor_pool_create_info
         );
         // TODO destroy descriptor pool
 
-        Monotonic_device_memory_resource monotonic_memory_resource{device.value, 128*1024*1024};
-        Buffer_pool_memory_resource geometry_buffer_memory_resource = create_geometry_buffer_pool(get_phisical_device_memory_properties(physical_device).value, device.value);
+        Monotonic_device_memory_resource monotonic_memory_resource{device, 128*1024*1024};
+        Buffer_pool_memory_resource geometry_buffer_memory_resource = create_geometry_buffer_pool(get_phisical_device_memory_properties(physical_device).value, device);
 
         Shader_module const imgui_vertex_shader_module = create_shader_module(device, {}, convert_bytes<std::uint32_t>(read_bytes(shaders_path / "Imgui.vertex.spv")));
         Shader_module const imgui_fragment_shader_module = create_shader_module(device, {}, convert_bytes<std::uint32_t>(read_bytes(shaders_path / "Imgui.fragment.spv")));
@@ -1297,7 +1297,7 @@ namespace Mythology::SDL
         Mythology::ImGui::ImGui_resources imgui_resources
         {
             get_phisical_device_memory_properties(physical_device).value,
-            device.value,
+            device,
             descriptor_pool,
             render_pass.value,
             0,
@@ -1313,7 +1313,7 @@ namespace Mythology::SDL
             begin_command_buffer(command_buffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, {});
 
             Mythology::ImGui::upload_fonts_image_data(
-                device.value,
+                device,
                 command_buffer.value,
                 imgui_resources.fonts_image_resource.image,
                 imgui_resources.fonts_image_resource.device_memory_range,
@@ -1324,7 +1324,7 @@ namespace Mythology::SDL
 
             queue_submit(graphics_queue, {}, {}, {&command_buffer, 1}, {}, {});
 
-            vkDeviceWaitIdle(device.value);
+            vkDeviceWaitIdle(device);
         }
         
         destroy_shader_module(device, imgui_fragment_shader_module);
@@ -1364,7 +1364,7 @@ namespace Mythology::SDL
                     {
                         if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED || event.window.event == SDL_WINDOWEVENT_RESIZED)
                         {
-                            vkDeviceWaitIdle(device.value);
+                            vkDeviceWaitIdle(device);
 
                             Swapchain const old_swapchain = swapchain_resources.swapchain;
                             swapchain_resources = {physical_device, device, surface, surface_format, std::array<Queue_family_index, 2>{graphics_queue_family_index, present_queue_family_index}, render_pass, old_swapchain};
@@ -1504,7 +1504,7 @@ namespace Mythology::SDL
                                     ImDrawData const& draw_data = *::ImGui::GetDrawData();
 
                                     imgui_resources.geometry_buffer_node = Mythology::ImGui::update_geometry_buffer(
-                                        device.value,
+                                        device,
                                         draw_data,
                                         imgui_resources.geometry_buffer_node,
                                         *imgui_resources.buffer_pool

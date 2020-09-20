@@ -1,7 +1,6 @@
 module maia.renderer.vulkan.command_pool;
 
 import maia.renderer.vulkan.check;
-import maia.renderer.vulkan.device;
 
 import <vulkan/vulkan.h>;
 
@@ -10,7 +9,7 @@ import <optional>;
 namespace Maia::Renderer::Vulkan
 {
     Command_pool create_command_pool(
-        Device const device,
+        VkDevice const device,
         VkCommandPoolCreateFlags const flags,
         Queue_family_index const queue_family_index,
         VkAllocationCallbacks const* const allocator
@@ -27,7 +26,7 @@ namespace Maia::Renderer::Vulkan
         VkCommandPool command_pool = {};
         check_result(
             vkCreateCommandPool(
-                device.value, 
+                device, 
                 &create_info, 
                 allocator,
                 &command_pool
@@ -38,23 +37,23 @@ namespace Maia::Renderer::Vulkan
     }
 
     void reset_command_pool(
-        Device device,
+        VkDevice device,
         Command_pool command_pool,
         VkCommandPoolResetFlags flags
     ) noexcept
     {
         check_result(
-            vkResetCommandPool(device.value, command_pool.value, flags));
+            vkResetCommandPool(device, command_pool.value, flags));
     }
 
     void destroy_command_pool(
-        Device device,
+        VkDevice device,
         Command_pool command_pool,
         VkAllocationCallbacks const* allocator
     ) noexcept
     {
         vkDestroyCommandPool(
-            device.value, 
+            device, 
             command_pool.value,
             allocator
         );

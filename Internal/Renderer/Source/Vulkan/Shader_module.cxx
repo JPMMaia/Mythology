@@ -1,6 +1,5 @@
 export module maia.renderer.vulkan.shader_module;
 
-import maia.renderer.vulkan.device;
 
 import <vulkan/vulkan.h>;
 
@@ -17,13 +16,13 @@ namespace Maia::Renderer::Vulkan
     };
 
     export Shader_module create_shader_module(
-        Device device,
+        VkDevice device,
         VkShaderModuleCreateFlags flags,
         std::span<uint32_t const> code,
         VkAllocationCallbacks const* allocator = {}) noexcept;
 
     export void destroy_shader_module(
-        Device device,
+        VkDevice device,
         Shader_module shader_module,
         VkAllocationCallbacks const* allocator = {}) noexcept;
 }

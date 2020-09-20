@@ -28,7 +28,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 {
 	namespace
 	{
-		Render_pass create_render_pass(Device const device, VkFormat const color_image_format) noexcept
+		Render_pass create_render_pass(VkDevice const device, VkFormat const color_image_format) noexcept
 		{
 			VkAttachmentDescription const color_attachment_description
 			{
@@ -361,7 +361,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 						}
 
 						vkUnmapMemory(
-							device.value,
+							device,
 							device_memory.value
 						);
 					}

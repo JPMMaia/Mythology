@@ -1,7 +1,6 @@
 module maia.renderer.vulkan.image;
 
 import maia.renderer.vulkan.check;
-import maia.renderer.vulkan.device;
 
 import <vulkan/vulkan.h>;
 
@@ -32,7 +31,7 @@ namespace Maia::Renderer::Vulkan
     }
 
     Image create_image(
-        Device const device,
+        VkDevice const device,
         VkAllocationCallbacks const* const allocator,
         VkImageType const image_type,
         VkFormat const format,
@@ -67,17 +66,17 @@ namespace Maia::Renderer::Vulkan
             .initialLayout = initial_layout,
         };
 
-        return {create_image(device.value, create_info, allocator)};
+        return {create_image(device, create_info, allocator)};
     }
 
     void destroy_image(
-        Device const device,
+        VkDevice const device,
         Image const image,
         VkAllocationCallbacks const* const allocator
     ) noexcept
     {
         vkDestroyImage(
-            device.value,
+            device,
             image.value,
             allocator
         );
@@ -85,14 +84,14 @@ namespace Maia::Renderer::Vulkan
 
 
     VkSubresourceLayout get_subresource_layout(
-        Device const device,
+        VkDevice const device,
         Image const image,
         VkImageSubresource const subresource
     ) noexcept
     {
         VkSubresourceLayout subresource_layout = {};
         vkGetImageSubresourceLayout(
-            device.value,
+            device,
             image.value,
             &subresource,
             &subresource_layout
@@ -102,7 +101,7 @@ namespace Maia::Renderer::Vulkan
 
 
     Image_view create_image_view(
-        Device const device,
+        VkDevice const device,
         VkImageViewCreateFlags const flags,
         Image const image,
         VkImageViewType const view_type,
@@ -127,7 +126,7 @@ namespace Maia::Renderer::Vulkan
         VkImageView image_view = {};
         check_result(
             vkCreateImageView(
-                device.value,
+                device,
                 &create_info,
                 allocator,
                 &image_view
@@ -138,13 +137,13 @@ namespace Maia::Renderer::Vulkan
     }
 
     void destroy_image_view(
-        Device const device,
+        VkDevice const device,
         Image_view const image_view,
         VkAllocationCallbacks const* const allocator
     ) noexcept
     {
         vkDestroyImageView(
-            device.value,
+            device,
             image_view.value,
             allocator
         );

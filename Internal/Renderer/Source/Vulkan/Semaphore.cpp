@@ -1,7 +1,6 @@
 module maia.renderer.vulkan.semaphore;
 
 import maia.renderer.vulkan.check;
-import maia.renderer.vulkan.device;
 
 import <vulkan/vulkan.h>;
 
@@ -13,7 +12,7 @@ import <vector>;
 namespace Maia::Renderer::Vulkan
 {
     Semaphore create_semaphore(
-        Device const device,
+        VkDevice const device,
         VkSemaphoreType const semaphore_type,
         Semaphore_value const initial_value,
         VkSemaphoreCreateFlags const flags,
@@ -38,7 +37,7 @@ namespace Maia::Renderer::Vulkan
         VkSemaphore semaphore;
         check_result(
             vkCreateSemaphore(
-                device.value, 
+                device, 
                 &create_info,
                 allocator,
                 &semaphore
@@ -50,7 +49,7 @@ namespace Maia::Renderer::Vulkan
 
     std::pmr::vector<Semaphore> create_semaphores(
         std::size_t const count,
-        Device const device,
+        VkDevice const device,
         VkSemaphoreType const semaphore_type,
         Semaphore_value const initial_value,
         VkSemaphoreCreateFlags const flags,
@@ -71,13 +70,13 @@ namespace Maia::Renderer::Vulkan
     }
 
     void destroy_semaphore(
-        Device const device,
+        VkDevice const device,
         Semaphore const semaphore,
         VkAllocationCallbacks const* const allocator
     ) noexcept
     {
         vkDestroySemaphore(
-            device.value,
+            device,
             semaphore.value,
             allocator
         );

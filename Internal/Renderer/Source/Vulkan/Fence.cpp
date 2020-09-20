@@ -1,7 +1,6 @@
 module maia.renderer.vulkan.fence;
 
 import maia.renderer.vulkan.check;
-import maia.renderer.vulkan.device;
 
 import <vulkan/vulkan.h>;
 
@@ -13,7 +12,7 @@ import <vector>;
 namespace Maia::Renderer::Vulkan
 {
     Fence create_fence(
-        Device const device,
+        VkDevice const device,
         VkFenceCreateFlags const flags,
         VkAllocationCallbacks const* const allocator
     ) noexcept
@@ -28,7 +27,7 @@ namespace Maia::Renderer::Vulkan
         VkFence fence = {};
         check_result(
             vkCreateFence(
-                device.value,
+                device,
                 &create_info,
                 allocator,
                 &fence
@@ -40,7 +39,7 @@ namespace Maia::Renderer::Vulkan
 
     std::pmr::vector<Fence> create_fences(
         std::size_t const count,
-        Device const device,
+        VkDevice const device,
         VkFenceCreateFlags const flags,
         VkAllocationCallbacks const* const vulkan_allocator,
         std::pmr::polymorphic_allocator<Fence> vector_allocator
@@ -59,24 +58,24 @@ namespace Maia::Renderer::Vulkan
     }
 
     void destroy_fence(
-        Device const device,
+        VkDevice const device,
         Fence const fence,
         VkAllocationCallbacks const* const allocator
     ) noexcept
     {
         vkDestroyFence(
-            device.value,
+            device,
             fence.value,
             allocator
         );
     }
 
     bool is_fence_signaled(
-        Device const device,
+        VkDevice const device,
         Fence const fence
     ) noexcept
     {
-        VkResult const state = vkGetFenceStatus(device.value, fence.value);
+        VkResult const state = vkGetFenceStatus(device, fence.value);
 
         if (state == VK_ERROR_DEVICE_LOST)
         {
@@ -87,7 +86,7 @@ namespace Maia::Renderer::Vulkan
     }
 
     void reset_fences(
-        Device const device,
+        VkDevice const device,
         std::span<Fence const> const fences
     ) noexcept
     {
@@ -96,7 +95,7 @@ namespace Maia::Renderer::Vulkan
 
         check_result(
             vkResetFences(
-                device.value,
+                device,
                 static_cast<uint32_t>(fences.size()),
                 reinterpret_cast<VkFence const*>(fences.data())
             )
@@ -104,7 +103,7 @@ namespace Maia::Renderer::Vulkan
     }
 
     VkResult wait_for_all_fences(
-        Device const device,
+        VkDevice const device,
         std::span<Fence const> const fences,
         Timeout_nanoseconds const timeout
     ) noexcept
@@ -114,7 +113,7 @@ namespace Maia::Renderer::Vulkan
 
         VkResult const result = 
             vkWaitForFences(
-                device.value, 
+                device, 
                 static_cast<uint32_t>(fences.size()),
                 reinterpret_cast<VkFence const*>(fences.data()),
                 VK_TRUE,
@@ -133,7 +132,7 @@ namespace Maia::Renderer::Vulkan
     }
 
     VkResult wait_for_any_fence(
-        Device const device,
+        VkDevice const device,
         std::span<Fence const> const fences,
         Timeout_nanoseconds const timeout
     ) noexcept
@@ -143,7 +142,7 @@ namespace Maia::Renderer::Vulkan
 
         VkResult const result = 
             vkWaitForFences(
-                device.value, 
+                device, 
                 static_cast<uint32_t>(fences.size()),
                 reinterpret_cast<VkFence const*>(fences.data()),
                 VK_FALSE,

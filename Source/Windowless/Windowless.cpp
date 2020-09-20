@@ -123,7 +123,7 @@ namespace Mythology::Windowless
                     destroy_fence(this->device, this->fence, {});
                 }
 
-                if (this->device.value != VK_NULL_HANDLE)
+                if (this->device != VK_NULL_HANDLE)
                 {
                     destroy_device(this->device);
                 }
@@ -155,7 +155,7 @@ namespace Mythology::Windowless
             VkDebugUtilsMessengerEXT debug_messenger = {};
             VkPhysicalDevice physical_device = {};
             Queue_family_index graphics_queue_family_index = {};
-            Device device = {};
+            VkDevice device = VK_NULL_HANDLE;
             Fence fence = {};
             Command_pool command_pool = {};
         };
@@ -165,7 +165,7 @@ namespace Mythology::Windowless
             explicit Application_resources(
                 std::filesystem::path const shaders_path,
                 VkPhysicalDevice const physical_device,
-                Device const device,
+                VkDevice const device,
                 VkFormat const color_image_format,
                 VkExtent3D const color_image_extent,
                 std::optional<VkRenderPass> const render_pass) noexcept :
@@ -196,14 +196,14 @@ namespace Mythology::Windowless
 
                 if (this->device_memory_and_color_image.device_memory != VK_NULL_HANDLE)
                 {
-                    free_memory(this->device.value, this->device_memory_and_color_image.device_memory, {});
+                    free_memory(this->device, this->device_memory_and_color_image.device_memory, {});
                 }
             }
 
             Application_resources& operator=(Application_resources const&) = delete;
             Application_resources& operator=(Application_resources&&) = delete;
 
-            Device device;
+            VkDevice device;
             Mythology::Core::Vulkan::Device_memory_and_color_image device_memory_and_color_image;
             Image_view color_image_view;
             std::optional<VkFramebuffer> framebuffer;
@@ -226,7 +226,7 @@ namespace Mythology::Windowless
 
         Device_resources const device_resources{make_api_version(1, 2, 0)};
         VkPhysicalDevice const physical_device = device_resources.physical_device;
-        Device const device = device_resources.device;
+        VkDevice const device = device_resources.device;
         Queue_family_index const graphics_queue_family_index = device_resources.graphics_queue_family_index;
         Fence const fence = device_resources.fence;
         Command_pool const command_pool = device_resources.command_pool;
@@ -235,7 +235,7 @@ namespace Mythology::Windowless
 
         Maia::Renderer::Vulkan::Pipeline_resources const pipeline_resources
         {
-            device.value,
+            device,
             nullptr,
             pipeline_json,
             pipeline_json_parent_path,

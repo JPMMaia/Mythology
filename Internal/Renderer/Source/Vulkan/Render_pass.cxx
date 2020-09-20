@@ -1,7 +1,5 @@
 export module maia.renderer.vulkan.render_pass;
 
-import maia.renderer.vulkan.device;
-import maia.renderer.vulkan.device;
 
 import <vulkan/vulkan.h>;
 
@@ -17,7 +15,7 @@ namespace Maia::Renderer::Vulkan
     };
 
     export Render_pass create_render_pass(
-        Device device,
+        VkDevice device,
         std::span<VkAttachmentDescription const> attachment_descriptions,
         std::span<VkSubpassDescription const> subpass_descriptions,
         std::span<VkSubpassDependency const> subpass_dependencies,
@@ -25,14 +23,14 @@ namespace Maia::Renderer::Vulkan
     ) noexcept;
 
     export void destroy_render_pass(
-        Device device,
+        VkDevice device,
         Render_pass render_pass,
         VkAllocationCallbacks const* allocator
     ) noexcept;
 
 
     export VkExtent2D get_render_area_granularity(
-        Device device,
+        VkDevice device,
         Render_pass render_pass
     ) noexcept;
 
@@ -50,7 +48,7 @@ namespace Maia::Renderer::Vulkan
     };
 
     export Framebuffer create_framebuffer(
-        Device device,
+        VkDevice device,
         VkFramebufferCreateFlags flags,
         Render_pass render_pass,
         std::span<VkImageView const> attachments,
@@ -59,7 +57,7 @@ namespace Maia::Renderer::Vulkan
     ) noexcept;
 
     export void destroy_framebuffer(
-        Device device,
+        VkDevice device,
         Framebuffer framebuffer,
         VkAllocationCallbacks const* allocator
     ) noexcept;

@@ -1,7 +1,6 @@
 module maia.renderer.vulkan.buffer;
 
 import maia.renderer.vulkan.check;
-import maia.renderer.vulkan.device;
 
 import <vulkan/vulkan.h>;
 
