@@ -19,6 +19,16 @@ target_link_libraries (MaiaECS PUBLIC Eigen3::Eigen)
 target_module (
     MaiaECS
     PUBLIC
+    "maia.ecs.archetype"
+    INTERFACE "Archetype.cxx"
+    INTERFACE_DEPENDS "Standard_library"
+    IMPLEMENTATION "Archetype.cpp"
+    IMPLEMENTATION_DEPENDS "Standard_library"
+)
+
+target_module (
+    MaiaECS
+    PUBLIC
     "maia.ecs.component"
     INTERFACE "Component.cxx"
     INTERFACE_DEPENDS "Standard_library"

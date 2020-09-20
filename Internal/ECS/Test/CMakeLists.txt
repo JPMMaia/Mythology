@@ -1,4 +1,4 @@
-enable_testing ()
+include(CTest)
 
 add_subdirectory ("UnitTest")
-add_test (MaiaGameEngineTest MaiaGameEngineUnitTest)
+add_test (MaiaECSTest MaiaECSUnitTest)
