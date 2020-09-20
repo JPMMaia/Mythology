@@ -194,7 +194,7 @@ namespace Mythology::Core::Vulkan
 
     Memory_type_info get_memory_type_info(
         Physical_device_memory_properties const& physical_device_memory_properties,
-        Memory_requirements const& memory_requirements
+        VkMemoryRequirements const& memory_requirements
     ) noexcept
     {
         Memory_type_bits const memory_type_bits = get_memory_type_bits(memory_requirements);
@@ -247,11 +247,11 @@ namespace Mythology::Core::Vulkan
         );
 
         Physical_device_memory_properties const physical_device_memory_properties = get_phisical_device_memory_properties(physical_device);
-        Memory_requirements const color_image_memory_requirements = get_memory_requirements(device, color_image);
+        VkMemoryRequirements const color_image_memory_requirements = get_memory_requirements(device, color_image);
         Memory_type_info const color_image_memory_type_info = get_memory_type_info(physical_device_memory_properties, color_image_memory_requirements);
 
         VkDeviceMemory const device_memory =
-            allocate_memory(device, color_image_memory_requirements.value.size, color_image_memory_type_info.memory_type_index, {});
+            allocate_memory(device, color_image_memory_requirements.size, color_image_memory_type_info.memory_type_index, {});
         bind_memory(device, color_image, device_memory, 0);
 
         return {device_memory, color_image};

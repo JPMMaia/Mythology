@@ -683,7 +683,7 @@ namespace Mythology::SDL
         {
             VkBuffer const buffer = create_buffer(device, allocation_size, usage, flags, sharing_mode, queue_family_indices);
 
-            Memory_requirements const memory_requirements = get_memory_requirements(device, buffer);
+            VkMemoryRequirements const memory_requirements = get_memory_requirements(device, buffer);
             Memory_type_bits const memory_type_bits = get_memory_type_bits(memory_requirements);
 
             std::optional<Memory_type_index_and_properties> const memory_type_index_and_properties = find_memory_type(
@@ -694,7 +694,7 @@ namespace Mythology::SDL
             assert(memory_type_index_and_properties.has_value());
 
             VkDeviceMemory const device_memory =
-                allocate_memory(device, memory_requirements.value.size, memory_type_index_and_properties->type_index, allocator);
+                allocate_memory(device, memory_requirements.size, memory_type_index_and_properties->type_index, allocator);
 
             VkDeviceSize const device_offset = 0;
             bind_memory(device, buffer, device_memory, device_offset);

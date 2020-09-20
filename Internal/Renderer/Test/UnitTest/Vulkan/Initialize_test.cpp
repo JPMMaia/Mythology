@@ -162,7 +162,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 				VK_IMAGE_TILING_LINEAR
 			);
 
-			Memory_requirements const color_image_memory_requirements = get_memory_requirements(device, color_image);
+			VkMemoryRequirements const color_image_memory_requirements = get_memory_requirements(device, color_image);
 			Memory_type_bits const color_image_memory_type_bits = get_memory_type_bits(color_image_memory_requirements);
 			std::optional<Memory_type_index> const memory_type_index = find_memory_type(
 				physical_device_memory_properties, 
@@ -173,7 +173,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 			REQUIRE(memory_type_index.has_value());
 
 			Device_memory const device_memory =
-				allocate_memory(device, color_image_memory_requirements.value.size, *memory_type_index, {});
+				allocate_memory(device, color_image_memory_requirements.size, *memory_type_index, {});
 
 			bind_memory(device, color_image, device_memory, 0);
 

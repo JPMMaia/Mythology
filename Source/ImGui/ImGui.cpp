@@ -112,7 +112,7 @@ namespace Mythology::ImGui
 
         VkImage const image = create_image(device, font_image_create_info, vulkan_allocator);
 
-        Memory_requirements const memory_requirements = 
+        VkMemoryRequirements const memory_requirements = 
             get_memory_requirements(device, image);
 
         Memory_type_bits const memory_type_bits = get_memory_type_bits(memory_requirements);
@@ -122,7 +122,7 @@ namespace Mythology::ImGui
 
         assert(memory_type_index_and_properties.has_value());
 
-        Device_memory_range const device_memory_range = monotonic_memory_resource.allocate(memory_type_index_and_properties->type_index, memory_requirements.value.size, memory_requirements.value.alignment);
+        Device_memory_range const device_memory_range = monotonic_memory_resource.allocate(memory_type_index_and_properties->type_index, memory_requirements.size, memory_requirements.alignment);
 
         bind_memory(device, image, device_memory_range.device_memory, device_memory_range.offset);
 

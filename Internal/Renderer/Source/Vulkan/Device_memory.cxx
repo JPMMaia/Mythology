@@ -12,17 +12,12 @@ import <span>;
 
 namespace Maia::Renderer::Vulkan
 {
-    export struct Memory_requirements
-    {
-        VkMemoryRequirements value;
-    };
-
-    export Memory_requirements get_memory_requirements(
+    export VkMemoryRequirements get_memory_requirements(
         VkDevice device,
         VkBuffer buffer
     ) noexcept;
 
-    export Memory_requirements get_memory_requirements(
+    export VkMemoryRequirements get_memory_requirements(
         VkDevice device,
         VkImage image
     ) noexcept;
@@ -34,7 +29,7 @@ namespace Maia::Renderer::Vulkan
     };
 
     export Memory_type_bits get_memory_type_bits(
-        Memory_requirements memory_requirements
+        VkMemoryRequirements memory_requirements
     ) noexcept;
 
 

@@ -16,7 +16,7 @@ import <vector>;
 
 namespace Maia::Renderer::Vulkan
 {
-    Memory_requirements get_memory_requirements(
+    VkMemoryRequirements get_memory_requirements(
         VkDevice const device,
         VkBuffer const buffer
     ) noexcept
@@ -26,7 +26,7 @@ namespace Maia::Renderer::Vulkan
         return {memory_requirements};
     }
 
-    Memory_requirements get_memory_requirements(
+    VkMemoryRequirements get_memory_requirements(
         VkDevice const device,
         VkImage const image
     ) noexcept
@@ -38,10 +38,10 @@ namespace Maia::Renderer::Vulkan
 
 
     Memory_type_bits get_memory_type_bits(
-        Memory_requirements memory_requirements
+        VkMemoryRequirements memory_requirements
     ) noexcept
     {
-        return {memory_requirements.value.memoryTypeBits};
+        return {memory_requirements.memoryTypeBits};
     }
 
 
