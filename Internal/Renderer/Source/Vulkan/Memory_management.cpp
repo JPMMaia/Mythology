@@ -128,12 +128,12 @@ namespace Maia::Renderer::Vulkan
             return 2*(maximum_block_size / minimum_block_size) - 1;
         }
 
-        std::uint32_t constexpr block_count(Tree_level const level) noexcept
+        std::uint32_t block_count(Tree_level const level) noexcept
         {
             return static_cast<Memory_size>(std::pow(2, level.value));
         }
 
-        Tree_node_index constexpr get_node_index(
+        Tree_node_index get_node_index(
             Tree_node const node
         ) noexcept
         {
@@ -180,19 +180,19 @@ namespace Maia::Renderer::Vulkan
                 get_left_child(get_parent(node));
         }
 
-        Memory_size constexpr block_size(Tree_level const level, Memory_size const maximum_block_size) noexcept
+        Memory_size block_size(Tree_level const level, Memory_size const maximum_block_size) noexcept
         {
             assert((maximum_block_size % 2) == 0);
 
             return maximum_block_size / block_count(level);
         }
 
-        Memory_size constexpr begin_offset(Tree_node const node, Memory_size const maximum_block_size) noexcept
+        Memory_size begin_offset(Tree_node const node, Memory_size const maximum_block_size) noexcept
         {
             return node.level_index.value * block_size(node.level, maximum_block_size);
         }
 
-        Memory_size constexpr end_offset(Tree_node const node, Memory_size const maximum_block_size) noexcept
+        Memory_size end_offset(Tree_node const node, Memory_size const maximum_block_size) noexcept
         {
             return (node.level_index.value + 1) * block_size(node.level, maximum_block_size);
         }
@@ -244,35 +244,35 @@ namespace Maia::Renderer::Vulkan
             return {};
         }
 
-        bool constexpr is_free_external_node(Memory_tree const& tree, Tree_node const node) noexcept
+        bool is_free_external_node(Memory_tree const& tree, Tree_node const node) noexcept
         {
             Tree_node_index const node_index = get_node_index(node);
             
             return !tree.internal[node_index.value] && !tree.allocated[node_index.value];
         }
 
-        bool constexpr is_allocated_external_node(Memory_tree const& tree, Tree_node const node) noexcept
+        bool is_allocated_external_node(Memory_tree const& tree, Tree_node const node) noexcept
         {
             Tree_node_index const node_index = get_node_index(node);
             
             return !tree.internal[node_index.value] && tree.allocated[node_index.value];
         }
 
-        bool constexpr is_free_internal_node(Memory_tree const& tree, Tree_node const node) noexcept
+        bool is_free_internal_node(Memory_tree const& tree, Tree_node const node) noexcept
         {
             Tree_node_index const node_index = get_node_index(node);
             
             return tree.internal[node_index.value] && !tree.allocated[node_index.value];
         }
 
-        bool constexpr is_allocated_node(Memory_tree const& tree, Tree_node const node) noexcept
+        bool is_allocated_node(Memory_tree const& tree, Tree_node const node) noexcept
         {
             Tree_node_index const node_index = get_node_index(node);
             
             return tree.allocated[node_index.value];
         }
 
-        bool constexpr is_free_node(Memory_tree const& tree, Tree_node const node) noexcept
+        bool is_free_node(Memory_tree const& tree, Tree_node const node) noexcept
         {
             Tree_node_index const node_index = get_node_index(node);
             
@@ -624,7 +624,7 @@ namespace Maia::Renderer::Vulkan
         ) noexcept
         {
             VkMemoryRequirements const memory_requirements = 
-                get_memory_requirements(device, buffer).value;
+                get_memory_requirements(device, buffer);
 
             Memory_type_bits const memory_type_bits = get_memory_type_bits({memory_requirements});
 
