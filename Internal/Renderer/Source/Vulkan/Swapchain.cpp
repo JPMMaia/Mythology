@@ -138,6 +138,7 @@ namespace Maia::Renderer::Vulkan
             device,
             swapchain.value,
             timeout,
+            semaphore.has_value() ? *semaphore : VK_NULL_HANDLE,
             fence.has_value() ? *fence : VK_NULL_HANDLE,
             &swapchain_image_index
         );
