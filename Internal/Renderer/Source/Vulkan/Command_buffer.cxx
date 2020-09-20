@@ -13,11 +13,6 @@ import <vector>;
 
 namespace Maia::Renderer::Vulkan
 {
-    export struct Command_buffer
-    {
-        VkCommandBuffer value;
-    };
-
     export std::pmr::vector<VkCommandBuffer> allocate_command_buffers(
         VkDevice device,
         VkCommandPool command_pool,
