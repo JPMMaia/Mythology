@@ -1,6 +1,5 @@
 export module maia.renderer.vulkan.buffer;
 
-
 import <vulkan/vulkan.h>;
 
 import <cstdint>;
