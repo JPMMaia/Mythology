@@ -210,7 +210,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 
 				REQUIRE(queue_family_index.has_value());
 				
-				Command_pool const command_pool = create_command_pool(
+				VkCommandPool const command_pool = create_command_pool(
 					device, 
 					VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
 					*queue_family_index,

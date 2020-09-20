@@ -457,7 +457,7 @@ namespace Mythology::SDL
             Command_pools_resources& operator=(Command_pools_resources&&) noexcept = delete;
 
             VkDevice device = VK_NULL_HANDLE;
-            Command_pool command_pool = {};
+            VkCommandPool command_pool = {};
         };
 
         struct Synchronization_resources
@@ -1081,7 +1081,7 @@ namespace Mythology::SDL
         VkQueue const present_queue = get_device_queue(device, present_queue_family_index, 0);
 
         Command_pools_resources const command_pool_resources{device, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, graphics_queue_family_index};
-        Command_pool const command_pool = command_pool_resources.command_pool;
+        VkCommandPool const command_pool = command_pool_resources.command_pool;
         std::pmr::vector<VkCommandBuffer> const command_buffers = 
                 allocate_command_buffers(
                     device,

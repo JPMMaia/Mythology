@@ -20,7 +20,7 @@ namespace Maia::Renderer::Vulkan
 
     export std::pmr::vector<VkCommandBuffer> allocate_command_buffers(
         VkDevice device,
-        Command_pool command_pool,
+        VkCommandPool command_pool,
         VkCommandBufferLevel level,
         std::uint32_t command_buffer_count,
         VkAllocationCallbacks const* vulkan_allocator,
@@ -34,7 +34,7 @@ namespace Maia::Renderer::Vulkan
 
     export void free_command_buffers(
         VkDevice device,
-        Command_pool command_pool,
+        VkCommandPool command_pool,
         std::span<VkCommandBuffer const> command_buffers
     ) noexcept;
 

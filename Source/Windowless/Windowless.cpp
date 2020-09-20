@@ -157,7 +157,7 @@ namespace Mythology::Windowless
             Queue_family_index graphics_queue_family_index = {};
             VkDevice device = VK_NULL_HANDLE;
             VkFence fence = {};
-            Command_pool command_pool = {};
+            VkCommandPool command_pool = {};
         };
 
         struct Application_resources
@@ -229,7 +229,7 @@ namespace Mythology::Windowless
         VkDevice const device = device_resources.device;
         Queue_family_index const graphics_queue_family_index = device_resources.graphics_queue_family_index;
         VkFence const fence = device_resources.fence;
-        Command_pool const command_pool = device_resources.command_pool;
+        VkCommandPool const command_pool = device_resources.command_pool;
         
         VkQueue const queue = get_device_queue(device, graphics_queue_family_index, 0);
 

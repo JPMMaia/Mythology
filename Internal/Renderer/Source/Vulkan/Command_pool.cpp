@@ -8,7 +8,7 @@ import <optional>;
 
 namespace Maia::Renderer::Vulkan
 {
-    Command_pool create_command_pool(
+    VkCommandPool create_command_pool(
         VkDevice const device,
         VkCommandPoolCreateFlags const flags,
         Queue_family_index const queue_family_index,
@@ -38,7 +38,7 @@ namespace Maia::Renderer::Vulkan
 
     void reset_command_pool(
         VkDevice device,
-        Command_pool command_pool,
+        VkCommandPool command_pool,
         VkCommandPoolResetFlags flags
     ) noexcept
     {
@@ -48,7 +48,7 @@ namespace Maia::Renderer::Vulkan
 
     void destroy_command_pool(
         VkDevice device,
-        Command_pool command_pool,
+        VkCommandPool command_pool,
         VkAllocationCallbacks const* allocator
     ) noexcept
     {
