@@ -1,8 +1,6 @@
 module maia.renderer.vulkan.surface;
 
 import maia.renderer.vulkan.check;
-import maia.renderer.vulkan.instance;
-import maia.renderer.vulkan.physical_device;
 
 import <vulkan/vulkan.h>;
 
@@ -16,7 +14,7 @@ namespace Maia::Renderer::Vulkan
     bool is_surface_supported(
         VkPhysicalDevice const physical_device,
         Queue_family_index const queue_family_index,
-        Surface const surface
+        VkSurfaceKHR const surface
     ) noexcept
     {
         VkBool32 is_supported = VK_FALSE;
@@ -24,7 +22,7 @@ namespace Maia::Renderer::Vulkan
             vkGetPhysicalDeviceSurfaceSupportKHR(
                 physical_device,
                 queue_family_index.value,
-                surface.value,
+                surface,
                 &is_supported
             )
         );
@@ -34,14 +32,14 @@ namespace Maia::Renderer::Vulkan
 
     VkSurfaceCapabilitiesKHR get_surface_capabilities(
         VkPhysicalDevice const physical_device,
-        Surface const surface
+        VkSurfaceKHR const surface
     ) noexcept
     {
         VkSurfaceCapabilitiesKHR surface_capabilities = {};
         check_result(
             vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
                 physical_device,
-                surface.value,
+                surface,
                 &surface_capabilities
             )
         );
@@ -51,7 +49,7 @@ namespace Maia::Renderer::Vulkan
 
     std::pmr::vector<VkSurfaceFormatKHR> get_surface_formats(
         VkPhysicalDevice const physical_device,
-        Surface const surface,
+        VkSurfaceKHR const surface,
         std::pmr::polymorphic_allocator<VkSurfaceFormatKHR> const allocator
     ) noexcept
     {
@@ -59,7 +57,7 @@ namespace Maia::Renderer::Vulkan
         check_result(
             vkGetPhysicalDeviceSurfaceFormatsKHR(
                 physical_device,
-                surface.value,
+                surface,
                 &surface_format_count,
                 nullptr
             )
@@ -72,7 +70,7 @@ namespace Maia::Renderer::Vulkan
             check_result(
                 vkGetPhysicalDeviceSurfaceFormatsKHR(
                     physical_device,
-                    surface.value,
+                    surface,
                     &surface_format_count,
                     surface_formats.data()
                 )
@@ -88,7 +86,7 @@ namespace Maia::Renderer::Vulkan
 
     std::pmr::vector<VkPresentModeKHR> get_surface_present_modes(
         VkPhysicalDevice const physical_device,
-        Surface const surface,
+        VkSurfaceKHR const surface,
         std::pmr::polymorphic_allocator<VkPresentModeKHR> const allocator
     ) noexcept
     {
@@ -96,7 +94,7 @@ namespace Maia::Renderer::Vulkan
         check_result(
             vkGetPhysicalDeviceSurfacePresentModesKHR(
                 physical_device,
-                surface.value,
+                surface,
                 &present_modes_count,
                 nullptr
             )
@@ -109,7 +107,7 @@ namespace Maia::Renderer::Vulkan
             check_result(
                 vkGetPhysicalDeviceSurfacePresentModesKHR(
                     physical_device,
-                    surface.value,
+                    surface,
                     &present_modes_count,
                     present_modes.data()
                 )
@@ -123,8 +121,8 @@ namespace Maia::Renderer::Vulkan
         }
     }
 
-    void destroy_surface(VkInstance const instance, Surface const surface, VkAllocationCallbacks const* const allocator) noexcept
+    void destroy_surface(VkInstance const instance, VkSurfaceKHR const surface, VkAllocationCallbacks const* const allocator) noexcept
     {
-        vkDestroySurfaceKHR(instance, surface.value, allocator);
+        vkDestroySurfaceKHR(instance, surface, allocator);
     }
 }

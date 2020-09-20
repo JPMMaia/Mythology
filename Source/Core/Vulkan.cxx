@@ -30,7 +30,7 @@ namespace Mythology::Core::Vulkan
 
     export Queue_family_index find_present_queue_family_index(
         VkPhysicalDevice physical_device,
-        Surface surface,
+        VkSurfaceKHR surface,
         std::optional<Queue_family_index> preference = {}
     ) noexcept;
     

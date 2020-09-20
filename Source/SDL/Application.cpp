@@ -150,7 +150,7 @@ namespace Mythology::SDL
 
         VkSurfaceFormatKHR select_surface_format(
             VkPhysicalDevice const physical_device,
-            Surface const surface
+            VkSurfaceKHR const surface
         ) noexcept
         {
             std::pmr::vector<VkSurfaceFormatKHR> const supported_surface_formats =
@@ -179,7 +179,7 @@ namespace Mythology::SDL
 
         VkPresentModeKHR select_present_mode(
             VkPhysicalDevice const physical_device,
-            Surface const surface
+            VkSurfaceKHR const surface
         ) noexcept
         {
             return VK_PRESENT_MODE_FIFO_KHR;
@@ -216,7 +216,7 @@ namespace Mythology::SDL
         Swapchain create_swapchain(
             VkPhysicalDevice const physical_device,
             VkDevice const device,
-            Surface const surface,
+            VkSurfaceKHR const surface,
             VkSurfaceFormatKHR const surface_format,
             std::span<Queue_family_index const> const queue_family_indices,
             std::optional<Swapchain> const old_swapchain = {}
@@ -326,7 +326,7 @@ namespace Mythology::SDL
                     destroy_device(this->device);
                 }
 
-                if (this->surface.value != VK_NULL_HANDLE)
+                if (this->surface != VK_NULL_HANDLE)
                 {
                     destroy_surface(this->instance, this->surface);
                 }
@@ -342,7 +342,7 @@ namespace Mythology::SDL
 
             VkInstance instance = {};
             VkPhysicalDevice physical_device = {};
-            Surface surface = {};
+            VkSurfaceKHR surface = {};
             Queue_family_index graphics_queue_family_index = {};
             Queue_family_index present_queue_family_index = {};
             VkDevice device = VK_NULL_HANDLE;
@@ -371,7 +371,7 @@ namespace Mythology::SDL
             Swapchain_resources(
                 VkPhysicalDevice const physical_device,
                 VkDevice const device,
-                Surface const surface,
+                VkSurfaceKHR const surface,
                 VkSurfaceFormatKHR const surface_format,
                 std::span<Queue_family_index const> const queue_family_indices,
                 VkRenderPass const render_pass,
@@ -1067,7 +1067,7 @@ namespace Mythology::SDL
         VkDevice const device = device_resources.device;
         Queue_family_index const graphics_queue_family_index = device_resources.graphics_queue_family_index;
         Queue_family_index const present_queue_family_index = device_resources.present_queue_family_index;
-        Surface const surface = device_resources.surface;
+        VkSurfaceKHR const surface = device_resources.surface;
 
         using namespace Mythology::Core::Vulkan;
 

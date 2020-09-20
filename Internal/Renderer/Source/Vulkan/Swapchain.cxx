@@ -1,6 +1,5 @@
 export module maia.renderer.vulkan.swapchain;
 
-import maia.renderer.vulkan.surface;
 
 import <vulkan/vulkan.h>;
 
@@ -26,7 +25,7 @@ namespace Maia::Renderer::Vulkan
         VkDevice device,
         VkSwapchainCreateFlagsKHR flags,
         Min_image_count min_image_count,
-        Surface surface,
+        VkSurfaceKHR surface,
         VkFormat image_format,
         VkColorSpaceKHR image_color_space,
         VkExtent2D image_extent,

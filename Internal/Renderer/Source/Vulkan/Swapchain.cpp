@@ -1,7 +1,6 @@
 module maia.renderer.vulkan.swapchain;
 
 import maia.renderer.vulkan.check;
-import maia.renderer.vulkan.surface;
 
 import <vulkan/vulkan.h>;
 
@@ -17,7 +16,7 @@ namespace Maia::Renderer::Vulkan
         VkDevice const device,
         VkSwapchainCreateFlagsKHR const flags,
         Min_image_count const min_image_count,
-        Surface const surface,
+        VkSurfaceKHR const surface,
         VkFormat const image_format,
         VkColorSpaceKHR const image_color_space,
         VkExtent2D const image_extent,
@@ -41,7 +40,7 @@ namespace Maia::Renderer::Vulkan
             .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
             .pNext = nullptr,
             .flags = flags,
-            .surface = surface.value,
+            .surface = surface,
             .minImageCount = min_image_count.value,
             .imageFormat = image_format,
             .imageColorSpace = image_color_space,
