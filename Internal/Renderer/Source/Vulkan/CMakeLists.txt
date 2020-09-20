@@ -39,7 +39,9 @@ target_module (
     PUBLIC
     "maia.renderer.vulkan.device"
     INTERFACE "Device.cxx"
+    INTERFACE_DEPENDS "Standard_library" "Vulkan" "maia.renderer.vulkan.check"
     IMPLEMENTATION "Device.cpp"
+    IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" "maia.renderer.vulkan.check"
 )
 
 target_module (
