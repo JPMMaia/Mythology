@@ -181,10 +181,11 @@ target_module (
     PUBLIC
     "maia.renderer.vulkan.command_pool"
     INTERFACE "Command_pool.cxx"
-    INTERFACE_DEPENDS "Standard_library" "Vulkan"
+    INTERFACE_DEPENDS "Standard_library" "Vulkan" "maia.renderer.vulkan.device"
     IMPLEMENTATION "Command_pool.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" 
         "maia.renderer.vulkan.check"
+        "maia.renderer.vulkan.device"
 )
 
 target_module (
