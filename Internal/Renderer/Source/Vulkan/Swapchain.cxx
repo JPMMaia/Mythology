@@ -1,5 +1,7 @@
 export module maia.renderer.vulkan.swapchain;
 
+import maia.renderer.vulkan.device;
+import maia.renderer.vulkan.image;
 
 import <vulkan/vulkan.h>;
 

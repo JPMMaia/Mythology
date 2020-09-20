@@ -1,6 +1,8 @@
 module maia.renderer.vulkan.swapchain;
 
 import maia.renderer.vulkan.check;
+import maia.renderer.vulkan.device;
+import maia.renderer.vulkan.image;
 
 import <vulkan/vulkan.h>;
 
@@ -54,7 +56,7 @@ namespace Maia::Renderer::Vulkan
             .compositeAlpha = composite_alpha,
             .presentMode = present_mode,
             .clipped = clipped,
-            .oldVkSwapchainKHR = old_swapchain,
+            .oldSwapchain = old_swapchain,
         };
 
         VkSwapchainKHR swapchain = {};
@@ -172,7 +174,7 @@ namespace Maia::Renderer::Vulkan
         };
 
         VkResult const result = vkQueuePresentKHR(
-                queue.value,
+                queue,
                 &present_info
         );
 
