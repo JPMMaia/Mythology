@@ -56,11 +56,6 @@ namespace Maia::Renderer::Vulkan
     ) noexcept;
 
 
-    export struct Image_view
-    {
-        VkImageView value;
-    };
-
     export struct Component_mapping
     {
         VkComponentMapping value = 
@@ -72,7 +67,7 @@ namespace Maia::Renderer::Vulkan
         };
     };
 
-    export Image_view create_image_view(
+    export VkImageView create_image_view(
         VkDevice device,
         VkImageViewCreateFlags flags,
         VkImage image,
@@ -85,7 +80,7 @@ namespace Maia::Renderer::Vulkan
 
     export void destroy_image_view(
         VkDevice device,
-        Image_view image_view,
+        VkImageView image_view,
         VkAllocationCallbacks const* allocator
     ) noexcept;
 }

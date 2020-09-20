@@ -172,14 +172,14 @@ namespace Mythology::Windowless
                 device{device},
                 device_memory_and_color_image(Mythology::Core::Vulkan::create_device_memory_and_color_image(physical_device, device, color_image_format, color_image_extent)),
                 color_image_view{create_image_view(device, {}, device_memory_and_color_image.color_image, VK_IMAGE_VIEW_TYPE_2D, color_image_format, {}, {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1}, {})},
-                framebuffer{render_pass.has_value() ? create_framebuffer(device, {}, {*render_pass}, {&color_image_view.value, 1}, {color_image_extent.width, color_image_extent.height, 1}, {}).value : std::optional<VkFramebuffer>{}}
+                framebuffer{render_pass.has_value() ? create_framebuffer(device, {}, {*render_pass}, {&color_image_view, 1}, {color_image_extent.width, color_image_extent.height, 1}, {}).value : std::optional<VkFramebuffer>{}}
             {
             }
             Application_resources(Application_resources const&) = delete;
             Application_resources(Application_resources&&) = delete;
             ~Application_resources() noexcept
             {
-                if (color_image_view.value != VK_NULL_HANDLE)
+                if (color_image_view != VK_NULL_HANDLE)
                 {
                     destroy_image_view(device, color_image_view, {});
                 }
@@ -205,7 +205,7 @@ namespace Mythology::Windowless
 
             VkDevice device;
             Mythology::Core::Vulkan::Device_memory_and_color_image device_memory_and_color_image;
-            Image_view color_image_view;
+            VkImageView color_image_view;
             std::optional<VkFramebuffer> framebuffer;
         };
     }

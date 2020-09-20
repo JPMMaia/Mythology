@@ -177,7 +177,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 
 			bind_memory(device, color_image, device_memory, 0);
 
-			Image_view const color_image_view = create_image_view(
+			VkImageView const color_image_view = create_image_view(
 				device,
 				{},
 				color_image,
@@ -197,7 +197,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 				device,
 				{},
 				render_pass,
-				{&color_image_view.value, 1},
+				{&color_image_view, 1},
 				Framebuffer_dimensions{color_image_extent.width, color_image_extent.height, 1},
 				{}
 			);
