@@ -26,10 +26,7 @@ namespace Maia::Renderer::Vulkan
         std::uint32_t queue_family_property_count = get_physical_device_queue_family_count(physical_device);
 
         std::pmr::vector<VkQueueFamilyProperties> queue_family_propertiess{queue_family_property_count, allocator};
-
-        static_assert(std::is_standard_layout_v<VkQueueFamilyProperties>, "Must be standard layout so that VkQueueFamilyProperties and VkQueueFamilyProperties.value are pointer-interconvertible");
-        static_assert(sizeof(VkQueueFamilyProperties) == sizeof(VkQueueFamilyProperties), "VkQueueFamilyProperties must only contain VkQueueFamilyProperties since using VkQueueFamilyProperties* as a contiguous array");
-        vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_property_count, reinterpret_cast<VkQueueFamilyProperties*>(queue_family_propertiess.data()));
+        vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_property_count, queue_family_propertiess.data());
 
         return queue_family_propertiess;
     }
