@@ -213,7 +213,7 @@ namespace Mythology::SDL
             }
         }
 
-        Swapchain create_swapchain(
+        VkSwapchainKHR create_swapchain(
             VkPhysicalDevice const physical_device,
             VkDevice const device,
             VkSurfaceKHR const surface,
@@ -406,7 +406,7 @@ namespace Mythology::SDL
                     vkDestroyImageView(this->device, image_view, nullptr);
                 }
 
-                if (this->swapchain.value != VK_NULL_HANDLE)
+                if (this->swapchain != VK_NULL_HANDLE)
                 {
                     destroy_swapchain(this->device, this->swapchain);
                 }
@@ -426,7 +426,7 @@ namespace Mythology::SDL
             }
 
             VkDevice device = VK_NULL_HANDLE;
-            Swapchain swapchain = {};
+            VkSwapchainKHR swapchain = {};
             std::pmr::vector<VkImage> images;
             std::pmr::vector<VkImageView> image_views;
             VkExtent2D extent = {};
@@ -1366,7 +1366,7 @@ namespace Mythology::SDL
                         {
                             vkDeviceWaitIdle(device);
 
-                            Swapchain const old_swapchain = swapchain_resources.swapchain;
+                            VkSwapchainKHR const old_swapchain = swapchain_resources.swapchain;
                             swapchain_resources = {physical_device, device, surface, surface_format, std::array<Queue_family_index, 2>{graphics_queue_family_index, present_queue_family_index}, render_pass, old_swapchain};
                         }
                     }

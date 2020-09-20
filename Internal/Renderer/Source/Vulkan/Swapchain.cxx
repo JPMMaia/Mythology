@@ -21,7 +21,7 @@ namespace Maia::Renderer::Vulkan
         std::uint32_t value = 1;
     };
 
-    export Swapchain create_swapchain(
+    export VkSwapchainKHR create_swapchain(
         VkDevice device,
         VkSwapchainCreateFlagsKHR flags,
         Min_image_count min_image_count,
@@ -37,20 +37,20 @@ namespace Maia::Renderer::Vulkan
         VkCompositeAlphaFlagBitsKHR composite_alpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
         VkPresentModeKHR present_mode = VK_PRESENT_MODE_IMMEDIATE_KHR,
         bool clipped = true,
-        Swapchain old_swapchain = {},
+        VkSwapchainKHR old_swapchain = {},
         VkAllocationCallbacks const* allocator = {}
     ) noexcept;
 
     export void destroy_swapchain(
         VkDevice device,
-        Swapchain swapchain,
+        VkSwapchainKHR swapchain,
         VkAllocationCallbacks const* allocator = {}
     ) noexcept;
 
 
     export std::pmr::vector<VkImage> get_swapchain_images(
         VkDevice device,
-        Swapchain swapchain,
+        VkSwapchainKHR swapchain,
         std::pmr::polymorphic_allocator<VkSurfaceFormatKHR> allocator = {}
     ) noexcept;
 
@@ -62,7 +62,7 @@ namespace Maia::Renderer::Vulkan
 
     export std::optional<Swapchain_image_index> acquire_next_image(
         VkDevice device,
-        Swapchain swapchain,
+        VkSwapchainKHR swapchain,
         std::uint64_t timeout,
         std::optional<VkSemaphore> semaphore,
         std::optional<VkFence> fence
@@ -72,7 +72,7 @@ namespace Maia::Renderer::Vulkan
     export VkResult queue_present(
         VkQueue queue,
         std::span<VkSemaphore const> semaphores_to_wait,
-        Swapchain swapchain,
+        VkSwapchainKHR swapchain,
         Swapchain_image_index swapchain_image_index
     ) noexcept;
 }
