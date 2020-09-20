@@ -1,6 +1,5 @@
 export module maia.renderer.vulkan.fence;
 
-
 import <vulkan/vulkan.h>;
 
 import <memory_resource>;
