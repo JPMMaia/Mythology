@@ -221,9 +221,11 @@ target_module (
     "maia.renderer.vulkan.surface"
     INTERFACE "Surface.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
+        "maia.renderer.vulkan.device"
     IMPLEMENTATION "Surface.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" 
         "maia.renderer.vulkan.check"
+        "maia.renderer.vulkan.device"
 )
 
 target_module (

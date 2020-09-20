@@ -1,5 +1,7 @@
 export module maia.renderer.vulkan.surface;
 
+import maia.renderer.vulkan.device;
+
 import <vulkan/vulkan.h>;
 
 import <cstdint>;
