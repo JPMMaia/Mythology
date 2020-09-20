@@ -397,7 +397,7 @@ namespace Mythology::Core::Vulkan
     }
 
     void clear_and_begin_render_pass(
-        Command_buffer const command_buffer,
+        VkCommandBuffer const command_buffer,
         Render_pass const render_pass,
         Framebuffer const framebuffer,
         VkClearColorValue const clear_color,
@@ -422,7 +422,7 @@ namespace Mythology::Core::Vulkan
             };
 
             vkCmdPipelineBarrier(
-                command_buffer.value,
+                command_buffer,
                 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 
                 VK_PIPELINE_STAGE_TRANSFER_BIT,
                 {},
@@ -442,7 +442,7 @@ namespace Mythology::Core::Vulkan
             };
 
             vkCmdClearColorImage(
-                command_buffer.value,
+                command_buffer,
                 output_image.value,
                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
                 &clear_value.color, 
@@ -467,7 +467,7 @@ namespace Mythology::Core::Vulkan
             };
 
             vkCmdPipelineBarrier(
-                command_buffer.value,
+                command_buffer,
                 VK_PIPELINE_STAGE_TRANSFER_BIT,
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                 {},
@@ -498,7 +498,7 @@ namespace Mythology::Core::Vulkan
     }
 
     void end_render_pass_and_switch_layout(
-        Command_buffer const command_buffer,
+        VkCommandBuffer const command_buffer,
         Image const output_image,
         VkImageSubresourceRange const output_image_subresource_range,
         bool const switch_to_present_layout
@@ -523,7 +523,7 @@ namespace Mythology::Core::Vulkan
             };
 
             vkCmdPipelineBarrier(
-                command_buffer.value,
+                command_buffer,
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 
                 VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                 {},

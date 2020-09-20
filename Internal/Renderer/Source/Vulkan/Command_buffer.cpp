@@ -14,13 +14,13 @@ import <vector>;
 
 namespace Maia::Renderer::Vulkan
 {
-    std::pmr::vector<Command_buffer> allocate_command_buffers(
+    std::pmr::vector<VkCommandBuffer> allocate_command_buffers(
         VkDevice const device,
         Command_pool const command_pool,
         VkCommandBufferLevel const level,
         std::uint32_t const command_buffer_count,
         VkAllocationCallbacks const* const vulkan_allocator,
-        std::pmr::polymorphic_allocator<Command_buffer> const& pmr_allocator
+        std::pmr::polymorphic_allocator<VkCommandBuffer> const& pmr_allocator
     ) noexcept
     {
         VkCommandBufferAllocateInfo const allocate_info
@@ -32,15 +32,12 @@ namespace Maia::Renderer::Vulkan
             .commandBufferCount = command_buffer_count,
         };
 
-        std::pmr::vector<Command_buffer> command_buffers{command_buffer_count, pmr_allocator};
-
-        static_assert(std::is_standard_layout_v<Command_buffer>, "Must be standard layout so that Command_buffer and Command_buffer.value are pointer-interconvertible");
-        static_assert(sizeof(Command_buffer) == sizeof(VkCommandBuffer), "Command_buffer must only contain VkCommandBuffer since using Command_buffer* as a contiguous array");
+        std::pmr::vector<VkCommandBuffer> command_buffers{command_buffer_count, pmr_allocator};
         check_result(
             vkAllocateCommandBuffers(
                 device,
                 &allocate_info,
-                reinterpret_cast<VkCommandBuffer*>(command_buffers.data())
+                command_buffers.data()
             )
         );
 
@@ -48,35 +45,32 @@ namespace Maia::Renderer::Vulkan
     }
 
     void reset_command_buffer(
-        Command_buffer const command_buffer,
+        VkCommandBuffer const command_buffer,
         VkCommandBufferResetFlags const flags
     ) noexcept
     {
         check_result(
-            vkResetCommandBuffer(command_buffer.value, flags)
+            vkResetCommandBuffer(command_buffer, flags)
         );
     }
 
     void free_command_buffers(
         VkDevice const device,
         Command_pool const command_pool,
-        std::span<Command_buffer const> const command_buffers
+        std::span<VkCommandBuffer const> const command_buffers
     ) noexcept
     {
-        static_assert(std::is_standard_layout_v<Command_buffer>, "Must be standard layout so that Command_buffer and Command_buffer.value are pointer-interconvertible");
-        static_assert(sizeof(Command_buffer) == sizeof(VkCommandBuffer), "Command_buffer must only contain VkCommandBuffer since using Command_buffer* as a contiguous array");
-
         vkFreeCommandBuffers(
             device, 
             command_pool.value, 
             static_cast<uint32_t>(command_buffers.size()),
-            reinterpret_cast<VkCommandBuffer const*>(command_buffers.data())
+            command_buffers.data()
         );
     }
 
 
     void begin_command_buffer(
-        Command_buffer const command_buffer,
+        VkCommandBuffer const command_buffer,
         VkCommandBufferUsageFlags const flags,
         std::optional<VkCommandBufferInheritanceInfo> const inheritance_info
     ) noexcept
@@ -91,24 +85,24 @@ namespace Maia::Renderer::Vulkan
 
         check_result(
             vkBeginCommandBuffer(
-                command_buffer.value,
+                command_buffer,
                 &begin_info
             )
         );
     }
 
     void end_command_buffer(
-        Command_buffer command_buffer
+        VkCommandBuffer command_buffer
     ) noexcept
     {
         check_result(
-            vkEndCommandBuffer(command_buffer.value)
+            vkEndCommandBuffer(command_buffer)
         );
     }
 
 
     void begin_render_pass(
-        Command_buffer const command_buffer,
+        VkCommandBuffer const command_buffer,
         Render_pass const render_pass,
         Framebuffer const framebuffer,
         VkRect2D const render_area,
@@ -128,29 +122,29 @@ namespace Maia::Renderer::Vulkan
         };
 
         vkCmdBeginRenderPass(
-            command_buffer.value, 
+            command_buffer, 
             &render_pass_begin,
             subpass_contents
         );
     }
 
     void next_subpass(
-        Command_buffer const command_buffer,
+        VkCommandBuffer const command_buffer,
         VkSubpassContents const subpass_contents
     ) noexcept
     {
         vkCmdNextSubpass(
-            command_buffer.value,
+            command_buffer,
             subpass_contents
         );
     }
 
     void end_render_pass(
-        Command_buffer const command_buffer
+        VkCommandBuffer const command_buffer
     ) noexcept
     {
         vkCmdEndRenderPass(
-            command_buffer.value
+            command_buffer
         );
     }
 }

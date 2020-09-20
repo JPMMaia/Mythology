@@ -82,10 +82,8 @@ target_module (
     INTERFACE "Queue.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
         "maia.renderer.vulkan.check"
-        "maia.renderer.vulkan.command_buffer"
     IMPLEMENTATION "Queue.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan"
-        "maia.renderer.vulkan.command_buffer"
 )
 
 target_module (

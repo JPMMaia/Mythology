@@ -261,7 +261,7 @@ namespace Mythology::Windowless
         );
 
         {
-            std::pmr::vector<Command_buffer> const command_buffers = 
+            std::pmr::vector<VkCommandBuffer> const command_buffers = 
                 allocate_command_buffers(
                     device,
                     command_pool,
@@ -271,7 +271,7 @@ namespace Mythology::Windowless
                     output_allocator
                 );
             assert(command_buffers.size() == 1);
-            Command_buffer const command_buffer = command_buffers.front();
+            VkCommandBuffer const command_buffer = command_buffers.front();
 
             begin_command_buffer(command_buffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, {});
             {
@@ -296,7 +296,7 @@ namespace Mythology::Windowless
                 };
 
                 Maia::Renderer::Vulkan::draw(
-                    command_buffer.value,
+                    command_buffer,
                     color_image,
                     output_image_subresource_range,
                     framebuffer,

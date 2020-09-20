@@ -68,7 +68,7 @@ namespace Mythology::Core::Vulkan
     ) noexcept;
 
     export void clear_and_begin_render_pass(
-        Command_buffer command_buffer,
+        VkCommandBuffer command_buffer,
         Render_pass render_pass,
         Framebuffer framebuffer,
         VkClearColorValue clear_color,
@@ -78,7 +78,7 @@ namespace Mythology::Core::Vulkan
     ) noexcept;
 
     export void end_render_pass_and_switch_layout(
-        Command_buffer command_buffer,
+        VkCommandBuffer command_buffer,
         Image output_image,
         VkImageSubresourceRange output_image_subresource_range,
         bool switch_to_present_layout

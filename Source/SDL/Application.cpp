@@ -810,14 +810,14 @@ namespace Mythology::SDL
         }
 
         void render(
-            Command_buffer const command_buffer,
+            VkCommandBuffer const command_buffer,
             VkPipeline const pipeline,
             VkRect2D const output_render_area,
             Mythology::ImGui::ImGui_resources const& imgui_resources
         ) noexcept
         {
             {
-                vkCmdBindPipeline(command_buffer.value, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+                vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
                 {
                     std::array<VkViewport, 1> const viewports
@@ -833,7 +833,7 @@ namespace Mythology::SDL
                         }
                     };
                     
-                    vkCmdSetViewport(command_buffer.value, 0, static_cast<std::uint32_t>(viewports.size()), viewports.data());
+                    vkCmdSetViewport(command_buffer, 0, static_cast<std::uint32_t>(viewports.size()), viewports.data());
                 }
 
                 {
@@ -846,17 +846,17 @@ namespace Mythology::SDL
                         }
                     };
                     
-                    vkCmdSetScissor(command_buffer.value, 0, static_cast<std::uint32_t>(scissors.size()), scissors.data());
+                    vkCmdSetScissor(command_buffer, 0, static_cast<std::uint32_t>(scissors.size()), scissors.data());
                 }
 
-                vkCmdDraw(command_buffer.value, 3, 1, 0, 0);
+                vkCmdDraw(command_buffer, 3, 1, 0, 0);
 
                 {
                     ImDrawData const& draw_data = *::ImGui::GetDrawData();
 
                     Mythology::ImGui::render(
                         draw_data,
-                        command_buffer.value,
+                        command_buffer,
                         imgui_resources.pipeline,
                         imgui_resources.pipeline_layout,
                         imgui_resources.descriptor_set,
@@ -1082,7 +1082,7 @@ namespace Mythology::SDL
 
         Command_pools_resources const command_pool_resources{device, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, graphics_queue_family_index};
         Command_pool const command_pool = command_pool_resources.command_pool;
-        std::pmr::vector<Command_buffer> const command_buffers = 
+        std::pmr::vector<VkCommandBuffer> const command_buffers = 
                 allocate_command_buffers(
                     device,
                     command_pool,
@@ -1308,13 +1308,13 @@ namespace Mythology::SDL
         };
 
         {
-            Command_buffer const command_buffer = command_buffers[0];
+            VkCommandBuffer const command_buffer = command_buffers[0];
             reset_command_buffer(command_buffer, {});
             begin_command_buffer(command_buffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, {});
 
             Mythology::ImGui::upload_fonts_image_data(
                 device,
-                command_buffer.value,
+                command_buffer,
                 imgui_resources.fonts_image_resource.image,
                 imgui_resources.fonts_image_resource.device_memory_range,
                 imgui_resources.fonts_image_resource.memory_properties
@@ -1496,7 +1496,7 @@ namespace Mythology::SDL
                             Image const swapchain_image = {swapchain_resources.images[swapchain_image_index->value]};
                             Framebuffer const swapchain_framebuffer = swapchain_resources.framebuffers[swapchain_image_index->value];
 
-                            Command_buffer const command_buffer = command_buffers[frame_index.value];
+                            VkCommandBuffer const command_buffer = command_buffers[frame_index.value];
                             reset_command_buffer(command_buffer, {});
                             begin_command_buffer(command_buffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, {});
                             {
@@ -1533,7 +1533,7 @@ namespace Mythology::SDL
                                     };
 
                                     Maia::Renderer::Vulkan::draw(
-                                        command_buffer.value,
+                                        command_buffer,
                                         swapchain_image.value,
                                         output_image_subresource_range,
                                         swapchain_framebuffer.value,

@@ -217,7 +217,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 					{}
 				);
 
-				std::pmr::vector<Command_buffer> const command_buffers = 
+				std::pmr::vector<VkCommandBuffer> const command_buffers = 
 					allocate_command_buffers(
 						device,
 						command_pool,
@@ -264,7 +264,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 							};
 
 							vkCmdPipelineBarrier(
-								command_buffer.value,
+								command_buffer,
 								VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 
 								VK_PIPELINE_STAGE_TRANSFER_BIT,
 								{},
@@ -278,7 +278,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 						}
 
 						vkCmdClearColorImage(
-							command_buffer.value,
+							command_buffer,
 							color_image.value,
 							VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
 							&clear_value.color, 
@@ -290,7 +290,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 					}
 
 					/*vkCmdClearColorImage(
-						command_buffer.value,
+						command_buffer,
 						color_image.value,
 						VK_IMAGE_, const VkClearColorValue *pColor, uint32_t rangeCount, const VkImageSubresourceRange *pRanges)
 					*/
