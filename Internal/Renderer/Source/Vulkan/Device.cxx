@@ -52,11 +52,6 @@ namespace Maia::Renderer::Vulkan
     }
 
 
-    export struct VkDeviceQueueCreateInfo
-    {
-        VkDeviceQueueCreateInfo value;
-    };
-
     export VkDeviceQueueCreateInfo create_device_queue_create_info(std::uint32_t queue_family_index, std::uint32_t queue_count, std::span<float const> queue_priorities) noexcept;
 
 
