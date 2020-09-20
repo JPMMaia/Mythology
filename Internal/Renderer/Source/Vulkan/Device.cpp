@@ -21,28 +21,28 @@ namespace Maia::Renderer::Vulkan
         return queue_family_property_count;
     }
 
-    std::pmr::vector<Queue_family_properties> get_physical_device_queue_family_properties(VkPhysicalDevice const physical_device, std::pmr::polymorphic_allocator<VkPhysicalDevice> const& allocator) noexcept
+    std::pmr::vector<VkQueueFamilyProperties> get_physical_device_queue_family_properties(VkPhysicalDevice const physical_device, std::pmr::polymorphic_allocator<VkPhysicalDevice> const& allocator) noexcept
     {
         std::uint32_t queue_family_property_count = get_physical_device_queue_family_count(physical_device);
 
-        std::pmr::vector<Queue_family_properties> queue_family_propertiess{queue_family_property_count, allocator};
+        std::pmr::vector<VkQueueFamilyProperties> queue_family_propertiess{queue_family_property_count, allocator};
 
-        static_assert(std::is_standard_layout_v<Queue_family_properties>, "Must be standard layout so that Queue_family_properties and Queue_family_properties.value are pointer-interconvertible");
-        static_assert(sizeof(Queue_family_properties) == sizeof(VkQueueFamilyProperties), "Queue_family_properties must only contain VkQueueFamilyProperties since using Queue_family_properties* as a contiguous array");
+        static_assert(std::is_standard_layout_v<VkQueueFamilyProperties>, "Must be standard layout so that VkQueueFamilyProperties and VkQueueFamilyProperties.value are pointer-interconvertible");
+        static_assert(sizeof(VkQueueFamilyProperties) == sizeof(VkQueueFamilyProperties), "VkQueueFamilyProperties must only contain VkQueueFamilyProperties since using VkQueueFamilyProperties* as a contiguous array");
         vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_property_count, reinterpret_cast<VkQueueFamilyProperties*>(queue_family_propertiess.data()));
 
         return queue_family_propertiess;
     }
 
-    bool has_graphics_capabilities(Queue_family_properties const& queue_family_properties) noexcept
+    bool has_graphics_capabilities(VkQueueFamilyProperties const& queue_family_properties) noexcept
     {
         return queue_family_properties.value.queueFlags | VkQueueFlagBits::VK_QUEUE_GRAPHICS_BIT;
     }
-    bool has_compute_capabilities(Queue_family_properties const& queue_family_properties) noexcept
+    bool has_compute_capabilities(VkQueueFamilyProperties const& queue_family_properties) noexcept
     {
         return queue_family_properties.value.queueFlags | VkQueueFlagBits::VK_QUEUE_COMPUTE_BIT;
     }
-    bool has_transfer_capabilities(Queue_family_properties const& queue_family_properties) noexcept
+    bool has_transfer_capabilities(VkQueueFamilyProperties const& queue_family_properties) noexcept
     {
         return queue_family_properties.value.queueFlags | VkQueueFlagBits::VK_QUEUE_TRANSFER_BIT;
     }

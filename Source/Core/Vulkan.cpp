@@ -92,12 +92,12 @@ namespace Mythology::Core::Vulkan
         VkPhysicalDevice const physical_device
     ) noexcept
     {
-        std::pmr::vector<Queue_family_properties> const queue_family_properties = 
+        std::pmr::vector<VkQueueFamilyProperties> const queue_family_properties = 
             get_physical_device_queue_family_properties(physical_device);
 
         std::optional<Queue_family_index> const queue_family_index = find_queue_family_with_capabilities(
             queue_family_properties,
-            [](Queue_family_properties const& properties) -> bool { return has_graphics_capabilities(properties); }
+            [](VkQueueFamilyProperties const& properties) -> bool { return has_graphics_capabilities(properties); }
         );
 
         assert(queue_family_index.has_value());

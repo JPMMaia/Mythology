@@ -1,6 +1,5 @@
 export module maia.renderer.vulkan.device;
 
-
 import <vulkan/vulkan.h>;
 
 import <algorithm>;
@@ -12,17 +11,12 @@ import <vector>;
 
 namespace Maia::Renderer::Vulkan
 {
-    export struct Queue_family_properties
-    {
-        VkQueueFamilyProperties value;
-    };
-
     export std::uint32_t get_physical_device_queue_family_count(VkPhysicalDevice physical_device) noexcept;
-    export std::pmr::vector<Queue_family_properties> get_physical_device_queue_family_properties(VkPhysicalDevice physical_device, std::pmr::polymorphic_allocator<VkPhysicalDevice> const& allocator = {}) noexcept;
+    export std::pmr::vector<VkQueueFamilyProperties> get_physical_device_queue_family_properties(VkPhysicalDevice physical_device, std::pmr::polymorphic_allocator<VkPhysicalDevice> const& allocator = {}) noexcept;
 
-    export bool has_graphics_capabilities(Queue_family_properties const& queue_family_properties) noexcept;
-    export bool has_compute_capabilities(Queue_family_properties const& queue_family_properties) noexcept;
-    export bool has_transfer_capabilities(Queue_family_properties const& queue_family_properties) noexcept;
+    export bool has_graphics_capabilities(VkQueueFamilyProperties const& queue_family_properties) noexcept;
+    export bool has_compute_capabilities(VkQueueFamilyProperties const& queue_family_properties) noexcept;
+    export bool has_transfer_capabilities(VkQueueFamilyProperties const& queue_family_properties) noexcept;
 
 
     export struct Queue_family_index
@@ -36,7 +30,7 @@ namespace Maia::Renderer::Vulkan
     
     export template <class Function>
     std::optional<Queue_family_index> find_queue_family_with_capabilities(
-        std::span<Queue_family_properties const> const queue_family_properties,
+        std::span<VkQueueFamilyProperties const> const queue_family_properties,
         Function has_capabilities
     ) noexcept
     {

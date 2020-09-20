@@ -111,7 +111,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 		{
 			VkPhysicalDevice const physical_device = physical_devices[0];
 
-			std::pmr::vector<Queue_family_properties> const queue_family_properties = get_physical_device_queue_family_properties(physical_device);
+			std::pmr::vector<VkQueueFamilyProperties> const queue_family_properties = get_physical_device_queue_family_properties(physical_device);
 
 			std::array<float, 1> const queue_priorities{ 1.0f };
 
@@ -123,7 +123,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 				assert(queue_family_properties.size() <= std::numeric_limits<std::uint32_t>::max());
 				for (std::uint32_t queue_family_index = 0; queue_family_index < queue_family_properties.size(); ++queue_family_index)
 				{
-					Queue_family_properties const& properties = queue_family_properties[queue_family_index];
+					VkQueueFamilyProperties const& properties = queue_family_properties[queue_family_index];
 
 					if (has_graphics_capabilities(properties) || has_compute_capabilities(properties) || has_transfer_capabilities(properties))
 					{
@@ -205,7 +205,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 			{
 				std::optional<Queue_family_index> const queue_family_index = find_queue_family_with_capabilities(
 					queue_family_properties,
-					[](Queue_family_properties const& properties) -> bool { return has_graphics_capabilities(properties); }
+					[](VkQueueFamilyProperties const& properties) -> bool { return has_graphics_capabilities(properties); }
 				);
 
 				REQUIRE(queue_family_index.has_value());
