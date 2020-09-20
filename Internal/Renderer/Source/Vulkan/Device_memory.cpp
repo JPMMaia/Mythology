@@ -5,6 +5,7 @@ import maia.renderer.vulkan.check;
 
 import <vulkan/vulkan.h>;
 
+import <algorithm>;
 import <cstdint>;
 import <memory_resource>;
 import <optional>;
