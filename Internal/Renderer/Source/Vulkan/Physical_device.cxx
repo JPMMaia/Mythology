@@ -1,6 +1,5 @@
 export module maia.renderer.vulkan.physical_device;
 
-
 import <vulkan/vulkan.h>;
 
 import <iosfwd>;
