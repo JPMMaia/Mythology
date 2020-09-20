@@ -619,7 +619,7 @@ namespace Mythology::SDL
                 render_pass{create_render_pass(device, image_format)},
                 triangle_vertex_shader_module{create_shader_module(device, {}, convert_bytes<std::uint32_t>(read_bytes(shaders_path / "Triangle.vertex.spv")))},
                 white_fragment_shader_module{create_shader_module(device, {}, convert_bytes<std::uint32_t>(read_bytes(shaders_path / "White.fragment.spv")))},
-                white_triangle_pipeline{create_vertex_and_fragment_pipeline(device, {}, pipeline_layout, render_pass, 0, 1, triangle_vertex_shader_module.value, white_fragment_shader_module.value)}
+                white_triangle_pipeline{create_vertex_and_fragment_pipeline(device, {}, pipeline_layout, render_pass, 0, 1, triangle_vertex_shader_module, white_fragment_shader_module)}
             {
             }
             Application_resources(Application_resources const&) = delete;
@@ -631,12 +631,12 @@ namespace Mythology::SDL
                     vkDestroyPipeline(device, white_triangle_pipeline, nullptr);
                 }
 
-                if (triangle_vertex_shader_module.value != VK_NULL_HANDLE)
+                if (triangle_vertex_shader_module != VK_NULL_HANDLE)
                 {
                     destroy_shader_module(device, triangle_vertex_shader_module);
                 }
 
-                if (white_fragment_shader_module.value != VK_NULL_HANDLE)
+                if (white_fragment_shader_module != VK_NULL_HANDLE)
                 {
                     destroy_shader_module(device, white_fragment_shader_module);
                 }
@@ -658,8 +658,8 @@ namespace Mythology::SDL
             VkDevice device;
             VkPipelineLayout pipeline_layout;
             VkRenderPass render_pass;
-            Shader_module triangle_vertex_shader_module;
-            Shader_module white_fragment_shader_module;
+            VkShaderModule triangle_vertex_shader_module;
+            VkShaderModule white_fragment_shader_module;
             VkPipeline white_triangle_pipeline;
         };
 
@@ -1289,8 +1289,8 @@ namespace Mythology::SDL
         Monotonic_device_memory_resource monotonic_memory_resource{device, 128*1024*1024};
         Buffer_pool_memory_resource geometry_buffer_memory_resource = create_geometry_buffer_pool(get_phisical_device_memory_properties(physical_device).value, device);
 
-        Shader_module const imgui_vertex_shader_module = create_shader_module(device, {}, convert_bytes<std::uint32_t>(read_bytes(shaders_path / "Imgui.vertex.spv")));
-        Shader_module const imgui_fragment_shader_module = create_shader_module(device, {}, convert_bytes<std::uint32_t>(read_bytes(shaders_path / "Imgui.fragment.spv")));
+        VkShaderModule const imgui_vertex_shader_module = create_shader_module(device, {}, convert_bytes<std::uint32_t>(read_bytes(shaders_path / "Imgui.vertex.spv")));
+        VkShaderModule const imgui_fragment_shader_module = create_shader_module(device, {}, convert_bytes<std::uint32_t>(read_bytes(shaders_path / "Imgui.fragment.spv")));
         
         ::ImGui::CreateContext();
         ::ImGui::StyleColorsDark();
@@ -1301,8 +1301,8 @@ namespace Mythology::SDL
             descriptor_pool,
             render_pass,
             0,
-            imgui_vertex_shader_module.value,
-            imgui_fragment_shader_module.value,
+            imgui_vertex_shader_module,
+            imgui_fragment_shader_module,
             monotonic_memory_resource,
             geometry_buffer_memory_resource
         };
