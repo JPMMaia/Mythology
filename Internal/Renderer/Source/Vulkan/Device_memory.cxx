@@ -1,6 +1,5 @@
 export module maia.renderer.vulkan.device_memory;
 
-
 import <vulkan/vulkan.h>;
 
 import <cstddef>;
