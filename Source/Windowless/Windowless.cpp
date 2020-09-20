@@ -189,7 +189,7 @@ namespace Mythology::Windowless
                     destroy_framebuffer(device, {*framebuffer}, {});
                 }
 
-                if (this->device_memory_and_color_image.color_image.value != VK_NULL_HANDLE)
+                if (this->device_memory_and_color_image.color_image != VK_NULL_HANDLE)
                 {
                     destroy_image(this->device, this->device_memory_and_color_image.color_image, {});
                 }
@@ -249,7 +249,7 @@ namespace Mythology::Windowless
         std::optional<VkRenderPass> const framebuffer_render_pass = !pipeline_resources.render_passes.empty() ? pipeline_resources.render_passes[pipeline_json.at("output_framebuffer").at("render_pass").get<std::size_t>()] : std::optional<VkRenderPass>{};
         Application_resources const application_resources{shaders_path, physical_device, device, color_image_format, color_image_extent, framebuffer_render_pass};
         VkDeviceMemory const color_image_device_memory = application_resources.device_memory_and_color_image.device_memory;
-        VkImage const color_image = application_resources.device_memory_and_color_image.color_image.value;
+        VkImage const color_image = application_resources.device_memory_and_color_image.color_image;
         std::optional<VkFramebuffer> const framebuffer = application_resources.framebuffer;
 
         Maia::Renderer::Vulkan::Commands_data const commands_data = Maia::Renderer::Vulkan::create_commands_data(

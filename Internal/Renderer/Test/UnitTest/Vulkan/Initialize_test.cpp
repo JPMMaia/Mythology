@@ -259,7 +259,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 								.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 								.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 								.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-								.image = color_image.value,
+								.image = color_image,
 								.subresourceRange = color_image_subresource_range
 							};
 
@@ -279,7 +279,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 
 						vkCmdClearColorImage(
 							command_buffer,
-							color_image.value,
+							color_image,
 							VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
 							&clear_value.color, 
 							1,
@@ -291,7 +291,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 
 					/*vkCmdClearColorImage(
 						command_buffer,
-						color_image.value,
+						color_image,
 						VK_IMAGE_, const VkClearColorValue *pColor, uint32_t rangeCount, const VkImageSubresourceRange *pRanges)
 					*/
 

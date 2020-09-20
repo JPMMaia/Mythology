@@ -30,7 +30,7 @@ namespace Maia::Renderer::Vulkan
         return image;
     }
 
-    Image create_image(
+    VkImage create_image(
         VkDevice const device,
         VkAllocationCallbacks const* const allocator,
         VkImageType const image_type,
@@ -66,18 +66,18 @@ namespace Maia::Renderer::Vulkan
             .initialLayout = initial_layout,
         };
 
-        return {create_image(device, create_info, allocator)};
+        return create_image(device, create_info, allocator);
     }
 
     void destroy_image(
         VkDevice const device,
-        Image const image,
+        VkImage const image,
         VkAllocationCallbacks const* const allocator
     ) noexcept
     {
         vkDestroyImage(
             device,
-            image.value,
+            image,
             allocator
         );
     }
@@ -85,14 +85,14 @@ namespace Maia::Renderer::Vulkan
 
     VkSubresourceLayout get_subresource_layout(
         VkDevice const device,
-        Image const image,
+        VkImage const image,
         VkImageSubresource const subresource
     ) noexcept
     {
         VkSubresourceLayout subresource_layout = {};
         vkGetImageSubresourceLayout(
             device,
-            image.value,
+            image,
             &subresource,
             &subresource_layout
         );
@@ -103,7 +103,7 @@ namespace Maia::Renderer::Vulkan
     Image_view create_image_view(
         VkDevice const device,
         VkImageViewCreateFlags const flags,
-        Image const image,
+        VkImage const image,
         VkImageViewType const view_type,
         VkFormat const format,
         Component_mapping const components,
@@ -116,7 +116,7 @@ namespace Maia::Renderer::Vulkan
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
             .pNext = nullptr,
             .flags = flags,
-            .image = image.value,
+            .image = image,
             .viewType = view_type,
             .format = format,
             .components = components.value,
@@ -133,7 +133,7 @@ namespace Maia::Renderer::Vulkan
             )
         );
 
-        return {image_view};
+        return image_view;
     }
 
     void destroy_image_view(

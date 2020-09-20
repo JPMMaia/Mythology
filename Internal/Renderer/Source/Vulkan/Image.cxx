@@ -1,6 +1,5 @@
 export module maia.renderer.vulkan.image;
 
-
 import <vulkan/vulkan.h>;
 
 import <cstdint>;
@@ -20,18 +19,13 @@ namespace Maia::Renderer::Vulkan
     };
 
 
-    export struct Image
-    {
-        VkImage value;
-    };
-
     export VkImage create_image(
         VkDevice device,
         VkImageCreateInfo const& create_info,
         VkAllocationCallbacks const* allocator = nullptr
     ) noexcept;
 
-    export Image create_image(
+    export VkImage create_image(
         VkDevice device,
         VkAllocationCallbacks const* allocator,
         VkImageType image_type,
@@ -50,14 +44,14 @@ namespace Maia::Renderer::Vulkan
 
     export void destroy_image(
         VkDevice device,
-        Image image,
+        VkImage image,
         VkAllocationCallbacks const* allocator
     ) noexcept;
 
     
     export VkSubresourceLayout get_subresource_layout(
         VkDevice device,
-        Image image,
+        VkImage image,
         VkImageSubresource subresource
     ) noexcept;
 
@@ -81,7 +75,7 @@ namespace Maia::Renderer::Vulkan
     export Image_view create_image_view(
         VkDevice device,
         VkImageViewCreateFlags flags,
-        Image image,
+        VkImage image,
         VkImageViewType view_type,
         VkFormat format,
         Component_mapping components,

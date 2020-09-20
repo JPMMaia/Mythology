@@ -26,7 +26,7 @@ namespace Mythology::Image
         Image_data_layout layout;
     };
 
-    export Image read_image(
+    export VkImage read_image(
         std::filesystem::path const& image_path,
         std::pmr::polymorphic_allocator<> const& output_allocator
     ) noexcept;

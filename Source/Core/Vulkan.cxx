@@ -42,7 +42,7 @@ namespace Mythology::Core::Vulkan
     export struct Device_memory_and_color_image
     {
         VkDeviceMemory device_memory;
-        Image color_image;
+        VkImage color_image;
     };
 
     export Device_memory_and_color_image create_device_memory_and_color_image(
@@ -72,14 +72,14 @@ namespace Mythology::Core::Vulkan
         Render_pass render_pass,
         Framebuffer framebuffer,
         VkClearColorValue clear_color,
-        Image output_image,
+        VkImage output_image,
         VkImageSubresourceRange output_image_subresource_range,
         VkRect2D output_render_area
     ) noexcept;
 
     export void end_render_pass_and_switch_layout(
         VkCommandBuffer command_buffer,
-        Image output_image,
+        VkImage output_image,
         VkImageSubresourceRange output_image_subresource_range,
         bool switch_to_present_layout
     ) noexcept;

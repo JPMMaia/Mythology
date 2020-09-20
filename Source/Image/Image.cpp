@@ -30,7 +30,7 @@ namespace Mythology::Image
         return !(lhs == rhs);
     }
 
-    Image read_image(
+    VkImage read_image(
         std::filesystem::path const& image_path,
         std::pmr::polymorphic_allocator<> const& output_allocator
     ) noexcept

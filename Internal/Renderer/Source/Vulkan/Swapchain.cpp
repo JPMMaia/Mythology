@@ -1,7 +1,6 @@
 module maia.renderer.vulkan.swapchain;
 
 import maia.renderer.vulkan.check;
-import maia.renderer.vulkan.image;
 import maia.renderer.vulkan.surface;
 
 import <vulkan/vulkan.h>;

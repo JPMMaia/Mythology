@@ -231,7 +231,7 @@ namespace Mythology::Core::Vulkan
         VkExtent3D const extent
     ) noexcept
     {
-        Image const color_image = create_image(
+        VkImage const color_image = create_image(
             device,
             {},
             VK_IMAGE_TYPE_2D,
@@ -247,12 +247,12 @@ namespace Mythology::Core::Vulkan
         );
 
         Physical_device_memory_properties const physical_device_memory_properties = get_phisical_device_memory_properties(physical_device);
-        Memory_requirements const color_image_memory_requirements = get_memory_requirements(device, color_image.value);
+        Memory_requirements const color_image_memory_requirements = get_memory_requirements(device, color_image);
         Memory_type_info const color_image_memory_type_info = get_memory_type_info(physical_device_memory_properties, color_image_memory_requirements);
 
         VkDeviceMemory const device_memory =
             allocate_memory(device, color_image_memory_requirements.value.size, color_image_memory_type_info.memory_type_index, {});
-        bind_memory(device, color_image.value, device_memory, 0);
+        bind_memory(device, color_image, device_memory, 0);
 
         return {device_memory, color_image};
     }
@@ -401,7 +401,7 @@ namespace Mythology::Core::Vulkan
         Render_pass const render_pass,
         Framebuffer const framebuffer,
         VkClearColorValue const clear_color,
-        Image const output_image,
+        VkImage const output_image,
         VkImageSubresourceRange const output_image_subresource_range,
         VkRect2D const output_render_area
     ) noexcept
@@ -417,7 +417,7 @@ namespace Mythology::Core::Vulkan
                 .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .image = output_image.value,
+                .image = output_image,
                 .subresourceRange = output_image_subresource_range
             };
 
@@ -443,7 +443,7 @@ namespace Mythology::Core::Vulkan
 
             vkCmdClearColorImage(
                 command_buffer,
-                output_image.value,
+                output_image,
                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
                 &clear_value.color, 
                 1,
@@ -462,7 +462,7 @@ namespace Mythology::Core::Vulkan
                 .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .image = output_image.value,
+                .image = output_image,
                 .subresourceRange = output_image_subresource_range
             };
 
@@ -499,7 +499,7 @@ namespace Mythology::Core::Vulkan
 
     void end_render_pass_and_switch_layout(
         VkCommandBuffer const command_buffer,
-        Image const output_image,
+        VkImage const output_image,
         VkImageSubresourceRange const output_image_subresource_range,
         bool const switch_to_present_layout
     ) noexcept
@@ -518,7 +518,7 @@ namespace Mythology::Core::Vulkan
                 .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .image = output_image.value,
+                .image = output_image,
                 .subresourceRange = output_image_subresource_range
             };
 

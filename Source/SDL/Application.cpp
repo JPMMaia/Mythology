@@ -1493,7 +1493,7 @@ namespace Mythology::SDL
 
                         if (swapchain_image_index)
                         {
-                            Image const swapchain_image = {swapchain_resources.images[swapchain_image_index->value]};
+                            VkImage const swapchain_image = {swapchain_resources.images[swapchain_image_index->value]};
                             Framebuffer const swapchain_framebuffer = swapchain_resources.framebuffers[swapchain_image_index->value];
 
                             VkCommandBuffer const command_buffer = command_buffers[frame_index.value];
@@ -1534,7 +1534,7 @@ namespace Mythology::SDL
 
                                     Maia::Renderer::Vulkan::draw(
                                         command_buffer,
-                                        swapchain_image.value,
+                                        swapchain_image,
                                         output_image_subresource_range,
                                         swapchain_framebuffer.value,
                                         output_render_area,
