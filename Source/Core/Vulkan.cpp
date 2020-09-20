@@ -399,7 +399,7 @@ namespace Mythology::Core::Vulkan
     void clear_and_begin_render_pass(
         VkCommandBuffer const command_buffer,
         VkRenderPass const render_pass,
-        Framebuffer const framebuffer,
+        VkFramebuffer const framebuffer,
         VkClearColorValue const clear_color,
         VkImage const output_image,
         VkImageSubresourceRange const output_image_subresource_range,

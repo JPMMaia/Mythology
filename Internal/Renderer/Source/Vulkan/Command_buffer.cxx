@@ -51,7 +51,7 @@ namespace Maia::Renderer::Vulkan
     export void begin_render_pass(
         VkCommandBuffer command_buffer,
         VkRenderPass render_pass,
-        Framebuffer framebuffer,
+        VkFramebuffer framebuffer,
         VkRect2D render_area,
         std::span<VkClearValue const> clear_values,
         VkSubpassContents subpass_contents

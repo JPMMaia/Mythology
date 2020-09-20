@@ -70,7 +70,7 @@ namespace Mythology::Core::Vulkan
     export void clear_and_begin_render_pass(
         VkCommandBuffer command_buffer,
         VkRenderPass render_pass,
-        Framebuffer framebuffer,
+        VkFramebuffer framebuffer,
         VkClearColorValue clear_color,
         VkImage output_image,
         VkImageSubresourceRange output_image_subresource_range,

@@ -1494,7 +1494,7 @@ namespace Mythology::SDL
                         if (swapchain_image_index)
                         {
                             VkImage const swapchain_image = {swapchain_resources.images[swapchain_image_index->value]};
-                            Framebuffer const swapchain_framebuffer = swapchain_resources.framebuffers[swapchain_image_index->value];
+                            VkFramebuffer const swapchain_framebuffer = swapchain_resources.framebuffers[swapchain_image_index->value];
 
                             VkCommandBuffer const command_buffer = command_buffers[frame_index.value];
                             reset_command_buffer(command_buffer, {});

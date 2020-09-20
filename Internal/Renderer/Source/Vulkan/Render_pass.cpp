@@ -72,7 +72,7 @@ namespace Maia::Renderer::Vulkan
     }
 
 
-    Framebuffer create_framebuffer(
+    VkFramebuffer create_framebuffer(
         VkDevice const device,
         VkFramebufferCreateFlags const flags,
         VkRenderPass const render_pass,
@@ -109,7 +109,7 @@ namespace Maia::Renderer::Vulkan
 
     void destroy_framebuffer(
         VkDevice const device,
-        Framebuffer const framebuffer,
+        VkFramebuffer const framebuffer,
         VkAllocationCallbacks const* const allocator
     ) noexcept
     {

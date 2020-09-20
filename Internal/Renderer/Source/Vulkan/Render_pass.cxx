@@ -29,11 +29,6 @@ namespace Maia::Renderer::Vulkan
     ) noexcept;
 
 
-    export struct Framebuffer
-    {
-        VkFramebuffer value;
-    };
-
     export struct Framebuffer_dimensions
     {
         std::uint32_t width;
@@ -41,7 +36,7 @@ namespace Maia::Renderer::Vulkan
         std::uint32_t layers;
     };
 
-    export Framebuffer create_framebuffer(
+    export VkFramebuffer create_framebuffer(
         VkDevice device,
         VkFramebufferCreateFlags flags,
         VkRenderPass render_pass,
@@ -52,7 +47,7 @@ namespace Maia::Renderer::Vulkan
 
     export void destroy_framebuffer(
         VkDevice device,
-        Framebuffer framebuffer,
+        VkFramebuffer framebuffer,
         VkAllocationCallbacks const* allocator
     ) noexcept;
 }
