@@ -8,11 +8,6 @@ set_target_properties(MaiaECS
 		LINKER_LANGUAGE CXX
 )
 
-target_compile_features (MaiaECS 
-	PRIVATE 
-		cxx_std_17
-)
-
 target_include_directories (MaiaECS 
 	PUBLIC
 		$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
