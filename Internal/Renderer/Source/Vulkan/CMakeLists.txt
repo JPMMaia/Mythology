@@ -175,11 +175,9 @@ target_module (
     "maia.renderer.vulkan.command_buffer"
     INTERFACE "Command_buffer.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
-        "maia.renderer.vulkan.command_pool"
     IMPLEMENTATION "Command_buffer.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" 
         "maia.renderer.vulkan.check"
-        "maia.renderer.vulkan.command_pool"
 )
 
 target_module (
