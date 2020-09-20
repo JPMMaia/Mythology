@@ -1,0 +1,14 @@
+{
+    "name": "mythology",
+    "version-string": "0.1.0",
+    "dependencies": [
+        "catch2",
+        "docopt",
+        "eigen3",
+        "imgui",
+        "ms-gsl",
+        "nlohmann-json",
+        "sdl2",
+        "stb"
+    ]
+}
