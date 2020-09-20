@@ -43,7 +43,7 @@ namespace Maia::Renderer::Vulkan
         return {static_cast<std::uint32_t>(VK_MAKE_VERSION(major, minor, patch))};
     }
 
-    Instance create_instance(
+    VkInstance create_instance(
         std::optional<Application_description> const application_description,
         std::optional<Engine_description> const engine_description,
         API_version const api_version,
@@ -82,10 +82,10 @@ namespace Maia::Renderer::Vulkan
     }
 
     void destroy_instance(
-        Instance const instance,
+        VkInstance const instance,
         VkAllocationCallbacks const* const allocator
     ) noexcept
     {
-        vkDestroyInstance(instance.value, allocator);
+        vkDestroyInstance(instance, allocator);
     }
 }

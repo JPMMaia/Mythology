@@ -1,6 +1,5 @@
 export module maia.renderer.vulkan.physical_device;
 
-import maia.renderer.vulkan.instance;
 
 import <vulkan/vulkan.h>;
 
@@ -21,7 +20,7 @@ namespace Maia::Renderer::Vulkan
 
     export std::ostream& operator<<(std::ostream& output_stream, Physical_device physical_device) noexcept;
 
-    export std::pmr::vector<Physical_device> enumerate_physical_devices(Instance instance, std::pmr::polymorphic_allocator<Physical_device> const& allocator = {}) noexcept;
+    export std::pmr::vector<Physical_device> enumerate_physical_devices(VkInstance instance, std::pmr::polymorphic_allocator<Physical_device> const& allocator = {}) noexcept;
 
 
     export struct Physical_device_features

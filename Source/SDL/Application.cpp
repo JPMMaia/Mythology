@@ -296,7 +296,7 @@ namespace Mythology::SDL
 
                 this->physical_device = select_physical_device(this->instance);
                 
-                this->surface = {create_surface(window, this->instance.value)};
+                this->surface = {create_surface(window, this->instance)};
                 
                 this->graphics_queue_family_index = find_graphics_queue_family_index(this->physical_device);
                 this->present_queue_family_index = find_present_queue_family_index(this->physical_device, this->surface, graphics_queue_family_index);
@@ -331,7 +331,7 @@ namespace Mythology::SDL
                     destroy_surface(this->instance, this->surface);
                 }
 
-                if (this->instance.value != VK_NULL_HANDLE)
+                if (this->instance != VK_NULL_HANDLE)
                 {
                     destroy_instance(this->instance);
                 }
@@ -340,7 +340,7 @@ namespace Mythology::SDL
             Device_resources& operator=(Device_resources const&) = delete;
             Device_resources& operator=(Device_resources&&) = delete;
 
-            Instance instance = {};
+            VkInstance instance = {};
             Physical_device physical_device = {};
             Surface surface = {};
             Queue_family_index graphics_queue_family_index = {};

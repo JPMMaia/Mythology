@@ -124,8 +124,8 @@ namespace Maia::Renderer::Vulkan
         }
     }
 
-    void destroy_surface(Instance const instance, Surface const surface, VkAllocationCallbacks const* const allocator) noexcept
+    void destroy_surface(VkInstance const instance, Surface const surface, VkAllocationCallbacks const* const allocator) noexcept
     {
-        vkDestroySurfaceKHR(instance.value, surface.value, allocator);
+        vkDestroySurfaceKHR(instance, surface.value, allocator);
     }
 }

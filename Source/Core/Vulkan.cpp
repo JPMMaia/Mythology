@@ -21,7 +21,7 @@ using namespace Maia::Renderer::Vulkan;
 
 namespace Mythology::Core::Vulkan
 {
-    Instance create_instance(
+    VkInstance create_instance(
         std::optional<Application_description> application_description,
         std::optional<Engine_description> engine_description,
         API_version api_version,
@@ -81,7 +81,7 @@ namespace Mythology::Core::Vulkan
             &validation_features);
     }
 
-    Physical_device select_physical_device(Instance const instance) noexcept
+    Physical_device select_physical_device(VkInstance const instance) noexcept
     {
         std::pmr::vector<Physical_device> const physical_devices = enumerate_physical_devices(instance);
 

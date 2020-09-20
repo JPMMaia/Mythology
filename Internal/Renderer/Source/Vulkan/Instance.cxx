@@ -35,12 +35,7 @@ namespace Maia::Renderer::Vulkan
 
     export API_version make_api_version(std::uint16_t major, std::uint16_t minor, std::uint16_t patch) noexcept;
 
-    export struct Instance
-    {
-        VkInstance value = VK_NULL_HANDLE;
-    };
-
-    export Instance create_instance(
+    export VkInstance create_instance(
         std::optional<Application_description> application_description,
         std::optional<Engine_description> engine_description,
         API_version api_version,
@@ -49,7 +44,7 @@ namespace Maia::Renderer::Vulkan
         void const* next = nullptr) noexcept;
 
     export void destroy_instance(
-        Instance instance,
+        VkInstance instance,
         VkAllocationCallbacks const* allocator = {}
     ) noexcept;
 }

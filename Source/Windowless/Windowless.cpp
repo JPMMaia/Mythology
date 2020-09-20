@@ -92,7 +92,7 @@ namespace Mythology::Windowless
 
                 this->instance = create_instance(Application_description{"Mythology", 1}, Engine_description{"Mythology Engine", 1}, api_version);
 
-                this->debug_messenger = create_debug_messenger(this->instance.value, terminate_if_error, nullptr);
+                this->debug_messenger = create_debug_messenger(this->instance, terminate_if_error, nullptr);
 
                 this->physical_device = select_physical_device(this->instance);
                 
@@ -132,17 +132,17 @@ namespace Mythology::Windowless
                 {
                     PFN_vkDestroyDebugUtilsMessengerEXT destroy_debug_utils_messenger =
                         reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
-                            vkGetInstanceProcAddr(this->instance.value, "vkDestroyDebugUtilsMessengerEXT")
+                            vkGetInstanceProcAddr(this->instance, "vkDestroyDebugUtilsMessengerEXT")
                         );
 
                     destroy_debug_utils_messenger(
-                        this->instance.value,
+                        this->instance,
                         this->debug_messenger,
                         nullptr
                     );
                 }
 
-                if (this->instance.value != VK_NULL_HANDLE)
+                if (this->instance != VK_NULL_HANDLE)
                 {
                     destroy_instance(this->instance);
                 }
@@ -151,7 +151,7 @@ namespace Mythology::Windowless
             Device_resources& operator=(Device_resources const&) = delete;
             Device_resources& operator=(Device_resources&&) = delete;
 
-            Instance instance = {};
+            VkInstance instance = {};
             VkDebugUtilsMessengerEXT debug_messenger = {};
             Physical_device physical_device = {};
             Queue_family_index graphics_queue_family_index = {};

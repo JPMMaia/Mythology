@@ -16,13 +16,13 @@ using namespace Maia::Renderer::Vulkan;
 
 namespace Mythology::Core::Vulkan
 {
-    export Instance create_instance(
+    export VkInstance create_instance(
         std::optional<Application_description> application_description,
         std::optional<Engine_description> engine_description,
         API_version api_version,
         std::span<char const* const> required_extensions = {}) noexcept;
     
-    export Physical_device select_physical_device(Instance instance) noexcept;
+    export Physical_device select_physical_device(VkInstance instance) noexcept;
 
     export Queue_family_index find_graphics_queue_family_index(
         Physical_device physical_device
