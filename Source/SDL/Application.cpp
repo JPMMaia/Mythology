@@ -1555,7 +1555,7 @@ namespace Mythology::SDL
                                 queue_submit(graphics_queue, {&available_frame_semaphore, 1}, wait_destination_stage_masks, {&command_buffer, 1}, {&finished_frame_semaphore, 1}, available_frames_fence);
                             }
 
-                            queue_present(present_queue, {&finished_frame_semaphore.value, 1}, swapchain_resources.swapchain, *swapchain_image_index);
+                            queue_present(present_queue, {&finished_frame_semaphore, 1}, swapchain_resources.swapchain, *swapchain_image_index);
 
                             frame_index.value = (frame_index.value + 1) % pipeline_length;
                         }

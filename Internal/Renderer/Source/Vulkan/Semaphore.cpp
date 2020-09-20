@@ -77,7 +77,7 @@ namespace Maia::Renderer::Vulkan
     {
         vkDestroySemaphore(
             device,
-            semaphore.value,
+            semaphore,
             allocator
         );
     }
