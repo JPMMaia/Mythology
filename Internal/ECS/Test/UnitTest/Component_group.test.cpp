@@ -7,8 +7,6 @@ import maia.ecs.components.local_rotation;
 
 import <catch2/catch.hpp>;
 
-import <Eigen/Geometry>;
-
 import <array>;
 import <memory_resource>;
 import <optional>;
@@ -37,8 +35,8 @@ namespace Maia::ECS::Test
 			WHEN("Pushing back components Local_position { 2.0f, 0.5f, -1.0f } and Local_rotation { 0.1f, 0.2f, 0.3f, 1.0f }")
 			{
 				Entity const original_entity{ 1 };
-				Local_position const original_position{ { 2.0f, 0.5f, -1.0f } };
-				Local_rotation const original_rotation{ { 0.1f, 0.2f, 0.3f, 1.0f } };
+				Local_position const original_position{2.0f, 0.5f, -1.0f};
+				Local_rotation const original_rotation{0.1f, 0.2f, 0.3f, 1.0f};
 
 				Component_group::Index const index = component_group.push_back(original_entity, original_position, original_rotation);
 
@@ -70,8 +68,8 @@ namespace Maia::ECS::Test
 				AND_WHEN("Setting element at index 0 given Entity { 3 } Local_position {-1.0f, 2.0f, 3.0f } and Local_rotation { 0.5f, 0.5f, 0.0f, 0.5f }")
 				{
 					Entity const new_entity{ 3 };
-					Local_position const new_position{ { -1.0f, 2.0f, 3.0f } };
-					Local_rotation const new_rotation{ { 0.5f, 0.5f, 0.0f, 0.5f } };
+					Local_position const new_position{-1.0f, 2.0f, 3.0f};
+					Local_rotation const new_rotation{0.5f, 0.5f, 0.0f, 0.5f};
 
 					component_group.set_components_data(index, new_entity, new_position, new_rotation);
 
@@ -93,7 +91,7 @@ namespace Maia::ECS::Test
 
 				AND_WHEN("Setting element at index 0 given Local_position { 1.0f, 4.0f, 2.0f  }")
 				{
-					Local_position new_position{ { 1.0f, 4.0f, 2.0f } };
+					Local_position new_position{1.0f, 4.0f, 2.0f};
 
 					component_group.set_component_data(index, new_position);
 
@@ -111,7 +109,7 @@ namespace Maia::ECS::Test
 
 				AND_WHEN("Setting element at index 0 given Local_rotation { 1.0f, 2.0f, 3.0f, 4.0f }")
 				{
-					Local_rotation new_rotation{ { 1.0f, 2.0f, 3.0f, 4.0f } };
+					Local_rotation new_rotation{1.0f, 2.0f, 3.0f, 4.0f};
 
 					component_group.set_component_data(index, new_rotation);
 
@@ -161,8 +159,8 @@ namespace Maia::ECS::Test
 				AND_WHEN("An element is pushed to the component group")
 				{
 					Entity const entity0{ 0 };
-					Local_position const position0{ { 1.0f, 2.0f, 3.0f } };
-					Local_rotation const rotation0{ { 4.0f, 5.0f, 6.0f, 7.0f } };
+					Local_position const position0{1.0f, 2.0f, 3.0f};
+					Local_rotation const rotation0{4.0f, 5.0f, 6.0f, 7.0f};
 					component_group.push_back(entity0, position0, rotation0);
 
 					THEN("The component group size is 1")
@@ -208,13 +206,13 @@ namespace Maia::ECS::Test
 					AND_WHEN("Two more elements are added")
 					{
 						Entity const entity1{ 1 };
-						Local_position const position1{ { 8.0f, 9.0f, 10.0f } };
-						Local_rotation const rotation1{ { 11.0f, 12.0f, 13.0f, 14.0f } };
+						Local_position const position1{8.0f, 9.0f, 10.0f};
+						Local_rotation const rotation1{11.0f, 12.0f, 13.0f, 14.0f};
 						component_group.push_back(entity1, position1, rotation1);
 
 						Entity const entity2{ 2 };
-						Local_position const position2{ { 15.0f, 16.0f, 17.0f } };
-						Local_rotation const rotation2{ { 18.0f, 19.0f, 20.0f, 21.0f } };
+						Local_position const position2{15.0f, 16.0f, 17.0f};
+						Local_rotation const rotation2{18.0f, 19.0f, 20.0f, 21.0f};
 						component_group.push_back(entity2, position2, rotation2);
 
 						THEN("The component group size is 3")

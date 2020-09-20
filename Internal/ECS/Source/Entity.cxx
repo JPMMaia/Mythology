@@ -18,12 +18,9 @@ namespace Maia::ECS
 	export bool operator!=(Entity lhs, Entity rhs) noexcept;
 
 	export std::ostream& operator<<(std::ostream& output_stream, Entity value) noexcept;
-}
 
-namespace std
-{
-	export template<>
-	struct hash<Maia::ECS::Entity>
+	
+	export struct Entity_hash
 	{
 		using argument_type = Maia::ECS::Entity;
 		using result_type = std::size_t;

@@ -5,9 +5,6 @@ import maia.ecs.entity_manager;
 import maia.ecs.components.local_position;
 import maia.ecs.components.local_rotation;
 
-import <Eigen/Core>;
-import <Eigen/Geometry>;
-
 import <functional>;
 import <future>;
 import <memory_resource>;

@@ -1,17 +1,17 @@
 export module maia.ecs.components.local_position;
 
-import <Eigen/Core>;
-
 namespace Maia::ECS::Components
 {
 	export struct Local_position
 	{
-		Eigen::Vector3f value{ 0.0f, 0.0f, 0.0f };
+		float x;
+		float y;
+		float z;
 	};
 
 	export inline bool operator==(Local_position const& lhs, Local_position const& rhs) noexcept
 	{
-		return lhs.value == rhs.value;
+		return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
 	}
 	export inline bool operator!=(Local_position const& lhs, Local_position const& rhs) noexcept
 	{

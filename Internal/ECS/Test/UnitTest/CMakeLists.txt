@@ -16,7 +16,7 @@ add_module_dependency (MaiaECSUnitTest "catch2.catch")
 
 target_include_directories(MaiaECSUnitTest PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 
-target_link_libraries (MaiaECSUnitTest PRIVATE Maia::ECS Maia::ECS::Components Maia::ECS::Systems)
+target_link_libraries (MaiaECSUnitTest PRIVATE Maia::ECS Maia::ECS::Components)
 
 target_link_libraries (MaiaECSUnitTest PRIVATE Standard_library)
 
@@ -25,7 +25,7 @@ target_sources (MaiaECSUnitTest
 		"main.cpp"
 		"Component_group.test.cpp"
 		"Entity_manager.test.cpp"
-		"Systems/Transform_system.test.cpp"
+		#"Systems/Transform_system.test.cpp"
 )
 
 include (Catch)

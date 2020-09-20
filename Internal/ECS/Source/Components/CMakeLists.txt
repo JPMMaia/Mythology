@@ -13,15 +13,11 @@ target_compile_features (MaiaECSComponents
 		cxx_std_20
 )
 
-find_package (Eigen3 3.3.7 CONFIG REQUIRED)
-target_link_libraries (MaiaECSComponents PUBLIC Eigen3::Eigen)
-
 target_module (
     MaiaECSComponents
     PUBLIC
     "maia.ecs.components.local_position"
     INTERFACE "Local_position.cxx"
-    INTERFACE_DEPENDS "Eigen3_module"
 )
 
 target_module (
@@ -29,5 +25,4 @@ target_module (
     PUBLIC
     "maia.ecs.components.local_rotation"
     INTERFACE "Local_rotation.cxx"
-    INTERFACE_DEPENDS "Eigen3_module"
 )
