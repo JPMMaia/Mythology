@@ -205,11 +205,9 @@ target_module (
     "maia.renderer.vulkan.swapchain"
     INTERFACE "Swapchain.cxx"
     INTERFACE_DEPENDS "Standard_library" "Vulkan"
-        "maia.renderer.vulkan.surface"
     IMPLEMENTATION "Swapchain.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "Vulkan" 
         "maia.renderer.vulkan.check"
-        "maia.renderer.vulkan.surface"
 )
 
 target_module (
