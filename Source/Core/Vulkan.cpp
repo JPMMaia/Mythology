@@ -193,7 +193,7 @@ namespace Mythology::Core::Vulkan
     };
 
     Memory_type_info get_memory_type_info(
-        Physical_device_memory_properties const& physical_device_memory_properties,
+        VkPhysicalDeviceMemoryProperties const& physical_device_memory_properties,
         VkMemoryRequirements const& memory_requirements
     ) noexcept
     {
@@ -246,7 +246,7 @@ namespace Mythology::Core::Vulkan
             VK_IMAGE_TILING_LINEAR
         );
 
-        Physical_device_memory_properties const physical_device_memory_properties = get_phisical_device_memory_properties(physical_device);
+        VkPhysicalDeviceMemoryProperties const physical_device_memory_properties = get_phisical_device_memory_properties(physical_device);
         VkMemoryRequirements const color_image_memory_requirements = get_memory_requirements(device, color_image);
         Memory_type_info const color_image_memory_type_info = get_memory_type_info(physical_device_memory_properties, color_image_memory_requirements);
 

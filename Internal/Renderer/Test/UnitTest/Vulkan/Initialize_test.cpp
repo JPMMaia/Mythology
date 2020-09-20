@@ -137,7 +137,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 
 			Device const device = create_device(physical_device, queue_create_infos, {});
 			
-			Physical_device_memory_properties const physical_device_memory_properties =
+			VkPhysicalDeviceMemoryProperties const physical_device_memory_properties =
 				get_phisical_device_memory_properties(physical_device);
 
 			std::cout << "Physical device memory properties:\n\n";

@@ -671,7 +671,7 @@ namespace Mythology::SDL
         };
 
         Device_memory_and_buffer create_device_memory_and_buffer(
-            Physical_device_memory_properties const& physical_device_memory_properties,
+            VkPhysicalDeviceMemoryProperties const& physical_device_memory_properties,
             VkDevice const device,
             VkDeviceSize const allocation_size, 
             VkBufferUsageFlags const usage,
@@ -700,7 +700,7 @@ namespace Mythology::SDL
             bind_memory(device, buffer, device_memory, device_offset);
 
             VkMemoryPropertyFlags const memory_property_flags =
-                physical_device_memory_properties.value.memoryTypes[memory_type_index_and_properties->type_index.value].propertyFlags;
+                physical_device_memory_properties.memoryTypes[memory_type_index_and_properties->type_index.value].propertyFlags;
 
             return {buffer, device_memory, memory_property_flags};
         }

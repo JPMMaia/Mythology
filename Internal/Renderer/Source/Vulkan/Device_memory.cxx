@@ -33,17 +33,12 @@ namespace Maia::Renderer::Vulkan
     ) noexcept;
 
 
-    export struct Physical_device_memory_properties
-    {
-        VkPhysicalDeviceMemoryProperties value;
-    };
-
     export std::ostream& operator<<(
         std::ostream& output_stream, 
-        Physical_device_memory_properties const& physical_device_memory_properties
+        VkPhysicalDeviceMemoryProperties const& physical_device_memory_properties
     ) noexcept;
 
-    export Physical_device_memory_properties get_phisical_device_memory_properties(
+    export VkPhysicalDeviceMemoryProperties get_phisical_device_memory_properties(
         VkPhysicalDevice const physical_device
     ) noexcept;
 
@@ -71,13 +66,13 @@ namespace Maia::Renderer::Vulkan
     };
 
     export std::optional<Memory_type_index_and_properties> find_memory_type(
-        Physical_device_memory_properties const& memory_properties,
+        VkPhysicalDeviceMemoryProperties const& memory_properties,
         Memory_type_bits memory_type_bits_requirement,
         VkMemoryPropertyFlags required_properties
     ) noexcept;
 
     export std::optional<Memory_type_index_and_properties> find_memory_type(
-        Physical_device_memory_properties const& memory_properties,
+        VkPhysicalDeviceMemoryProperties const& memory_properties,
         Memory_type_bits memory_type_bits_requirement,
         VkMemoryPropertyFlags required_properties,
         VkMemoryPropertyFlags optimal_properties
