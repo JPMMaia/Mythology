@@ -9,4 +9,4 @@ target_link_libraries(ImGui_module PUBLIC imgui::imgui)
 get_target_property(imgui_INCLUDE_DIRECTORIES imgui::imgui INTERFACE_INCLUDE_DIRECTORIES)
 
 find_file(imgui_h "imgui.h" ${imgui_INCLUDE_DIRECTORIES})
-target_header (ImGui_module "ImGui" "${imgui_h}")
+target_header (ImGui_module PUBLIC "ImGui" "${imgui_h}")

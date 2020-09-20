@@ -18,6 +18,7 @@ target_link_libraries (MaiaECSComponents PUBLIC Eigen3::Eigen)
 
 target_module (
     MaiaECSComponents
+    PUBLIC
     "maia.ecs.components.local_position"
     INTERFACE "Local_position.cxx"
     INTERFACE_DEPENDS "Eigen3_module"
@@ -25,6 +26,7 @@ target_module (
 
 target_module (
     MaiaECSComponents
+    PUBLIC
     "maia.ecs.components.local_rotation"
     INTERFACE "Local_rotation.cxx"
     INTERFACE_DEPENDS "Eigen3_module"

@@ -8,6 +8,7 @@ target_link_libraries (MaiaUtilitiesGLTF PRIVATE nlohmann_json_module)
 
 target_module (
     MaiaUtilitiesGLTF
+    PUBLIC
     "maia.utilities.gltf"
     INTERFACE "gltf.cxx"
     INTERFACE_DEPENDS "Standard_library" "nlohmann_json_module"

@@ -8,6 +8,10 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/Binaries")
 
 include("Internal/Utilities/CMake/Scripts/modules.cmake")
 
+if (MSVC)
+    add_compile_options("/std:c++latest" "/Zc:preprocessor" "/EHsc")
+endif ()
+
 add_subdirectory("External")
 add_subdirectory("Internal/Utilities")
 add_subdirectory("Internal/Renderer")

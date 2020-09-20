@@ -14,6 +14,7 @@ namespace Maia::Renderer::Vulkan
 {
     std::ostream& operator<<(std::ostream& output_stream, VkPhysicalDeviceProperties const& physical_device_properties) noexcept
     {
+        /*
         output_stream << "Device name: " << physical_device_properties.deviceName << '\n';
         output_stream << "Vulkan version: " << 
             VK_VERSION_MAJOR(physical_device_properties.apiVersion) << '.' <<  
@@ -23,7 +24,7 @@ namespace Maia::Renderer::Vulkan
         output_stream << "Vendor ID: " << physical_device_properties.vendorID << '\n';
         output_stream << "Device ID: " << physical_device_properties.deviceID << '\n';
         output_stream << "Device type: " << physical_device_properties.deviceType << '\n';
-
+        */
         return output_stream;
     }
 
@@ -33,7 +34,7 @@ namespace Maia::Renderer::Vulkan
         VkPhysicalDeviceProperties properties = {};
         vkGetPhysicalDeviceProperties(physical_device, &properties);
 
-        output_stream << properties;
+        //output_stream << properties;
 
         return output_stream;
     }

@@ -16,6 +16,7 @@ set_target_properties (MaiaInput PROPERTIES
 
 target_module (
     MaiaInput
+    PUBLIC
     "maia.input.game_controller_state"
     INTERFACE "Game_controller_state.cxx"
     INTERFACE_DEPENDS "Standard_library"
@@ -23,6 +24,7 @@ target_module (
 
 target_module (
     MaiaInput
+    PUBLIC
     "maia.input.input_mapping"
     INTERFACE "Input_mapping.cxx"
     INTERFACE_DEPENDS
@@ -35,6 +37,7 @@ target_module (
 
 target_module (
     MaiaInput
+    PUBLIC
     "maia.input.input_state"
     INTERFACE "Input_state.cxx"
     INTERFACE_DEPENDS "Standard_library"
@@ -42,6 +45,7 @@ target_module (
 
 target_module (
     MaiaInput
+    PUBLIC
     "maia.input.keyboard_state"
     INTERFACE "Keyboard_state.cxx"
     INTERFACE_DEPENDS "Standard_library"
@@ -49,6 +53,7 @@ target_module (
 
 target_module (
     MaiaInput
+    PUBLIC
     "maia.input.mouse_state"
     INTERFACE "Mouse_state.cxx"
     INTERFACE_DEPENDS "Standard_library"
@@ -56,6 +61,7 @@ target_module (
 
 target_module (
     MaiaInput
+    PUBLIC
     "maia.input"
     INTERFACE "Module.cxx"
     INTERFACE_DEPENDS    

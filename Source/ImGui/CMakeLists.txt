@@ -9,6 +9,7 @@ target_link_libraries (MaiaMythologyImGui PRIVATE Vulkan)
 
 target_module (
     MaiaMythologyImGui
+    PUBLIC
     "mythology.imgui"
     INTERFACE "ImGui.cxx"
     INTERFACE_DEPENDS "ImGui" "Standard_library" "Vulkan" "maia.renderer.vulkan"

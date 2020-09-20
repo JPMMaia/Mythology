@@ -19,6 +19,7 @@ target_link_libraries (MaiaMythologySDL PRIVATE Vulkan)
 if (MaiaRenderer_build_vulkan)
     target_module (
         MaiaMythologySDL
+        PUBLIC
         "maia.sdl.vulkan"
         INTERFACE "Vulkan_SDL.cxx"
         INTERFACE_DEPENDS "ImGui" "SDL" "Standard_library" "Vulkan"
@@ -29,6 +30,7 @@ endif ()
 
 target_module (
     MaiaMythologySDL
+    PUBLIC
     "mythology.sdl.application"
     INTERFACE "Application.cxx"
     INTERFACE_DEPENDS "Standard_library" "nlohmann_json_module"

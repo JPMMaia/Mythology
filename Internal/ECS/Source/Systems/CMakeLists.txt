@@ -21,6 +21,7 @@ target_link_libraries (MaiaECSSystems PUBLIC Maia::ECS::Components)
 
 target_module (
     MaiaECSSystems
+    PUBLIC
     "maia.ecs.systems.transform_system"
     INTERFACE "Transform_system.cxx"
     INTERFACE_DEPENDS "Eigen3_module" "Standard_library"

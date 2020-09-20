@@ -14,6 +14,7 @@ namespace Maia::Renderer::Vulkan
 {
     std::ostream& operator<<(std::ostream& output_stream, VkLayerProperties const& layer_properties) noexcept
     {
+        /*
         output_stream << "Layer name: " << layer_properties.layerName << '\n';
         output_stream << "Spec version: " << 
             VK_VERSION_MAJOR(layer_properties.specVersion) << '.' <<  
@@ -21,7 +22,7 @@ namespace Maia::Renderer::Vulkan
             VK_VERSION_PATCH(layer_properties.specVersion) << '\n';
         output_stream << "Implementation version: " << layer_properties.implementationVersion << '\n';
         output_stream << "Description: " << layer_properties.description << '\n';
-
+*/
         return output_stream;
     }
 

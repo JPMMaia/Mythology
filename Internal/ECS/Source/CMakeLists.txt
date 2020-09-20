@@ -23,6 +23,7 @@ target_link_libraries (MaiaECS PUBLIC Eigen3::Eigen)
 
 target_module (
     MaiaECS
+    PUBLIC
     "maia.ecs.component"
     INTERFACE "Component.cxx"
     INTERFACE_DEPENDS "Standard_library"
@@ -32,6 +33,7 @@ target_module (
 
 target_module (
     MaiaECS
+    PUBLIC
     "maia.ecs.component_group_mask"
     INTERFACE "Component_group_mask.cxx"
 	INTERFACE_DEPENDS "Standard_library"
@@ -42,6 +44,7 @@ target_module (
 
 target_module (
     MaiaECS
+    PUBLIC
     "maia.ecs.components_chunk"
     INTERFACE "Components_chunk.cxx"
 	INTERFACE_DEPENDS "Standard_library"
@@ -52,6 +55,7 @@ target_module (
 
 target_module (
     MaiaECS
+    PUBLIC
     "maia.ecs.entity"
     INTERFACE "Entity.cxx"
 	INTERFACE_DEPENDS "Standard_library"
@@ -61,6 +65,7 @@ target_module (
 
 target_module (
     MaiaECS
+    PUBLIC
     "maia.ecs.entity_type"
     INTERFACE "Entity_type.cxx"
 	INTERFACE_DEPENDS "Standard_library"
@@ -70,6 +75,7 @@ target_module (
 
 target_module (
     MaiaECS
+    PUBLIC
     "maia.ecs.component_group"
     INTERFACE "Component_group.cxx"
 	INTERFACE_DEPENDS "Standard_library"
@@ -85,6 +91,7 @@ target_module (
 
 target_module (
     MaiaECS
+    PUBLIC
     "maia.ecs.entity_manager"
     INTERFACE "Entity_manager.cxx"
 	INTERFACE_DEPENDS "Standard_library"

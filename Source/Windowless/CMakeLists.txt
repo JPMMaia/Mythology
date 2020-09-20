@@ -11,6 +11,7 @@ target_link_libraries (MaiaMythologyWindowless PRIVATE Vulkan)
 
 target_module (
     MaiaMythologyWindowless
+    PUBLIC
     "mythology.windowless"
     INTERFACE "Windowless.cxx"
     INTERFACE_DEPENDS "nlohmann_json_module" "Standard_library" "Vulkan"

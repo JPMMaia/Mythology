@@ -9,7 +9,7 @@ set_target_properties (Catch2_header PROPERTIES LINKER_LANGUAGE CXX)
 
 target_link_libraries (Catch2_header PRIVATE Catch2::Catch2)
 
-target_header (Catch2_header "catch2.catch" "${Catch2_include_directory}/catch2/catch.hpp")
+target_header (Catch2_header PUBLIC "catch2.catch" "${Catch2_include_directory}/catch2/catch.hpp")
 
 
 add_library (Catch2_runner)
@@ -19,6 +19,7 @@ target_link_libraries (Catch2_runner PRIVATE Catch2::Catch2)
 set_target_properties (Catch2_runner PROPERTIES LINKER_LANGUAGE CXX)
 
 target_module(Catch2_runner 
+    PUBLIC
     "catch2.runner"
     INTERFACE "runner.cxx"
     IMPLEMENTATION "runner.cpp"
