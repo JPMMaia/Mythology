@@ -1,6 +1,5 @@
 export module maia.renderer.vulkan.shader_module;
 
-
 import <vulkan/vulkan.h>;
 
 import <memory_resource>;
