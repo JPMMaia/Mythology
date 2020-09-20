@@ -20,7 +20,7 @@ namespace Maia::Renderer::Vulkan
         VkQueue queue = {};
         vkGetDeviceQueue(
             device,
-            queue_family_index.value,
+            queue_family_index,
             queue_index,
             &queue
         );
@@ -54,7 +54,7 @@ namespace Maia::Renderer::Vulkan
 
         check_result(
             vkQueueSubmit(
-                queue.value,
+                queue,
                 1,
                 &submit_info,
                 fence.has_value() ? *fence : VK_NULL_HANDLE
