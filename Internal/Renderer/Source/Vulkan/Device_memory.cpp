@@ -157,7 +157,7 @@ namespace Maia::Renderer::Vulkan
     VkPhysicalDeviceMemoryProperties get_phisical_device_memory_properties(VkPhysicalDevice const physical_device) noexcept
     {
         VkPhysicalDeviceMemoryProperties memory_properties = {};
-        vkGetPhysicalDeviceMemoryProperties(physical_device, &memory_properties.value);
+        vkGetPhysicalDeviceMemoryProperties(physical_device, &memory_properties);
         return memory_properties;
     }
 
@@ -168,7 +168,7 @@ namespace Maia::Renderer::Vulkan
         VkMemoryPropertyFlags const required_properties
     ) noexcept
     {
-        std::uint32_t const memory_count = memory_properties.value.memoryTypeCount;
+        std::uint32_t const memory_count = memory_properties.memoryTypeCount;
 
         for (std::uint32_t memory_index = 0; memory_index < memory_count; ++memory_index)
         {
@@ -176,7 +176,7 @@ namespace Maia::Renderer::Vulkan
             bool const is_required_memory_type = memory_type_bits_requirement.value & memory_type_bits;
 
             VkMemoryPropertyFlags const properties =
-                memory_properties.value.memoryTypes[memory_index].propertyFlags;
+                memory_properties.memoryTypes[memory_index].propertyFlags;
             bool const has_required_properties =
                 (properties & required_properties) == required_properties;
 
