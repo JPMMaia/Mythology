@@ -11,11 +11,6 @@ import <vector>;
 
 namespace Maia::Renderer::Vulkan
 {
-    export struct Swapchain
-    {
-        VkSwapchainKHR value = VK_NULL_HANDLE;
-    };
-
     export struct Min_image_count
     {
         std::uint32_t value = 1;
