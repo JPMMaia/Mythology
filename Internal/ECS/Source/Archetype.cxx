@@ -1,6 +1,7 @@
 export module maia.ecs.archetype;
 
 import <concepts>;
+import <tuple>;
 
 namespace Maia::ECS
 {
@@ -13,13 +14,19 @@ namespace Maia::ECS
         concept Shared_component = std::movable<T>;
     }
 
+
     export template<Concept::Component... T>
     struct Components_tag{};
 
     export template<Concept::Shared_component T>
     struct Shared_component_tag{};
 
-    template<typename T, typename U = void>
+
+    template<unsigned int index, typename... Ts>
+    using Nth_type_of = typename std::tuple_element<index, std::tuple<Ts...>>::type;
+
+
+    export template<typename T, typename U = void>
     struct Archetype;
 
     export template<
@@ -28,6 +35,9 @@ namespace Maia::ECS
     >
     struct Archetype<Components_tag<Components...>>
     {
+        template<unsigned int index>
+        using Nth_component = Nth_type_of<index, Components...>;
+
         static constexpr bool has_shared_component() noexcept
         {
             return false;
@@ -44,11 +54,12 @@ namespace Maia::ECS
         template<typename...> typename Components_tag,
         Concept::Shared_component Shared_component_t,
         Concept::Component... Components
-        //Shared_component_tag<Concept::Shared_component Shared_component_t> S,
-        //Components_tag<Concept::Component... Components> C
     >
     struct Archetype<Shared_component_tag<Shared_component_t>, Components_tag<Components...>>
     {
+        template<unsigned int index>
+        using Nth_component = Nth_type_of<index, Components...>;
+
         using Shared_component = Shared_component_t;
 
         static constexpr bool has_shared_component() noexcept
