@@ -2,6 +2,8 @@ project (MaiaECSUnitTest)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../../..//Utilities/CMake/Modules")
 
+# Unit tests
+
 add_executable (MaiaECSUnitTest)
 add_executable (Maia::ECS::UnitTest ALIAS MaiaECSUnitTest)
 
@@ -14,10 +16,7 @@ find_package (Catch2 CONFIG REQUIRED)
 target_link_libraries (MaiaECSUnitTest PRIVATE Catch2_header Catch2_runner)
 add_module_dependency (MaiaECSUnitTest "catch2.catch")
 
-target_include_directories(MaiaECSUnitTest PRIVATE ${CMAKE_CURRENT_LIST_DIR})
-
 target_link_libraries (MaiaECSUnitTest PRIVATE Maia::ECS Maia::ECS::Components)
-
 target_link_libraries (MaiaECSUnitTest PRIVATE Standard_library)
 
 target_sources (MaiaECSUnitTest 
@@ -31,3 +30,29 @@ target_sources (MaiaECSUnitTest
 
 include (Catch)
 catch_discover_tests (MaiaECSUnitTest)
+
+
+# Constexpr tests
+
+add_executable (MaiaECSConstexprTests)
+add_executable (Maia::ECS::ConstexprTests ALIAS MaiaECSConstexprTests)
+
+target_compile_features (MaiaECSConstexprTests PRIVATE cxx_std_20)
+
+
+add_module_compile_options (MaiaECSConstexprTests)
+
+find_package (Catch2 CONFIG REQUIRED)
+target_link_libraries (MaiaECSConstexprTests PRIVATE Catch2_header Catch2_runner)
+add_module_dependency (MaiaECSConstexprTests "catch2.catch")
+
+target_link_libraries (MaiaECSConstexprTests PRIVATE Maia::ECS Maia::ECS::Components)
+target_link_libraries (MaiaECSConstexprTests PRIVATE Standard_library)
+
+target_sources (MaiaECSConstexprTests 
+	PRIVATE
+		"main.cpp"
+		"Archetype.constexpr.test.cpp"
+)
+
+catch_discover_tests (MaiaECSConstexprTests)
