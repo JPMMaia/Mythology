@@ -22,7 +22,7 @@ namespace Maia::ECS
 
 			for (Component_info const& component_info : component_infos)
 			{
-				size_of_single_element += component_info.size.value;
+				size_of_single_element += component_info.size;
 			}
 
 			return size_of_single_element;
@@ -43,7 +43,7 @@ namespace Maia::ECS
 			{
 				type_infos.push_back({ component_info.id, current_offset, component_info.size });
 
-				current_offset += capacity_per_chunk * component_info.size.value;
+				current_offset += capacity_per_chunk * component_info.size;
 			}
 
 			return type_infos;
@@ -121,7 +121,7 @@ namespace Maia::ECS
 			for (Component_type_info const type_info : m_component_type_infos)
 			{
 				std::size_t const component_offset = type_info.offset;
-				std::size_t const component_size = type_info.size.value;
+				std::size_t const component_size = type_info.size;
 
 				std::byte* component_to_overwrite = chunk_to_delete_from.data() + component_offset + entity_to_delete_index * component_size;
 				std::byte const* component_to_copy = chunk_to_copy_from.data() + component_offset + entity_to_copy_index * component_size;
@@ -177,7 +177,7 @@ namespace Maia::ECS
 		Component_type_info const type_info = get_component_type_info(component_id);
 		std::size_t const entity_index = calculate_entity_index(index);
 
-		return chunk.data() + type_info.offset + entity_index * type_info.size.value;
+		return chunk.data() + type_info.offset + entity_index * type_info.size;
 	}
 
 	std::byte* Component_group::get_component_data_impl(Component_ID const component_id, Index const index) noexcept
@@ -187,7 +187,7 @@ namespace Maia::ECS
 		Component_type_info const type_info = get_component_type_info(component_id);
 		std::size_t const entity_index = calculate_entity_index(index);
 
-		return chunk.data() + type_info.offset + entity_index * type_info.size.value;
+		return chunk.data() + type_info.offset + entity_index * type_info.size;
 	}
 	
 

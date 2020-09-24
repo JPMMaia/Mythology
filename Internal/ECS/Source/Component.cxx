@@ -43,11 +43,7 @@ namespace Maia::ECS
 	}
 
 
-	export struct Component_size
-	{
-		std::uint16_t value;
-	};
-
+	export using Component_size = std::uint16_t;;
 
 	export struct Component_info
 	{
