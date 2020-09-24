@@ -38,12 +38,12 @@ namespace Maia::ECS
         template<unsigned int index>
         using Nth_component = Nth_type_of<index, Components...>;
 
-        static constexpr bool has_shared_component() noexcept
+        static consteval bool has_shared_component() noexcept
         {
             return false;
         }
 
-        static constexpr unsigned int get_component_count() noexcept
+        static consteval unsigned int get_component_count() noexcept
         {
             return sizeof...(Components);
         }
@@ -62,12 +62,12 @@ namespace Maia::ECS
 
         using Shared_component = Shared_component_t;
 
-        static constexpr bool has_shared_component() noexcept
+        static consteval bool has_shared_component() noexcept
         {
             return true;
         }
 
-        static constexpr unsigned int get_component_count() noexcept
+        static consteval unsigned int get_component_count() noexcept
         {
             return sizeof...(Components);
         }
