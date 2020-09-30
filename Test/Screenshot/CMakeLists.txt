@@ -54,6 +54,5 @@ add_custom_target(
 	DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/test_assets"
 )
 
-include (CTest)
 include (Catch)
 catch_discover_tests (MythologyScreenshotTest)
