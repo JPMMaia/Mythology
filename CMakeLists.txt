@@ -12,7 +12,11 @@ if (MSVC)
     add_compile_options("/std:c++latest" "/Zc:preprocessor" "/EHsc")
 endif ()
 
+
 add_subdirectory("External")
+
+enable_testing()
+
 add_subdirectory("Internal/Utilities")
 add_subdirectory("Internal/Renderer")
 add_subdirectory("Internal/ECS")
