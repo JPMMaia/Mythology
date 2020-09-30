@@ -22,7 +22,9 @@ target_link_libraries (MaiaECSUnitTest PRIVATE Standard_library)
 target_sources (MaiaECSUnitTest 
 	PRIVATE
 		"main.cpp"
-		"Archetype.test.cpp"
+		"World.test.cpp"
+		#"Archetype.test.cpp"
+		#"Component.test.cpp"
 		#"Component_group.test.cpp"
 		#"Entity_manager.test.cpp"
 		#"Systems/Transform_system.test.cpp"

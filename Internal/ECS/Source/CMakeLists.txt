@@ -19,21 +19,31 @@ target_link_libraries (MaiaECS PUBLIC Eigen3::Eigen)
 target_module (
     MaiaECS
     PUBLIC
-    "maia.ecs.archetype"
-    INTERFACE "Archetype.cxx"
+    "maia.ecs.component"
+    INTERFACE "Component.cxx"
     INTERFACE_DEPENDS "Standard_library"
-    IMPLEMENTATION "Archetype.cpp"
+    IMPLEMENTATION "Component.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library"
 )
 
 target_module (
     MaiaECS
     PUBLIC
-    "maia.ecs.component"
-    INTERFACE "Component.cxx"
+    "maia.ecs.shared_component"
+    INTERFACE "Shared_component.cxx"
     INTERFACE_DEPENDS "Standard_library"
-    IMPLEMENTATION "Component.cpp"
+    IMPLEMENTATION "Shared_component.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library"
+)
+
+target_module (
+    MaiaECS
+    PUBLIC
+    "maia.ecs.archetype"
+    INTERFACE "Archetype.cxx"
+    INTERFACE_DEPENDS "Standard_library"
+        "maia.ecs.component"
+        "maia.ecs.shared_component"
 )
 
 target_module (
@@ -98,6 +108,14 @@ target_module (
 target_module (
     MaiaECS
     PUBLIC
+    "maia.ecs.components_view"
+    INTERFACE "Components_view.cxx"
+    INTERFACE_DEPENDS "Standard_library" "maia.ecs.components_chunk"
+)
+
+target_module (
+    MaiaECS
+    PUBLIC
     "maia.ecs.entity_manager"
     INTERFACE "Entity_manager.cxx"
 	INTERFACE_DEPENDS "Standard_library"
@@ -115,6 +133,20 @@ target_module (
 		"maia.ecs.components_chunk"
 		"maia.ecs.entity"
 		"maia.ecs.entity_type"
+)
+
+target_module (
+    MaiaECS
+    PUBLIC
+    "maia.ecs.world"
+    INTERFACE "World.cxx"
+    INTERFACE_DEPENDS "Standard_library"
+        "maia.ecs.archetype"
+        "maia.ecs.component"
+        "maia.ecs.components_chunk"
+        "maia.ecs.components_view"
+        "maia.ecs.entity"
+        "maia.ecs.shared_component"
 )
 
 add_subdirectory("Components")
