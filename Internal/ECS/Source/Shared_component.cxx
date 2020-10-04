@@ -1,10 +1,17 @@
 export module maia.ecs.shared_component;
 
+import <concepts>;
 import <cstdint>;
 import <type_traits>;
 
 namespace Maia::ECS
 {
+	namespace Concept
+    {
+        export template<typename T>
+        concept Shared_component = std::movable<T>;
+    }
+
 	export struct Shared_component_ID
 	{
 		std::uint16_t value;

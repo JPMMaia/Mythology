@@ -4,7 +4,6 @@ import maia.ecs.component;
 import maia.ecs.shared_component;
 
 import <bitset>;
-import <concepts>;
 import <cstddef>;
 import <cstdint>;
 import <optional>;
@@ -12,15 +11,6 @@ import <tuple>;
 
 namespace Maia::ECS
 {
-    namespace Concept
-    {
-        export template<typename T>
-        concept Component = std::regular<T>;
-
-        export template<typename T>
-        concept Shared_component = std::movable<T>;
-    }
-
     export struct Archetype
     {
         bool has_component(Component_ID const component_id) const noexcept

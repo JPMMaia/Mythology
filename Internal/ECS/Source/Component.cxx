@@ -1,10 +1,17 @@
 export module maia.ecs.component;
 
+import <concepts>;
 import <cstdint>;
 import <type_traits>;
 
 namespace Maia::ECS
 {
+	namespace Concept
+    {
+        export template<typename T>
+        concept Component = std::regular<T>;
+    }
+
 	export struct Component_ID
 	{
 		std::uint16_t value;
