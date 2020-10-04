@@ -34,7 +34,26 @@ namespace Maia::ECS
             return {};
         }
 
-        Components_view get_components_views(std::span<Archetype const> const archetypes) const noexcept
+        template<Concept::Component Component_t>
+        Component_t get_component_value(Entity const entity) const noexcept
+        {
+            return {};
+        }
+
+        template<Concept::Component Component_t>
+        void set_component_value(Entity const entity, Component_t const value) noexcept
+        {
+
+        }
+
+        template<Concept::Shared_component Shared_component_t>
+        Shared_component_t& create_shared_component(Shared_component_t&& shared_component)
+        {
+            static Shared_component_t dummy;
+            return dummy;
+        }
+
+        std::span<Component_chunk_view const> get_component_chunk_views(Archetype const archetype) const noexcept
         {
             return {};
         }

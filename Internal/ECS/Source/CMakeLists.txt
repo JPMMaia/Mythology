@@ -110,7 +110,10 @@ target_module (
     PUBLIC
     "maia.ecs.components_view"
     INTERFACE "Components_view.cxx"
-    INTERFACE_DEPENDS "Standard_library" "maia.ecs.components_chunk"
+    INTERFACE_DEPENDS "Standard_library"
+        "maia.ecs.component"
+        "maia.ecs.components_chunk"
+        "maia.ecs.shared_component"
 )
 
 target_module (
