@@ -40,7 +40,7 @@ namespace Maia::ECS::Test
 
 		struct Component_b : Component_base<Component_b>
         {
-            int value;
+            int value = 3;
         };
 
         struct Component_c : Component_base<Component_c>
@@ -137,38 +137,15 @@ namespace Maia::ECS::Test
 
             CHECK(entity_0 != entity_1);
 
-            // TODO
-        }
-
-        SECTION("Use entities without a shared component")
-        {
-            World world{};
-
-            // TODO
-
-            std::span<Archetype const> const archetypes = world.get_archetypes();
-
-            // TODO Filter archetypes
-
-            //archetype.has_component(Component_ID::get<Component_c>());
-            //archetype.has_shared_component();
-
-            //Component_views const component_views = world.get_component_views(archetypes);
-
-            /*for (Component_view entity_components : component_views)
             {
-                Entity const entity = entity_components.get_entity();
-                Component_a const component_a = entity_components.get<Component_a>();
-                Component_b const component_b = entity_components.get<Component_b>();
+                Component_b constexpr default_value{};
 
-                // Call function that takes in component_a and component_b and returns component_c
-                Component_c const component_c = compute_value(component_a, component_b);
-
-                entity_components.set<Component_c>(component_c);
-            }*/
+                Component_b const value = world.get_component_value<Component_b>(entity_0);
+                CHECK(value == default_value);
+            }
         }
 
-        SECTION("Use entities with a shared component")
+        SECTION("Use entities")
         {
             World world{};
 
