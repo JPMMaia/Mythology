@@ -212,6 +212,8 @@ namespace Maia::ECS::Test
                 CHECK(actual_entity_0_b == entity_0_b);
             }
 
+            world.destroy_entity(entity_0);
+
             {
                 Component_a const actual_entity_1_a = world.get_component_value<Component_a>(entity_1);
                 CHECK(actual_entity_1_a == entity_1_a);
@@ -221,6 +223,8 @@ namespace Maia::ECS::Test
                 Component_b const actual_entity_1_b = world.get_component_value<Component_b>(entity_1);
                 CHECK(actual_entity_1_b == entity_1_b);
             }
+
+            world.destroy_entity(entity_1);
         }
 
         SECTION("When an entity is created, its components are default constructed")
