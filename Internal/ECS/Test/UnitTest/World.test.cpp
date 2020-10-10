@@ -79,7 +79,13 @@ namespace Maia::ECS::Test
             Archetype const archetype_0 = world.create_archetype(archetype_0_component_ids);
 
             {
-                Archetype const archetype_0_clone = world.create_archetype(archetype_0_component_ids);
+                std::array<Component_ID, 2> const archetype_0_component_ids_reverse
+                {
+                    Component_ID::get<Component_b>(),
+                    Component_ID::get<Component_a>()
+                };
+
+                Archetype const archetype_0_clone = world.create_archetype(archetype_0_component_ids_reverse);
                 CHECK(archetype_0 == archetype_0_clone);
             }
 
