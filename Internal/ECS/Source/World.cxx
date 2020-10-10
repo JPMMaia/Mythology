@@ -31,6 +31,14 @@ namespace Maia::ECS
 
         Entity create_entity(Archetype const& archetype)
         {
+            // Precondition: Archetype does not contain a shared component
+            return {};
+        }
+
+        template<Concept::Shared_component Shared_component_t>
+        Entity create_entity(Archetype const& archetype, Shared_component_t const& shared_component)
+        {
+            // Precondition: Archetype contains a shared component
             return {};
         }
 

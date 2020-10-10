@@ -182,16 +182,16 @@ namespace Maia::ECS::Test
 
             Archetype const archetype_1 = world.create_archetype(shared_component_a_type_id, archetype_1_component_type_ids);
 
-            Entity const entity_0 = world.create_entity(archetype_0);
+            Entity const entity_0 = world.create_entity(archetype_0, shared_component_a);
             world.set_component_value(entity_0, Component_b{.value=10});
 
-            Entity const entity_1 = world.create_entity(archetype_0);
+            Entity const entity_1 = world.create_entity(archetype_0, shared_component_a);
             world.set_component_value(entity_1, Component_b{.value=20});
 
-            Entity const entity_2 = world.create_entity(archetype_1);
+            Entity const entity_2 = world.create_entity(archetype_1, shared_component_a);
             world.set_component_value(entity_2, Component_b{.value=30});
 
-            Entity const entity_3 = world.create_entity(archetype_1);
+            Entity const entity_3 = world.create_entity(archetype_1, shared_component_a);
             world.set_component_value(entity_3, Component_b{.value=40});
 
 
@@ -231,7 +231,7 @@ namespace Maia::ECS::Test
 
             for (Component_chunk_view const component_chunk_view : component_b_chunk_views)
             {
-                Shared_component_a const& shared_component_a = component_chunk_view.get_shared_component<Shared_component_a>();
+                Shared_component_a const& chunk_shared_component = component_chunk_view.get_shared_component<Shared_component_a>();
 
                 for (Entity_components_view const entity_components_view : component_chunk_view)
                 {
@@ -239,7 +239,7 @@ namespace Maia::ECS::Test
 
                     Component_d const component_d
                     {
-                        .value = shared_component_a.value + component_b.value
+                        .value = chunk_shared_component.value + component_b.value
                     };
                     
                     entity_components_view.set(component_d);
