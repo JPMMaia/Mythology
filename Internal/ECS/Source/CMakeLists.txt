@@ -112,6 +112,7 @@ target_module (
     INTERFACE "Components_view.cxx"
     INTERFACE_DEPENDS "Standard_library"
         "maia.ecs.component"
+        "maia.ecs.entity"
         "maia.ecs.components_chunk"
         "maia.ecs.shared_component"
 )
