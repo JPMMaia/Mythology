@@ -170,7 +170,7 @@ namespace Maia::ECS
 
 
 
-	std::byte const* Component_group::get_component_data_impl(Component_ID const component_id, Index const index) const noexcept
+	std::byte const* Component_group::get_component_data_impl(Component_type_ID const component_id, Index const index) const noexcept
 	{
 		Components_chunk const& chunk = get_entity_chunk(index);
 
@@ -180,7 +180,7 @@ namespace Maia::ECS
 		return chunk.data() + type_info.offset + entity_index * type_info.size;
 	}
 
-	std::byte* Component_group::get_component_data_impl(Component_ID const component_id, Index const index) noexcept
+	std::byte* Component_group::get_component_data_impl(Component_type_ID const component_id, Index const index) noexcept
 	{
 		Components_chunk& chunk = get_entity_chunk(index);
 
@@ -220,7 +220,7 @@ namespace Maia::ECS
 		return component_group_index.value % m_capacity_per_chunk;
 	}
 
-	std::size_t Component_group::get_component_offset(Component_ID const component_id) const noexcept
+	std::size_t Component_group::get_component_offset(Component_type_ID const component_id) const noexcept
 	{
 		auto const component_offset_and_size = std::find_if(m_component_type_infos.begin(), m_component_type_infos.end(),
 			[&](Component_type_info const& type_info) -> bool {  return type_info.id == component_id; });
@@ -228,7 +228,7 @@ namespace Maia::ECS
 		return component_offset_and_size->offset;
 	}
 
-	Component_type_info Component_group::get_component_type_info(Component_ID const component_id) const noexcept
+	Component_type_info Component_group::get_component_type_info(Component_type_ID const component_id) const noexcept
 	{
 		auto const component_offset_and_size = std::find_if(m_component_type_infos.begin(), m_component_type_infos.end(),
 			[&](Component_type_info const& type_info) -> bool {  return type_info.id == component_id; });

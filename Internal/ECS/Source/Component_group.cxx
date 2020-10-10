@@ -25,7 +25,7 @@ namespace Maia::ECS
 
 	export struct Component_type_info
 	{
-		Component_ID id;
+		Component_type_ID id;
 		std::size_t offset;
 		Component_size size;
 	};
@@ -86,7 +86,7 @@ namespace Maia::ECS
 		template <typename Component>
 		Component_view<Component const> get_component_data(Index const index) const noexcept
 		{
-			Component_ID const component_id = Component_ID::get<Component>();
+			Component_type_ID const component_id = get_component_type_id<Component>();
 
 			std::byte const* const pointer = get_component_data_impl(component_id, index);
 			return {pointer};
@@ -95,7 +95,7 @@ namespace Maia::ECS
 		template <typename Component>
 		void set_component_data(Index const index, Component&& component) noexcept
 		{
-			Component_ID const component_id = Component_ID::get<Component>();
+			Component_type_ID const component_id = get_component_type_id<Component>();
 
 			std::byte* const pointer = get_component_data_impl(component_id, index);
 			
@@ -120,7 +120,7 @@ namespace Maia::ECS
 		template <typename Component>
 		Component_range_view<Component> components(std::size_t const chunk_index) noexcept
 		{
-			Component_ID const component_id = Component_ID::get<Component>();
+			Component_type_ID const component_id = get_component_type_id<Component>();
 			std::size_t const component_offset = get_component_offset(component_id);
 			
 			std::size_t const num_elements = chunk_index == m_chunks.size() - 1 ?
@@ -136,7 +136,7 @@ namespace Maia::ECS
 		template <typename Component>
 		Component_range_view<Component const> components(std::size_t const chunk_index) const noexcept
 		{
-			Component_ID const component_id = Component_ID::get<Component>();
+			Component_type_ID const component_id = get_component_type_id<Component>();
 			std::size_t const component_offset = get_component_offset(component_id);
 
 			std::size_t const num_elements = chunk_index == m_chunks.size() - 1 ?
@@ -169,14 +169,14 @@ namespace Maia::ECS
 
 
 
-		std::byte const* get_component_data_impl(Component_ID const component_id, Index index) const noexcept;
-		std::byte* get_component_data_impl(Component_ID const component_id, Index index) noexcept;
+		std::byte const* get_component_data_impl(Component_type_ID const component_id, Index index) const noexcept;
+		std::byte* get_component_data_impl(Component_type_ID const component_id, Index index) noexcept;
 
 		
 
 		std::size_t calculate_entity_index(Component_group_entity_index component_group_index) const noexcept; // TODO can be static private
-		std::size_t get_component_offset(Component_ID const component_id) const noexcept; // TODO can be 
-		Component_type_info get_component_type_info(Component_ID const component_id) const noexcept;
+		std::size_t get_component_offset(Component_type_ID const component_id) const noexcept; // TODO can be 
+		Component_type_info get_component_type_info(Component_type_ID const component_id) const noexcept;
 
 
 
@@ -195,7 +195,7 @@ namespace Maia::ECS
 	{
 		std::array<Component_info, sizeof...(Component)> const component_infos
 		{
-			Component_info { Component_ID::get<Component>(), { sizeof(Component) } }...
+			Component_info { get_component_type_id<Component>(), { sizeof(Component) } }...
 		};
 
 		return { component_infos, capacity_per_chunk };

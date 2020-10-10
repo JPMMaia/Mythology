@@ -14,12 +14,12 @@ namespace Maia::ECS
     {
     public:
 
-        Archetype create_archetype(std::span<Component_ID const> component_ids)
+        Archetype create_archetype(std::span<Component_type_ID const> component_ids)
         {
             return {};
         }
 
-        Archetype create_archetype(Shared_component_ID const shared_component_id, std::span<Component_ID const> component_ids)
+        Archetype create_archetype(Shared_component_ID const shared_component_id, std::span<Component_type_ID const> component_ids)
         {
             return {};
         }

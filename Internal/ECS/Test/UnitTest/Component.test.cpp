@@ -36,7 +36,7 @@ namespace Maia::ECS::Test
     {
         Component_info const component_info_a0 = create_component_info<Component_a>();
 
-        CHECK(component_info_a0.id == Component_ID::get<Component_a>());
+        CHECK(component_info_a0.id == get_component_type_id<Component_a>());
         CHECK(component_info_a0.size == sizeof(Component_a));
 
         Component_info const component_info_a1 = create_component_info<Component_a>();

@@ -5,7 +5,7 @@ import <mutex>;
 
 namespace Maia::ECS
 {
-	Component_ID Component_ID::create_component_id() noexcept
+	Component_type_ID create_component_type_id() noexcept
 	{
 		static std::uint16_t component_type_count = 0;
 		static std::mutex mutex;

@@ -13,7 +13,7 @@ namespace Maia::ECS
 {
     export struct Archetype
     {
-        bool has_component(Component_ID const component_id) const noexcept
+        bool has_component(Component_type_ID const component_id) const noexcept
         {
             return true;
         }

@@ -12,41 +12,37 @@ namespace Maia::ECS
         concept Component = std::regular<T>;
     }
 
-	export struct Component_ID
+	export struct Component_type_ID
 	{
 		std::uint16_t value;
-
-	private:
-
-		static Component_ID create_component_id() noexcept;
-
-		template <class Component>
-		static Component_ID get_impl() noexcept
-		{
-			static Component_ID id = create_component_id();
-
-			return id;
-		}
-
-	public:
-
-		template <class Component>
-		static Component_ID get() noexcept
-		{
-			using Raw_component = typename std::remove_cv_t<typename std::remove_reference_t<Component>>;
-
-			return get_impl<Raw_component>();
-		}
 	};
 
-	export inline bool operator==(Component_ID const lhs, Component_ID const rhs) noexcept
+	export inline bool operator==(Component_type_ID const lhs, Component_type_ID const rhs) noexcept
 	{
 		return lhs.value == rhs.value;
 	}
 
-	export inline bool operator!=(Component_ID const lhs, Component_ID const rhs) noexcept
+	export inline bool operator!=(Component_type_ID const lhs, Component_type_ID const rhs) noexcept
 	{
 		return !(lhs == rhs);
+	}
+
+	Component_type_ID create_component_type_id() noexcept;
+
+	template <class Component>
+	Component_type_ID get_component_type_id_impl() noexcept
+	{
+		static Component_type_ID id = create_component_type_id();
+
+		return id;
+	}
+
+	export template <class Component>
+	Component_type_ID get_component_type_id() noexcept
+	{
+		using Raw_component = typename std::remove_cv_t<typename std::remove_reference_t<Component>>;
+
+		return get_component_type_id_impl<Raw_component>();
 	}
 
 
@@ -54,7 +50,7 @@ namespace Maia::ECS
 
 	export struct Component_info
 	{
-		Component_ID id;
+		Component_type_ID id;
 		Component_size size;
 	};
 
@@ -63,7 +59,7 @@ namespace Maia::ECS
 	{
 		return 
 		{
-			Component_ID::get<Component>(),
+			get_component_type_id<Component>(),
 			{ sizeof(Component) }
 		};
 	}

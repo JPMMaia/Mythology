@@ -70,35 +70,35 @@ namespace Maia::ECS::Test
         {
             World world{};
 
-            std::array<Component_ID, 2> const archetype_0_component_ids
+            std::array<Component_type_ID, 2> const archetype_0_component_ids
             {
-                Component_ID::get<Component_a>(),
-                Component_ID::get<Component_b>()
+                get_component_type_id<Component_a>(),
+                get_component_type_id<Component_b>()
             };
 
             Archetype const archetype_0 = world.create_archetype(archetype_0_component_ids);
 
             {
-                std::array<Component_ID, 2> const archetype_0_component_ids_reverse
+                std::array<Component_type_ID, 2> const archetype_0_component_ids_reverse
                 {
-                    Component_ID::get<Component_b>(),
-                    Component_ID::get<Component_a>()
+                    get_component_type_id<Component_b>(),
+                    get_component_type_id<Component_a>()
                 };
 
                 Archetype const archetype_0_clone = world.create_archetype(archetype_0_component_ids_reverse);
                 CHECK(archetype_0 == archetype_0_clone);
             }
 
-            CHECK(archetype_0.has_component(Component_ID::get<Component_a>()) == true);
-            CHECK(archetype_0.has_component(Component_ID::get<Component_b>()) == true);
-            CHECK(archetype_0.has_component(Component_ID::get<Component_c>()) == false);
+            CHECK(archetype_0.has_component(get_component_type_id<Component_a>()) == true);
+            CHECK(archetype_0.has_component(get_component_type_id<Component_b>()) == true);
+            CHECK(archetype_0.has_component(get_component_type_id<Component_c>()) == false);
             CHECK(archetype_0.has_shared_component() == false);
 
 
-            std::array<Component_ID, 2> const archetype_1_component_ids
+            std::array<Component_type_ID, 2> const archetype_1_component_ids
             {
-                Component_ID::get<Component_a>(),
-                Component_ID::get<Component_b>()
+                get_component_type_id<Component_a>(),
+                get_component_type_id<Component_b>()
             };
 
             Shared_component_ID const archetype_1_shared_component_id = 
@@ -111,9 +111,9 @@ namespace Maia::ECS::Test
                 CHECK(archetype_1 == archetype_1_clone);
             }
 
-            CHECK(archetype_1.has_component(Component_ID::get<Component_a>()) == true);
-            CHECK(archetype_1.has_component(Component_ID::get<Component_b>()) == true);
-            CHECK(archetype_1.has_component(Component_ID::get<Component_c>()) == false);
+            CHECK(archetype_1.has_component(get_component_type_id<Component_a>()) == true);
+            CHECK(archetype_1.has_component(get_component_type_id<Component_b>()) == true);
+            CHECK(archetype_1.has_component(get_component_type_id<Component_c>()) == false);
             CHECK(archetype_1.has_shared_component() == true);
             CHECK(archetype_1.has_shared_component(Shared_component_ID::get<Shared_component_a>()) == true);
 
@@ -124,10 +124,10 @@ namespace Maia::ECS::Test
         {
             World world{};
 
-            std::array<Component_ID, 2> const archetype_0_component_ids
+            std::array<Component_type_ID, 2> const archetype_0_component_ids
             {
-                Component_ID::get<Component_a>(),
-                Component_ID::get<Component_b>()
+                get_component_type_id<Component_a>(),
+                get_component_type_id<Component_b>()
             };
 
             Archetype const archetype_0 = world.create_archetype(archetype_0_component_ids);
@@ -152,20 +152,20 @@ namespace Maia::ECS::Test
             Shared_component_ID const shared_component_a_id = Shared_component_ID::get<Shared_component_a>();
             Shared_component_a& shared_component_a = world.create_shared_component(Shared_component_a{.value=100});
             
-            std::array<Component_ID, 3> const archetype_0_component_ids
+            std::array<Component_type_ID, 3> const archetype_0_component_ids
             {
-                Component_ID::get<Component_a>(),
-                Component_ID::get<Component_b>(),
-                Component_ID::get<Component_d>(),
+                get_component_type_id<Component_a>(),
+                get_component_type_id<Component_b>(),
+                get_component_type_id<Component_d>(),
             };
 
             Archetype const archetype_0 = world.create_archetype(shared_component_a_id, archetype_0_component_ids);
 
-            std::array<Component_ID, 3> const archetype_1_component_ids
+            std::array<Component_type_ID, 3> const archetype_1_component_ids
             {
-                Component_ID::get<Component_b>(),
-                Component_ID::get<Component_c>(),
-                Component_ID::get<Component_d>(),
+                get_component_type_id<Component_b>(),
+                get_component_type_id<Component_c>(),
+                get_component_type_id<Component_d>(),
             };
 
             Archetype const archetype_1 = world.create_archetype(shared_component_a_id, archetype_1_component_ids);
@@ -186,8 +186,8 @@ namespace Maia::ECS::Test
             auto const contains_component_b_and_d_and_shared_component_a = [](Archetype const archetype) -> bool
             {
                 return 
-                    archetype.has_component(Component_ID::get<Component_b>()) &&
-                    archetype.has_component(Component_ID::get<Component_d>()) &&
+                    archetype.has_component(get_component_type_id<Component_b>()) &&
+                    archetype.has_component(get_component_type_id<Component_d>()) &&
                     archetype.has_shared_component(Shared_component_ID::get<Shared_component_a>());
             };
 

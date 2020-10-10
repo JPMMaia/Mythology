@@ -32,8 +32,8 @@ namespace Maia::ECS
 			};
 
 			Mask include_mask = {};
-			//(include_mask.set(Component_ID::get<Component>().value), ...);
-			( set_bit(include_mask, Component_ID::get<Component>().value), ...);
+			//(include_mask.set(get_component_type_id<Component>().value), ...);
+			( set_bit(include_mask, get_component_type_id<Component>().value), ...);
 
 			return (value & include_mask) == include_mask;
 		}
@@ -59,8 +59,8 @@ namespace Maia::ECS
 
 		Component_group_mask component_types_group;
 
-		//(component_types_group.value.set(Component_ID::get<Components>().value), ...);
-		( set_bit(component_types_group, Component_ID::get<Components>().value), ...);
+		//(component_types_group.value.set(get_component_type_id<Components>().value), ...);
+		( set_bit(component_types_group, get_component_type_id<Components>().value), ...);
 
 		return component_types_group;
 	}
