@@ -12,18 +12,18 @@ namespace Maia::ECS
         concept Shared_component = std::movable<T>;
     }
 
-	export struct Shared_component_ID
+	export struct Shared_component_type_ID
 	{
 		std::uint16_t value;
 
 	private:
 
-		static Shared_component_ID create_shared_component_id() noexcept;
+		static Shared_component_type_ID create_shared_component_id() noexcept;
 
 		template <class Component>
-		static Shared_component_ID get_impl() noexcept
+		static Shared_component_type_ID get_impl() noexcept
 		{
-			static Shared_component_ID id = create_shared_component_id();
+			static Shared_component_type_ID id = create_shared_component_id();
 
 			return id;
 		}
@@ -31,7 +31,7 @@ namespace Maia::ECS
 	public:
 
 		template <class Component>
-		static Shared_component_ID get() noexcept
+		static Shared_component_type_ID get() noexcept
 		{
 			using Raw_shared_component = typename std::remove_cv_t<typename std::remove_reference_t<Component>>;
 
@@ -39,12 +39,12 @@ namespace Maia::ECS
 		}
 	};
 
-	export inline bool operator==(Shared_component_ID const lhs, Shared_component_ID const rhs) noexcept
+	export inline bool operator==(Shared_component_type_ID const lhs, Shared_component_type_ID const rhs) noexcept
 	{
 		return lhs.value == rhs.value;
 	}
 
-	export inline bool operator!=(Shared_component_ID const lhs, Shared_component_ID const rhs) noexcept
+	export inline bool operator!=(Shared_component_type_ID const lhs, Shared_component_type_ID const rhs) noexcept
 	{
 		return !(lhs == rhs);
 	}
@@ -54,7 +54,7 @@ namespace Maia::ECS
 
 	export struct Shared_component_info
 	{
-		Shared_component_ID id;
+		Shared_component_type_ID id;
 		Shared_component_size size;
 	};
 
@@ -63,7 +63,7 @@ namespace Maia::ECS
 	{
 		return 
 		{
-			Shared_component_ID::get<Shared_component>(),
+			Shared_component_type_ID::get<Shared_component>(),
 			{ sizeof(Shared_component) }
 		};
 	}

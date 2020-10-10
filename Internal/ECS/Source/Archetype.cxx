@@ -23,7 +23,7 @@ namespace Maia::ECS
             return true;
         }
 
-        bool has_shared_component(Shared_component_ID const shared_component_id) const noexcept
+        bool has_shared_component(Shared_component_type_ID const shared_component_id) const noexcept
         {
             return true;
         }
