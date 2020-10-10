@@ -14,16 +14,6 @@ namespace Maia::ECS
     {
     public:
 
-        Archetype create_archetype(std::span<Component_type_ID const> component_ids)
-        {
-            return {};
-        }
-
-        Archetype create_archetype(Shared_component_type_ID const shared_component_id, std::span<Component_type_ID const> component_ids)
-        {
-            return {};
-        }
-
         std::span<Archetype const> get_archetypes() const noexcept
         {
             return {};
@@ -40,6 +30,30 @@ namespace Maia::ECS
         {
             // Precondition: Archetype contains a shared component
             return {};
+        }
+
+        void destroy_entity(Entity const entity)
+        {
+        }
+
+        template<Concept::Component Component_t>
+        void add_component_type(Entity const entity)
+        {
+        }
+
+        template<Concept::Component Component_t>
+        void remove_component_type(Entity const entity)
+        {
+        }
+
+        template<Concept::Shared_component Shared_component_t>
+        void add_shared_component_type(Entity const entity, Shared_component_t const& shared_component)
+        {
+        }
+
+        template<Concept::Shared_component Shared_component_t>
+        void remove_shared_component_type(Entity const entity)
+        {
         }
 
         template<Concept::Component Component_t>

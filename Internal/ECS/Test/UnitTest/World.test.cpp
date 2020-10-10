@@ -63,7 +63,41 @@ namespace Maia::ECS::Test
             float value;
         };
 
+        template<typename Component_t>
+        bool contains_archetype_which_has_component(std::span<Archetype const> const archetypes) noexcept
+        {
+            auto const has_component_predicate = [](Archetype const& archetype) -> bool
+            {
+                return archetype.has_component(get_component_type_id<Component_t>());
+            };
+
+            auto const archetype_it = std::find_if(
+                archetypes.begin(),
+                archetypes.end(),
+                has_component_predicate
+            );
+
+            return archetype_it != archetypes.end();
+        }
+
         template<typename Shared_component_t>
+        bool contains_archetype_which_has_shared_component(std::span<Archetype const> const archetypes) noexcept
+        {
+            auto const has_shared_component_predicate = [](Archetype const& archetype) -> bool
+            {
+                return archetype.has_shared_component(get_shared_component_type_id<Shared_component_t>());
+            };
+
+            auto const archetype_it = std::find_if(
+                archetypes.begin(),
+                archetypes.end(),
+                has_shared_component_predicate
+            );
+
+            return archetype_it != archetypes.end();
+        }
+
+        /*template<typename Shared_component_t>
         bool contains_shared_component(std::span<Component_chunk_view const> const views, Shared_component_t const& shared_component) noexcept
         {
             auto const contains_shared_component_predicate = [&shared_component](Component_chunk_view const view) -> bool
@@ -78,11 +112,12 @@ namespace Maia::ECS::Test
             );
 
             CHECK(shared_component_it != views.end());
-        }
+        }*/
 
-        bool contains_entity(std::span<Entity const> const entities, Entity const entity) noexcept
+        template<typename Container_t, typename Value_t>
+        bool contains(Container_t const& container, Value_t const& value) noexcept
         {
-            return std::find(entities.begin(), entities.end(), entity) != entities.end();
+            return std::find(container.begin(), container.end(), value) != container.end();
         }
     }
 
@@ -98,14 +133,14 @@ namespace Maia::ECS::Test
                 get_component_type_id<Component_b>()
             };
 
-            Archetype const archetype_ab = world.create_archetype(archetype_ab_component_type_ids);
+            Archetype const archetype_ab = create_archetype(archetype_ab_component_type_ids);
 
             CHECK(archetype_ab.has_component(get_component_type_id<Component_a>()) == true);
             CHECK(archetype_ab.has_component(get_component_type_id<Component_b>()) == true);
             CHECK(archetype_ab.has_component(get_component_type_id<Component_c>()) == false);
 
             {
-                Archetype const archetype_ab_clone = world.create_archetype(archetype_ab_component_type_ids);
+                Archetype const archetype_ab_clone = create_archetype(archetype_ab_component_type_ids);
                 CHECK(archetype_ab == archetype_ab_clone);
             }
 
@@ -115,7 +150,7 @@ namespace Maia::ECS::Test
                 get_component_type_id<Component_a>()
             };
 
-            Archetype const archetype_ba = world.create_archetype(archetype_ba_component_type_ids);
+            Archetype const archetype_ba = create_archetype(archetype_ba_component_type_ids);
 
             CHECK(archetype_ba.has_component(get_component_type_id<Component_a>()) == true);
             CHECK(archetype_ba.has_component(get_component_type_id<Component_b>()) == true);
@@ -128,7 +163,7 @@ namespace Maia::ECS::Test
                 get_component_type_id<Component_a>()
             };
 
-            Archetype const archetype_a = world.create_archetype(archetype_a_component_type_ids);
+            Archetype const archetype_a = create_archetype(archetype_a_component_type_ids);
 
             CHECK(archetype_ab != archetype_a);
             CHECK(archetype_ba != archetype_a);
@@ -145,7 +180,7 @@ namespace Maia::ECS::Test
                     get_component_type_id<Component_b>()
                 };
 
-                Archetype const archetype_ab = world.create_archetype(archetype_ab_component_type_ids);
+                Archetype const archetype_ab = create_archetype(archetype_ab_component_type_ids);
 
 
                 CHECK(archetype_ab.has_shared_component() == false);
@@ -162,7 +197,7 @@ namespace Maia::ECS::Test
                     get_component_type_id<Component_a>()
                 };
 
-                Archetype const archetype_ae = world.create_archetype(shared_component_e_type_id, archetype_ae_component_type_ids);
+                Archetype const archetype_ae = create_archetype(shared_component_e_type_id, archetype_ae_component_type_ids);
 
 
                 CHECK(archetype_ae.has_shared_component() == true);
@@ -181,7 +216,7 @@ namespace Maia::ECS::Test
                 get_component_type_id<Component_b>()
             };
 
-            Archetype const archetype_ab = world.create_archetype(archetype_ab_component_type_ids);
+            Archetype const archetype_ab = create_archetype(archetype_ab_component_type_ids);
 
             Entity const entity_0 = world.create_entity(archetype_ab);
 
@@ -231,12 +266,12 @@ namespace Maia::ECS::Test
         {
             World world{};
 
-            std::array<Component_type_ID, 2> const archetype_b_component_type_ids
+            std::array<Component_type_ID, 1> const archetype_b_component_type_ids
             {
                 get_component_type_id<Component_b>()
             };
 
-            Archetype const archetype_b = world.create_archetype(archetype_b_component_type_ids);
+            Archetype const archetype_b = create_archetype(archetype_b_component_type_ids);
 
             Entity const entity_0 = world.create_entity(archetype_b);
 
@@ -248,8 +283,107 @@ namespace Maia::ECS::Test
 
         SECTION("New archetypes can be created by adding or removing components to an entity")
         {
-            // TODO
-            // TODO use world.get_archetypes()
+            World world{};
+
+            std::array<Component_type_ID, 1> const archetype_a_component_type_ids
+            {
+                get_component_type_id<Component_a>()
+            };
+
+            Archetype const archetype_a = create_archetype(archetype_a_component_type_ids);
+
+            {
+                std::span<Archetype const> const archetypes = world.get_archetypes();
+
+                CHECK(archetypes.size() == 0);
+            }
+
+            Entity const entity_0 = world.create_entity(archetype_a);
+            Entity const entity_1 = world.create_entity(archetype_a);
+
+            {
+                std::span<Archetype const> const archetypes = world.get_archetypes();
+
+                CHECK(archetypes.size() == 1);
+                CHECK(contains(archetypes, archetype_a));
+                CHECK(contains_archetype_which_has_component<Component_a>(archetypes));
+                CHECK(!contains_archetype_which_has_component<Component_b>(archetypes));
+            }
+
+            world.add_component_type<Component_b>(entity_0);
+
+            {
+                std::span<Archetype const> const archetypes = world.get_archetypes();
+
+                CHECK(archetypes.size() == 2);
+                CHECK(contains(archetypes, archetype_a));
+                CHECK(contains_archetype_which_has_component<Component_a>(archetypes));
+                CHECK(contains_archetype_which_has_component<Component_b>(archetypes));
+            }
+
+            world.add_component_type<Component_b>(entity_1);
+
+            {
+                std::span<Archetype const> const archetypes = world.get_archetypes();
+
+                CHECK(archetypes.size() == 1);
+                CHECK(!contains(archetypes, archetype_a));
+                CHECK(contains_archetype_which_has_component<Component_a>(archetypes));
+                CHECK(contains_archetype_which_has_component<Component_b>(archetypes));
+            }
+
+            world.remove_component_type<Component_a>(entity_0);
+
+            {
+                std::span<Archetype const> const archetypes = world.get_archetypes();
+
+                CHECK(archetypes.size() == 2);
+                CHECK(contains_archetype_which_has_component<Component_a>(archetypes));
+                CHECK(contains_archetype_which_has_component<Component_b>(archetypes));
+            }
+
+            world.remove_component_type<Component_a>(entity_1);
+
+            {
+                std::span<Archetype const> const archetypes = world.get_archetypes();
+
+                CHECK(archetypes.size() == 1);
+                CHECK(!contains_archetype_which_has_component<Component_a>(archetypes));
+                CHECK(contains_archetype_which_has_component<Component_b>(archetypes));
+                CHECK(!contains_archetype_which_has_shared_component<Shared_component_e>(archetypes));
+            }
+
+            Shared_component_e& shared_component_e_0 = world.create_shared_component(Shared_component_e{ .value = 1 });
+            world.add_shared_component_type<Shared_component_e>(entity_1, shared_component_e_0);
+
+            {
+                std::span<Archetype const> const archetypes = world.get_archetypes();
+
+                CHECK(archetypes.size() == 2);
+                CHECK(!contains_archetype_which_has_component<Component_a>(archetypes));
+                CHECK(contains_archetype_which_has_component<Component_b>(archetypes));
+                CHECK(contains_archetype_which_has_shared_component<Shared_component_e>(archetypes));
+            }
+
+            world.remove_shared_component_type<Shared_component_e>(entity_1);
+
+            {
+                std::span<Archetype const> const archetypes = world.get_archetypes();
+
+                CHECK(archetypes.size() == 1);
+                CHECK(!contains_archetype_which_has_component<Component_a>(archetypes));
+                CHECK(contains_archetype_which_has_component<Component_b>(archetypes));
+                CHECK(!contains_archetype_which_has_shared_component<Shared_component_e>(archetypes));
+            }
+
+            world.destroy_entity(entity_1);
+            world.destroy_entity(entity_0);
+
+            {
+                std::span<Archetype const> const archetypes = world.get_archetypes();
+
+                CHECK(archetypes.size() == 0);
+            }
         }
 
         SECTION("A shared component is a component that can be shared by multiple entities")
@@ -270,7 +404,7 @@ namespace Maia::ECS::Test
                 get_component_type_id<Component_b>(),
                 get_component_type_id<Component_d>(),
             };
-            Archetype const archetype_abd = world.create_archetype(archetype_abd_component_type_ids);
+            Archetype const archetype_abd = create_archetype(archetype_abd_component_type_ids);
 
             std::array<Component_type_ID, 3> const archetype_bcd_component_type_ids
             {
@@ -278,7 +412,7 @@ namespace Maia::ECS::Test
                 get_component_type_id<Component_c>(),
                 get_component_type_id<Component_d>(),
             };
-            Archetype const archetype_bcd = world.create_archetype(archetype_bcd_component_type_ids);
+            Archetype const archetype_bcd = create_archetype(archetype_bcd_component_type_ids);
 
             Entity const entity_0 = world.create_entity(archetype_abd);
             Entity const entity_1 = world.create_entity(archetype_abd);
@@ -328,13 +462,13 @@ namespace Maia::ECS::Test
             {
                 get_component_type_id<Component_a>(),
             };
-            Archetype const archetype_ae = world.create_archetype(shared_component_e_type_id, archetype_a_component_type_ids);
+            Archetype const archetype_ae = create_archetype(shared_component_e_type_id, archetype_a_component_type_ids);
 
             std::array<Component_type_ID, 1> const archetype_b_component_type_ids
             {
                 get_component_type_id<Component_a>(),
             };
-            Archetype const archetype_be = world.create_archetype(shared_component_e_type_id, archetype_b_component_type_ids);
+            Archetype const archetype_be = create_archetype(shared_component_e_type_id, archetype_b_component_type_ids);
 
             Shared_component_e& shared_component_e_0 = world.create_shared_component(Shared_component_e{ .value = 1 });
             Shared_component_e& shared_component_e_1 = world.create_shared_component(Shared_component_e{ .value = 2 });
@@ -361,29 +495,60 @@ namespace Maia::ECS::Test
                 std::span<Component_chunk_view const> const component_chunk_views = world.get_component_chunk_views(archetype_ae);
 
                 CHECK(component_chunk_views.size() == 2);
-                CHECK(contains_shared_component(component_chunk_views, contains_shared_component_0));
-                CHECK(contains_shared_component(component_chunk_views, contains_shared_component_1));
+
+                {
+                    auto const contains_shared_component_e_0 = [&shared_component_e_0](Component_chunk_view const view) -> bool
+                    {
+                        return view.get_shared_component<Shared_component_e>().value == shared_component_e_0.value;
+                    };
+
+                    auto const shared_component_it = std::find_if(
+                        component_chunk_views.begin(),
+                        component_chunk_views.end(),
+                        contains_shared_component_e_0
+                    );
+
+                    CHECK(shared_component_it != component_chunk_views.end());
+                }
+
+                {
+                    auto const contains_shared_component_e_1 = [&shared_component_e_1](Component_chunk_view const view) -> bool
+                    {
+                        return view.get_shared_component<Shared_component_e>().value == shared_component_e_1.value;
+                    };
+
+                    auto const shared_component_it = std::find_if(
+                        component_chunk_views.begin(),
+                        component_chunk_views.end(),
+                        contains_shared_component_e_1
+                    );
+
+                    CHECK(shared_component_it != component_chunk_views.end());
+                }
+
+                /*CHECK(contains_shared_component(component_chunk_views, shared_component_e_0));
+                CHECK(contains_shared_component(component_chunk_views, shared_component_e_1));*/
 
                 for (Component_chunk_view const component_chunk_view : component_chunk_views)
                 {
                     Shared_component_e const& chunk_shared_component = component_chunk_view.get_shared_component<Shared_component_e>();
-                    CHECK(chunk_shared_component.value == contains_shared_component_0.value || chunk_shared_component.value == contains_shared_component_1.value);
+                    CHECK((chunk_shared_component.value == shared_component_e_0.value || chunk_shared_component.value == shared_component_e_1.value));
 
-                    if (chunk_shared_component.value == contains_shared_component_0.value)
+                    if (chunk_shared_component.value == shared_component_e_0.value)
                     {
-                        std::span<Entity const> const entities = chunk_shared_component.get_entities();
+                        std::span<Entity const> const entities = component_chunk_view.get_entities();
 
                         CHECK(entities.size() == 2);
-                        CHECK(contains_entity(entities, entity_0));
-                        CHECK(contains_entity(entities, entity_3));
+                        CHECK(contains(entities, entity_0));
+                        CHECK(contains(entities, entity_3));
                     }
-                    else if (chunk_shared_component.value == contains_shared_component_1.value)
+                    else if (chunk_shared_component.value == shared_component_e_1.value)
                     {
-                        std::span<Entity const> const entities = chunk_shared_component.get_entities();
+                        std::span<Entity const> const entities = component_chunk_view.get_entities();
 
                         CHECK(entities.size() == 2);
-                        CHECK(contains_entity(entities, entity_1));
-                        CHECK(contains_entity(entities, entity_2));
+                        CHECK(contains(entities, entity_1));
+                        CHECK(contains(entities, entity_2));
                     }
                 }
             }
@@ -395,9 +560,10 @@ namespace Maia::ECS::Test
 
                 Component_chunk_view const component_chunk_view = component_chunk_views[0];
 
-                CHECK(chunk_shared_component.value == contains_shared_component_0.value);
+                Shared_component_e const& chunk_shared_component = component_chunk_view.get_shared_component<Shared_component_e>();
+                CHECK(chunk_shared_component.value == shared_component_e_0.value);
 
-                std::span<Entity const> const entities = chunk_shared_component.get_entities();
+                std::span<Entity const> const entities = component_chunk_view.get_entities();
 
                 REQUIRE(entities.size() == 1);
                 CHECK(entities[0] == entity_4);
@@ -412,7 +578,7 @@ namespace Maia::ECS::Test
             {
                 get_component_type_id<Component_a>(),
             };
-            Archetype const archetype_a = world.create_archetype(archetype_a_component_type_id);
+            Archetype const archetype_a = create_archetype(archetype_a_component_type_id);
 
             Entity const entity_0 = world.create_entity(archetype_a);
 

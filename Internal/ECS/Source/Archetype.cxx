@@ -7,6 +7,7 @@ import <bitset>;
 import <cstddef>;
 import <cstdint>;
 import <optional>;
+import <span>;
 import <tuple>;
 
 namespace Maia::ECS
@@ -28,6 +29,16 @@ namespace Maia::ECS
             return true;
         }
     };
+
+    export Archetype create_archetype(std::span<Component_type_ID const> component_ids) noexcept
+    {
+        return {};
+    }
+
+    export Archetype create_archetype(Shared_component_type_ID const shared_component_id, std::span<Component_type_ID const> component_ids) noexcept
+    {
+        return {};
+    }
 
     export bool operator==(Archetype const& lhs, Archetype const& rhs) noexcept
     {
