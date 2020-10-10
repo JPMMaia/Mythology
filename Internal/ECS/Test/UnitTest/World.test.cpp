@@ -70,22 +70,22 @@ namespace Maia::ECS::Test
         {
             World world{};
 
-            std::array<Component_type_ID, 2> const archetype_0_component_ids
+            std::array<Component_type_ID, 2> const archetype_0_component_type_ids
             {
                 get_component_type_id<Component_a>(),
                 get_component_type_id<Component_b>()
             };
 
-            Archetype const archetype_0 = world.create_archetype(archetype_0_component_ids);
+            Archetype const archetype_0 = world.create_archetype(archetype_0_component_type_ids);
 
             {
-                std::array<Component_type_ID, 2> const archetype_0_component_ids_reverse
+                std::array<Component_type_ID, 2> const archetype_0_component_type_ids_reverse
                 {
                     get_component_type_id<Component_b>(),
                     get_component_type_id<Component_a>()
                 };
 
-                Archetype const archetype_0_clone = world.create_archetype(archetype_0_component_ids_reverse);
+                Archetype const archetype_0_clone = world.create_archetype(archetype_0_component_type_ids_reverse);
                 CHECK(archetype_0 == archetype_0_clone);
             }
 
@@ -95,19 +95,19 @@ namespace Maia::ECS::Test
             CHECK(archetype_0.has_shared_component() == false);
 
 
-            std::array<Component_type_ID, 2> const archetype_1_component_ids
+            std::array<Component_type_ID, 2> const archetype_1_component_type_ids
             {
                 get_component_type_id<Component_a>(),
                 get_component_type_id<Component_b>()
             };
 
-            Shared_component_type_ID const archetype_1_shared_component_id = 
+            Shared_component_type_ID const archetype_1_shared_component_type_id =
                 get_shared_component_type_id<Shared_component_a>();
 
-            Archetype const archetype_1 = world.create_archetype(archetype_1_shared_component_id, archetype_1_component_ids);
+            Archetype const archetype_1 = world.create_archetype(archetype_1_shared_component_type_id, archetype_1_component_type_ids);
 
             {
-                Archetype const archetype_1_clone = world.create_archetype(archetype_1_shared_component_id, archetype_1_component_ids);
+                Archetype const archetype_1_clone = world.create_archetype(archetype_1_shared_component_type_id, archetype_1_component_type_ids);
                 CHECK(archetype_1 == archetype_1_clone);
             }
 
@@ -118,19 +118,21 @@ namespace Maia::ECS::Test
             CHECK(archetype_1.has_shared_component(get_shared_component_type_id<Shared_component_a>()) == true);
 
             CHECK(archetype_0 != archetype_1);
+
+            // TODO add and remove components from entities should create new archetypes
         }
 
         SECTION("Create entities")
         {
             World world{};
 
-            std::array<Component_type_ID, 2> const archetype_0_component_ids
+            std::array<Component_type_ID, 2> const archetype_0_component_type_ids
             {
                 get_component_type_id<Component_a>(),
                 get_component_type_id<Component_b>()
             };
 
-            Archetype const archetype_0 = world.create_archetype(archetype_0_component_ids);
+            Archetype const archetype_0 = world.create_archetype(archetype_0_component_type_ids);
 
             Entity const entity_0 = world.create_entity(archetype_0);
             Entity const entity_1 = world.create_entity(archetype_0);
@@ -143,32 +145,42 @@ namespace Maia::ECS::Test
                 Component_b const value = world.get_component_value<Component_b>(entity_0);
                 CHECK(value == default_value);
             }
+
+            // TODO remove entities
+        }
+
+        SECTION("Use shared components")
+        {
+            // TODO how to create a shared component?
+            // TODO how to get a shared component?
+            // TODO how to update a shared component?
+            // TODO how to delete a shared component?
         }
 
         SECTION("Use entities")
         {
             World world{};
 
-            Shared_component_type_ID const shared_component_a_id = get_shared_component_type_id<Shared_component_a>();
+            Shared_component_type_ID const shared_component_a_type_id = get_shared_component_type_id<Shared_component_a>();
             Shared_component_a& shared_component_a = world.create_shared_component(Shared_component_a{.value=100});
             
-            std::array<Component_type_ID, 3> const archetype_0_component_ids
+            std::array<Component_type_ID, 3> const archetype_0_component_type_ids
             {
                 get_component_type_id<Component_a>(),
                 get_component_type_id<Component_b>(),
                 get_component_type_id<Component_d>(),
             };
 
-            Archetype const archetype_0 = world.create_archetype(shared_component_a_id, archetype_0_component_ids);
+            Archetype const archetype_0 = world.create_archetype(shared_component_a_type_id, archetype_0_component_type_ids);
 
-            std::array<Component_type_ID, 3> const archetype_1_component_ids
+            std::array<Component_type_ID, 3> const archetype_1_component_type_ids
             {
                 get_component_type_id<Component_b>(),
                 get_component_type_id<Component_c>(),
                 get_component_type_id<Component_d>(),
             };
 
-            Archetype const archetype_1 = world.create_archetype(shared_component_a_id, archetype_1_component_ids);
+            Archetype const archetype_1 = world.create_archetype(shared_component_a_type_id, archetype_1_component_type_ids);
 
             Entity const entity_0 = world.create_entity(archetype_0);
             world.set_component_value(entity_0, Component_b{.value=10});
@@ -233,6 +245,8 @@ namespace Maia::ECS::Test
                     entity_components_view.set(component_d);
                 }
             }
+
+            // TODO check that entities are grouped by Shared_component value
 
             {
                 Component_d const component = world.get_component_value<Component_d>(entity_0);
