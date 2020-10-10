@@ -102,7 +102,7 @@ namespace Maia::ECS::Test
             };
 
             Shared_component_type_ID const archetype_1_shared_component_id = 
-                Shared_component_type_ID::get<Shared_component_a>();
+                get_shared_component_type_id<Shared_component_a>();
 
             Archetype const archetype_1 = world.create_archetype(archetype_1_shared_component_id, archetype_1_component_ids);
 
@@ -115,7 +115,7 @@ namespace Maia::ECS::Test
             CHECK(archetype_1.has_component(get_component_type_id<Component_b>()) == true);
             CHECK(archetype_1.has_component(get_component_type_id<Component_c>()) == false);
             CHECK(archetype_1.has_shared_component() == true);
-            CHECK(archetype_1.has_shared_component(Shared_component_type_ID::get<Shared_component_a>()) == true);
+            CHECK(archetype_1.has_shared_component(get_shared_component_type_id<Shared_component_a>()) == true);
 
             CHECK(archetype_0 != archetype_1);
         }
@@ -149,7 +149,7 @@ namespace Maia::ECS::Test
         {
             World world{};
 
-            Shared_component_type_ID const shared_component_a_id = Shared_component_type_ID::get<Shared_component_a>();
+            Shared_component_type_ID const shared_component_a_id = get_shared_component_type_id<Shared_component_a>();
             Shared_component_a& shared_component_a = world.create_shared_component(Shared_component_a{.value=100});
             
             std::array<Component_type_ID, 3> const archetype_0_component_ids
@@ -188,7 +188,7 @@ namespace Maia::ECS::Test
                 return 
                     archetype.has_component(get_component_type_id<Component_b>()) &&
                     archetype.has_component(get_component_type_id<Component_d>()) &&
-                    archetype.has_shared_component(Shared_component_type_ID::get<Shared_component_a>());
+                    archetype.has_shared_component(get_shared_component_type_id<Shared_component_a>());
             };
 
             auto const get_component_chunk_views = [&world](Archetype const archetype) -> std::span<Component_chunk_view const>
