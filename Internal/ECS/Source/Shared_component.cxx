@@ -9,7 +9,7 @@ namespace Maia::ECS
 	namespace Concept
 	{
 		export template<typename T>
-			concept Shared_component = std::movable<T>;
+			concept Shared_component = std::equality_comparable<T> && std::movable<T>;
 	}
 
 	export struct Shared_component_type_ID

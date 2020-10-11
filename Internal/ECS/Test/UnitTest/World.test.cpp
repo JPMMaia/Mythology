@@ -53,12 +53,12 @@ namespace Maia::ECS::Test
             int value;
         };
 
-        struct Shared_component_e
+        struct Shared_component_e : Component_base<Shared_component_e>
         {
             int value;
         };
 
-        struct Shared_component_f
+        struct Shared_component_f : Component_base<Shared_component_f>
         {
             float value;
         };
