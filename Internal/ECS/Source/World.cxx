@@ -19,6 +19,12 @@ namespace Maia::ECS
             return {};
         }
 
+        Archetype const& get_archetype(Entity const entity) const noexcept
+        {
+            static Archetype dummy;
+            return dummy;
+        }
+
         Entity create_entity(Archetype const& archetype)
         {
             // Precondition: Archetype does not contain a shared component
@@ -65,14 +71,18 @@ namespace Maia::ECS
         template<Concept::Component Component_t>
         void set_component_value(Entity const entity, Component_t const value) noexcept
         {
-
         }
 
         template<Concept::Shared_component Shared_component_t>
-        Shared_component_t& create_shared_component(Shared_component_t&& shared_component)
+        Shared_component_t const& get_shared_component_value(Entity const entity) const noexcept
         {
             static Shared_component_t dummy;
             return dummy;
+        }
+
+        template<Concept::Shared_component Shared_component_t>
+        void set_shared_component_value(Entity const entity, Shared_component_t const& value) noexcept
+        {
         }
 
         std::span<Component_chunk_view> get_component_chunk_views(Archetype const archetype) noexcept

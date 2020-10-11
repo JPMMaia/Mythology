@@ -353,7 +353,7 @@ namespace Maia::ECS::Test
                 CHECK(!contains_archetype_which_has_shared_component<Shared_component_e>(archetypes));
             }
 
-            Shared_component_e& shared_component_e_0 = world.create_shared_component(Shared_component_e{ .value = 1 });
+            Shared_component_e constexpr shared_component_e_0{ .value = 1 };
             world.add_shared_component_type<Shared_component_e>(entity_1, shared_component_e_0);
 
             {
@@ -388,10 +388,48 @@ namespace Maia::ECS::Test
 
         SECTION("A shared component is a component that can be shared by multiple entities")
         {
-            // TODO how to create a shared component?
-            // TODO how to get a shared component?
-            // TODO how to update a shared component?
-            // TODO how to delete a shared component?
+            constexpr Shared_component_e shared_component_e{ .value = 1 };
+
+            World world{};
+
+            Shared_component_type_ID const shared_component_e_type_id =
+                get_shared_component_type_id<Shared_component_e>();
+
+            Archetype const archetype_e = create_archetype(shared_component_e_type_id, {});
+
+            Entity const entity_0 = world.create_entity(archetype_e, shared_component_e);
+
+            {
+                Shared_component_e const& actual_shared_component =
+                    world.get_shared_component_value<Shared_component_e>(entity_0);
+
+                CHECK(shared_component_e == actual_shared_component);
+            }
+
+            {
+                constexpr Shared_component_e new_shared_component{ .value = 2 };
+                world.set_shared_component_value(entity_0, new_shared_component);
+
+                Shared_component_e const& actual_shared_component =
+                    world.get_shared_component_value<Shared_component_e>(entity_0);
+
+                CHECK(new_shared_component == actual_shared_component);
+                CHECK(shared_component_e != actual_shared_component);
+            }
+
+            {
+                {
+                    Archetype const& original_archetype = world.get_archetype(entity_0);
+                    CHECK(original_archetype.has_shared_component(get_shared_component_type_id<Shared_component_e>()));
+                }
+
+                world.remove_shared_component_type<Shared_component_e>(entity_0);
+
+                {
+                    Archetype const& new_archetype = world.get_archetype(entity_0);
+                    CHECK(!new_archetype.has_shared_component(get_shared_component_type_id<Shared_component_e>()));
+                }
+            }
         }
 
         SECTION("Entity components are grouped by archetype in component chunks")
@@ -470,8 +508,8 @@ namespace Maia::ECS::Test
             };
             Archetype const archetype_be = create_archetype(shared_component_e_type_id, archetype_b_component_type_ids);
 
-            Shared_component_e& shared_component_e_0 = world.create_shared_component(Shared_component_e{ .value = 1 });
-            Shared_component_e& shared_component_e_1 = world.create_shared_component(Shared_component_e{ .value = 2 });
+            Shared_component_e constexpr shared_component_e_0{ .value = 1 };
+            Shared_component_e constexpr shared_component_e_1{ .value = 2 };
 
             Entity const entity_0 = world.create_entity(archetype_ae, shared_component_e_0);
             Entity const entity_1 = world.create_entity(archetype_ae, shared_component_e_1);
