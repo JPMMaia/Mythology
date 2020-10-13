@@ -1,302 +1,98 @@
 export module maia.ecs.entity_manager;
 
+import maia.ecs.archetype;
 import maia.ecs.component;
-import maia.ecs.component_group;
-import maia.ecs.component_group_mask;
-import maia.ecs.components_chunk;
+import maia.ecs.components_view;
 import maia.ecs.entity;
-import maia.ecs.entity_type;
+import maia.ecs.shared_component;
 
-import <array>;
-import <algorithm>;
-import <cassert>;
-import <cstddef>;
-import <memory_resource>;
 import <span>;
-import <vector>;
 
 namespace Maia::ECS
 {
-	export struct Entity_type_index
-	{
-		std::size_t value;
-	};
-
-
-	export struct Space
-	{
-		std::size_t value;
-	};
-
-	export inline bool operator==(Space const& lhs, Space const& rhs) noexcept
-	{
-		return lhs.value == rhs.value;
-	}
-	
-	export inline bool operator!=(Space const& lhs, Space const& rhs) noexcept
-	{
-		return !(lhs == rhs);
-	}
-
-
-	export class Entity_manager
-	{
-	public:
-
-		template <typename T>
-		using Remove_cvr_t = std::remove_cv_t<std::remove_reference_t<T>>;
-
-
-		Entity_type_id create_entity_type(
-			std::size_t capacity_per_chunk,
-			std::span<Component_info const> component_infos,
-			Space space
-		) noexcept;
-
-		template <typename... Components>
-		Entity_type_id create_entity_type(
-			std::size_t const capacity_per_chunk,
-			Space const space
-		) noexcept
-		{
-			std::array<Maia::ECS::Component_info, sizeof...(Components)> component_infos
-			{
-				create_component_info<Components>()...
-			};
-
-			return create_entity_type(capacity_per_chunk, component_infos, space);
-		}
-		
-
-		Entity create_entity(Entity_type_id entity_type_id) noexcept;
-
-		template <typename... Components>
-		Entity create_entity(Entity_type_id entity_type_id, Components&&... components) noexcept
-		{
-			Entity const entity = create_entity(entity_type_id);
-			set_components_data(entity, std::forward<Components>(components)...);
-			return entity;
-		}
-
-		template <typename... Components>
-		std::pmr::vector<Entity> create_entities(std::size_t count, Entity_type_id entity_type_id, Components&&... components) noexcept
-		{
-			assert(m_entity_type_indices.size() + count <= std::numeric_limits<Entity::Integral_type>::max());
-
-			const Entity_type_index entity_type_index = [this, entity_type_id]() -> Entity_type_index
-			{
-				const auto entity_type_id_location = std::find(m_entity_type_ids.begin(), m_entity_type_ids.end(), entity_type_id);
-
-				return { static_cast<std::size_t>(std::distance(m_entity_type_ids.begin(), entity_type_id_location)) };
-			}();
-
-			Component_group& component_group = m_component_groups[entity_type_index.value];
-
-			std::pmr::vector<Entity> entities;
-			entities.reserve(count);
-
-			for (std::size_t i = 0; i < count; ++i)
-			{
-				if (!m_deleted_entities.empty())
-				{
-					Entity const entity = m_deleted_entities.back();
-					m_deleted_entities.pop_back();
-					m_entities_existence[entity.value] = true;
-
-					m_entity_type_indices[entity.value] = entity_type_index;
-
-					Component_group_entity_index component_group_index = component_group.push_back(std::forward<Components>(components)..., entity);
-					m_component_group_indices[entity.value] = component_group_index;
-
-					entities.push_back(entity);
-				}
-				else
-				{
-					Entity entity
-					{
-						static_cast<Entity::Integral_type>(m_entity_type_indices.size())
-					};
-					m_entity_type_indices.push_back(entity_type_index);
-
-					Component_group_entity_index component_group_index = component_group.push_back(std::forward<Components>(components)..., entity);
-					m_component_group_indices.push_back(component_group_index);
-
-					m_entities_existence.push_back(true);
-
-					entities.push_back(entity);
-				}
-			}
-
-			return entities;
-		}
-
-		template <std::size_t Count, typename... Components>
-		std::array<Entity, Count> create_entities(Entity_type_id entity_type_id, Components&&... components) noexcept
-		{
-			// TODO refactor
-
-			assert(m_entity_type_indices.size() + Count <= std::numeric_limits<Entity::Integral_type>::max());
-
-			const auto entity_type_index = [this, entity_type_id]() -> Entity_type_index
-			{
-				const auto entity_type_id_location = std::find(m_entity_type_ids.begin(), m_entity_type_ids.end(), entity_type_id);
-
-				return { static_cast<std::size_t>(std::distance(m_entity_type_ids.begin(), entity_type_id_location)) };
-			}();
-
-			Component_group& component_group = m_component_groups[entity_type_index.value];
-
-			std::array<Entity, Count> entities;
-
-			for (std::size_t i = 0; i < entities.size(); ++i)
-			{
-				if (!m_deleted_entities.empty())
-				{
-					Entity const entity = m_deleted_entities.back();
-					m_deleted_entities.pop_back();
-					m_entities_existence[entity.value] = true;
-
-					m_entity_type_indices[entity.value] = entity_type_index;
-
-					Component_group_entity_index component_group_index = component_group.push_back(std::forward<Components>(components)..., entity);
-					m_component_group_indices[entity.value] = component_group_index;
-
-					entities[i] = entity;
-				}
-				else
-				{
-					Entity entity
-					{
-						static_cast<Entity::Integral_type>(m_entity_type_indices.size())
-					};
-					m_entity_type_indices.push_back(entity_type_index);
-
-					Component_group_entity_index component_group_index = component_group.push_back(std::forward<Components>(components)..., entity);
-					m_component_group_indices.push_back(component_group_index);
-
-					m_entities_existence.push_back(true);
-
-					entities[i] = entity;
-				}
-			}
-
-			return entities;
-		}
-
-		void destroy_entity(Entity entity) noexcept;
-
-		bool exists(Entity entity) const noexcept;
-
-
-		template <typename Component>
-		bool has_component(Entity entity) const noexcept
-		{
-			Entity_type_index const entity_type_index = m_entity_type_indices[entity.value];
-
-			return m_component_group_masks[entity_type_index.value].contains<Component>();
-		}
-
-
-		template <typename Component>
-		Component_view<Component const> get_component_data(Entity entity) const noexcept
-		{
-			assert(m_component_group_masks[m_entity_type_indices[entity.value].value].contains<Component>());
-
-			Entity_type_index entity_type_index = m_entity_type_indices[entity.value];
-			Component_group const& component_group = m_component_groups[entity_type_index.value];
-
-			Component_group_entity_index component_group_index = m_component_group_indices[entity.value];
-			return component_group.get_component_data<Component>(component_group_index);
-		}
-
-		template <typename Component>
-		void set_component_data(Entity entity, Component&& data) noexcept
-		{
-			assert(m_component_group_masks[m_entity_type_indices[entity.value].value].contains<Component>() && "Missing component!");
-
-			Entity_type_index entity_type_index = m_entity_type_indices[entity.value];
-			Component_group& component_group = m_component_groups[entity_type_index.value];
-			
-			Component_group_entity_index component_group_index = m_component_group_indices[entity.value];
-			component_group.set_component_data<Component>(component_group_index, std::forward<Component>(data));
-		}
-
-
-		template <typename... Components>
-		std::tuple<Components...> get_components_data(Entity entity) const noexcept
-		{
-			Entity_type_index entity_type_index = m_entity_type_indices[entity.value];
-			Component_group const& component_group = m_component_groups[entity_type_index.value];
-
-			Component_group_entity_index component_group_index = m_component_group_indices[entity.value];
-			return component_group.get_components_data<Components...>(component_group_index);
-		}
-
-		template <typename... Components>
-		void set_components_data(Entity entity, Components&&... data) noexcept
-		{
-			Entity_type_index entity_type_index = m_entity_type_indices[entity.value];
-			Component_group& component_group = m_component_groups[entity_type_index.value];
-
-			Component_group_entity_index component_group_index = m_component_group_indices[entity.value];
-			component_group.set_components_data<Components...>(component_group_index, std::forward<Components>(data)...);
-		}
-
-		Component_group const& get_component_group(Entity_type_id const entity_type_id) const noexcept
-		{
-			assert(entity_type_id.value == m_entity_type_ids[entity_type_id.value].value);
-
-			Entity_type_index const entity_type_index = { entity_type_id.value };
-
-			return m_component_groups[entity_type_index.value];
-		}
-		Component_group& get_component_group(Entity_type_id const entity_type_id) noexcept
-		{
-			assert(entity_type_id.value == m_entity_type_ids[entity_type_id.value].value);
-
-			Entity_type_index const entity_type_index = { entity_type_id.value };
-
-			return m_component_groups[entity_type_index.value];
-		}
-
-
-		std::span<const Component_group_mask> get_component_types_groups() const noexcept
-		{
-			return m_component_group_masks;
-		}
-
-		std::span<Component_group_mask> get_component_types_groups() noexcept
-		{
-			return m_component_group_masks;
-		}
-
-
-		std::span<const Component_group> get_component_groups() const noexcept
-		{
-			return m_component_groups;
-		}
-
-		std::span<Component_group> get_component_groups() noexcept
-		{
-			return m_component_groups;
-		}
-
-
-	private: 
-
-
-		// Indexed by Entity_type_index
-		std::pmr::vector<Entity_type_id> m_entity_type_ids;
-		std::pmr::vector<Space> m_component_types_spaces;
-		std::pmr::vector<Component_group_mask> m_component_group_masks;
-		std::pmr::vector<Component_group> m_component_groups;
-
-		// Indexed by Entity.id
-		std::pmr::vector<Entity_type_index> m_entity_type_indices;
-		std::pmr::vector<Component_group_entity_index> m_component_group_indices;
-		std::pmr::vector<bool> m_entities_existence;
-		std::pmr::vector<Entity> m_deleted_entities;
-
-
-	};
+    export class Entity_manager
+    {
+    public:
+
+        std::span<Archetype const> get_archetypes() const noexcept
+        {
+            return {};
+        }
+
+        Archetype const& get_archetype(Entity const entity) const noexcept
+        {
+            static Archetype dummy;
+            return dummy;
+        }
+
+        Entity create_entity(Archetype const& archetype)
+        {
+            // Precondition: Archetype does not contain a shared component
+            return {};
+        }
+
+        template<Concept::Shared_component Shared_component_t>
+        Entity create_entity(Archetype const& archetype, Shared_component_t const& shared_component)
+        {
+            // Precondition: Archetype contains a shared component
+            return {};
+        }
+
+        void destroy_entity(Entity const entity)
+        {
+        }
+
+        template<Concept::Component Component_t>
+        void add_component_type(Entity const entity)
+        {
+        }
+
+        template<Concept::Component Component_t>
+        void remove_component_type(Entity const entity)
+        {
+        }
+
+        template<Concept::Shared_component Shared_component_t>
+        void add_shared_component_type(Entity const entity, Shared_component_t const& shared_component)
+        {
+        }
+
+        template<Concept::Shared_component Shared_component_t>
+        void remove_shared_component_type(Entity const entity)
+        {
+        }
+
+        template<Concept::Component Component_t>
+        Component_t get_component_value(Entity const entity) const noexcept
+        {
+            return {};
+        }
+
+        template<Concept::Component Component_t>
+        void set_component_value(Entity const entity, Component_t const value) noexcept
+        {
+        }
+
+        template<Concept::Shared_component Shared_component_t>
+        Shared_component_t const& get_shared_component_value(Entity const entity) const noexcept
+        {
+            static Shared_component_t dummy;
+            return dummy;
+        }
+
+        template<Concept::Shared_component Shared_component_t>
+        void set_shared_component_value(Entity const entity, Shared_component_t const& value) noexcept
+        {
+        }
+
+        std::span<Component_chunk_view> get_component_chunk_views(Archetype const archetype) noexcept
+        {
+            return {};
+        }
+
+        std::span<Component_chunk_view const> get_component_chunk_views(Archetype const archetype) const noexcept
+        {
+            return {};
+        }
+    };
 }
