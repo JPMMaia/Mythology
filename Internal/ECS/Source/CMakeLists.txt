@@ -80,5 +80,19 @@ target_module (
         "maia.ecs.shared_component"
 )
 
+target_module (
+    MaiaECS
+    PUBLIC
+    "maia.ecs.world"
+    INTERFACE "World.cxx"
+    INTERFACE_DEPENDS "Standard_library"
+        "maia.ecs.archetype"
+        "maia.ecs.component"
+        "maia.ecs.components_view"
+        "maia.ecs.entity"
+        "maia.ecs.entity_manager"
+        "maia.ecs.shared_component"
+)
+
 add_subdirectory("Components")
 add_subdirectory("Systems")
