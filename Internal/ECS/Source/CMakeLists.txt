@@ -70,6 +70,14 @@ target_module (
 target_module (
     MaiaECS
     PUBLIC
+    "maia.ecs.component_chunk_group"
+    INTERFACE "Component_chunk_group.cxx"
+    INTERFACE_DEPENDS "Standard_library"
+)
+
+target_module (
+    MaiaECS
+    PUBLIC
     "maia.ecs.entity_manager"
     INTERFACE "Entity_manager.cxx"
     INTERFACE_DEPENDS "Standard_library"
