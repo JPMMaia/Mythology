@@ -124,8 +124,6 @@ namespace Maia::ECS::Test
     {
         SECTION("An archetype is an unordered set of component types")
         {
-            Entity_manager entity_manager{};
-
             std::array<Component_type_ID, 2> const archetype_ab_component_type_ids
             {
                 get_component_type_id<Component_a>(),
@@ -170,8 +168,6 @@ namespace Maia::ECS::Test
 
         SECTION("Archetypes can have a single shared component type")
         {
-            Entity_manager entity_manager{};
-
             {
                 std::array<Component_type_ID, 2> const archetype_ab_component_type_ids
                 {
