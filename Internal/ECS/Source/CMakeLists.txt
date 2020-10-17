@@ -13,9 +13,6 @@ target_include_directories (MaiaECS
 		$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
 )
 
-find_package (Eigen3 3.3.7 CONFIG REQUIRED)
-target_link_libraries (MaiaECS PUBLIC Eigen3::Eigen)
-
 target_module (
     MaiaECS
     PUBLIC
