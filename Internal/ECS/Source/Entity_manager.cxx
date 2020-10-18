@@ -47,7 +47,7 @@ namespace Maia::ECS
             else
             {
                 m_archetypes.push_back(archetype);
-                m_component_chunk_groups.push_back(Component_chunk_group{});
+                m_component_chunk_groups.push_back(Component_chunk_group{{}, {}, {}});
 
                 Component_chunk_group& chunk_group = m_component_chunk_groups.back();
 
