@@ -120,7 +120,7 @@ namespace Maia::ECS::Test
         }
     }
 
-    TEST_CASE("An archetype is an unordered set of component types")
+    TEST_CASE("An archetype is an unordered set of component types", "[entity_manager]")
     {
         std::array<Component_type_ID, 2> const archetype_ab_component_type_ids
         {
@@ -164,7 +164,7 @@ namespace Maia::ECS::Test
         CHECK(archetype_ba != archetype_a);
     }
 
-    TEST_CASE("Archetypes can have a single shared component type")
+    TEST_CASE("Archetypes can have a single shared component type", "[entity_manager]")
     {
         {
             std::array<Component_type_ID, 2> const archetype_ab_component_type_ids
@@ -199,7 +199,7 @@ namespace Maia::ECS::Test
         }
     }
 
-    TEST_CASE("An entity is a tag that identifies components that belong to the same object")
+    TEST_CASE("An entity is a tag that identifies components that belong to the same object", "[entity_manager]")
     {
         Entity_manager entity_manager{};
 
@@ -255,7 +255,7 @@ namespace Maia::ECS::Test
         entity_manager.destroy_entity(entity_1);
     }
 
-    TEST_CASE("When an entity is created, its components are default constructed")
+    TEST_CASE("When an entity is created, its components are default constructed", "[entity_manager]")
     {
         Entity_manager entity_manager{};
 
@@ -274,7 +274,7 @@ namespace Maia::ECS::Test
         CHECK(initialized_value == default_value);
     }
 
-    TEST_CASE("New archetypes can be created by adding or removing components to an entity")
+    TEST_CASE("New archetypes can be created by adding or removing components to an entity", "[entity_manager]")
     {
         Entity_manager entity_manager{};
 
@@ -379,7 +379,7 @@ namespace Maia::ECS::Test
         }
     }
 
-    TEST_CASE("A shared component is a component that can be shared by multiple entities")
+    TEST_CASE("A shared component is a component that can be shared by multiple entities", "[entity_manager]")
     {
         constexpr Shared_component_e shared_component_e{ .value = 1 };
 
@@ -425,7 +425,7 @@ namespace Maia::ECS::Test
         }
     }
 
-    TEST_CASE("Entity components are grouped by archetype in component chunks")
+    TEST_CASE("Entity components are grouped by archetype in component chunks", "[entity_manager]")
     {
         Entity_manager entity_manager{};
 
@@ -483,7 +483,7 @@ namespace Maia::ECS::Test
         }
     }
 
-    TEST_CASE("Entity components are grouped by archetype and the value of the shared component in component chunks")
+    TEST_CASE("Entity components are grouped by archetype and the value of the shared component in component chunks", "[entity_manager]")
     {
         Entity_manager entity_manager{};
 
@@ -601,7 +601,7 @@ namespace Maia::ECS::Test
         }
     }
 
-    TEST_CASE("Access and change component values from Entity_component_views")
+    TEST_CASE("Access and change component values from Entity_component_views", "[entity_manager]")
     {
         Entity_manager entity_manager{};
 
