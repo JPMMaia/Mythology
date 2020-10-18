@@ -10,6 +10,7 @@ import maia.ecs.shared_component;
 import <algorithm>;
 import <cassert>;
 import <cstddef>;
+import <memory_resource>;
 import <optional>;
 import <span>;
 import <vector>;
@@ -159,8 +160,10 @@ namespace Maia::ECS
             return new_entity;
         }
 
-        std::vector<Archetype> m_archetypes;
-        std::vector<Component_chunk_group> m_component_chunk_groups;
+        std::pmr::polymorphic_allocator<std::byte> m_generic_allocator;
+        std::pmr::polymorphic_allocator<std::byte> m_component_chunks_allocator;
+        std::pmr::vector<Archetype> m_archetypes;
+        std::pmr::vector<Component_chunk_group> m_component_chunk_groups;
         Entity::Integral_type m_next_entity_value;
     };
 }
