@@ -39,35 +39,32 @@ namespace Maia::ECS::Test
         };
     }
 
-    TEST_CASE("Use component chunk group")
+    TEST_CASE("Component chunk group hides the component types", "[component_chunk_group]")
     {
-        SECTION("Component chunk group hides the component types")
-        {
-            Component_chunk_group group = create_component_chunk_group<Component_a, Component_b>();
+        Component_chunk_group group = create_component_chunk_group<Component_a, Component_b>();
 
-            CHECK(group.has_component<Component_a>());
-            CHECK(group.has_component<Component_b>());
-            CHECK(!group.has_component<Component_c>());
+        CHECK(group.has_component<Component_a>());
+        CHECK(group.has_component<Component_b>());
+        CHECK(!group.has_component<Component_c>());
+    }
+
+    TEST_CASE("Components are initialized with default values", "[component_chunk_group]")
+    {
+        Component_chunk_group group = create_component_chunk_group<Component_a, Component_b>();
+        group.add_entity(Entity{1});
+
+        {
+            constexpr Component_a expected_value{};
+            Component_a const actual_value = group.get_component_value<Component_a>();
+
+            CHECK(actual_value == expected_value);
         }
 
-        SECTION("Components are initialized with default values")
         {
-            Component_chunk_group group = create_component_chunk_group<Component_a, Component_b>();
-            group.add_entity(Entity{1});
+            constexpr Component_b expected_value{};
+            Component_b const actual_value = group.get_component_value<Component_b>();
 
-            {
-                constexpr Component_a expected_value{};
-                Component_a const actual_value = group.get_component_value<Component_a>();
-
-                CHECK(actual_value == expected_value);
-            }
-
-            {
-                constexpr Component_b expected_value{};
-                Component_b const actual_value = group.get_component_value<Component_b>();
-
-                CHECK(actual_value == expected_value);
-            }
+            CHECK(actual_value == expected_value);
         }
     }
 }
