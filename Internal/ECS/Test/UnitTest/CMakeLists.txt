@@ -23,7 +23,7 @@ target_sources (MaiaECSUnitTest
 	PRIVATE
 		"main.cpp"
 		"Entity_manager.test.cpp"
-		#"Component_chunk_group.test.cpp"
+		"Component_chunk_group.test.cpp"
 		#"Archetype.test.cpp"
 		#"Component.test.cpp"
 		#"Component_group.test.cpp"

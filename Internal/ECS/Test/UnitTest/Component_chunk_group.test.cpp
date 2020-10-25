@@ -4,6 +4,9 @@ import maia.ecs.entity;
 
 import <catch2/catch.hpp>;
 
+import <array>;
+import <cstring>;
+
 namespace Maia::ECS::Test
 {
     namespace
@@ -41,7 +44,13 @@ namespace Maia::ECS::Test
 
     TEST_CASE("Component chunk group hides the component types", "[component_chunk_group]")
     {
-        Component_chunk_group group = create_component_chunk_group<Component_a, Component_b>({}, {});
+        std::array<Component_type_ID, 2> const ab_component_type_ids
+        {
+            get_component_type_id<Component_a>(),
+            get_component_type_id<Component_b>()
+        };
+
+        Component_chunk_group const group{ab_component_type_ids, {}, {}};
 
         CHECK(group.has_component<Component_a>());
         CHECK(group.has_component<Component_b>());
@@ -52,7 +61,13 @@ namespace Maia::ECS::Test
     {
         constexpr Entity entity{ 1 };
 
-        Component_chunk_group group = create_component_chunk_group<Component_a, Component_b>({}, {});
+        std::array<Component_type_ID, 2> const ab_component_type_ids
+        {
+            get_component_type_id<Component_a>(),
+            get_component_type_id<Component_b>()
+        };
+
+        Component_chunk_group group{ab_component_type_ids, {}, {}};
         group.add_entity(entity);
 
         {
@@ -74,7 +89,13 @@ namespace Maia::ECS::Test
     {
         constexpr Entity entity{ 1 };
 
-        Component_chunk_group group = create_component_chunk_group<Component_a, Component_b>({}, {});
+        std::array<Component_type_ID, 2> const ab_component_type_ids
+        {
+            get_component_type_id<Component_a>(),
+            get_component_type_id<Component_b>()
+        };
+
+        Component_chunk_group group{ab_component_type_ids, {}, {}};
         group.add_entity(entity);
 
         {
