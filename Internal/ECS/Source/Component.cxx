@@ -1,5 +1,6 @@
 export module maia.ecs.component;
 
+import <compare>;
 import <concepts>;
 import <cstdint>;
 import <type_traits>;
@@ -16,7 +17,10 @@ namespace Maia::ECS
 	{
 		std::uint16_t value;
 
-		auto operator<=>(Component_type_ID const rhs) const = default;
+		constexpr auto operator<=>(Component_type_ID const rhs) const
+		{
+			return this->value <=> rhs.value;
+		}
 	};
 
 	export inline bool operator==(Component_type_ID const lhs, Component_type_ID const rhs) noexcept
