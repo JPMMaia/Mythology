@@ -6,6 +6,7 @@ import maia.ecs.entity;
 
 import <array>;
 import <cstddef>;
+import <memory>;
 import <memory_resource>;
 import <span>;
 import <vector>;
@@ -21,10 +22,14 @@ namespace Maia::ECS
             std::pmr::polymorphic_allocator<std::byte> const& generic_allocator,
             std::pmr::polymorphic_allocator<std::byte> const& component_chunks_allocator
         ) :
-            m_component_type_ids{component_type_ids.begin(), component_type_ids.end(), generic_allocator}
+            m_component_type_ids{generic_allocator},
+            m_component_chunks{generic_allocator},
+            m_component_chunk_allocator{component_chunks_allocator}
         {
+            m_component_type_ids.assign(component_type_ids.begin(), component_type_ids.end());
         }
 
+        template<Concept::Component... Component_t>
         void add_entity(Entity const entity)
         {
         }
@@ -57,24 +62,8 @@ namespace Maia::ECS
     private:
 
         std::pmr::vector<Component_type_ID> m_component_type_ids;
+        std::pmr::vector<std::unique_ptr<Component_chunk>> m_component_chunks;
+        std::pmr::polymorphic_allocator<std::byte> m_component_chunk_allocator;
+
     };
-
-    export template<Concept::Component... Component_t>
-        Component_chunk_group create_component_chunk_group(
-            std::pmr::polymorphic_allocator<std::byte> const& generic_allocator,
-            std::pmr::polymorphic_allocator<std::byte> const& component_chunks_allocator
-        )
-    {
-        std::array<Component_type_ID, sizeof...(Component_t)> const component_type_ids
-        {
-            (get_component_type_id<Component_t>(),...)
-        };
-
-        return Component_chunk_group
-        {
-            component_type_ids,
-            generic_allocator,
-            component_chunks_allocator
-        };
-    }
 }

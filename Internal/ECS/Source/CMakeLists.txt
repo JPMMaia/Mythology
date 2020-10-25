@@ -56,6 +56,16 @@ target_module (
 target_module (
     MaiaECS
     PUBLIC
+    "maia.ecs.component_chunk"
+    INTERFACE "Component_chunk.cxx"
+    INTERFACE_DEPENDS "Standard_library"
+        "maia.ecs.component"
+        "maia.ecs.entity"
+)
+
+target_module (
+    MaiaECS
+    PUBLIC
     "maia.ecs.components_view"
     INTERFACE "Components_view.cxx"
     INTERFACE_DEPENDS "Standard_library"
@@ -71,6 +81,7 @@ target_module (
     INTERFACE "Component_chunk_group.cxx"
     INTERFACE_DEPENDS "Standard_library"
         "maia.ecs.component"
+        "maia.ecs.component_chunk"
         "maia.ecs.entity"
 )
 
@@ -82,16 +93,9 @@ target_module (
     INTERFACE_DEPENDS "Standard_library"
         "maia.ecs.archetype"
         "maia.ecs.component"
+        "maia.ecs.component_chunk"
         "maia.ecs.components_view"
         "maia.ecs.component_chunk_group"
-        "maia.ecs.entity"
-        "maia.ecs.shared_component"
-    IMPLEMENTATION "Entity_manager.cpp"
-    IMPLEMENTATION_DEPENDS "Standard_library"
-        "maia.ecs.archetype"
-        "maia.ecs.component"
-        "maia.ecs.component_chunk_group"
-        "maia.ecs.components_view"
         "maia.ecs.entity"
         "maia.ecs.shared_component"
 )
@@ -104,6 +108,7 @@ target_module (
     INTERFACE_DEPENDS "Standard_library"
         "maia.ecs.archetype"
         "maia.ecs.component"
+        "maia.ecs.component_chunk"
         "maia.ecs.component_chunk_group"
         "maia.ecs.components_view"
         "maia.ecs.entity"

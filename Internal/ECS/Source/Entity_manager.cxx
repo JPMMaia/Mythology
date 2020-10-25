@@ -47,7 +47,13 @@ namespace Maia::ECS
             else
             {
                 m_archetypes.push_back(archetype);
-                m_component_chunk_groups.push_back(Component_chunk_group{{}, {}, {}});
+                
+                std::span<Component_type_ID const> const component_type_ids = 
+                    archetype.get_component_type_ids();
+
+                m_component_chunk_groups.push_back(
+                    Component_chunk_group{component_type_ids, {}, {}}
+                );
 
                 Component_chunk_group& chunk_group = m_component_chunk_groups.back();
 

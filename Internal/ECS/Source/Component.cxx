@@ -15,6 +15,8 @@ namespace Maia::ECS
 	export struct Component_type_ID
 	{
 		std::uint16_t value;
+
+		auto operator<=>(Component_type_ID const rhs) const = default;
 	};
 
 	export inline bool operator==(Component_type_ID const lhs, Component_type_ID const rhs) noexcept

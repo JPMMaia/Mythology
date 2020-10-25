@@ -128,14 +128,14 @@ namespace Maia::ECS::Test
             get_component_type_id<Component_b>()
         };
 
-        Archetype const archetype_ab = create_archetype(archetype_ab_component_type_ids);
+        Archetype const archetype_ab = create_archetype(archetype_ab_component_type_ids, {});
 
         CHECK(archetype_ab.has_component(get_component_type_id<Component_a>()) == true);
         CHECK(archetype_ab.has_component(get_component_type_id<Component_b>()) == true);
         CHECK(archetype_ab.has_component(get_component_type_id<Component_c>()) == false);
 
         {
-            Archetype const archetype_ab_clone = create_archetype(archetype_ab_component_type_ids);
+            Archetype const archetype_ab_clone = create_archetype(archetype_ab_component_type_ids, {});
             CHECK(archetype_ab == archetype_ab_clone);
         }
 
@@ -145,7 +145,7 @@ namespace Maia::ECS::Test
             get_component_type_id<Component_a>()
         };
 
-        Archetype const archetype_ba = create_archetype(archetype_ba_component_type_ids);
+        Archetype const archetype_ba = create_archetype(archetype_ba_component_type_ids, {});
 
         CHECK(archetype_ba.has_component(get_component_type_id<Component_a>()) == true);
         CHECK(archetype_ba.has_component(get_component_type_id<Component_b>()) == true);
@@ -158,7 +158,7 @@ namespace Maia::ECS::Test
             get_component_type_id<Component_a>()
         };
 
-        Archetype const archetype_a = create_archetype(archetype_a_component_type_ids);
+        Archetype const archetype_a = create_archetype(archetype_a_component_type_ids, {});
 
         CHECK(archetype_ab != archetype_a);
         CHECK(archetype_ba != archetype_a);
@@ -173,7 +173,7 @@ namespace Maia::ECS::Test
                 get_component_type_id<Component_b>()
             };
 
-            Archetype const archetype_ab = create_archetype(archetype_ab_component_type_ids);
+            Archetype const archetype_ab = create_archetype(archetype_ab_component_type_ids, {});
 
 
             CHECK(archetype_ab.has_shared_component() == false);
@@ -190,7 +190,7 @@ namespace Maia::ECS::Test
                 get_component_type_id<Component_a>()
             };
 
-            Archetype const archetype_ae = create_archetype(shared_component_e_type_id, archetype_ae_component_type_ids);
+            Archetype const archetype_ae = create_archetype(shared_component_e_type_id, archetype_ae_component_type_ids, {});
 
 
             CHECK(archetype_ae.has_shared_component() == true);
@@ -209,7 +209,7 @@ namespace Maia::ECS::Test
             get_component_type_id<Component_b>()
         };
 
-        Archetype const archetype_ab = create_archetype(archetype_ab_component_type_ids);
+        Archetype const archetype_ab = create_archetype(archetype_ab_component_type_ids, {});
 
         Entity const entity_0 = entity_manager.create_entity(archetype_ab);
 
@@ -264,7 +264,7 @@ namespace Maia::ECS::Test
             get_component_type_id<Component_b>()
         };
 
-        Archetype const archetype_b = create_archetype(archetype_b_component_type_ids);
+        Archetype const archetype_b = create_archetype(archetype_b_component_type_ids, {});
 
         Entity const entity_0 = entity_manager.create_entity(archetype_b);
 
@@ -283,7 +283,7 @@ namespace Maia::ECS::Test
             get_component_type_id<Component_a>()
         };
 
-        Archetype const archetype_a = create_archetype(archetype_a_component_type_ids);
+        Archetype const archetype_a = create_archetype(archetype_a_component_type_ids, {});
 
         {
             std::span<Archetype const> const archetypes = entity_manager.get_archetypes();
@@ -388,7 +388,7 @@ namespace Maia::ECS::Test
         Shared_component_type_ID const shared_component_e_type_id =
             get_shared_component_type_id<Shared_component_e>();
 
-        Archetype const archetype_e = create_archetype(shared_component_e_type_id, {});
+        Archetype const archetype_e = create_archetype(shared_component_e_type_id, {}, {});
 
         Entity const entity_0 = entity_manager.create_entity(archetype_e, shared_component_e);
 
@@ -435,7 +435,7 @@ namespace Maia::ECS::Test
             get_component_type_id<Component_b>(),
             get_component_type_id<Component_d>(),
         };
-        Archetype const archetype_abd = create_archetype(archetype_abd_component_type_ids);
+        Archetype const archetype_abd = create_archetype(archetype_abd_component_type_ids, {});
 
         std::array<Component_type_ID, 3> const archetype_bcd_component_type_ids
         {
@@ -443,7 +443,7 @@ namespace Maia::ECS::Test
             get_component_type_id<Component_c>(),
             get_component_type_id<Component_d>(),
         };
-        Archetype const archetype_bcd = create_archetype(archetype_bcd_component_type_ids);
+        Archetype const archetype_bcd = create_archetype(archetype_bcd_component_type_ids, {});
 
         Entity const entity_0 = entity_manager.create_entity(archetype_abd);
         Entity const entity_1 = entity_manager.create_entity(archetype_abd);
@@ -493,13 +493,13 @@ namespace Maia::ECS::Test
         {
             get_component_type_id<Component_a>(),
         };
-        Archetype const archetype_ae = create_archetype(shared_component_e_type_id, archetype_a_component_type_ids);
+        Archetype const archetype_ae = create_archetype(shared_component_e_type_id, archetype_a_component_type_ids, {});
 
         std::array<Component_type_ID, 1> const archetype_b_component_type_ids
         {
             get_component_type_id<Component_a>(),
         };
-        Archetype const archetype_be = create_archetype(shared_component_e_type_id, archetype_b_component_type_ids);
+        Archetype const archetype_be = create_archetype(shared_component_e_type_id, archetype_b_component_type_ids, {});
 
         Shared_component_e constexpr shared_component_e_0{ .value = 1 };
         Shared_component_e constexpr shared_component_e_1{ .value = 2 };
@@ -609,7 +609,7 @@ namespace Maia::ECS::Test
         {
             get_component_type_id<Component_a>(),
         };
-        Archetype const archetype_a = create_archetype(archetype_a_component_type_id);
+        Archetype const archetype_a = create_archetype(archetype_a_component_type_id, {});
 
         Entity const entity_0 = entity_manager.create_entity(archetype_a);
 
