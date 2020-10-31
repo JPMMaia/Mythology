@@ -1,5 +1,6 @@
 export module maia.ecs.component;
 
+import <array>;
 import <compare>;
 import <concepts>;
 import <cstdint>;
@@ -51,22 +52,45 @@ namespace Maia::ECS
 		return get_component_type_id_impl<Raw_component>();
 	}
 
+	
+	export template<Concept::Component... Component_t>
+	std::array<Component_type_ID, sizeof...(Component_t)> make_component_type_id_array() noexcept
+	{
+		return
+		{
+			(get_component_type_id<Component_t>(), ...)
+		};
+	}
 
-	export using Component_size = std::uint16_t;;
 
-	export struct Component_info
+	export using Component_size = std::uint16_t;
+
+	export struct Component_type_info
 	{
 		Component_type_ID id;
 		Component_size size;
 	};
 
-	export template <class Component>
-	Component_info create_component_info() noexcept
+	export template <Concept::Component Component_t>
+	Component_type_info create_component_type_info() noexcept
 	{
-		return 
+		Component_type_info const type_info
 		{
-			get_component_type_id<Component>(),
-			{ sizeof(Component) }
+			get_component_type_id<Component_t>(),
+			{ sizeof(Component_t) }
 		};
+
+		return type_info;
+	}
+
+	export template<Concept::Component... Component_t>
+	std::array<Component_type_info, sizeof...(Component_t)> make_component_type_info_array() noexcept
+	{
+		std::array<Component_type_info, sizeof...(Component_t)> const type_infos
+		{
+			{create_component_type_info<Component_t>()...}
+		};
+
+		return type_infos;
 	}
 }
