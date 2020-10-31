@@ -34,6 +34,11 @@ namespace Maia::ECS
         {
         }
 
+        void remove_entity(Entity const entity) noexcept
+        {
+
+        }
+
         template<Concept::Component Component_t>
         Component_t get_component_value(Entity const entity) const noexcept
         {
