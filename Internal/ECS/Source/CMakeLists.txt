@@ -81,7 +81,10 @@ target_module (
     INTERFACE "Component_chunk_group.cxx"
     INTERFACE_DEPENDS "Standard_library"
         "maia.ecs.component"
-        "maia.ecs.component_chunk"
+        "maia.ecs.entity"
+    IMPLEMENTATION "Component_chunk_group.cpp"
+    IMPLEMENTATION_DEPENDS "Standard_library"
+        "maia.ecs.component"
         "maia.ecs.entity"
 )
 
