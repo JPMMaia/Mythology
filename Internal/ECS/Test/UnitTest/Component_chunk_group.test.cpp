@@ -44,30 +44,155 @@ namespace Maia::ECS::Test
 
     TEST_CASE("Component chunk group hides the component types", "[component_chunk_group]")
     {
-        std::array<Component_type_ID, 2> const ab_component_type_ids
-        {
-            get_component_type_id<Component_a>(),
-            get_component_type_id<Component_b>()
-        };
+        std::array<Component_type_info, 2> const component_type_infos = 
+            make_component_type_info_array<Component_a, Component_b>();
 
-        Component_chunk_group const group{ab_component_type_ids, {}, {}};
+        Component_chunk_group const group{component_type_infos, 1, {}, {}};
 
-        CHECK(group.has_component<Component_a>());
-        CHECK(group.has_component<Component_b>());
-        CHECK(!group.has_component<Component_c>());
+        CHECK(group.has_component_type(component_type_infos[0].id));
+        CHECK(group.has_component_type(component_type_infos[1].id));
+        CHECK(!group.has_component_type(get_component_type_id<Component_c>()));
     }
 
-    TEST_CASE("Components are initialized with default values", "[component_chunk_group]")
+    TEST_CASE("If no chunk is available, a new chunk is created", "[component_chunk_group]")
+    {
+        std::array<Component_type_info, 2> const component_type_infos = 
+            make_component_type_info_array<Component_a, Component_b>();
+
+        Component_chunk_group group{component_type_infos, 1, {}, {}};
+
+        CHECK(group.number_of_chunks() == 0);
+
+        group.add_entity(Entity{0});
+
+        CHECK(group.number_of_chunks() == 1);
+
+        group.add_entity(Entity{1});
+
+        CHECK(group.number_of_chunks() == 2);
+    }
+
+    TEST_CASE("If a chunk is available, a new chunk is not created", "[component_chunk_group]")
+    {
+        std::array<Component_type_info, 2> const component_type_infos = 
+            make_component_type_info_array<Component_a, Component_b>();
+
+        Component_chunk_group group{component_type_infos, 2, {}, {}};
+
+        CHECK(group.number_of_chunks() == 0);
+
+        group.add_entity(Entity{0});
+
+        CHECK(group.number_of_chunks() == 1);
+
+        group.add_entity(Entity{1});
+
+        CHECK(group.number_of_chunks() == 1);
+
+        group.add_entity(Entity{2});
+
+        CHECK(group.number_of_chunks() == 2);
+    }
+
+    TEST_CASE("Removing an entity results in a swap and pop if element is not the last", "[component_chunk_group]")
+    {
+        std::array<Component_type_info, 2> const component_type_infos = 
+            make_component_type_info_array<Component_a, Component_b>();
+
+        Component_chunk_group group{component_type_infos, 2, {}, {}};
+
+        SECTION("Remove first element of a group with 1 chunk and 2 elements")
+        {
+            group.add_entity(Entity{0});
+            group.add_entity(Entity{1});
+            
+            CHECK(group.number_of_entities() == 2);
+            CHECK(group.get_entity(0) == Entity{0});
+            CHECK(group.get_entity(1) == Entity{1});
+            
+            group.remove_entity(0);
+
+            CHECK(group.number_of_entities() == 1);
+            CHECK(group.get_entity(0) == Entity{1});
+        }
+
+        SECTION("Remove first element of a group with 2 chunks and 3 elements")
+        {
+            group.add_entity(Entity{0});
+            group.add_entity(Entity{1});
+            group.add_entity(Entity{2});
+            
+            CHECK(group.number_of_entities() == 3);
+            CHECK(group.get_entity(0) == Entity{0});
+            CHECK(group.get_entity(1) == Entity{1});
+            CHECK(group.get_entity(2) == Entity{2});
+            
+            group.remove_entity(0);
+
+            CHECK(group.number_of_entities() == 2);
+            CHECK(group.get_entity(0) == Entity{2});
+            CHECK(group.get_entity(1) == Entity{1});
+        }
+
+        SECTION("Remove last element of a group")
+        {
+            group.add_entity(Entity{0});
+            group.add_entity(Entity{1});
+            group.add_entity(Entity{2});
+            
+            CHECK(group.number_of_entities() == 3);
+            CHECK(group.get_entity(0) == Entity{0});
+            CHECK(group.get_entity(1) == Entity{1});
+            CHECK(group.get_entity(2) == Entity{2});
+            
+            group.remove_entity(2);
+
+            CHECK(group.number_of_entities() == 2);
+            CHECK(group.get_entity(0) == Entity{0});
+            CHECK(group.get_entity(1) == Entity{1});
+
+            group.remove_entity(1);
+
+            CHECK(group.number_of_entities() == 1);
+            CHECK(group.get_entity(0) == Entity{0});
+
+            group.remove_entity(0);
+
+            CHECK(group.number_of_entities() == 0);
+        }
+        
+    }
+
+    TEST_CASE("When a chunk is empty, it is not destroyed unless shrink_to_fit is called", "[component_chunk_group]")
+    {
+        std::array<Component_type_info, 2> const component_type_infos = 
+            make_component_type_info_array<Component_a, Component_b>();
+
+        Component_chunk_group group{component_type_infos, 2, {}, {}};
+
+        group.add_entity(Entity{0});
+        group.add_entity(Entity{1});
+        group.add_entity(Entity{2});
+
+        CHECK(group.number_of_chunks() == 2);
+
+        group.remove_entity(0);
+
+        CHECK(group.number_of_chunks() == 2);
+
+        group.shrink_to_fit();
+
+        CHECK(group.number_of_chunks() == 1);
+    }
+
+    TEST_CASE("Components are initialized with default values in a component chunk group", "[component_chunk_group]")
     {
         constexpr Entity entity{ 1 };
 
-        std::array<Component_type_ID, 2> const ab_component_type_ids
-        {
-            get_component_type_id<Component_a>(),
-            get_component_type_id<Component_b>()
-        };
+        std::array<Component_type_info, 2> const component_type_infos = 
+            make_component_type_info_array<Component_a, Component_b>();
 
-        Component_chunk_group group{ab_component_type_ids, {}, {}};
+        Component_chunk_group group{component_type_infos, {}, {}};
         group.add_entity(entity);
 
         {
@@ -85,17 +210,14 @@ namespace Maia::ECS::Test
         }
     }
 
-    TEST_CASE("Set component values", "[component_chunk_group]")
+    TEST_CASE("Set component values in a component chunk group", "[component_chunk_group]")
     {
         constexpr Entity entity{ 1 };
 
-        std::array<Component_type_ID, 2> const ab_component_type_ids
-        {
-            get_component_type_id<Component_a>(),
-            get_component_type_id<Component_b>()
-        };
+        std::array<Component_type_info, 2> const component_type_infos = 
+            make_component_type_info_array<Component_a, Component_b>();
 
-        Component_chunk_group group{ab_component_type_ids, {}, {}};
+        Component_chunk_group group{component_type_infos, {}, {}};
         group.add_entity(entity);
 
         {
@@ -113,5 +235,15 @@ namespace Maia::ECS::Test
             Component_b const actual_value = group.get_component_value<Component_b>(entity);
             CHECK(actual_value == new_value);
         }
+    }
+
+    TEST_CASE("Use views in a component chunk group", "[component_chunk_group]")
+    {
+        CHECK(true == true);
+    }
+
+    TEST_CASE("Each chunk in a chunk group has a shared component associated with it", "[component_chunk_group]")
+    {
+        CHECK(true == true);
     }
 }
