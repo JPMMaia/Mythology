@@ -40,6 +40,16 @@ namespace Maia::ECS::Test
         {
             int value = 3;
         };
+
+        struct Shared_component_d : Component_base<Shared_component_d>
+        {
+            int value = 4;
+        };
+
+        struct Shared_component_e : Component_base<Shared_component_e>
+        {
+            int value = 4;
+        };
     }
 
     TEST_CASE("Component chunk group hides the component types", "[component_chunk_group]")
@@ -160,7 +170,6 @@ namespace Maia::ECS::Test
 
             CHECK(group.number_of_entities() == 0);
         }
-        
     }
 
     TEST_CASE("When a chunk is empty, it is not destroyed unless shrink_to_fit is called", "[component_chunk_group]")
@@ -237,12 +246,96 @@ namespace Maia::ECS::Test
         }
     }
 
-    TEST_CASE("Use views in a component chunk group", "[component_chunk_group]")
+    TEST_CASE("A component chunk group hides the shared component types", "[component_chunk_group]")
     {
-        CHECK(true == true);
+        std::array<Component_type_info, 2> const component_type_infos = 
+            make_component_type_info_array<Component_a, Component_b>();
+
+        Shared_component_type_info const shared_component_type_info =
+            make_shared_component_type_info<Shared_component_d>();
+
+        Component_chunk_group const group{component_type_infos, shared_component_type_info, 1, {}, {}};
+
+        CHECK(group.has_shared_component_type(shared_component_type_info.id));
+        CHECK(!group.has_shared_component_type(get_shared_component_type_id<Shared_component_type_e>());
     }
 
-    TEST_CASE("Each chunk in a chunk group has a shared component associated with it", "[component_chunk_group]")
+    TEST_CASE("Each chunk in a chunk group has a shared component value associated with it", "[component_chunk_group]")
+    {
+        std::array<Component_type_info, 2> const component_type_infos = 
+            make_component_type_info_array<Component_a, Component_b>();
+
+        Shared_component_type_info const shared_component_type_info =
+            make_shared_component_type_info<Shared_component_d>();
+
+        Component_chunk_group group{component_type_infos, shared_component_type_info, 2, {}, {}};
+
+        constexpr Shared_component_d d_0{.value=10};
+        constexpr Shared_component_d d_1{.value=11};
+
+        CHECK(group.number_of_chunks() == 0);
+        CHECK(group.number_of_chunks(d_0) == 0);
+        CHECK(group.number_of_chunks(d_1) == 0);
+
+        group.add_entity(Entity{0}, d_0);
+
+        CHECK(group.number_of_chunks() == 1);
+        CHECK(group.number_of_chunks(d_0) == 1);
+        CHECK(group.number_of_chunks(d_1) == 0);
+
+        group.add_entity(Entity{1}, d_1);
+
+        CHECK(group.number_of_chunks() == 2);
+        CHECK(group.number_of_chunks(d_0) == 1);
+        CHECK(group.number_of_chunks(d_1) == 1);
+
+        group.add_entity(Entity{2}, d_1);
+
+        CHECK(group.number_of_chunks() == 2);
+        CHECK(group.number_of_chunks(d_0) == 1);
+        CHECK(group.number_of_chunks(d_1) == 1);
+
+        group.add_entity(Entity{3}, d_1);
+
+        CHECK(group.number_of_chunks() == 3);
+        CHECK(group.number_of_chunks(d_0) == 1);
+        CHECK(group.number_of_chunks(d_1) == 2);
+
+        group.remove_entity(1);
+
+        CHECK(group.number_of_chunks() == 3);
+        CHECK(group.number_of_chunks(d_0) == 1);
+        CHECK(group.number_of_chunks(d_1) == 2);
+
+        group.shrink_to_fit();
+
+        CHECK(group.number_of_chunks() == 2);
+        CHECK(group.number_of_chunks(d_0) == 1);
+        CHECK(group.number_of_chunks(d_1) == 1);
+
+        group.remove_entity(0);
+        group.shrink_to_fit();
+
+        CHECK(group.number_of_chunks() == 1);
+        CHECK(group.number_of_chunks(d_0) == 0);
+        CHECK(group.number_of_chunks(d_1) == 1);
+
+        group.remove_entity(2);
+        group.shrink_to_fit();
+
+        CHECK(group.number_of_chunks() == 1);
+        CHECK(group.number_of_chunks(d_0) == 1);
+        CHECK(group.number_of_chunks(d_1) == 1);
+
+        group.remove_entity(1);
+        group.shrink_to_fit();
+
+        CHECK(group.number_of_chunks() == 0);
+        CHECK(group.number_of_chunks(d_0) == 0);
+        CHECK(group.number_of_chunks(d_1) == 0);
+    }
+
+    TEST_CASE("Use views in a component chunk group", "[component_chunk_group]")
     {
         CHECK(true == true);
     }
