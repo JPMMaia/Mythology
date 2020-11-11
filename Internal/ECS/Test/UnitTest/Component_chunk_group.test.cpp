@@ -260,56 +260,6 @@ namespace Maia::ECS::Test
         CHECK(!group.has_shared_component_type(get_shared_component_type_id<Shared_component_type_e>());
     }
 
-    TEST_CASE("Use views in a component chunk group", "[component_chunk_group]")
-    {
-        std::array<Component_type_info, 2> const component_type_infos = 
-            make_component_type_info_array<Component_a, Component_b>();
-
-        Component_chunk_group group{component_type_infos, {}, 2, {}, {}};
-
-        constexpr Entity entity_0{0};
-        group.add_entity(entity_0);
-        group.set_component_value(entity_0, Component_a{.value = 10});
-        group.set_component_value(entity_0, Component_b{.value = 11});
-
-        constexpr Entity entity_1{1};
-        group.add_entity(entity_1);
-        group.set_component_value(entity_1, Component_a{.value = 12});
-        group.set_component_value(entity_1, Component_b{.value = 13});
-
-        constexpr Entity entity_2{2};
-        group.add_entity(entity_2);
-        group.set_component_value(entity_2, Component_a{.value = 14});
-        group.set_component_value(entity_2, Component_b{.value = 15});
-
-        Component_chunk_views chunk_views = group.get_views();
-        REQUIRE(std::distance(chunk_views.begin(), chunk_views.end()) == 2);
-
-        {
-            Component_chunk_view chunk_view = chunk_views.begin();
-            REQUIRE(std::distance(chunk_view.begin(), chunk_view.end()) == 2);
-
-            {
-                Entity_component_view entity_component_view = chunk_view.begin();
-                CHECK(entity_component_view.get<Component_a>() == Component_a{.value = 10});
-                CHECK(entity_component_view.get<Component_b>() == Component_a{.value = 11});
-
-                ++entity_component_view;
-                CHECK(entity_component_view.get<Component_a>() == Component_a{.value = 12});
-                CHECK(entity_component_view.get<Component_b>() == Component_a{.value = 13});
-            }
-            
-            ++chunk_view;
-            CHECK(std::distance(chunk_view.begin(), chunk_view.end()) == 1);
-
-            {
-                Entity_component_view entity_component_view = chunk_view.begin();
-                CHECK(entity_component_view.get<Component_a>() == Component_a{.value = 14});
-                CHECK(entity_component_view.get<Component_b>() == Component_a{.value = 15});
-            }
-        }
-    }
-
     TEST_CASE("Each chunk in a chunk group has a shared component value associated with it", "[component_chunk_group]")
     {
         std::array<Component_type_info, 2> const component_type_infos = 
