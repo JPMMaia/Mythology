@@ -498,7 +498,7 @@ namespace Maia::ECS::Test
         }
     }
 
-    TEST_CASE("Entity components are grouped by archetype and the value of the shared component in component chunks", "[entity_manager]")
+    TEST_CASE("Components are grouped by archetype and shared component in chunks", "[entity_manager]")
     {
         Entity_manager entity_manager{};
 
