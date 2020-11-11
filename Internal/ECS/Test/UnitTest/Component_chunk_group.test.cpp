@@ -57,7 +57,7 @@ namespace Maia::ECS::Test
         std::array<Component_type_info, 2> const component_type_infos = 
             make_component_type_info_array<Component_a, Component_b>();
 
-        Component_chunk_group const group{component_type_infos, 1, {}, {}};
+        Component_chunk_group const group{component_type_infos, {}, 1, {}, {}};
 
         CHECK(group.has_component_type(component_type_infos[0].id));
         CHECK(group.has_component_type(component_type_infos[1].id));
@@ -69,7 +69,7 @@ namespace Maia::ECS::Test
         std::array<Component_type_info, 2> const component_type_infos = 
             make_component_type_info_array<Component_a, Component_b>();
 
-        Component_chunk_group group{component_type_infos, 1, {}, {}};
+        Component_chunk_group group{component_type_infos, {}, 1, {}, {}};
 
         CHECK(group.number_of_chunks() == 0);
 
@@ -87,7 +87,7 @@ namespace Maia::ECS::Test
         std::array<Component_type_info, 2> const component_type_infos = 
             make_component_type_info_array<Component_a, Component_b>();
 
-        Component_chunk_group group{component_type_infos, 2, {}, {}};
+        Component_chunk_group group{component_type_infos, {}, 2, {}, {}};
 
         CHECK(group.number_of_chunks() == 0);
 
@@ -109,7 +109,7 @@ namespace Maia::ECS::Test
         std::array<Component_type_info, 2> const component_type_infos = 
             make_component_type_info_array<Component_a, Component_b>();
 
-        Component_chunk_group group{component_type_infos, 2, {}, {}};
+        Component_chunk_group group{component_type_infos, {}, 2, {}, {}};
 
         SECTION("Remove first element of a group with 1 chunk and 2 elements")
         {
@@ -120,9 +120,10 @@ namespace Maia::ECS::Test
             CHECK(group.get_entity(0) == Entity{0});
             CHECK(group.get_entity(1) == Entity{1});
             
-            group.remove_entity(0);
+            Component_group_entity_moved const moved_entity = group.remove_entity(0);
 
             CHECK(group.number_of_entities() == 1);
+            CHECK(moved_entity.entity == Entity{1});
             CHECK(group.get_entity(0) == Entity{1});
         }
 
@@ -177,7 +178,7 @@ namespace Maia::ECS::Test
         std::array<Component_type_info, 2> const component_type_infos = 
             make_component_type_info_array<Component_a, Component_b>();
 
-        Component_chunk_group group{component_type_infos, 2, {}, {}};
+        Component_chunk_group group{component_type_infos, {}, 2, {}, {}};
 
         group.add_entity(Entity{0});
         group.add_entity(Entity{1});
@@ -201,19 +202,19 @@ namespace Maia::ECS::Test
         std::array<Component_type_info, 2> const component_type_infos = 
             make_component_type_info_array<Component_a, Component_b>();
 
-        Component_chunk_group group{component_type_infos, {}, {}};
-        group.add_entity(entity);
+        Component_chunk_group group{component_type_infos, {}, 2, {}, {}};
+        Component_chunk_group::Index const entity_index = group.add_entity(entity);
 
         {
             constexpr Component_a expected_value{};
-            Component_a const actual_value = group.get_component_value<Component_a>(entity);
+            Component_a const actual_value = group.get_component_value<Component_a>(entity_index);
 
             CHECK(actual_value == expected_value);
         }
 
         {
             constexpr Component_b expected_value{};
-            Component_b const actual_value = group.get_component_value<Component_b>(entity);
+            Component_b const actual_value = group.get_component_value<Component_b>(entity_index);
 
             CHECK(actual_value == expected_value);
         }
@@ -226,22 +227,22 @@ namespace Maia::ECS::Test
         std::array<Component_type_info, 2> const component_type_infos = 
             make_component_type_info_array<Component_a, Component_b>();
 
-        Component_chunk_group group{component_type_infos, {}, {}};
-        group.add_entity(entity);
+        Component_chunk_group group{component_type_infos, {}, 2, {}, {}};
+        Component_chunk_group::Index const entity_index = group.add_entity(entity);
 
         {
             constexpr Component_a new_value{ .value = 10 };
-            group.set_component_value(entity, new_value);
+            group.set_component_value(entity_index, new_value);
 
-            Component_a const actual_value = group.get_component_value<Component_a>(entity);
+            Component_a const actual_value = group.get_component_value<Component_a>(entity_index);
             CHECK(actual_value == new_value);
         }
 
         {
             constexpr Component_b new_value{ .value = 12 };
-            group.set_component_value(entity, new_value);
+            group.set_component_value(entity_index, new_value);
 
-            Component_b const actual_value = group.get_component_value<Component_b>(entity);
+            Component_b const actual_value = group.get_component_value<Component_b>(entity_index);
             CHECK(actual_value == new_value);
         }
     }
@@ -257,7 +258,7 @@ namespace Maia::ECS::Test
         Component_chunk_group const group{component_type_infos, shared_component_type_info, 1, {}, {}};
 
         CHECK(group.has_shared_component_type(shared_component_type_info.id));
-        CHECK(!group.has_shared_component_type(get_shared_component_type_id<Shared_component_type_e>());
+        CHECK(!group.has_shared_component_type(get_shared_component_type_id<Shared_component_e>()));
     }
 
     TEST_CASE("Each chunk in a chunk group has a shared component value associated with it", "[component_chunk_group]")
