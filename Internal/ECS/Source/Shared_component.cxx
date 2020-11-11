@@ -48,14 +48,14 @@ namespace Maia::ECS
 
 	export using Shared_component_size = std::uint16_t;
 
-	export struct Shared_component_info
+	export struct Shared_component_type_info
 	{
 		Shared_component_type_ID id;
 		Shared_component_size size;
 	};
 
 	export template <class Shared_component>
-		Shared_component_info create_shared_component_info() noexcept
+		Shared_component_type_info make_shared_component_type_info() noexcept
 	{
 		return
 		{
