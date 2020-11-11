@@ -82,10 +82,12 @@ target_module (
     INTERFACE_DEPENDS "Standard_library"
         "maia.ecs.component"
         "maia.ecs.entity"
+        "maia.ecs.shared_component"
     IMPLEMENTATION "Component_chunk_group.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library"
         "maia.ecs.component"
         "maia.ecs.entity"
+        "maia.ecs.shared_component"
 )
 
 target_module (

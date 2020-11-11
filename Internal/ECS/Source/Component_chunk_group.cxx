@@ -2,6 +2,7 @@ export module maia.ecs.component_chunk_group;
 
 import maia.ecs.component;
 import maia.ecs.entity;
+import maia.ecs.shared_component;
 
 import <array>;
 import <cstddef>;
@@ -108,5 +109,80 @@ namespace Maia::ECS
 
 	export class Component_chunk_group
 	{
+	public:
+
+		using Index = std::size_t;
+
+		Component_chunk_group(
+			std::span<Component_type_info const> const component_type_infos,
+			Shared_component_type_info const shared_component_type_info,
+			std::size_t const number_of_entities_per_chunk,
+			std::pmr::polymorphic_allocator<std::byte> const& chunk_allocator,
+			std::pmr::polymorphic_allocator<std::byte> const& allocator
+		) noexcept
+		{
+		}
+
+		Index add_entity(Entity const entity)
+		{
+			return {};
+		}
+
+		template <Concept::Shared_component Shared_component_t>
+		Index add_entity(Entity const entity, Shared_component_t const& shared_component)
+		{
+			return {};
+		}
+
+		Component_group_entity_moved remove_entity(Index const index) noexcept
+		{
+			return {};
+		}
+
+		Entity get_entity(Index const index) const noexcept
+		{
+			return {};
+		}
+
+		template <Concept::Component Component_t>
+		Component_t get_component_value(Index const index) const noexcept
+		{
+			return {};
+		}
+
+		template <Concept::Component Component_t>
+		void set_component_value(Index const index, Component_t const& value) noexcept
+		{
+		}
+
+		void shrink_to_fit() noexcept
+		{
+		}
+
+		bool has_component_type(Component_type_ID const id) const noexcept
+		{
+			return {};
+		}
+
+		bool has_shared_component_type(Shared_component_type_ID const id) const noexcept
+		{
+			return {};
+		}
+
+		std::size_t number_of_entities() const noexcept
+		{
+			return {};
+		}
+
+		std::size_t number_of_chunks() const noexcept
+		{
+			return {};
+		}
+
+		template <Concept::Shared_component Shared_component_t>
+		std::size_t number_of_chunks(Shared_component_t const& shared_component) const noexcept
+		{
+			return {};
+		}
 	};
 }
