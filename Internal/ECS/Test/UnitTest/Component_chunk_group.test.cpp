@@ -76,23 +76,27 @@ namespace Maia::ECS::Test
 
         CHECK(group.number_of_chunks(chunk_group_0) == 0);
 
-        group.add_entity(Entity{0}, chunk_group_0);
+        Component_chunk_group::Index const entity_1_index = group.add_entity(Entity{1}, chunk_group_0);
 
+        CHECK(group.get_entity(chunk_group_0, entity_1_index) == Entity{1});
         CHECK(group.number_of_chunks(chunk_group_0) == 1);
 
-        group.add_entity(Entity{1}, chunk_group_0);
+        Component_chunk_group::Index const entity_2_index = group.add_entity(Entity{2}, chunk_group_0);
 
+        CHECK(group.get_entity(chunk_group_0, entity_2_index) == Entity{2});
         CHECK(group.number_of_chunks(chunk_group_0) == 2);
         CHECK(group.number_of_chunks() == 2);
         CHECK(group.number_of_chunks(chunk_group_1) == 0);
 
-        group.add_entity(Entity{2}, chunk_group_1);
+        Component_chunk_group::Index const entity_3_index = group.add_entity(Entity{3}, chunk_group_1);
 
+        CHECK(group.get_entity(chunk_group_1, entity_3_index) == Entity{3});
         CHECK(group.number_of_chunks(chunk_group_1) == 1);
         CHECK(group.number_of_chunks() == 3);
 
-        group.add_entity(Entity{3}, chunk_group_1);
+        Component_chunk_group::Index const entity_4_index = group.add_entity(Entity{4}, chunk_group_1);
 
+        CHECK(group.get_entity(chunk_group_1, entity_4_index) == Entity{4});
         CHECK(group.number_of_chunks(chunk_group_1) == 2);
         CHECK(group.number_of_chunks() == 4);
     }
@@ -109,32 +113,38 @@ namespace Maia::ECS::Test
 
         CHECK(group.number_of_chunks(chunk_group_0) == 0);
 
-        group.add_entity(Entity{0}, chunk_group_0);
+        Component_chunk_group::Index const entity_1_index = group.add_entity(Entity{1}, chunk_group_0);
 
+        CHECK(group.get_entity(chunk_group_0, entity_1_index) == Entity{1});
         CHECK(group.number_of_chunks(chunk_group_0) == 1);
 
-        group.add_entity(Entity{1}, chunk_group_0);
+        Component_chunk_group::Index const entity_2_index = group.add_entity(Entity{2}, chunk_group_0);
 
+        CHECK(group.get_entity(chunk_group_0, entity_2_index) == Entity{2});
         CHECK(group.number_of_chunks(chunk_group_0) == 1);
 
-        group.add_entity(Entity{2}, chunk_group_0);
+        Component_chunk_group::Index const entity_3_index = group.add_entity(Entity{3}, chunk_group_0);
 
+        CHECK(group.get_entity(chunk_group_0, entity_3_index) == Entity{3});
         CHECK(group.number_of_chunks(chunk_group_0) == 2);
         CHECK(group.number_of_chunks() == 2);
         CHECK(group.number_of_chunks(chunk_group_1) == 0);
 
-        group.add_entity(Entity{3}, chunk_group_1);
+        Component_chunk_group::Index const entity_4_index = group.add_entity(Entity{4}, chunk_group_1);
 
+        CHECK(group.get_entity(chunk_group_1, entity_4_index) == Entity{4});
         CHECK(group.number_of_chunks(chunk_group_1) == 1);
         CHECK(group.number_of_chunks() == 3);
 
-        group.add_entity(Entity{4}, chunk_group_1);
+        Component_chunk_group::Index const entity_5_index = group.add_entity(Entity{5}, chunk_group_1);
 
+        CHECK(group.get_entity(chunk_group_1, entity_5_index) == Entity{5});
         CHECK(group.number_of_chunks(chunk_group_1) == 1);
         CHECK(group.number_of_chunks() == 3);
 
-        group.add_entity(Entity{5}, chunk_group_1);
+        Component_chunk_group::Index const entity_6_index = group.add_entity(Entity{6}, chunk_group_1);
 
+        CHECK(group.get_entity(chunk_group_1, entity_6_index) == Entity{6});
         CHECK(group.number_of_chunks(chunk_group_1) == 2);
         CHECK(group.number_of_chunks() == 4);
     }
