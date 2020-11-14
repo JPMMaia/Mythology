@@ -5,11 +5,13 @@ import maia.ecs.entity;
 import maia.ecs.shared_component;
 
 import <array>;
+import <cassert>;
 import <cstddef>;
 import <memory_resource>;
 import <optional>;
 import <span>;
 import <vector>;
+import <unordered_map>;
 
 namespace Maia::ECS
 {
@@ -107,6 +109,15 @@ namespace Maia::ECS
 		Component_size size;
 	};
 
+	using Shared_component_hash = std::size_t;
+	using Chunk = std::pmr::vector<std::byte>;
+
+	struct Chunk_group
+	{
+		std::pmr::vector<Chunk> chunks;
+		std::size_t number_of_elements;
+	};
+
 	export class Component_chunk_group
 	{
 	public:
@@ -119,13 +130,64 @@ namespace Maia::ECS
 			std::size_t const number_of_entities_per_chunk,
 			std::pmr::polymorphic_allocator<std::byte> const& chunk_allocator,
 			std::pmr::polymorphic_allocator<std::byte> const& allocator
-		) noexcept
+		) noexcept :
+			m_chunk_groups{allocator},
+			m_component_type_infos{component_type_infos.begin(), component_type_infos.end(), allocator},
+			m_number_of_entities_per_chunk{number_of_entities_per_chunk},
+			m_chunk_allocator{chunk_allocator}
 		{
 		}
 
 		Index add_entity(Entity const entity)
 		{
-			return {};
+			constexpr Shared_component_hash empty_shared_component_hash = 0;
+
+			auto const location = m_chunk_groups.find(empty_shared_component_hash);
+
+			if (location != m_chunk_groups.end())
+			{
+				Chunk_group& chunk_group = location->second;
+				assert(!chunk_group.chunks.empty());
+
+				std::size_t const chunk_group_capacity = m_number_of_entities_per_chunk * chunk_group.chunks.size();
+
+				if (chunk_group.number_of_elements < chunk_group_capacity)
+				{
+					Chunk& chunk = chunk_group.chunks.back(); // TODO not the back one
+				
+					// TODO Add new entity to chunk
+					++chunk_group.number_of_elements;
+
+					return chunk_group.number_of_elements - 1;
+				}
+				else
+				{
+					Chunk new_chunk{m_chunk_allocator};
+					new_chunk.resize(get_chunk_size());
+					
+					// TODO Add new entity to chunk
+					++chunk_group.number_of_elements;
+
+					chunk_group.chunks.push_back(std::move(new_chunk));
+
+					return chunk_group.number_of_elements - 1;
+				}
+			}
+			else
+			{
+				Chunk new_chunk{m_chunk_allocator};
+				new_chunk.resize(get_chunk_size());
+				// TODO Add new entity to chunk
+
+				std::pmr::vector<Chunk> chunks{m_chunk_groups.get_allocator()};
+				chunks.push_back(std::move(new_chunk));
+
+				Chunk_group chunk_group{std::move(chunks), 1};
+
+				m_chunk_groups.emplace(empty_shared_component_hash, std::move(chunk_group));
+
+				return 0;
+			}
 		}
 
 		template <Concept::Shared_component Shared_component_t>
@@ -161,7 +223,18 @@ namespace Maia::ECS
 
 		bool has_component_type(Component_type_ID const id) const noexcept
 		{
-			return {};
+			auto const is_component_type = [&id](Component_type_info const info) -> bool
+			{
+				return info.id == id;
+			};
+
+			auto const location = std::find_if(
+				m_component_type_infos.begin(),
+				m_component_type_infos.end(),
+				is_component_type
+			);
+
+			return location != m_component_type_infos.end();
 		}
 
 		bool has_shared_component_type(Shared_component_type_ID const id) const noexcept
@@ -176,7 +249,14 @@ namespace Maia::ECS
 
 		std::size_t number_of_chunks() const noexcept
 		{
-			return {};
+			std::size_t count = 0;
+
+			for (std::pair<Shared_component_hash, Chunk_group> const& chunk_group : m_chunk_groups)
+			{
+				count += chunk_group.second.chunks.size();
+			}
+
+			return count;
 		}
 
 		template <Concept::Shared_component Shared_component_t>
@@ -184,5 +264,32 @@ namespace Maia::ECS
 		{
 			return {};
 		}
+
+	private:
+
+		std::size_t get_chunk_size() const noexcept
+		{
+			std::size_t const total_component_size = [this]
+			{
+				std::size_t total_component_size = 0;
+
+				for (Component_type_info const& type_info : m_component_type_infos)
+				{
+					total_component_size += type_info.size;
+				}
+
+				return total_component_size;
+			}();
+
+			return m_number_of_entities_per_chunk * total_component_size;
+		}
+
+	private:
+
+		std::pmr::unordered_map<Shared_component_hash, Chunk_group> m_chunk_groups;
+		std::pmr::vector<Component_type_info> m_component_type_infos;
+		std::size_t m_number_of_entities_per_chunk;
+		std::pmr::polymorphic_allocator<std::byte> m_chunk_allocator;
+
 	};
 }
