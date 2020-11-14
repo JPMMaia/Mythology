@@ -153,31 +153,42 @@ namespace Maia::ECS
 				{
 					Chunk& chunk = chunk_group.chunks.back(); // TODO not the back one
 				
-					// TODO Add new entity to chunk
+					std::size_t const new_entity_index = (chunk_group.number_of_elements % m_number_of_entities_per_chunk);
+					std::size_t const entity_offset = get_entity_component_chunk_offset() + new_entity_index * sizeof(Entity);
+
+					assert((entity_offset + sizeof(Entity)) <= chunk.size());
+					std::memcpy(chunk.data() + entity_offset, &entity, sizeof(Entity));
+					
 					++chunk_group.number_of_elements;
 
-					//return chunk_group.number_of_elements - 1;
-					return 0;
+					return chunk_group.number_of_elements - 1;
 				}
 				else
 				{
 					Chunk new_chunk{m_chunk_allocator};
 					new_chunk.resize(get_chunk_size());
 					
-					// TODO Add new entity to chunk
+					std::size_t const entity_offset = get_entity_component_chunk_offset() + 0 * sizeof(Entity);
+
+					assert((entity_offset + sizeof(Entity)) <= new_chunk.size());
+					std::memcpy(new_chunk.data() + entity_offset, &entity, sizeof(Entity));
+
 					++chunk_group.number_of_elements;
 
 					chunk_group.chunks.push_back(std::move(new_chunk));
 
-					//return chunk_group.number_of_elements - 1;
-					return 0;
+					return chunk_group.number_of_elements - 1;
 				}
 			}
 			else
 			{
 				Chunk new_chunk{m_chunk_allocator};
 				new_chunk.resize(get_chunk_size());
-				// TODO Add new entity to chunk
+				
+				std::size_t const entity_offset = get_entity_component_chunk_offset() + 0 * sizeof(Entity);
+
+				assert((entity_offset + sizeof(Entity)) <= new_chunk.size());
+				std::memcpy(new_chunk.data() + entity_offset, &entity, sizeof(Entity));
 
 				std::pmr::vector<Chunk> chunks{m_chunk_groups.get_allocator()};
 				chunks.push_back(std::move(new_chunk));
@@ -192,7 +203,23 @@ namespace Maia::ECS
 
 		Component_group_entity_moved remove_entity(Chunk_group_hash const chunk_group_hash, Index const index) noexcept
 		{
-			return {};
+			Chunk_group const& chunk_group = m_chunk_groups.at(chunk_group_hash);
+
+			std::size_t const chunk_index = index / m_number_of_entities_per_chunk;
+			Chunk const& chunk = chunk_group.chunks[chunk_index];
+
+			if ((index + 1) == chunk_group.number_of_elements)
+			{
+				return {};
+			}
+			else
+			{
+				std::size_t const entity_index = index % m_number_of_entities_per_chunk;
+
+				// TODO move entity components
+
+				return {};
+			}
 		}
 
 		Entity get_entity(Chunk_group_hash const chunk_group_hash, Index const index) const noexcept
@@ -202,7 +229,16 @@ namespace Maia::ECS
 			std::size_t const chunk_index = index / m_number_of_entities_per_chunk;
 			Chunk const& chunk = chunk_group.chunks[chunk_index];
 
-			return {};
+			std::size_t const entity_component_chunk_offset = get_entity_component_chunk_offset();
+			std::size_t const entity_offset = (index % m_number_of_entities_per_chunk) * sizeof(Entity);
+			std::size_t const offset = entity_component_chunk_offset + entity_offset;
+
+			Entity entity{};
+			
+			assert((offset + sizeof(Entity)) <= chunk.size());
+			std::memcpy(&entity, chunk.data() + offset, sizeof(Entity));
+
+			return entity;
 		}
 
 		template <Concept::Component Component_t>
@@ -214,6 +250,16 @@ namespace Maia::ECS
 		template <Concept::Component Component_t>
 		void set_component_value(Chunk_group_hash const chunk_group_hash, Index const index, Component_t const& value) noexcept
 		{
+			Chunk_group& chunk_group = m_chunk_groups.at(chunk_group_hash);
+
+			std::size_t const chunk_index = index / m_number_of_entities_per_chunk;
+			Chunk& chunk = chunk_group.chunks[chunk_index];
+
+			Component_type_ID const component_type_id = get_component_type_id<Component_t>();
+			std::size_t const offset = get_component_offset(component_type_id) + index * sizeof(Component_t);
+
+			assert((offset + sizeof(Component_t)) <= chunk.size());
+			std::memcpy(chunk.data() + offset, &value, sizeof(Component_t));
 		}
 
 		void shrink_to_fit(Chunk_group_hash const chunk_group_hash) noexcept
@@ -303,6 +349,44 @@ namespace Maia::ECS
 			}();
 
 			return m_number_of_entities_per_chunk * total_component_size;
+		}
+
+		std::size_t get_component_offset(Component_type_ID const component_type_id) const noexcept
+		{
+			auto const is_type_info = [&component_type_id](Component_type_info const type_info) -> bool
+			{
+				return type_info.id == component_type_id;
+			};
+
+			auto const location = std::find_if(
+				m_component_type_infos.begin(),
+				m_component_type_infos.end(),
+				is_type_info
+			);
+
+			std::ptrdiff_t const target_type_info_index = std::distance(m_component_type_infos.begin(), location);
+
+			std::size_t offset = 0;
+
+			for (std::size_t type_info_index = 0; type_info_index < target_type_info_index; ++type_info_index)
+			{
+				Component_type_info const& type_info = m_component_type_infos[type_info_index];
+				offset += type_info.size;
+			}
+
+			return offset;
+		}
+
+		std::size_t get_entity_component_chunk_offset() const noexcept
+		{
+			std::size_t offset = 0;
+
+			for (Component_type_info const& type_info : m_component_type_infos)
+			{
+				offset += m_number_of_entities_per_chunk * type_info.size;
+			}
+
+			return offset;
 		}
 
 	private:
