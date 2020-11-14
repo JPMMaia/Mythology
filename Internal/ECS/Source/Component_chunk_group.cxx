@@ -140,9 +140,7 @@ namespace Maia::ECS
 
 		Index add_entity(Entity const entity, Chunk_group_hash const chunk_group_hash)
 		{
-			constexpr Shared_component_hash empty_shared_component_hash = 0;
-
-			auto const location = m_chunk_groups.find(empty_shared_component_hash);
+			auto const location = m_chunk_groups.find(chunk_group_hash);
 
 			if (location != m_chunk_groups.end())
 			{
@@ -184,7 +182,7 @@ namespace Maia::ECS
 
 				Chunk_group chunk_group{std::move(chunks), 1};
 
-				m_chunk_groups.emplace(empty_shared_component_hash, std::move(chunk_group));
+				m_chunk_groups.emplace(chunk_group_hash, std::move(chunk_group));
 
 				return 0;
 			}
@@ -267,7 +265,18 @@ namespace Maia::ECS
 
 		std::size_t number_of_chunks(Chunk_group_hash const chunk_group_hash) const noexcept
 		{
-			return {};
+			auto const location = m_chunk_groups.find(chunk_group_hash);
+
+			if (location != m_chunk_groups.end())
+			{
+				Chunk_group const& chunk_group = m_chunk_groups.at(chunk_group_hash);
+
+				return chunk_group.chunks.size();
+			}
+			else
+			{
+				return 0;
+			}
 		}
 
 	private:
