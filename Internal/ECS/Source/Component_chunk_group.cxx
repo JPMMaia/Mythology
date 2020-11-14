@@ -109,7 +109,7 @@ namespace Maia::ECS
 		Component_size size;
 	};
 
-	using Shared_component_hash = std::size_t;
+	export using Chunk_group_hash = std::size_t;
 	using Chunk = std::pmr::vector<std::byte>;
 
 	struct Chunk_group
@@ -138,7 +138,7 @@ namespace Maia::ECS
 		{
 		}
 
-		Index add_entity(Entity const entity)
+		Index add_entity(Entity const entity, Chunk_group_hash const chunk_group_hash)
 		{
 			constexpr Shared_component_hash empty_shared_component_hash = 0;
 
@@ -190,34 +190,28 @@ namespace Maia::ECS
 			}
 		}
 
-		template <Concept::Shared_component Shared_component_t>
-		Index add_entity(Entity const entity, Shared_component_t const& shared_component)
+		Component_group_entity_moved remove_entity(Chunk_group_hash const chunk_group_hash, Index const index) noexcept
 		{
 			return {};
 		}
 
-		Component_group_entity_moved remove_entity(Index const index) noexcept
-		{
-			return {};
-		}
-
-		Entity get_entity(Index const index) const noexcept
+		Entity get_entity(Chunk_group_hash const chunk_group_hash, Index const index) const noexcept
 		{
 			return {};
 		}
 
 		template <Concept::Component Component_t>
-		Component_t get_component_value(Index const index) const noexcept
+		Component_t get_component_value(Chunk_group_hash const chunk_group_hash, Index const index) const noexcept
 		{
 			return {};
 		}
 
 		template <Concept::Component Component_t>
-		void set_component_value(Index const index, Component_t const& value) noexcept
+		void set_component_value(Chunk_group_hash const chunk_group_hash, Index const index, Component_t const& value) noexcept
 		{
 		}
 
-		void shrink_to_fit() noexcept
+		void shrink_to_fit(Chunk_group_hash const chunk_group_hash) noexcept
 		{
 		}
 
@@ -247,11 +241,23 @@ namespace Maia::ECS
 			return {};
 		}
 
+		std::size_t number_of_entities(Chunk_group_hash const chunk_group_hash) const noexcept
+		{
+			std::size_t count = 0;
+
+			for (std::pair<Chunk_group_hash, Chunk_group> const& chunk_group : m_chunk_groups)
+			{
+				count += chunk_group.second.number_of_elements;
+			}
+
+			return count;
+		}
+
 		std::size_t number_of_chunks() const noexcept
 		{
 			std::size_t count = 0;
 
-			for (std::pair<Shared_component_hash, Chunk_group> const& chunk_group : m_chunk_groups)
+			for (std::pair<Chunk_group_hash, Chunk_group> const& chunk_group : m_chunk_groups)
 			{
 				count += chunk_group.second.chunks.size();
 			}
@@ -259,8 +265,7 @@ namespace Maia::ECS
 			return count;
 		}
 
-		template <Concept::Shared_component Shared_component_t>
-		std::size_t number_of_chunks(Shared_component_t const& shared_component) const noexcept
+		std::size_t number_of_chunks(Chunk_group_hash const chunk_group_hash) const noexcept
 		{
 			return {};
 		}
@@ -286,7 +291,7 @@ namespace Maia::ECS
 
 	private:
 
-		std::pmr::unordered_map<Shared_component_hash, Chunk_group> m_chunk_groups;
+		std::pmr::unordered_map<Chunk_group_hash, Chunk_group> m_chunk_groups;
 		std::pmr::vector<Component_type_info> m_component_type_infos;
 		std::size_t m_number_of_entities_per_chunk;
 		std::pmr::polymorphic_allocator<std::byte> m_chunk_allocator;
