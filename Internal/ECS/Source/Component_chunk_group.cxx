@@ -156,7 +156,8 @@ namespace Maia::ECS
 					// TODO Add new entity to chunk
 					++chunk_group.number_of_elements;
 
-					return chunk_group.number_of_elements - 1;
+					//return chunk_group.number_of_elements - 1;
+					return 0;
 				}
 				else
 				{
@@ -168,7 +169,8 @@ namespace Maia::ECS
 
 					chunk_group.chunks.push_back(std::move(new_chunk));
 
-					return chunk_group.number_of_elements - 1;
+					//return chunk_group.number_of_elements - 1;
+					return 0;
 				}
 			}
 			else
@@ -195,6 +197,11 @@ namespace Maia::ECS
 
 		Entity get_entity(Chunk_group_hash const chunk_group_hash, Index const index) const noexcept
 		{
+			Chunk_group const& chunk_group = m_chunk_groups.at(chunk_group_hash);
+
+			std::size_t const chunk_index = index / m_number_of_entities_per_chunk;
+			Chunk const& chunk = chunk_group.chunks[chunk_index];
+
 			return {};
 		}
 
@@ -285,7 +292,7 @@ namespace Maia::ECS
 		{
 			std::size_t const total_component_size = [this]
 			{
-				std::size_t total_component_size = 0;
+				std::size_t total_component_size = sizeof(Entity);
 
 				for (Component_type_info const& type_info : m_component_type_infos)
 				{
