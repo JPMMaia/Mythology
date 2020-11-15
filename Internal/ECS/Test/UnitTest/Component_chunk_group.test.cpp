@@ -12,41 +12,46 @@ namespace Maia::ECS::Test
     namespace
     {
         template<typename T>
-        struct Component_base {};
-
-        template<typename T>
-        bool operator==(Component_base<T> const lhs, Component_base<T> const rhs)
+        bool operator==(T const lhs, T const rhs) noexcept
         {
-            return std::memcmp(&lhs, &rhs, sizeof(T));
+            return lhs.value == rhs.value;
         }
 
         template<typename T>
-        bool operator!=(Component_base<T> const lhs, Component_base<T> const rhs)
+        bool operator!=(T const lhs, T const rhs) noexcept
         {
             return !(lhs == rhs);
         }
 
-        struct Component_a : Component_base<Component_a>
+        template<typename T>
+        std::ostream& operator<<(std::ostream& output_stream, T const component) noexcept
+        {
+            output_stream << component.value;
+            
+            return output_stream;
+        }
+
+        struct Component_a
         {
             int value = 1;
         };
 
-        struct Component_b : Component_base<Component_b>
+        struct Component_b
         {
             int value = 2;
         };
 
-        struct Component_c : Component_base<Component_c>
+        struct Component_c
         {
             int value = 3;
         };
 
-        struct Shared_component_d : Component_base<Shared_component_d>
+        struct Shared_component_d
         {
             int value = 4;
         };
 
-        struct Shared_component_e : Component_base<Shared_component_e>
+        struct Shared_component_e
         {
             int value = 4;
         };
@@ -161,35 +166,65 @@ namespace Maia::ECS::Test
         SECTION("Remove first element of a group with 1 chunk and 2 elements")
         {
             group.add_entity(Entity{0}, chunk_group_0);
+            group.set_component_value(chunk_group_0, 0, Component_a{.value=10});
+            group.set_component_value(chunk_group_0, 0, Component_b{.value=20});
+        
             group.add_entity(Entity{1}, chunk_group_0);
+            group.set_component_value(chunk_group_0, 1, Component_a{.value=11});
+            group.set_component_value(chunk_group_0, 1, Component_b{.value=21});
             
             CHECK(group.number_of_entities(chunk_group_0) == 2);
             CHECK(group.get_entity(chunk_group_0, 0) == Entity{0});
+            CHECK(group.get_component_value<Component_a>(chunk_group_0, 0) == Component_a{.value=10});
+            CHECK(group.get_component_value<Component_b>(chunk_group_0, 0) == Component_b{.value=20});
             CHECK(group.get_entity(chunk_group_0, 1) == Entity{1});
+            CHECK(group.get_component_value<Component_a>(chunk_group_0, 1) == Component_a{.value=11});
+            CHECK(group.get_component_value<Component_b>(chunk_group_0, 1) == Component_b{.value=21});
             
-            Component_group_entity_moved const moved_entity = group.remove_entity(chunk_group_0, 0);
+            std::optional<Component_group_entity_moved> const moved_entity = group.remove_entity(chunk_group_0, 0);
 
             CHECK(group.number_of_entities(chunk_group_0) == 1);
-            CHECK(moved_entity.entity == Entity{1});
+            CHECK((moved_entity.has_value() && moved_entity->entity == Entity{1}));
             CHECK(group.get_entity(chunk_group_0, 0) == Entity{1});
+            CHECK(group.get_component_value<Component_a>(chunk_group_0, 0) == Component_a{.value=11});
+            CHECK(group.get_component_value<Component_b>(chunk_group_0, 0) == Component_b{.value=21});
         }
 
         SECTION("Remove first element of a group with 2 chunks and 3 elements")
         {
             group.add_entity(Entity{0}, chunk_group_0);
+            group.set_component_value(chunk_group_0, 0, Component_a{.value=10});
+            group.set_component_value(chunk_group_0, 0, Component_b{.value=20});
+
             group.add_entity(Entity{1}, chunk_group_0);
+            group.set_component_value(chunk_group_0, 1, Component_a{.value=11});
+            group.set_component_value(chunk_group_0, 1, Component_b{.value=21});
+
             group.add_entity(Entity{2}, chunk_group_0);
+            group.set_component_value(chunk_group_0, 2, Component_a{.value=12});
+            group.set_component_value(chunk_group_0, 2, Component_b{.value=22});
             
             CHECK(group.number_of_entities(chunk_group_0) == 3);
             CHECK(group.get_entity(chunk_group_0, 0) == Entity{0});
+            CHECK(group.get_component_value<Component_a>(chunk_group_0, 0) == Component_a{.value=10});
+            CHECK(group.get_component_value<Component_b>(chunk_group_0, 0) == Component_b{.value=20});
             CHECK(group.get_entity(chunk_group_0, 1) == Entity{1});
+            CHECK(group.get_component_value<Component_a>(chunk_group_0, 1) == Component_a{.value=11});
+            CHECK(group.get_component_value<Component_b>(chunk_group_0, 1) == Component_b{.value=21});
             CHECK(group.get_entity(chunk_group_0, 2) == Entity{2});
+            CHECK(group.get_component_value<Component_a>(chunk_group_0, 2) == Component_a{.value=12});
+            CHECK(group.get_component_value<Component_b>(chunk_group_0, 2) == Component_b{.value=22});
             
-            group.remove_entity(chunk_group_0, 0);
+            std::optional<Component_group_entity_moved> const moved_entity = group.remove_entity(chunk_group_0, 0);
 
             CHECK(group.number_of_entities(chunk_group_0) == 2);
+            CHECK((moved_entity.has_value() && moved_entity->entity == Entity{2}));
             CHECK(group.get_entity(chunk_group_0, 0) == Entity{2});
+            CHECK(group.get_component_value<Component_a>(chunk_group_0, 0) == Component_a{.value=12});
+            CHECK(group.get_component_value<Component_b>(chunk_group_0, 0) == Component_b{.value=22});
             CHECK(group.get_entity(chunk_group_0, 1) == Entity{1});
+            CHECK(group.get_component_value<Component_a>(chunk_group_0, 1) == Component_a{.value=11});
+            CHECK(group.get_component_value<Component_b>(chunk_group_0, 1) == Component_b{.value=21});
         }
 
         SECTION("Remove last element of a group")
@@ -197,28 +232,51 @@ namespace Maia::ECS::Test
             constexpr Chunk_group_hash chunk_group_0{0};
 
             group.add_entity(Entity{0}, chunk_group_0);
+            group.set_component_value(chunk_group_0, 0, Component_a{.value=10});
+            group.set_component_value(chunk_group_0, 0, Component_b{.value=20});
+
             group.add_entity(Entity{1}, chunk_group_0);
+            group.set_component_value(chunk_group_0, 1, Component_a{.value=11});
+            group.set_component_value(chunk_group_0, 1, Component_b{.value=21});
+
             group.add_entity(Entity{2}, chunk_group_0);
+            group.set_component_value(chunk_group_0, 2, Component_a{.value=12});
+            group.set_component_value(chunk_group_0, 2, Component_b{.value=22});
             
             CHECK(group.number_of_entities(chunk_group_0) == 3);
             CHECK(group.get_entity(chunk_group_0, 0) == Entity{0});
+            CHECK(group.get_component_value<Component_a>(chunk_group_0, 0) == Component_a{.value=10});
+            CHECK(group.get_component_value<Component_b>(chunk_group_0, 0) == Component_b{.value=20});
             CHECK(group.get_entity(chunk_group_0, 1) == Entity{1});
+            CHECK(group.get_component_value<Component_a>(chunk_group_0, 1) == Component_a{.value=11});
+            CHECK(group.get_component_value<Component_b>(chunk_group_0, 1) == Component_b{.value=21});
             CHECK(group.get_entity(chunk_group_0, 2) == Entity{2});
+            CHECK(group.get_component_value<Component_a>(chunk_group_0, 2) == Component_a{.value=12});
+            CHECK(group.get_component_value<Component_b>(chunk_group_0, 2) == Component_b{.value=22});
             
-            group.remove_entity(chunk_group_0, 2);
+            std::optional<Component_group_entity_moved> const moved_entity_0 = group.remove_entity(chunk_group_0, 2);
 
-            CHECK(group.number_of_entities() == 2);
+            CHECK(group.number_of_entities(chunk_group_0) == 2);
+            CHECK(!moved_entity_0.has_value());
             CHECK(group.get_entity(chunk_group_0, 0) == Entity{0});
+            CHECK(group.get_component_value<Component_a>(chunk_group_0, 0) == Component_a{.value=10});
+            CHECK(group.get_component_value<Component_b>(chunk_group_0, 0) == Component_b{.value=20});
             CHECK(group.get_entity(chunk_group_0, 1) == Entity{1});
+            CHECK(group.get_component_value<Component_a>(chunk_group_0, 1) == Component_a{.value=11});
+            CHECK(group.get_component_value<Component_b>(chunk_group_0, 1) == Component_b{.value=21});
 
-            group.remove_entity(chunk_group_0, 1);
+            std::optional<Component_group_entity_moved> const moved_entity_1 = group.remove_entity(chunk_group_0, 1);
 
             CHECK(group.number_of_entities(chunk_group_0) == 1);
+            CHECK(!moved_entity_1.has_value());
             CHECK(group.get_entity(chunk_group_0, 0) == Entity{0});
+            CHECK(group.get_component_value<Component_a>(chunk_group_0, 0) == Component_a{.value=10});
+            CHECK(group.get_component_value<Component_b>(chunk_group_0, 0) == Component_b{.value=20});
 
-            group.remove_entity(chunk_group_0, 0);
+            std::optional<Component_group_entity_moved> const moved_entity_2 = group.remove_entity(chunk_group_0, 0);
 
             CHECK(group.number_of_entities(chunk_group_0) == 0);
+            CHECK(!moved_entity_2.has_value());
         }
     }
 
