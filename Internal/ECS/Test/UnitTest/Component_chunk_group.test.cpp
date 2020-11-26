@@ -55,6 +55,14 @@ namespace Maia::ECS::Test
         {
             int value = 4;
         };
+
+        template <typename T>
+        T create_zero_initialized_component() noexcept
+        {
+            T value;
+            std::memset(&value, 0, sizeof(T));
+            return value;
+        }
     }
 
     TEST_CASE("Component chunk group hides the component types", "[component_chunk_group]")
@@ -304,27 +312,86 @@ namespace Maia::ECS::Test
         CHECK(group.number_of_chunks(chunk_group_0) == 1);
     }
 
-    TEST_CASE("Components are initialized with default values in a component chunk group", "[component_chunk_group]")
+    TEST_CASE("Components are zero-initialized in a component chunk group", "[component_chunk_group]")
     {
         constexpr Chunk_group_hash chunk_group_0{0};
-        constexpr Entity entity{ 1 };
 
         std::array<Component_type_info, 2> const component_type_infos = 
             make_component_type_info_array<Component_a, Component_b>();
 
         Component_chunk_group group{component_type_infos, {}, 2, {}, {}};
-        Component_chunk_group::Index const entity_index = group.add_entity(entity, chunk_group_0);
+        Component_chunk_group::Index const entity_0_index = group.add_entity(Entity{1}, chunk_group_0);
 
         {
-            constexpr Component_a expected_value{};
-            Component_a const actual_value = group.get_component_value<Component_a>(chunk_group_0, entity_index);
+            Component_a const expected_value = create_zero_initialized_component<Component_a>();
+            Component_a const actual_value = group.get_component_value<Component_a>(chunk_group_0, entity_0_index);
 
             CHECK(actual_value == expected_value);
         }
 
         {
-            constexpr Component_b expected_value{};
-            Component_b const actual_value = group.get_component_value<Component_b>(chunk_group_0, entity_index);
+            Component_b const expected_value = create_zero_initialized_component<Component_b>();
+            Component_b const actual_value = group.get_component_value<Component_b>(chunk_group_0, entity_0_index);
+
+            CHECK(actual_value == expected_value);
+        }
+
+        group.set_component_value(chunk_group_0, entity_0_index, Component_a{.value = 1});
+        group.set_component_value(chunk_group_0, entity_0_index, Component_b{.value = 1});
+        group.remove_entity(chunk_group_0, entity_0_index);
+
+        Component_chunk_group::Index const entity_1_index = group.add_entity(Entity{2}, chunk_group_0);
+
+        {
+            Component_a const expected_value = create_zero_initialized_component<Component_a>();
+            Component_a const actual_value = group.get_component_value<Component_a>(chunk_group_0, entity_1_index);
+
+            CHECK(actual_value == expected_value);
+        }
+
+        {
+            Component_b const expected_value = create_zero_initialized_component<Component_b>();
+            Component_b const actual_value = group.get_component_value<Component_b>(chunk_group_0, entity_1_index);
+
+            CHECK(actual_value == expected_value);
+        }
+
+        Component_chunk_group::Index const entity_2_index = group.add_entity(Entity{3}, chunk_group_0);
+        group.set_component_value(chunk_group_0, entity_2_index, Component_a{.value = 1});
+        group.set_component_value(chunk_group_0, entity_2_index, Component_b{.value = 1});
+
+        Component_chunk_group::Index const entity_3_index = group.add_entity(Entity{4}, chunk_group_0);
+
+        {
+            Component_a const expected_value = create_zero_initialized_component<Component_a>();
+            Component_a const actual_value = group.get_component_value<Component_a>(chunk_group_0, entity_3_index);
+
+            CHECK(actual_value == expected_value);
+        }
+
+        {
+            Component_b const expected_value = create_zero_initialized_component<Component_b>();
+            Component_b const actual_value = group.get_component_value<Component_b>(chunk_group_0, entity_3_index);
+
+            CHECK(actual_value == expected_value);
+        }
+
+        group.set_component_value(chunk_group_0, entity_3_index, Component_a{.value = 1});
+        group.set_component_value(chunk_group_0, entity_3_index, Component_b{.value = 1});
+        group.remove_entity(chunk_group_0, entity_3_index);
+
+        Component_chunk_group::Index const entity_4_index = group.add_entity(Entity{5}, chunk_group_0);
+
+        {
+            Component_a const expected_value = create_zero_initialized_component<Component_a>();
+            Component_a const actual_value = group.get_component_value<Component_a>(chunk_group_0, entity_4_index);
+
+            CHECK(actual_value == expected_value);
+        }
+
+        {
+            Component_b const expected_value = create_zero_initialized_component<Component_b>();
+            Component_b const actual_value = group.get_component_value<Component_b>(chunk_group_0, entity_4_index);
 
             CHECK(actual_value == expected_value);
         }
