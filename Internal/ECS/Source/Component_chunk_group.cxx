@@ -302,6 +302,13 @@ namespace Maia::ECS
 
 		void shrink_to_fit(Chunk_group_hash const chunk_group_hash) noexcept
 		{
+			Chunk_group& chunk_group = m_chunk_groups.at(chunk_group_hash);
+
+			std::size_t const minimal_number_of_chunks = 
+				chunk_group.number_of_elements / m_number_of_entities_per_chunk +
+				(chunk_group.number_of_elements % m_number_of_entities_per_chunk != 0 ? 1 : 0);
+
+			chunk_group.chunks.resize(minimal_number_of_chunks);
 		}
 
 		bool has_component_type(Component_type_ID const id) const noexcept
