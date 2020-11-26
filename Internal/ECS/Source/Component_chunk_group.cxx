@@ -126,7 +126,6 @@ namespace Maia::ECS
 
 		Component_chunk_group(
 			std::span<Component_type_info const> const component_type_infos,
-			Shared_component_type_info const shared_component_type_info,
 			std::size_t const number_of_entities_per_chunk,
 			std::pmr::polymorphic_allocator<std::byte> const& chunk_allocator,
 			std::pmr::polymorphic_allocator<std::byte> const& allocator
@@ -357,11 +356,6 @@ namespace Maia::ECS
 			);
 
 			return location != m_component_type_infos.end();
-		}
-
-		bool has_shared_component_type(Shared_component_type_ID const id) const noexcept
-		{
-			return {};
 		}
 
 		std::size_t number_of_entities() const noexcept
