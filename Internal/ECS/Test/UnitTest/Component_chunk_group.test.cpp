@@ -70,7 +70,7 @@ namespace Maia::ECS::Test
         std::array<Component_type_info, 2> const component_type_infos = 
             make_component_type_info_array<Component_a, Component_b>();
 
-        Component_chunk_group const group{component_type_infos, {}, 1, {}, {}};
+        Component_chunk_group const group{component_type_infos, 1, {}, {}};
 
         CHECK(group.has_component_type(component_type_infos[0].id));
         CHECK(group.has_component_type(component_type_infos[1].id));
@@ -85,7 +85,7 @@ namespace Maia::ECS::Test
         std::array<Component_type_info, 2> const component_type_infos = 
             make_component_type_info_array<Component_a, Component_b>();
 
-        Component_chunk_group group{component_type_infos, {}, 1, {}, {}};
+        Component_chunk_group group{component_type_infos, 1, {}, {}};
 
         CHECK(group.number_of_chunks(chunk_group_0) == 0);
 
@@ -122,7 +122,7 @@ namespace Maia::ECS::Test
         std::array<Component_type_info, 2> const component_type_infos = 
             make_component_type_info_array<Component_a, Component_b>();
 
-        Component_chunk_group group{component_type_infos, {}, 2, {}, {}};
+        Component_chunk_group group{component_type_infos, 2, {}, {}};
 
         CHECK(group.number_of_chunks(chunk_group_0) == 0);
 
@@ -169,7 +169,7 @@ namespace Maia::ECS::Test
         std::array<Component_type_info, 2> const component_type_infos = 
             make_component_type_info_array<Component_a, Component_b>();
 
-        Component_chunk_group group{component_type_infos, {}, 2, {}, {}};
+        Component_chunk_group group{component_type_infos, 2, {}, {}};
 
         SECTION("Remove first element of a group with 1 chunk and 2 elements")
         {
@@ -295,7 +295,7 @@ namespace Maia::ECS::Test
         std::array<Component_type_info, 2> const component_type_infos = 
             make_component_type_info_array<Component_a, Component_b>();
 
-        Component_chunk_group group{component_type_infos, {}, 2, {}, {}};
+        Component_chunk_group group{component_type_infos, 2, {}, {}};
 
         group.add_entity(Entity{0}, chunk_group_0);
         group.add_entity(Entity{1}, chunk_group_0);
@@ -319,7 +319,7 @@ namespace Maia::ECS::Test
         std::array<Component_type_info, 2> const component_type_infos = 
             make_component_type_info_array<Component_a, Component_b>();
 
-        Component_chunk_group group{component_type_infos, {}, 2, {}, {}};
+        Component_chunk_group group{component_type_infos, 2, {}, {}};
         Component_chunk_group::Index const entity_0_index = group.add_entity(Entity{1}, chunk_group_0);
 
         {
@@ -405,7 +405,7 @@ namespace Maia::ECS::Test
         std::array<Component_type_info, 2> const component_type_infos = 
             make_component_type_info_array<Component_a, Component_b>();
 
-        Component_chunk_group group{component_type_infos, {}, 2, {}, {}};
+        Component_chunk_group group{component_type_infos, 2, {}, {}};
         Component_chunk_group::Index const entity_index = group.add_entity(entity, chunk_group_0);
 
         {
@@ -423,21 +423,5 @@ namespace Maia::ECS::Test
             Component_b const actual_value = group.get_component_value<Component_b>(chunk_group_0, entity_index);
             CHECK(actual_value == new_value);
         }
-    }
-
-    TEST_CASE("A component chunk group hides the shared component types", "[component_chunk_group]")
-    {
-        constexpr Chunk_group_hash chunk_group_0{0};
-
-        std::array<Component_type_info, 2> const component_type_infos = 
-            make_component_type_info_array<Component_a, Component_b>();
-
-        Shared_component_type_info const shared_component_type_info =
-            make_shared_component_type_info<Shared_component_d>();
-
-        Component_chunk_group const group{component_type_infos, shared_component_type_info, 1, {}, {}};
-
-        CHECK(group.has_shared_component_type(shared_component_type_info.id));
-        CHECK(!group.has_shared_component_type(get_shared_component_type_id<Shared_component_e>()));
     }
 }
