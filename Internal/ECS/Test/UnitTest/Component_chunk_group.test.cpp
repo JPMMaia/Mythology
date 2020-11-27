@@ -162,6 +162,29 @@ namespace Maia::ECS::Test
         CHECK(group.number_of_chunks() == 4);
     }
 
+    TEST_CASE("An entity is added in the the first non-full chunk", "[component_chunk_group]")
+    {
+        constexpr Chunk_group_hash chunk_group_0{0};
+
+        std::array<Component_type_info, 2> const component_type_infos = 
+            make_component_type_info_array<Component_a, Component_b>();
+
+         Component_chunk_group group{component_type_infos, 2, {}, {}};
+
+         group.add_entity(Entity{0}, chunk_group_0);
+         group.add_entity(Entity{1}, chunk_group_0);
+         group.add_entity(Entity{2}, chunk_group_0);
+
+         group.remove_entity(chunk_group_0, 2);
+         group.remove_entity(chunk_group_0, 1);
+         group.remove_entity(chunk_group_0, 0);
+
+         Component_chunk_group::Index const entity_3_index = group.add_entity(Entity{3}, chunk_group_0);
+
+         CHECK(entity_3_index == 0);
+         CHECK(group.get_entity(chunk_group_0, entity_3_index) == Entity{3});
+    }
+
     TEST_CASE("Removing an entity results in a swap and pop if element is not the last", "[component_chunk_group]")
     {
         constexpr Chunk_group_hash chunk_group_0{0};
