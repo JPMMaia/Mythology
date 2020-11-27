@@ -153,7 +153,8 @@ namespace Maia::ECS
 
 				if (chunk_group.number_of_elements < chunk_group_capacity)
 				{
-					Chunk& chunk = chunk_group.chunks.back(); // TODO not the back one
+					std::size_t const chunk_index = chunk_group.number_of_elements / m_number_of_entities_per_chunk;
+					Chunk& chunk = chunk_group.chunks.at(chunk_index);
 
 					std::size_t const new_entity_index = chunk_group.number_of_elements;
 
