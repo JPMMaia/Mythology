@@ -6,6 +6,7 @@ import <catch2/catch.hpp>;
 
 import <array>;
 import <cstring>;
+import <iterator>;
 
 namespace Maia::ECS::Test
 {
@@ -445,6 +446,146 @@ namespace Maia::ECS::Test
 
             Component_b const actual_value = group.get_component_value<Component_b>(chunk_group_0, entity_index);
             CHECK(actual_value == new_value);
+        }
+    }
+
+    template<std::contiguous_iterator T>
+    void is_continuous_iterator(T)
+    {
+    }
+
+    TEST_CASE("Use component chunk view", "[component_chunk_group]")
+    {
+        constexpr Chunk_group_hash chunk_group_0{0};
+        constexpr Chunk_group_hash chunk_group_1{1};
+
+        std::array<Component_type_info, 2> const component_type_infos = 
+            make_component_type_info_array<Component_a, Component_b>();
+
+        Component_chunk_group group{component_type_infos, 2, {}, {}};
+
+        group.add_entity(Entity{1}, chunk_group_0);
+        group.set_component_value(chunk_group_0, 0, Component_a{.value=1});
+        group.set_component_value(chunk_group_0, 0, Component_b{.value=2});
+
+        
+        group.add_entity(Entity{2}, chunk_group_1);
+        group.set_component_value(chunk_group_1, 0, Component_a{.value=3});
+        group.set_component_value(chunk_group_1, 0, Component_b{.value=4});
+
+        group.add_entity(Entity{3}, chunk_group_1);
+        group.set_component_value(chunk_group_1, 1, Component_a{.value=5});
+        group.set_component_value(chunk_group_1, 1, Component_b{.value=6});
+
+        group.add_entity(Entity{4}, chunk_group_1);
+        group.set_component_value(chunk_group_1, 2, Component_a{.value=7});
+        group.set_component_value(chunk_group_1, 2, Component_b{.value=8});
+
+        REQUIRE(group.number_of_chunks(chunk_group_0) == 1);
+        REQUIRE(group.number_of_chunks(chunk_group_1) == 2);
+
+        {
+            using Iterator = Component_chunk_group::Iterator<Entity>;
+            is_continuous_iterator(Iterator{});
+        }
+
+        {
+            using Iterator_traits = std::iterator_traits<Component_chunk_group::Iterator<Entity>>;
+            static_assert(std::is_same_v<Iterator_traits::value_type, Entity>);
+        }
+
+        {
+            using Iterator_traits = std::iterator_traits<Component_chunk_group::Iterator<Component_a>>;
+            static_assert(std::is_same_v<Iterator_traits::value_type, Component_a>);
+        }
+
+        {
+            using Iterator_traits = std::iterator_traits<Component_chunk_group::Iterator<Component_b>>;
+            static_assert(std::is_same_v<Iterator_traits::value_type, Component_b>);
+        }
+
+        {
+            constexpr std::size_t chunk_index = 0;
+            
+            auto const view = group.get_view<Entity>(chunk_group_0, chunk_index);
+            
+            CHECK(std::distance(view.begin(), view.end()) == 1);
+            CHECK(*(view.begin() + 0) == Entity{1});
+        }
+
+        {
+            constexpr std::size_t chunk_index = 0;
+            
+            auto const view = group.get_view<Component_a>(chunk_group_0, chunk_index);
+            
+            CHECK(std::distance(view.begin(), view.end()) == 1);
+            CHECK(*(view.begin() + 0) == Component_a{.value=1});
+        }
+
+        {
+            constexpr std::size_t chunk_index = 0;
+            
+            auto const view = group.get_view<Component_b>(chunk_group_0, chunk_index);
+            
+            CHECK(std::distance(view.begin(), view.end()) == 1);
+            CHECK(*(view.begin() + 0) == Component_b{.value=2});
+        }
+
+        {
+            constexpr std::size_t chunk_index = 0;
+            
+            auto const view = group.get_view<Entity>(chunk_group_1, chunk_index);
+            
+            CHECK(std::distance(view.begin(), view.end()) == 2);
+            CHECK(*(view.begin() + 0) == Entity{2});
+            CHECK(*(view.begin() + 1) == Entity{3});
+        }
+
+        {
+            constexpr std::size_t chunk_index = 0;
+            
+            auto const view = group.get_view<Component_a>(chunk_group_1, chunk_index);
+            
+            CHECK(std::distance(view.begin(), view.end()) == 2);
+            CHECK(*(view.begin() + 0) == Component_a{.value=3});
+            CHECK(*(view.begin() + 1) == Component_a{.value=5});
+        }
+
+        {
+            constexpr std::size_t chunk_index = 0;
+            
+            auto const view = group.get_view<Component_b>(chunk_group_1, chunk_index);
+            
+            CHECK(std::distance(view.begin(), view.end()) == 2);
+            CHECK(*(view.begin() + 0) == Component_b{.value=4});
+            CHECK(*(view.begin() + 1) == Component_b{.value=6});
+        }
+
+        {
+            constexpr std::size_t chunk_index = 1;
+            
+            auto const view = group.get_view<Entity>(chunk_group_1, chunk_index);
+            
+            CHECK(std::distance(view.begin(), view.end()) == 1);
+            CHECK(*(view.begin() + 0) == Entity{4});
+        }
+
+        {
+            constexpr std::size_t chunk_index = 1;
+            
+            auto const view = group.get_view<Component_a>(chunk_group_1, chunk_index);
+            
+            CHECK(std::distance(view.begin(), view.end()) == 1);
+            CHECK(*(view.begin() + 0) == Component_a{.value=7});
+        }
+
+        {
+            constexpr std::size_t chunk_index = 1;
+            
+            auto const view = group.get_view<Component_b>(chunk_group_1, chunk_index);
+            
+            CHECK(std::distance(view.begin(), view.end()) == 1);
+            CHECK(*(view.begin() + 0) == Component_b{.value=8});
         }
     }
 }
