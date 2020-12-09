@@ -7,6 +7,7 @@ import maia.ecs.shared_component;
 import <array>;
 import <cassert>;
 import <cstddef>;
+import <iterator>;
 import <memory_resource>;
 import <optional>;
 import <span>;
@@ -118,11 +119,154 @@ namespace Maia::ECS
 		std::size_t number_of_elements;
 	};
 
+	export template <typename T>
+	class Component_iterator
+	{
+	public:
+
+		using difference_type = std::ptrdiff_t;
+		using value_type = T;
+		using pointer = T*;
+		using reference = T&;
+		using iterator_category = std::contiguous_iterator_tag;
+
+		explicit Component_iterator(T* value = nullptr) noexcept :
+			m_value{value}
+		{
+		}
+
+		reference operator*() const noexcept
+		{
+			return *m_value;
+		}
+
+		bool operator==(Component_iterator const rhs) const noexcept
+		{
+			return m_value == rhs.m_value;
+		}
+
+		Component_iterator& operator++() noexcept
+		{
+			++m_value;
+			return *this;
+		}
+
+		Component_iterator operator++(int) noexcept
+		{
+			Component_iterator temp{m_value};
+			++m_value;
+			return temp;
+		}
+
+		Component_iterator& operator--() noexcept
+		{
+			--m_value;
+			return *this;
+		}
+
+		Component_iterator operator--(int) noexcept
+		{
+			Component_iterator temp{m_value};
+			--m_value;
+			return temp;
+		}
+
+		bool operator<(Component_iterator const rhs) const noexcept
+		{
+			return m_value < rhs.m_value;
+		}
+
+		bool operator>(Component_iterator const rhs) const noexcept
+		{
+			return m_value > rhs.m_value;
+		}
+
+		bool operator<=(Component_iterator const rhs) const noexcept
+		{
+			return m_value <= rhs.m_value;
+		}
+
+		bool operator>=(Component_iterator const rhs) const noexcept
+		{
+			return m_value <= rhs.m_value;
+		}
+
+		difference_type operator-(Component_iterator const rhs) const noexcept
+		{
+			return m_value - rhs.m_value;
+		}
+
+		Component_iterator& operator+=(difference_type const n) noexcept
+		{
+			m_value += n;
+			return *this;
+		}
+
+		Component_iterator operator+(difference_type const n) const noexcept
+		{
+			return Component_iterator{m_value + n};
+		}
+
+		Component_iterator& operator-=(difference_type const n) noexcept
+		{
+			m_value -= n;
+			return *this;
+		}
+
+		Component_iterator operator-(difference_type const n) const noexcept
+		{
+			return Component_iterator{m_value - n};
+		}
+
+		reference operator[](difference_type const index) const noexcept
+		{
+			return *(m_value + index);
+		}
+
+		pointer operator->() const noexcept
+		{
+			return m_value;
+		}
+
+	private:
+
+		T* m_value = nullptr;
+
+	};
+
+	export template <typename T>
+	Component_iterator<T> operator+(typename Component_iterator<T>::difference_type const lhs, Component_iterator<T> const rhs) noexcept
+	{
+		return rhs + lhs;
+	}
+
+	export template <typename T>
+	class Component_chunk_view
+	{
+	public:
+
+		using Iterator = Component_iterator<T>;
+
+		Iterator begin() const noexcept
+		{
+			return Iterator{};
+		}
+
+		Iterator end() const noexcept
+		{
+			return Iterator{};
+		}
+
+	};
+
 	export class Component_chunk_group
 	{
 	public:
 
 		using Index = std::size_t;
+		
+		template <typename T>
+		using Iterator = typename Component_chunk_view<T>::Iterator;
 
 		Component_chunk_group(
 			std::span<Component_type_info const> const component_type_infos,
@@ -402,6 +546,12 @@ namespace Maia::ECS
 			{
 				return 0;
 			}
+		}
+
+		template <Concept::Component Component_t>
+		Component_chunk_view<Component_t> get_view(Chunk_group_hash const chunk_group_hash, std::size_t const chunk_index) noexcept
+		{
+			return {};
 		}
 
 	private:
