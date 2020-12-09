@@ -10,7 +10,7 @@ import <span>;
 
 namespace Maia::ECS
 {
-    export class Entity_components_view
+    /*export class Entity_components_view
     {
     public:
 
@@ -196,5 +196,5 @@ namespace Maia::ECS
         {
             return {};
         }
-    };
+    };*/
 }

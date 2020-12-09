@@ -116,7 +116,7 @@ namespace Maia::ECS
         {
         }
 
-        std::span<Component_chunk_view> get_component_chunk_views(Archetype const archetype) noexcept
+        /*std::span<Component_chunk_view> get_component_chunk_views(Archetype const archetype) noexcept
         {
             return {};
         }
@@ -124,7 +124,7 @@ namespace Maia::ECS
         std::span<Component_chunk_view const> get_component_chunk_views(Archetype const archetype) const noexcept
         {
             return {};
-        }
+        }*/
 
     private:
 

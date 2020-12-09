@@ -440,7 +440,7 @@ namespace Maia::ECS::Test
         }
     }
 
-    TEST_CASE("Entity components are grouped by archetype in component chunks", "[entity_manager]")
+    /*TEST_CASE("Entity components are grouped by archetype in component chunks", "[entity_manager]")
     {
         Entity_manager entity_manager{};
 
@@ -572,8 +572,8 @@ namespace Maia::ECS::Test
                 CHECK(shared_component_it != component_chunk_views.end());
             }
 
-            /*CHECK(contains_shared_component(component_chunk_views, shared_component_e_0));
-            CHECK(contains_shared_component(component_chunk_views, shared_component_e_1));*/
+            //CHECK(contains_shared_component(component_chunk_views, shared_component_e_0));
+            //CHECK(contains_shared_component(component_chunk_views, shared_component_e_1));
 
             for (Component_chunk_view const component_chunk_view : component_chunk_views)
             {
@@ -663,5 +663,5 @@ namespace Maia::ECS::Test
                 CHECK(actual_component_a == new_component_a);
             }
         }
-    }
+    }*/
 }
