@@ -12,19 +12,14 @@ namespace Maia::ECS::Test
 {
     namespace
     {
-        template<typename T>
-        bool operator==(T const lhs, T const rhs) noexcept
-        {
-            return lhs.value == rhs.value;
-        }
+        template <typename T>
+        concept Has_value =
+            requires (T t)
+            {
+                t.value;
+            };
 
-        template<typename T>
-        bool operator!=(T const lhs, T const rhs) noexcept
-        {
-            return !(lhs == rhs);
-        }
-
-        template<typename T>
+        template <Has_value T>
         std::ostream& operator<<(std::ostream& output_stream, T const component) noexcept
         {
             output_stream << component.value;
@@ -35,26 +30,36 @@ namespace Maia::ECS::Test
         struct Component_a
         {
             int value = 1;
+
+            auto operator<=>(Component_a const&) const noexcept = default;
         };
 
         struct Component_b
         {
             int value = 2;
+
+            auto operator<=>(Component_b const&) const noexcept = default;
         };
 
         struct Component_c
         {
             int value = 3;
+
+            auto operator<=>(Component_c const&) const noexcept = default;
         };
 
         struct Shared_component_d
         {
             int value = 4;
+
+            auto operator<=>(Shared_component_d const&) const noexcept = default;
         };
 
         struct Shared_component_e
         {
             int value = 4;
+
+            auto operator<=>(Shared_component_e const&) const noexcept = default;
         };
 
         template <typename T>
@@ -449,8 +454,34 @@ namespace Maia::ECS::Test
         }
     }
 
-    template<std::contiguous_iterator T>
-    void is_continuous_iterator(T)
+// chunk_group_view -> range of elements
+// Use case 1:
+// G0 [[a0, ..., an] + [b0, ..., bn] -> [c0, ..., cn], ...]
+// G1 [[a0, ..., an] + [b0, ..., bn] -> [c0, ..., cn], ...]
+//
+// Use case 2:
+// G0 [[c0, ..., cn], ...] + Shared data
+// G1 [[c0, ..., cn], ...] + Shared data
+//
+// G0 [[a0, ..., an] + [b0, ..., bn] -> [c0, ..., cn], ...] -> chunk range iterator
+
+// Type A (chunk_group + shared_component + type + chunk)
+// Iterator a [a0, ..., an]
+// Iterator b [b0, ..., bn]
+// Iterator c [c0, ..., cn]
+
+// Type B (chunk_group + shared_component + types + chunk)
+// Iterator abc0 -> {Iterator a0, Iterator b0, Iterator c0} // Increment at the same time
+// Iterator abc1 -> {Iterator a1, Iterator b1, Iterator c1}
+
+// Type C (chunk_group + shared_component + types)
+// Iterator abc0n -> [Iterator abc0, ... Iterator abcn]
+
+// Type D (chunk_group)
+// Iterator -> [Iterator abc0n0, ..., Iterator abc0nn]
+
+    template<std::random_access_iterator T>
+    void is_random_access_iterator(T)
     {
     }
 
@@ -486,7 +517,7 @@ namespace Maia::ECS::Test
 
         {
             using Iterator = Component_chunk_group::Iterator<Entity>;
-            is_continuous_iterator(Iterator{});
+            is_random_access_iterator(Iterator{});
         }
 
         {
@@ -515,7 +546,7 @@ namespace Maia::ECS::Test
 
         {
             constexpr std::size_t chunk_index = 0;
-            
+
             auto const view = group.get_view<Component_a>(chunk_group_0, chunk_index);
             
             CHECK(std::distance(view.begin(), view.end()) == 1);
