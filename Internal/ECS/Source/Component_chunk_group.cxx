@@ -10,86 +10,13 @@ import <cstddef>;
 import <iterator>;
 import <memory_resource>;
 import <optional>;
+import <ostream>;
 import <span>;
 import <vector>;
 import <unordered_map>;
 
 namespace Maia::ECS
 {
-    export template <class Component>
-	struct Component_view
-	{
-		static_assert(!std::is_pointer_v<Component>);
-
-		using Pointer_type = std::conditional_t<
-			std::is_const_v<Component>,
-			std::byte const*,
-			std::byte*
-		>;
-		using Value_type = std::remove_const_t<Component>;
-
-		Value_type get() const noexcept
-		{
-			Value_type component{};
-			std::memcpy(&component, this->raw_data, sizeof(Component));
-			return component;
-		}
-
-		void set(Value_type const& component) const noexcept
-		{
-			std::memcpy(this->raw_data, &component, sizeof(Component));
-		}
-
-		Pointer_type raw_data;
-	};
-
-	export template <class Component>
-	struct Component_range_view
-	{
-		using Data_type = std::conditional_t<
-			std::is_const_v<Component>,
-			std::byte const,
-			std::byte
-		>;
-		using Value_type = std::remove_const_t<Component>;
-
-		Component_range_view() noexcept = default;
-
-		Component_range_view(std::span<Data_type> const raw_data) noexcept :
-			raw_data{raw_data}
-		{
-		}
-
-		template <class Other_component>
-		Component_range_view(Component_range_view<Other_component> const& other) noexcept :
-			raw_data{other.raw_data}
-		{
-		}
-
-		Value_type get(std::size_t const index) const noexcept
-		{
-			assert((index + 1) * sizeof(Value_type) <= this->raw_data.size_bytes());
-
-			Value_type component{};
-			std::memcpy(&component, this->raw_data.data() + index * sizeof(Value_type), sizeof(Value_type));
-			return component;
-		}
-
-		void set(std::size_t const index, Value_type const& component) const noexcept
-		{
-			assert((index + 1) * sizeof(Value_type) <= this->raw_data.size_bytes());
-
-			std::memcpy(this->raw_data.data() + index * sizeof(Value_type), &component, sizeof(Value_type));
-		}
-
-		std::size_t size() const
-		{
-			return this->raw_data.size() / sizeof(Value_type);
-		}
-
-		std::span<Data_type> raw_data;
-	};
-
     using Component_chunk = std::pmr::vector<std::byte>;
 
 
@@ -119,6 +46,42 @@ namespace Maia::ECS
 		std::size_t number_of_elements;
 	};
 
+	template <typename Component_t>
+	struct Component_view
+	{
+		operator Component_t() const noexcept
+		{
+			Component_t component;
+			std::memcpy(&component, this->pointer, sizeof(Component_t));
+			return component;
+		}
+
+		Component_view& operator=(Component_t const& component) noexcept
+		{
+			std::memcpy(this->pointer, &component, sizeof(Component_t));
+			
+			return *this;
+		}
+
+		Component_view& operator=(Component_t&& component) noexcept
+		{
+			std::memcpy(this->pointer, &component, sizeof(Component_t));
+
+			return *this;
+		}
+
+		std::byte* pointer;
+	};
+
+	export template <typename T>
+	std::ostream& operator<<(std::ostream& output_stream, Component_view<T> const view) noexcept
+	{
+		T const value = view;
+		output_stream << value;
+		
+		return output_stream;
+	}
+
 	export template <typename T>
 	class Component_iterator
 	{
@@ -126,111 +89,108 @@ namespace Maia::ECS
 
 		using difference_type = std::ptrdiff_t;
 		using value_type = T;
-		using pointer = T*;
-		using reference = T&;
-		using iterator_category = std::contiguous_iterator_tag;
+		using pointer = Component_view<T>*;
+		using reference = Component_view<T>;
+		using iterator_category = std::random_access_iterator_tag;
 
-		explicit Component_iterator(T* value = nullptr) noexcept :
-			m_value{value}
+		explicit Component_iterator(std::byte* const data_pointer = nullptr) noexcept :
+			m_view{data_pointer}
 		{
 		}
 
 		reference operator*() const noexcept
 		{
-			return *m_value;
+			return m_view;
 		}
 
 		bool operator==(Component_iterator const rhs) const noexcept
 		{
-			return m_value == rhs.m_value;
+			return m_view.pointer == rhs.m_view.pointer;
 		}
 
 		Component_iterator& operator++() noexcept
 		{
-			++m_value;
+			m_view.pointer += sizeof(T);
 			return *this;
 		}
 
 		Component_iterator operator++(int) noexcept
 		{
-			Component_iterator temp{m_value};
-			++m_value;
+			Component_iterator temp{m_view.pointer};
+			m_view.pointer += sizeof(T);
 			return temp;
 		}
 
 		Component_iterator& operator--() noexcept
 		{
-			--m_value;
+			m_view.pointer -= sizeof(T);
 			return *this;
 		}
 
 		Component_iterator operator--(int) noexcept
 		{
-			Component_iterator temp{m_value};
-			--m_value;
+			Component_iterator temp{m_view.pointer};
+			m_view.pointer -= sizeof(T);
 			return temp;
 		}
 
 		bool operator<(Component_iterator const rhs) const noexcept
 		{
-			return m_value < rhs.m_value;
+			return m_view.pointer < rhs.m_view.pointer;
 		}
 
 		bool operator>(Component_iterator const rhs) const noexcept
 		{
-			return m_value > rhs.m_value;
+			return m_view.pointer > rhs.m_view.pointer;
 		}
 
 		bool operator<=(Component_iterator const rhs) const noexcept
 		{
-			return m_value <= rhs.m_value;
+			return m_view.pointer <= rhs.m_view.pointer;
 		}
 
 		bool operator>=(Component_iterator const rhs) const noexcept
 		{
-			return m_value <= rhs.m_value;
+			return m_view.pointer <= rhs.m_view.pointer;
 		}
 
 		difference_type operator-(Component_iterator const rhs) const noexcept
 		{
-			return m_value - rhs.m_value;
+			assert((m_view.pointer - rhs.m_view.pointer) % sizeof(T) == 0);
+
+			return (m_view.pointer - rhs.m_view.pointer) / sizeof(T);
 		}
 
 		Component_iterator& operator+=(difference_type const n) noexcept
 		{
-			m_value += n;
+			m_view.pointer += n * sizeof(T);
 			return *this;
 		}
 
 		Component_iterator operator+(difference_type const n) const noexcept
 		{
-			return Component_iterator{m_value + n};
+			return Component_iterator{m_view.pointer + n * sizeof(T)};
 		}
 
 		Component_iterator& operator-=(difference_type const n) noexcept
 		{
-			m_value -= n;
+			m_view.pointer -= n * sizeof(T);
 			return *this;
 		}
 
 		Component_iterator operator-(difference_type const n) const noexcept
 		{
-			return Component_iterator{m_value - n};
+			return Component_iterator{m_view.pointer - n * sizeof(T)};
 		}
 
 		reference operator[](difference_type const index) const noexcept
 		{
-			return *(m_value + index);
-		}
-
-		pointer operator->() const noexcept
-		{
-			return m_value;
+			return *(m_view.pointer + index * sizeof(T));
 		}
 
 	private:
 
-		T* m_value = nullptr;
+		Component_view<T> m_view = nullptr;
 
 	};
 
@@ -247,16 +207,26 @@ namespace Maia::ECS
 
 		using Iterator = Component_iterator<T>;
 
+		Component_chunk_view(Iterator const begin, Iterator const end) noexcept :
+			m_begin{begin},
+			m_end{end}
+		{
+		}
+
 		Iterator begin() const noexcept
 		{
-			return Iterator{};
+			return m_begin;
 		}
 
 		Iterator end() const noexcept
 		{
-			return Iterator{};
+			return m_end;
 		}
 
+	private:
+
+		Iterator m_begin;
+		Iterator m_end; 
 	};
 
 	export class Component_chunk_group
@@ -551,10 +521,40 @@ namespace Maia::ECS
 		template <Concept::Component Component_t>
 		Component_chunk_view<Component_t> get_view(Chunk_group_hash const chunk_group_hash, std::size_t const chunk_index) noexcept
 		{
-			return {};
+			Chunk_group& chunk_group = m_chunk_groups.at(chunk_group_hash);
+			Chunk& chunk = chunk_group.chunks[chunk_index];
+
+			Component_type_info const component_type_info{get_component_type_id<Component_t>(), sizeof(Component_t)};
+			std::size_t const offset = get_component_element_offset(component_type_info, 0);
+			
+			std::size_t const number_of_elements_in_chunk = number_of_elements(chunk_group.number_of_elements, chunk_index);
+
+			typename Component_chunk_view<Component_t>::Iterator const begin{chunk.data() + offset};
+			typename Component_chunk_view<Component_t>::Iterator const end{chunk.data() + offset + number_of_elements_in_chunk * sizeof(Component_t)};
+
+			return {begin, end};
 		}
 
 	private:
+
+		std::size_t number_of_elements(std::size_t const number_of_elements_in_chunk_group, std::size_t const chunk_index) const noexcept
+		{
+			std::size_t const capacity_at_previous_chunk = chunk_index * m_number_of_entities_per_chunk;
+			std::size_t const capacity_at_current_chunk = capacity_at_previous_chunk + m_number_of_entities_per_chunk;
+
+			if (number_of_elements_in_chunk_group >= capacity_at_current_chunk)
+			{
+				return m_number_of_entities_per_chunk;
+			}
+			else if (number_of_elements_in_chunk_group > capacity_at_previous_chunk)
+			{
+				return number_of_elements_in_chunk_group - capacity_at_previous_chunk;
+			}
+			else
+			{
+				return 0;
+			}
+		}
 
 		std::size_t get_chunk_size() const noexcept
 		{
