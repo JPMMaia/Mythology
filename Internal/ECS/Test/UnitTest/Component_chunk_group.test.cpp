@@ -618,5 +618,22 @@ namespace Maia::ECS::Test
             CHECK(std::distance(view.begin(), view.end()) == 1);
             CHECK(*(view.begin() + 0) == Component_b{.value=8});
         }
+
+        {
+            constexpr std::size_t chunk_index = 0;
+
+            auto const view = group.get_view<Component_b>(chunk_group_1, chunk_index);
+
+            auto const plus_one = [](Component_b const component) -> Component_b
+            {
+                return {component.value + 1};
+            };
+
+            std::transform(view.begin(), view.end(), view.begin(), plus_one);
+
+            CHECK(std::distance(view.begin(), view.end()) == 2);
+            CHECK(*(view.begin() + 0) == Component_b{.value=5});
+            CHECK(*(view.begin() + 1) == Component_b{.value=7});
+        }
     }
 }
