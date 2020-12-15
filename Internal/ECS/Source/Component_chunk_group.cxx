@@ -46,6 +46,29 @@ namespace Maia::ECS
 		std::size_t number_of_elements;
 	};
 
+	std::size_t get_number_of_elements(
+		std::size_t const number_of_elements_in_chunk_group,
+		std::size_t const number_of_elements_per_chunk,
+		std::size_t const chunk_index
+	) noexcept
+	{
+		std::size_t const capacity_at_previous_chunk = chunk_index * number_of_elements_per_chunk;
+		std::size_t const capacity_at_current_chunk = capacity_at_previous_chunk + number_of_elements_per_chunk;
+
+		if (number_of_elements_in_chunk_group >= capacity_at_current_chunk)
+		{
+			return number_of_elements_per_chunk;
+		}
+		else if (number_of_elements_in_chunk_group > capacity_at_previous_chunk)
+		{
+			return number_of_elements_in_chunk_group - capacity_at_previous_chunk;
+		}
+		else
+		{
+			return 0;
+		}
+	}
+
 	template <typename Component_t>
 	struct Component_view
 	{
@@ -207,6 +230,8 @@ namespace Maia::ECS
 
 		using Iterator = Component_iterator<T>;
 
+		Component_chunk_view() noexcept = default;
+
 		Component_chunk_view(Iterator const begin, Iterator const end) noexcept :
 			m_begin{begin},
 			m_end{end}
@@ -225,8 +250,180 @@ namespace Maia::ECS
 
 	private:
 
+		Iterator m_begin{};
+		Iterator m_end{};
+	};
+
+	export template <typename T>
+	class Component_chunk_iterator
+	{
+	public:
+
+		using difference_type = std::ptrdiff_t;
+		using value_type = Component_chunk_view<T>;
+		using pointer = Component_chunk_view<T>*;
+		using reference = Component_chunk_view<T>&;
+		using iterator_category = std::bidirectional_iterator_tag;
+
+		Component_chunk_iterator() noexcept = default;
+
+		Component_chunk_iterator(
+			Chunk_group& chunk_group,
+			std::size_t const chunk_index,
+			std::size_t const number_of_elements_per_chunk,
+			std::size_t const component_offset
+		) noexcept :
+			m_chunk_group{chunk_group},
+			m_current_chunk_index{chunk_index},
+			m_number_of_elements_per_chunk{number_of_elements_per_chunk},
+			m_component_offset{component_offset},
+			m_component_chunk_view{create_component_view()}
+		{
+		}
+
+		reference operator*() const noexcept
+		{
+			return m_component_chunk_view;
+		}
+
+		pointer operator->() const noexcept
+		{
+			return &m_component_chunk_view;
+		}
+
+		bool operator==(Component_chunk_iterator const rhs) const noexcept
+		{
+			return &m_chunk_group == &rhs.m_chunk_group
+				&& m_current_chunk_index == rhs.m_current_chunk_index;
+		}
+
+		Component_chunk_iterator& operator++() noexcept
+		{
+			++m_current_chunk_index;
+			m_component_chunk_view = create_component_view();
+
+			return *this;
+		}
+
+		Component_chunk_iterator operator++(int) noexcept
+		{
+			Component_chunk_iterator const temp
+			{
+				m_chunk_group,
+				m_current_chunk_index,
+				m_number_of_elements_per_chunk,
+				m_component_offset
+			};
+
+			++(*this);
+			
+			return temp;
+		}
+
+		Component_chunk_iterator& operator--() noexcept
+		{
+			--m_current_chunk_index;
+			m_component_chunk_view = create_component_view();
+			return *this;
+		}
+
+		Component_chunk_iterator operator--(int) noexcept
+		{
+			Component_chunk_iterator const temp
+			{
+				m_chunk_group,
+				m_current_chunk_index,
+				m_number_of_elements_per_chunk,
+				m_component_offset
+			};
+
+			--(*this);
+			
+			return temp;
+		}
+
+		difference_type operator-(Component_chunk_iterator const rhs) const noexcept
+		{
+			assert(m_chunk_group == rhs.m_chunk_group);
+
+			if (m_current_chunk_index >= rhs.m_current_chunk_index) [[likely]]
+			{
+				return m_current_chunk_index - rhs.m_current_chunk_index;
+			}
+			else
+			{
+				return -static_cast<difference_type>(rhs.m_current_chunk_index - m_current_chunk_index);
+			}
+		}
+
+	private:
+
+		Component_chunk_view<T> create_component_view() const noexcept
+		{
+			std::size_t const number_of_elements_in_chunk = get_number_of_elements(
+				m_chunk_group.number_of_elements,
+				m_number_of_elements_per_chunk,
+				m_current_chunk_index
+			);
+
+			if (number_of_elements_in_chunk != 0) [[likely]]
+			{
+				Chunk& chunk = m_chunk_group.chunks[m_current_chunk_index];
+
+				Component_iterator<T> const chunk_begin
+				{
+					chunk.data() + m_component_offset
+				};
+
+				Component_iterator<T> const chunk_end
+				{
+					chunk.data() + m_component_offset + number_of_elements_in_chunk * sizeof(T)
+				};
+
+				return {chunk_begin, chunk_end};
+			}
+			else
+			{
+				return {};
+			}
+		}
+		
+		Chunk_group& m_chunk_group;
+		std::size_t m_current_chunk_index;
+		std::size_t m_number_of_elements_per_chunk;
+		std::size_t m_component_offset;
+		Component_chunk_view<T> m_component_chunk_view;
+
+	};
+
+	export template <typename T>
+	class Component_chunk_group_view
+	{
+	public:
+
+		using Iterator = Component_chunk_iterator<T>;
+
+		Component_chunk_group_view(Iterator const begin, Iterator const end) noexcept :
+			m_begin{begin},
+			m_end{end}
+		{
+		}
+
+		Iterator begin() const noexcept
+		{
+			return m_begin;
+		}
+
+		Iterator end() const noexcept
+		{
+			return m_end;
+		}
+
+	private:
+
 		Iterator m_begin;
-		Iterator m_end; 
+		Iterator m_end;
+
 	};
 
 	export class Component_chunk_group
@@ -234,9 +431,6 @@ namespace Maia::ECS
 	public:
 
 		using Index = std::size_t;
-		
-		template <typename T>
-		using Iterator = typename Component_chunk_view<T>::Iterator;
 
 		Component_chunk_group(
 			std::span<Component_type_info const> const component_type_infos,
@@ -531,6 +725,33 @@ namespace Maia::ECS
 
 			typename Component_chunk_view<Component_t>::Iterator const begin{chunk.data() + offset};
 			typename Component_chunk_view<Component_t>::Iterator const end{chunk.data() + offset + number_of_elements_in_chunk * sizeof(Component_t)};
+
+			return {begin, end};
+		}
+
+		template <Concept::Component Component_t>
+		Component_chunk_group_view<Component_t> get_view(Chunk_group_hash const chunk_group_hash) noexcept
+		{
+			Chunk_group& chunk_group = m_chunk_groups.at(chunk_group_hash);
+
+			Component_type_info const component_type_info{get_component_type_id<Component_t>(), sizeof(Component_t)};
+			std::size_t const component_offset = get_component_element_offset(component_type_info, 0);
+
+			Component_chunk_iterator<Component_t> const begin
+			{
+				chunk_group,
+				0,
+				m_number_of_entities_per_chunk,
+				component_offset
+			};
+
+			Component_chunk_iterator<Component_t> const end
+			{
+				chunk_group,
+				chunk_group.number_of_elements,
+				m_number_of_entities_per_chunk,
+				component_offset
+			};
 
 			return {begin, end};
 		}
