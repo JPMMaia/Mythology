@@ -11,6 +11,7 @@ import <iterator>;
 import <memory_resource>;
 import <optional>;
 import <ostream>;
+import <ranges>;
 import <span>;
 import <vector>;
 import <unordered_map>;
@@ -224,7 +225,7 @@ namespace Maia::ECS
 	}
 
 	export template <typename T>
-	class Component_chunk_view
+	class Component_chunk_view : public std::ranges::view_base
 	{
 	public:
 
@@ -715,7 +716,20 @@ namespace Maia::ECS
 		template <Concept::Component Component_t>
 		Component_chunk_view<Component_t> get_view(Chunk_group_hash const chunk_group_hash, std::size_t const chunk_index) noexcept
 		{
-			Chunk_group& chunk_group = m_chunk_groups.at(chunk_group_hash);
+			auto const chunk_group_location = m_chunk_groups.find(chunk_group_hash);
+			if (chunk_group_location == m_chunk_groups.end()) [[unlikely]]
+			{
+				return {};
+			}
+
+			Chunk_group& chunk_group = chunk_group_location->second;
+
+
+			if (chunk_index >= chunk_group.chunks.size()) [[unlikely]]
+			{
+				return {};
+			}
+
 			Chunk& chunk = chunk_group.chunks[chunk_index];
 
 			Component_type_info const component_type_info{get_component_type_id<Component_t>(), sizeof(Component_t)};
