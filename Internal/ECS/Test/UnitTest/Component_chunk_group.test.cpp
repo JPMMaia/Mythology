@@ -486,6 +486,11 @@ namespace Maia::ECS::Test
     {
     }
 
+    template <std::ranges::viewable_range R>
+    void is_viewable_range(R) noexcept
+    {
+    }
+
     TEST_CASE("Use component view", "[component_chunk_group]")
     {
         constexpr Chunk_group_hash chunk_group_0{0};
@@ -516,10 +521,8 @@ namespace Maia::ECS::Test
         REQUIRE(group.number_of_chunks(chunk_group_0) == 1);
         REQUIRE(group.number_of_chunks(chunk_group_1) == 2);
 
-        {
-            using Iterator = Component_iterator<Entity>;
-            is_random_access_iterator(Iterator{});
-        }
+        is_viewable_range(Component_chunk_view<Entity>{});
+        is_random_access_iterator(Component_iterator<Entity>{});
 
         {
             using Iterator_traits = std::iterator_traits<Component_iterator<Entity>>;
@@ -635,6 +638,36 @@ namespace Maia::ECS::Test
             CHECK(std::distance(view.begin(), view.end()) == 2);
             CHECK(*(view.begin() + 0) == Component_b{.value=5});
             CHECK(*(view.begin() + 1) == Component_b{.value=7});
+        }
+
+        {
+            auto const view = group.get_view<Entity>(Chunk_group_hash{2}, 0);
+            
+            CHECK(std::distance(view.begin(), view.end()) == 0);
+    }
+
+        {
+            auto const view = group.get_view<Entity>(Chunk_group_hash{0}, 5);
+            
+            CHECK(std::distance(view.begin(), view.end()) == 0);
+    }
+
+        constexpr Chunk_group_hash chunk_group_2{2};
+        group.add_entity(Entity{5}, chunk_group_2);
+        group.remove_entity(chunk_group_2, 0);
+
+        {
+            auto const view = group.get_view<Entity>(chunk_group_2, 0);
+            
+            CHECK(std::distance(view.begin(), view.end()) == 0);
+        }
+
+        group.shrink_to_fit(chunk_group_2);
+
+        {
+            auto const view = group.get_view<Entity>(chunk_group_2, 0);
+            
+            CHECK(std::distance(view.begin(), view.end()) == 0);
         }
     }
 
