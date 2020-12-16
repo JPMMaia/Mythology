@@ -121,5 +121,13 @@ target_module (
         "maia.ecs.shared_component"
 )
 
+target_module (
+    MaiaECS
+    PUBLIC
+    "join_view"
+    INTERFACE "Join_view.cxx"
+    INTERFACE_DEPENDS "Standard_library"
+)
+
 add_subdirectory("Components")
 add_subdirectory("Systems")
