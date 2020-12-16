@@ -2,6 +2,8 @@ import maia.ecs.component;
 import maia.ecs.component_chunk_group;
 import maia.ecs.entity;
 
+import join_view;
+
 import <catch2/catch.hpp>;
 
 import <array>;
@@ -644,7 +646,7 @@ namespace Maia::ECS::Test
             auto const view = group.get_view<Entity>(Chunk_group_hash{2}, 0);
             
             CHECK(std::distance(view.begin(), view.end()) == 0);
-    }
+        }
 
         {
             auto const view = group.get_view<Entity>(Chunk_group_hash{0}, 5);
@@ -706,13 +708,11 @@ namespace Maia::ECS::Test
         REQUIRE(group.number_of_chunks(chunk_group_0) == 1);
         REQUIRE(group.number_of_chunks(chunk_group_1) == 2);
 
-        /*{
-            using Iterator = Component_chunk_iterator<Entity>;           
-            is_bidirectional_iterator(Iterator{});
-        }*/
+        is_viewable_range(Component_chunk_group_view<Entity>{});
+        is_bidirectional_iterator(Component_chunk_iterator<Entity>{});
 
         {
-            auto const view = views::join(group.get_view<Entity>(chunk_group_1));
+            auto const view = group.get_view<Entity>(chunk_group_1) | views::Join;
             
             CHECK(std::distance(view.begin(), view.end()) == 3);
 
@@ -723,7 +723,7 @@ namespace Maia::ECS::Test
         }
 
         {
-            auto const view = group.get_view<Component_a>(chunk_group_0);
+            auto const view = group.get_view<Component_a>(chunk_group_0) | views::Join;
             
             CHECK(std::distance(view.begin(), view.end()) == 1);
 
@@ -732,7 +732,7 @@ namespace Maia::ECS::Test
         }
 
         {
-            auto const view = group.get_view<Component_b>(chunk_group_0);
+            auto const view = group.get_view<Component_b>(chunk_group_0) | views::Join;
             
             CHECK(std::distance(view.begin(), view.end()) == 1);
 
@@ -741,7 +741,7 @@ namespace Maia::ECS::Test
         }
 
         {
-            auto const view = group.get_view<Entity>(chunk_group_1);
+            auto const view = group.get_view<Entity>(chunk_group_1) | views::Join;
             
             CHECK(std::distance(view.begin(), view.end()) == 3);
 
@@ -752,7 +752,7 @@ namespace Maia::ECS::Test
         }
 
         {
-            auto const view = group.get_view<Component_a>(chunk_group_1);
+            auto const view = group.get_view<Component_a>(chunk_group_1) | views::Join;
             
             CHECK(std::distance(view.begin(), view.end()) == 3);
 
@@ -763,9 +763,9 @@ namespace Maia::ECS::Test
         }
 
         {
-            auto const view = group.get_view<Component_b>(chunk_group_1);
+            auto const view = group.get_view<Component_b>(chunk_group_1) | views::Join;
             
-            CHECK(std::distance(view.begin(), view.end()) == 2);
+            CHECK(std::distance(view.begin(), view.end()) == 3);
 
             auto iterator = view.begin();
             CHECK(*iterator++ == Component_b{.value=4});
@@ -774,7 +774,7 @@ namespace Maia::ECS::Test
         }
 
         {
-            auto const view = group.get_view<Component_b>(chunk_group_1);
+            auto const view = group.get_view<Component_b>(chunk_group_1) | views::Join;
 
             auto const plus_one = [](Component_b const component) -> Component_b
             {
@@ -792,17 +792,17 @@ namespace Maia::ECS::Test
         }
 
         {
-            auto const view = group.get_view<Entity>(Chunk_group_hash{2});
+            auto const view = group.get_view<Entity>(Chunk_group_hash{2}) | views::Join;
             
             CHECK(std::distance(view.begin(), view.end()) == 0);
         }
 
-        constexpr Chunk_group_hash chunk_group_2{0};
+        constexpr Chunk_group_hash chunk_group_2{2};
         group.add_entity(Entity{5}, chunk_group_2);
         group.remove_entity(chunk_group_2, 0);
 
         {
-            auto const view = group.get_view<Entity>(chunk_group_2);
+            auto const view = group.get_view<Entity>(chunk_group_2) | views::Join;
             
             CHECK(std::distance(view.begin(), view.end()) == 0);
         }
@@ -810,7 +810,7 @@ namespace Maia::ECS::Test
         group.shrink_to_fit(chunk_group_2);
 
         {
-            auto const view = group.get_view<Entity>(chunk_group_2);
+            auto const view = group.get_view<Entity>(chunk_group_2) | views::Join;
             
             CHECK(std::distance(view.begin(), view.end()) == 0);
         }
