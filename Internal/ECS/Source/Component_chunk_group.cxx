@@ -262,8 +262,8 @@ namespace Maia::ECS
 
 		using difference_type = std::ptrdiff_t;
 		using value_type = Component_chunk_view<T>;
-		using pointer = Component_chunk_view<T>*;
-		using reference = Component_chunk_view<T>&;
+		using pointer = Component_chunk_view<T> const*;
+		using reference = Component_chunk_view<T> const&;
 		using iterator_category = std::bidirectional_iterator_tag;
 
 		Component_chunk_iterator() noexcept = default;
@@ -274,7 +274,7 @@ namespace Maia::ECS
 			std::size_t const number_of_elements_per_chunk,
 			std::size_t const component_offset
 		) noexcept :
-			m_chunk_group{chunk_group},
+			m_chunk_group{&chunk_group},
 			m_current_chunk_index{chunk_index},
 			m_number_of_elements_per_chunk{number_of_elements_per_chunk},
 			m_component_offset{component_offset},
@@ -294,7 +294,7 @@ namespace Maia::ECS
 
 		bool operator==(Component_chunk_iterator const rhs) const noexcept
 		{
-			return &m_chunk_group == &rhs.m_chunk_group
+			return m_chunk_group == rhs.m_chunk_group
 				&& m_current_chunk_index == rhs.m_current_chunk_index;
 		}
 
@@ -362,14 +362,14 @@ namespace Maia::ECS
 		Component_chunk_view<T> create_component_view() const noexcept
 		{
 			std::size_t const number_of_elements_in_chunk = get_number_of_elements(
-				m_chunk_group.number_of_elements,
+				m_chunk_group->number_of_elements,
 				m_number_of_elements_per_chunk,
 				m_current_chunk_index
 			);
 
 			if (number_of_elements_in_chunk != 0) [[likely]]
 			{
-				Chunk& chunk = m_chunk_group.chunks[m_current_chunk_index];
+				Chunk& chunk = m_chunk_group->chunks[m_current_chunk_index];
 
 				Component_iterator<T> const chunk_begin
 				{
@@ -389,7 +389,7 @@ namespace Maia::ECS
 			}
 		}
 		
-		Chunk_group& m_chunk_group;
+		Chunk_group* m_chunk_group;
 		std::size_t m_current_chunk_index;
 		std::size_t m_number_of_elements_per_chunk;
 		std::size_t m_component_offset;
@@ -398,11 +398,13 @@ namespace Maia::ECS
 	};
 
 	export template <typename T>
-	class Component_chunk_group_view
+	class Component_chunk_group_view : public std::ranges::view_base
 	{
 	public:
 
 		using Iterator = Component_chunk_iterator<T>;
+
+		Component_chunk_group_view() noexcept = default;
 
 		Component_chunk_group_view(Iterator const begin, Iterator const end) noexcept :
 			m_begin{begin},
@@ -746,7 +748,13 @@ namespace Maia::ECS
 		template <Concept::Component Component_t>
 		Component_chunk_group_view<Component_t> get_view(Chunk_group_hash const chunk_group_hash) noexcept
 		{
-			Chunk_group& chunk_group = m_chunk_groups.at(chunk_group_hash);
+			auto const chunk_group_location = m_chunk_groups.find(chunk_group_hash);
+			if (chunk_group_location == m_chunk_groups.end()) [[unlikely]]
+			{
+				return {};
+			}
+
+			Chunk_group& chunk_group = chunk_group_location->second;
 
 			Component_type_info const component_type_info{get_component_type_id<Component_t>(), sizeof(Component_t)};
 			std::size_t const component_offset = get_component_element_offset(component_type_info, 0);
