@@ -13,6 +13,8 @@ import <optional>;
 import <ostream>;
 import <ranges>;
 import <span>;
+import <tuple>;
+import <utility>;
 import <vector>;
 import <unordered_map>;
 
@@ -70,8 +72,11 @@ namespace Maia::ECS
 		}
 	}
 
+	template <typename... Components_t>
+	struct Component_view;
+
 	template <typename Component_t>
-	struct Component_view
+	struct Component_view<Component_t>
 	{
 		operator Component_t() const noexcept
 		{
@@ -106,19 +111,185 @@ namespace Maia::ECS
 		return output_stream;
 	}
 
-	export template <typename T>
+
+	template <typename Function, typename Tuple, std::size_t... Indices>
+	void apply(
+		Function&& function,
+		Tuple&& tuple,
+		std::array<std::byte*, sizeof...(Indices)> const& pointers,
+		std::index_sequence<Indices...>
+	) noexcept
+	{
+		(
+			std::invoke(
+				std::forward<Function>(function),
+				std::get<Indices>(tuple),
+				pointers[Indices]
+			),
+			...
+		);
+	};
+
+	template <typename Function, typename Tuple>
+	void apply(
+		Function&& function,
+		Tuple&& tuple,
+		std::array<std::byte*, std::tuple_size_v<std::remove_reference_t<Tuple>>> const& pointers
+	) noexcept
+	{
+		constexpr auto indices = std::make_index_sequence<std::tuple_size_v<std::remove_reference_t<Tuple>>>{};
+		
+		return apply(
+			std::forward<Function>(function),
+			std::forward<Tuple>(tuple),
+			pointers,
+			indices
+		);
+	}
+
+	template <typename Function, std::size_t... Indices>
+	void apply(
+		Function&& function,
+		std::index_sequence<Indices...>
+	) noexcept
+	{
+		(
+			std::invoke(
+				std::forward<Function>(function),
+				Indices
+			),
+			...
+		);
+	}
+
+	template <typename Tuple, typename Function, typename... Ts>
+	void apply(
+		Function&& function,
+		Ts&&... arguments
+	) noexcept
+	{
+		constexpr auto indices = std::make_index_sequence<std::tuple_size_v<std::remove_reference_t<Tuple>>>{};
+
+		auto const invoke = [&function, &arguments...] (std::size_t const index) -> void
+		{
+			std::invoke(
+				std::forward<Function>(function),
+				arguments[index]...
+			);
+		};
+
+		apply(
+			invoke,
+			indices
+		);
+	}
+
+	template <typename Type, typename Function, std::size_t... Indices> 
+	std::array<Type, sizeof...(Indices)> create_array(Function&& generator, std::index_sequence<Indices...>) noexcept
+	{
+		return
+		{
+			generator(Indices)...
+		};	
+	};
+
+	template <typename Type, std::size_t Size, typename Function> 
+	std::array<Type, Size> create_array(Function&& generator) noexcept
+	{
+		constexpr auto indices = std::make_index_sequence<Size>{};
+
+		return create_array<Type>(std::forward<Function>(generator), indices);
+	};
+
+
+	export template <typename... Components_t>
+	struct Component_view<Components_t...>
+	{
+		using value_type = std::tuple<Components_t...>;
+
+		operator std::tuple<Components_t...>() const noexcept
+		{
+			auto const read_component = [] <typename T> (T& component, std::byte const* const pointer)
+			{
+				std::memcpy(&component, pointer, sizeof(T));
+			};
+
+			std::tuple<Components_t...> components;
+			apply(read_component, components, this->pointers);
+
+			return components;
+		}
+
+		Component_view& operator=(std::tuple<Components_t...> const& components) noexcept
+		{
+			auto const write_component = [] <typename T> (std::byte* const pointer, T const& component)
+			{
+				std::memcpy(pointer, &component, sizeof(T));
+			};
+
+			apply(write_component, components, this->pointers);
+			
+			return *this;
+		}
+
+		Component_view& operator=(std::tuple<Components_t...>&& components) noexcept
+		{
+			auto const write_component = [] <typename T> (std::byte* const pointer, T const& component)
+			{
+				std::memcpy(pointer, &component, sizeof(T));
+			};
+			
+			apply(write_component, components, this->pointers);
+			
+			return *this;
+		}
+
+		bool operator==(std::tuple<Components_t...> const& rhs) const noexcept
+		{
+			std::tuple<Components_t...> const components = *this;
+			return components == rhs;
+		}
+
+		std::array<std::byte*, sizeof...(Components_t)> pointers;
+	};
+
+	export template <typename... Ts>
+	std::ostream& operator<<(std::ostream& output_stream, Component_view<Ts...> const view) noexcept
+	{
+		std::tuple<Ts...> const tuple = view;
+
+		output_stream << '{';
+		std::apply
+		(
+			[&output_stream](Ts const&... values)
+			{
+				std::size_t index = 0;
+				((output_stream << values << (++index != sizeof...(Ts) ? ", " : "")), ...);
+			},
+			tuple
+		);
+		output_stream << '}';
+		
+		return output_stream;
+	}
+
+	export template <typename... Ts>
 	class Component_iterator
 	{
+	private:
+
+		using pointers_type = std::conditional_t<sizeof...(Ts) == 1, std::byte*, std::array<std::byte*, sizeof...(Ts)>>;
+
 	public:
 
 		using difference_type = std::ptrdiff_t;
-		using value_type = T;
-		using pointer = Component_view<T>*;
-		using reference = Component_view<T>;
+		using value_type = std::conditional_t<sizeof...(Ts) == 1, std::tuple_element_t<0, std::tuple<Ts...>>, std::tuple<Ts...>>;
+		using pointer = Component_view<Ts...>*;
+		using reference = Component_view<Ts...>;
 		using iterator_category = std::random_access_iterator_tag;
 
-		explicit Component_iterator(std::byte* const data_pointer = nullptr) noexcept :
-			m_view{data_pointer}
+		explicit Component_iterator(pointers_type const data_pointers = {}) noexcept :
+			m_view{data_pointers}
 		{
 		}
 
@@ -127,94 +298,224 @@ namespace Maia::ECS
 			return m_view;
 		}
 
+		pointer operator->() const noexcept
+		{
+			return &m_view;
+		}
+
 		bool operator==(Component_iterator const rhs) const noexcept
 		{
-			return m_view.pointer == rhs.m_view.pointer;
+			if constexpr (sizeof...(Ts) == 1)
+			{
+				return m_view.pointer == rhs.m_view.pointer;
+			}
+			else
+			{
+				return m_view.pointers[0] == rhs.m_view.pointers[0];
+			}
 		}
 
 		Component_iterator& operator++() noexcept
 		{
-			m_view.pointer += sizeof(T);
+			if constexpr (sizeof...(Ts) == 1)
+			{
+				m_view.pointer += sizeof(value_type);
+			}
+			else
+			{
+				auto const increment_pointer = [] (std::byte*& pointer, std::size_t const component_size)
+				{
+					pointer += component_size;
+				};
+
+				constexpr std::array<std::size_t, sizeof...(Ts)> component_sizes
+				{
+					sizeof(Ts)...
+				};
+
+				apply<value_type>(increment_pointer, m_view.pointers, component_sizes);
+			}
+
 			return *this;
 		}
 
 		Component_iterator operator++(int) noexcept
 		{
-			Component_iterator temp{m_view.pointer};
-			m_view.pointer += sizeof(T);
-			return temp;
+			Component_iterator const copy = *this;
+			++(*this);
+			return copy;
 		}
 
 		Component_iterator& operator--() noexcept
 		{
-			m_view.pointer -= sizeof(T);
+			if constexpr (sizeof...(Ts) == 1)
+			{
+				m_view.pointer -= sizeof(value_type);
+			}
+			else
+			{
+				auto const decrement_pointer = [] (std::byte*& pointer, std::size_t const component_size)
+				{
+					pointer -= component_size;
+				};
+
+				constexpr std::array<std::size_t, sizeof...(Ts)> component_sizes
+				{
+					sizeof(Ts)...
+				};
+
+				apply<value_type>(decrement_pointer, m_view.pointers, component_sizes);
+			}
+
 			return *this;
 		}
 
 		Component_iterator operator--(int) noexcept
 		{
-			Component_iterator temp{m_view.pointer};
-			m_view.pointer -= sizeof(T);
-			return temp;
+			Component_iterator const copy = *this;
+			--(*this);
+			return copy;
 		}
 
 		bool operator<(Component_iterator const rhs) const noexcept
 		{
-			return m_view.pointer < rhs.m_view.pointer;
+			if constexpr (sizeof...(Ts) == 1)
+			{
+				return m_view.pointer < rhs.m_view.pointer;
+			}
+			else
+			{
+				return m_view.pointers[0] < rhs.m_view.pointers[0];
+			}
 		}
 
 		bool operator>(Component_iterator const rhs) const noexcept
 		{
-			return m_view.pointer > rhs.m_view.pointer;
+			if constexpr (sizeof...(Ts) == 1)
+			{
+				return m_view.pointer > rhs.m_view.pointer;
+			}
+			else
+			{
+				return m_view.pointers[0] > rhs.m_view.pointers[0];
+			}
 		}
 
 		bool operator<=(Component_iterator const rhs) const noexcept
 		{
-			return m_view.pointer <= rhs.m_view.pointer;
+			if constexpr (sizeof...(Ts) == 1)
+			{
+				return m_view.pointer <= rhs.m_view.pointer;
+			}
+			else
+			{
+				return m_view.pointers[0] <= rhs.m_view.pointers[0];
+			}
 		}
 
 		bool operator>=(Component_iterator const rhs) const noexcept
 		{
-			return m_view.pointer <= rhs.m_view.pointer;
+			if constexpr (sizeof...(Ts) == 1)
+			{
+				return m_view.pointer <= rhs.m_view.pointer;
+			}
+			else
+			{
+				return m_view.pointers[0] <= rhs.m_view.pointers[0];
+			}
 		}
 
 		difference_type operator-(Component_iterator const rhs) const noexcept
 		{
-			assert((m_view.pointer - rhs.m_view.pointer) % sizeof(T) == 0);
+			if constexpr (sizeof...(Ts) == 1)
+			{
+				assert((m_view.pointer - rhs.m_view.pointer) % sizeof(value_type) == 0);
 
-			return (m_view.pointer - rhs.m_view.pointer) / sizeof(T);
+				return (m_view.pointer - rhs.m_view.pointer) / sizeof(value_type);
+			}
+			else
+			{
+				assert((m_view.pointers[0] - rhs.m_view.pointers[0]) % sizeof(std::tuple_element_t<0, value_type>) == 0);
+
+				return (m_view.pointers[0] - rhs.m_view.pointers[0]) / sizeof(std::tuple_element_t<0, value_type>);
+			}
 		}
 
 		Component_iterator& operator+=(difference_type const n) noexcept
 		{
-			m_view.pointer += n * sizeof(T);
+			if constexpr (sizeof...(Ts) == 1)
+			{
+				m_view.pointer += n * sizeof(value_type);
+			}
+			else
+			{
+				auto const increment_pointer = [n] <typename T> (std::byte*& pointer, std::size_t const component_size)
+				{
+					pointer += n * component_size;
+				};
+
+				constexpr std::array<std::size_t, sizeof...(Ts)> component_sizes
+				{
+					sizeof(Ts)...
+				};
+
+				apply(increment_pointer, m_view.pointers, component_sizes);
+			}
+			
 			return *this;
 		}
 
 		Component_iterator operator+(difference_type const n) const noexcept
 		{
-			return Component_iterator{m_view.pointer + n * sizeof(T)};
+			Component_iterator copy = *this;
+			copy += n;
+			return copy;
 		}
 
 		Component_iterator& operator-=(difference_type const n) noexcept
 		{
-			m_view.pointer -= n * sizeof(T);
-			return *this;
+			if constexpr (sizeof...(Ts) == 1)
+			{
+				m_view.pointer -= n * sizeof(value_type);
+			}
+			else
+			{
+				auto const decrement_pointer = [n] (std::byte*& pointer, std::size_t const component_size)
+				{
+					pointer -= n * component_size;
+				};
+
+				constexpr std::array<std::size_t, sizeof...(Ts)> component_sizes
+				{
+					sizeof(Ts)...
+				};
+
+				apply(decrement_pointer, m_view.pointers, component_sizes);
+			}
 		}
 
 		Component_iterator operator-(difference_type const n) const noexcept
 		{
-			return Component_iterator{m_view.pointer - n * sizeof(T)};
+			Component_iterator copy = *this;
+			copy -= n;
+			return copy;
 		}
 
 		reference operator[](difference_type const index) const noexcept
 		{
-			return *(m_view.pointer + index * sizeof(T));
+			if constexpr (sizeof...(Ts) == 1)
+			{
+				return *(m_view.pointer + index * sizeof(value_type));
+			}
+			else
+			{
+				return {}; // TODO
+			}
 		}
 
 	private:
 
-		Component_view<T> m_view = nullptr;
+		Component_view<Ts...> m_view = nullptr;
 
 	};
 
@@ -224,12 +525,12 @@ namespace Maia::ECS
 		return rhs + lhs;
 	}
 
-	export template <typename T>
+	export template <typename... T>
 	class Component_chunk_view : public std::ranges::view_base
 	{
 	public:
 
-		using Iterator = Component_iterator<T>;
+		using Iterator = Component_iterator<T...>;
 
 		Component_chunk_view() noexcept = default;
 
@@ -891,8 +1192,8 @@ namespace Maia::ECS
 			}
 		}
 
-		template <Concept::Component Component_t>
-		Component_chunk_view<Component_t> get_view(Chunk_group_hash const chunk_group_hash, std::size_t const chunk_index) noexcept
+		template <Concept::Component... Component_ts>
+		Component_chunk_view<Component_ts...> get_view(Chunk_group_hash const chunk_group_hash, std::size_t const chunk_index) noexcept
 		{
 			auto const chunk_group_location = m_chunk_groups.find(chunk_group_hash);
 			if (chunk_group_location == m_chunk_groups.end()) [[unlikely]]
@@ -910,15 +1211,75 @@ namespace Maia::ECS
 
 			Chunk& chunk = chunk_group.chunks[chunk_index];
 
-			Component_type_info const component_type_info{get_component_type_id<Component_t>(), sizeof(Component_t)};
-			std::size_t const offset = get_component_element_offset(component_type_info, 0);
-			
+			std::array<std::size_t, sizeof...(Component_ts)> const offsets
+			{
+				get_component_element_offset(
+					{
+						get_component_type_id<Component_ts>(),
+						sizeof(Component_ts)
+					},
+					0
+				)...
+			};
+
 			std::size_t const number_of_elements_in_chunk = number_of_elements(chunk_group.number_of_elements, chunk_index);
 
-			typename Component_chunk_view<Component_t>::Iterator const begin{chunk.data() + offset};
-			typename Component_chunk_view<Component_t>::Iterator const end{chunk.data() + offset + number_of_elements_in_chunk * sizeof(Component_t)};
+			if constexpr (sizeof...(Component_ts) == 1)
+			{
+				using Component_t = std::tuple_element_t<0, std::tuple<Component_ts...>>;
+				
+				typename Component_chunk_view<Component_ts...>::Iterator const begin
+				{
+					chunk.data() + offsets[0]
+				};
 
-			return {begin, end};
+				typename Component_chunk_view<Component_ts...>::Iterator const end
+				{
+					chunk.data() + offsets[0] + number_of_elements_in_chunk * sizeof(Component_t)
+				};
+
+				return {begin, end};
+			}
+			else
+			{
+				auto const create_begin_pointer = [&chunk, &offsets] (std::size_t const index) -> std::byte*
+				{
+					return chunk.data() + offsets[index];
+				};
+
+				std::array<std::byte*, sizeof...(Component_ts)> const begin_pointers = 
+					create_array<std::byte*, sizeof...(Component_ts)>(create_begin_pointer);
+
+				typename Component_chunk_view<Component_ts...>::Iterator const begin
+				{
+					begin_pointers
+				};
+
+				
+				constexpr std::array<std::size_t, sizeof...(Component_ts)> component_sizes
+				{
+					(
+						sizeof(Component_ts),
+						...
+					)
+				};
+
+				auto const create_end_pointer = [&chunk, &offsets, number_of_elements_in_chunk, &component_sizes] (std::size_t const index) -> std::byte*
+				{
+					return chunk.data() + offsets[index] + number_of_elements_in_chunk * component_sizes[index];
+				};
+
+				std::array<std::byte*, sizeof...(Component_ts)> const end_pointers = 
+					create_array<std::byte*, sizeof...(Component_ts)>(create_end_pointer);
+				
+				typename Component_chunk_view<Component_ts...>::Iterator const end
+				{
+					end_pointers
+				};
+
+
+				return {begin, end};
+			}			
 		}
 
 		template <Concept::Component Component_t>
