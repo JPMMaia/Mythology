@@ -971,10 +971,10 @@ namespace Maia::ECS::Test
         {
             auto const view = group.get_view<Entity, Component_a, Component_b>() | views::join | views::join;
 
-            auto const plus_one = [](std::tuple<Entity, Component_a, Component_b> components) -> Component_b
+            auto const plus_one = [](std::tuple<Entity, Component_a, Component_b> components) -> std::tuple<Entity, Component_a, Component_b>
             {
-                components.get<1>().value += 1;
-                components.get<2>().value += 1;
+                std::get<1>(components).value += 1;
+                std::get<2>(components).value += 1;
                 return components;
             };
 
