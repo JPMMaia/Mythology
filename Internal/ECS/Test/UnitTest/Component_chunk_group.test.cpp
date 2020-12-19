@@ -483,8 +483,8 @@ namespace Maia::ECS::Test
 // Type D (chunk_group)
 // Iterator -> [Iterator abc0n0, ..., Iterator abc0nn]
 
-    template<std::random_access_iterator T>
-    void is_random_access_iterator(T) noexcept
+    template<std::bidirectional_iterator T>
+    void is_bidirectional_iterator(T) noexcept
     {
     }
 
@@ -523,28 +523,18 @@ namespace Maia::ECS::Test
         REQUIRE(group.number_of_chunks(chunk_group_0) == 1);
         REQUIRE(group.number_of_chunks(chunk_group_1) == 2);
 
-        is_viewable_range(Component_chunk_view<Entity>{});
-        is_random_access_iterator(Component_iterator<Entity>{});
+        is_viewable_range(Component_chunk_view<true, Entity>{});
+        is_bidirectional_iterator(Component_iterator<true, Entity>{});
 
-        {
-            using Iterator_traits = std::iterator_traits<Component_iterator<Entity>>;
-            static_assert(std::is_same_v<Iterator_traits::value_type, Entity>);
-        }
+        is_viewable_range(Component_chunk_view<false, Entity>{});
+        is_bidirectional_iterator(Component_iterator<false, Entity>{});
 
-        {
-            using Iterator_traits = std::iterator_traits<Component_iterator<Component_a>>;
-            static_assert(std::is_same_v<Iterator_traits::value_type, Component_a>);
-        }
-
-        {
-            using Iterator_traits = std::iterator_traits<Component_iterator<Component_b>>;
-            static_assert(std::is_same_v<Iterator_traits::value_type, Component_b>);
-        }
+        Component_chunk_group const& const_group = group;
 
         {
             constexpr std::size_t chunk_index = 0;
             
-            auto const view = group.get_view<Entity>(chunk_group_0, chunk_index);
+            auto const view = const_group.get_view<Entity>(chunk_group_0, chunk_index);
             
             CHECK(std::distance(view.begin(), view.end()) == 1);
             CHECK(*(view.begin() + 0) == Entity{1});
@@ -553,7 +543,7 @@ namespace Maia::ECS::Test
         {
             constexpr std::size_t chunk_index = 0;
 
-            auto const view = group.get_view<Component_a>(chunk_group_0, chunk_index);
+            auto const view = const_group.get_view<Component_a>(chunk_group_0, chunk_index);
             
             CHECK(std::distance(view.begin(), view.end()) == 1);
             CHECK(*(view.begin() + 0) == Component_a{.value=1});
@@ -562,7 +552,7 @@ namespace Maia::ECS::Test
         {
             constexpr std::size_t chunk_index = 0;
             
-            auto const view = group.get_view<Component_b>(chunk_group_0, chunk_index);
+            auto const view = const_group.get_view<Component_b>(chunk_group_0, chunk_index);
             
             CHECK(std::distance(view.begin(), view.end()) == 1);
             CHECK(*(view.begin() + 0) == Component_b{.value=2});
@@ -571,7 +561,7 @@ namespace Maia::ECS::Test
         {
             constexpr std::size_t chunk_index = 0;
             
-            auto const view = group.get_view<Entity>(chunk_group_1, chunk_index);
+            auto const view = const_group.get_view<Entity>(chunk_group_1, chunk_index);
             
             CHECK(std::distance(view.begin(), view.end()) == 2);
             CHECK(*(view.begin() + 0) == Entity{2});
@@ -581,7 +571,7 @@ namespace Maia::ECS::Test
         {
             constexpr std::size_t chunk_index = 0;
             
-            auto const view = group.get_view<Component_a>(chunk_group_1, chunk_index);
+            auto const view = const_group.get_view<Component_a>(chunk_group_1, chunk_index);
             
             CHECK(std::distance(view.begin(), view.end()) == 2);
             CHECK(*(view.begin() + 0) == Component_a{.value=3});
@@ -591,7 +581,7 @@ namespace Maia::ECS::Test
         {
             constexpr std::size_t chunk_index = 0;
             
-            auto const view = group.get_view<Component_b>(chunk_group_1, chunk_index);
+            auto const view = const_group.get_view<Component_b>(chunk_group_1, chunk_index);
             
             CHECK(std::distance(view.begin(), view.end()) == 2);
             CHECK(*(view.begin() + 0) == Component_b{.value=4});
@@ -601,7 +591,7 @@ namespace Maia::ECS::Test
         {
             constexpr std::size_t chunk_index = 1;
             
-            auto const view = group.get_view<Entity>(chunk_group_1, chunk_index);
+            auto const view = const_group.get_view<Entity>(chunk_group_1, chunk_index);
             
             CHECK(std::distance(view.begin(), view.end()) == 1);
             CHECK(*(view.begin() + 0) == Entity{4});
@@ -610,7 +600,7 @@ namespace Maia::ECS::Test
         {
             constexpr std::size_t chunk_index = 1;
             
-            auto const view = group.get_view<Component_a>(chunk_group_1, chunk_index);
+            auto const view = const_group.get_view<Component_a>(chunk_group_1, chunk_index);
             
             CHECK(std::distance(view.begin(), view.end()) == 1);
             CHECK(*(view.begin() + 0) == Component_a{.value=7});
@@ -619,7 +609,7 @@ namespace Maia::ECS::Test
         {
             constexpr std::size_t chunk_index = 1;
             
-            auto const view = group.get_view<Component_b>(chunk_group_1, chunk_index);
+            auto const view = const_group.get_view<Component_b>(chunk_group_1, chunk_index);
             
             CHECK(std::distance(view.begin(), view.end()) == 1);
             CHECK(*(view.begin() + 0) == Component_b{.value=8});
@@ -643,23 +633,23 @@ namespace Maia::ECS::Test
         }
 
         {
-            auto const view = group.get_view<Entity>(Chunk_group_hash{2}, 0);
+            auto const view = const_group.get_view<Entity>(Chunk_group_hash{2}, 0);
             
             CHECK(std::distance(view.begin(), view.end()) == 0);
         }
 
         {
-            auto const view = group.get_view<Entity>(Chunk_group_hash{0}, 5);
+            auto const view = const_group.get_view<Entity>(Chunk_group_hash{0}, 5);
             
             CHECK(std::distance(view.begin(), view.end()) == 0);
-    }
+        }
 
         constexpr Chunk_group_hash chunk_group_2{2};
         group.add_entity(Entity{5}, chunk_group_2);
         group.remove_entity(chunk_group_2, 0);
 
         {
-            auto const view = group.get_view<Entity>(chunk_group_2, 0);
+            auto const view = const_group.get_view<Entity>(chunk_group_2, 0);
             
             CHECK(std::distance(view.begin(), view.end()) == 0);
         }
@@ -667,15 +657,10 @@ namespace Maia::ECS::Test
         group.shrink_to_fit(chunk_group_2);
 
         {
-            auto const view = group.get_view<Entity>(chunk_group_2, 0);
+            auto const view = const_group.get_view<Entity>(chunk_group_2, 0);
             
             CHECK(std::distance(view.begin(), view.end()) == 0);
         }
-    }
-
-    template<std::bidirectional_iterator T>
-    void is_bidirectional_iterator(T) noexcept
-    {
     }
 
     TEST_CASE("Use chunk group view", "[component_chunk_group]")
@@ -708,11 +693,16 @@ namespace Maia::ECS::Test
         REQUIRE(group.number_of_chunks(chunk_group_0) == 1);
         REQUIRE(group.number_of_chunks(chunk_group_1) == 2);
 
-        is_viewable_range(Component_chunk_group_view<Entity>{});
-        is_bidirectional_iterator(Component_chunk_iterator<Entity>{});
+        is_viewable_range(Component_chunk_group_view<true, Entity>{});
+        is_bidirectional_iterator(Component_chunk_iterator<true, Entity>{});
+
+        is_viewable_range(Component_chunk_group_view<false, Entity>{});
+        is_bidirectional_iterator(Component_chunk_iterator<false, Entity>{});
+
+        Component_chunk_group const& const_group = group;
 
         {
-            auto const view = group.get_view<Component_a>(chunk_group_0) | views::join;
+            auto const view = const_group.get_view<Component_a>(chunk_group_0) | views::join;
             
             CHECK(std::distance(view.begin(), view.end()) == 1);
 
@@ -721,7 +711,7 @@ namespace Maia::ECS::Test
         }
 
         {
-            auto const view = group.get_view<Component_b>(chunk_group_0) | views::join;
+            auto const view = const_group.get_view<Component_b>(chunk_group_0) | views::join;
             
             CHECK(std::distance(view.begin(), view.end()) == 1);
 
@@ -730,7 +720,7 @@ namespace Maia::ECS::Test
         }
 
         {
-            auto const view = group.get_view<Entity>(chunk_group_1) | views::join;
+            auto const view = const_group.get_view<Entity>(chunk_group_1) | views::join;
             
             CHECK(std::distance(view.begin(), view.end()) == 3);
 
@@ -741,7 +731,7 @@ namespace Maia::ECS::Test
         }
 
         {
-            auto const view = group.get_view<Component_a>(chunk_group_1) | views::join;
+            auto const view = const_group.get_view<Component_a>(chunk_group_1) | views::join;
             
             CHECK(std::distance(view.begin(), view.end()) == 3);
 
@@ -752,7 +742,7 @@ namespace Maia::ECS::Test
         }
 
         {
-            auto const view = group.get_view<Component_b>(chunk_group_1) | views::join;
+            auto const view = const_group.get_view<Component_b>(chunk_group_1) | views::join;
             
             CHECK(std::distance(view.begin(), view.end()) == 3);
 
@@ -781,7 +771,7 @@ namespace Maia::ECS::Test
         }
 
         {
-            auto const view = group.get_view<Entity>(Chunk_group_hash{2}) | views::join;
+            auto const view = const_group.get_view<Entity>(Chunk_group_hash{2}) | views::join;
             
             CHECK(std::distance(view.begin(), view.end()) == 0);
         }
@@ -791,7 +781,7 @@ namespace Maia::ECS::Test
         group.remove_entity(chunk_group_2, 0);
 
         {
-            auto const view = group.get_view<Entity>(chunk_group_2) | views::join;
+            auto const view = const_group.get_view<Entity>(chunk_group_2) | views::join;
             
             CHECK(std::distance(view.begin(), view.end()) == 0);
         }
@@ -799,7 +789,7 @@ namespace Maia::ECS::Test
         group.shrink_to_fit(chunk_group_2);
 
         {
-            auto const view = group.get_view<Entity>(chunk_group_2) | views::join;
+            auto const view = const_group.get_view<Entity>(chunk_group_2) | views::join;
             
             CHECK(std::distance(view.begin(), view.end()) == 0);
         }
@@ -841,11 +831,16 @@ namespace Maia::ECS::Test
         REQUIRE(group.number_of_chunks(chunk_group_0) == 1);
         REQUIRE(group.number_of_chunks(chunk_group_1) == 2);
 
-        is_viewable_range(Component_chunk_group_all_view<Entity>{});
-        is_bidirectional_iterator(Component_chunk_group_iterator<Entity>{});
+        is_viewable_range(Component_chunk_group_all_view<true, Entity>{});
+        is_bidirectional_iterator(Component_chunk_group_iterator<true, Entity>{});
+
+        is_viewable_range(Component_chunk_group_all_view<false, Entity>{});
+        is_bidirectional_iterator(Component_chunk_group_iterator<false, Entity>{});
+
+        Component_chunk_group const& const_group = group;
 
         {
-            auto const view = group.get_view<Entity>() | views::join | views::join;
+            auto const view = const_group.get_view<Entity>() | views::join | views::join;
             
             CHECK(std::distance(view.begin(), view.end()) == 4);
 
@@ -857,7 +852,7 @@ namespace Maia::ECS::Test
         }
 
         {
-            auto const view = group.get_view<Component_a>() | views::join | views::join;
+            auto const view = const_group.get_view<Component_a>() | views::join | views::join;
             
             CHECK(std::distance(view.begin(), view.end()) == 4);
 
@@ -869,7 +864,7 @@ namespace Maia::ECS::Test
         }
 
         {
-            auto const view = group.get_view<Component_b>() | views::join | views::join;
+            auto const view = const_group.get_view<Component_b>() | views::join | views::join;
             
             CHECK(std::distance(view.begin(), view.end()) == 4);
 
@@ -930,10 +925,12 @@ namespace Maia::ECS::Test
         REQUIRE(group.number_of_chunks(chunk_group_0) == 1);
         REQUIRE(group.number_of_chunks(chunk_group_1) == 2);
 
+        Component_chunk_group const& const_group = group;
+
         {
             constexpr std::size_t chunk_index = 0;
             
-            auto const view = group.get_view<Entity, Component_a, Component_b>(chunk_group_1, chunk_index);
+            auto const view = const_group.get_view<Entity, Component_a, Component_b>(chunk_group_1, chunk_index);
             
             CHECK(std::distance(view.begin(), view.end()) == 2);
 
@@ -944,7 +941,7 @@ namespace Maia::ECS::Test
         }
 
         {
-            auto const view = group.get_view<Entity, Component_a, Component_b>(chunk_group_1) | views::join;
+            auto const view = const_group.get_view<Entity, Component_a, Component_b>(chunk_group_1) | views::join;
             
             CHECK(std::distance(view.begin(), view.end()) == 3);
 
@@ -956,7 +953,7 @@ namespace Maia::ECS::Test
         }
 
         {
-            auto const view = group.get_view<Entity, Component_a, Component_b>() | views::join | views::join;
+            auto const view = const_group.get_view<Entity, Component_a, Component_b>() | views::join | views::join;
             
             CHECK(std::distance(view.begin(), view.end()) == 4);
 
