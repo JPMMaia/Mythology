@@ -56,21 +56,23 @@ namespace Maia::ECS
 
         Archetype(
             std::span<Component_type_info const> const component_type_infos,
+            std::optional<Shared_component_type_ID> const shared_component_type_id,
             std::pmr::polymorphic_allocator<std::byte> const& allocator
         ) :
             m_component_type_ids{create_component_type_ids(component_type_infos, allocator)},
             m_component_type_sizes{create_component_type_sizes(component_type_infos, allocator)},
-            m_shared_component_type_id{std::nullopt}
+            m_shared_component_type_id{shared_component_type_id}
         {
         }
 
         Archetype(
-            Shared_component_type_ID const shared_component_type_id,
-            std::span<Component_type_info const> const component_type_infos,
+            std::span<Component_type_ID const> const component_type_ids,
+            std::span<Component_type_size const> const component_type_sizes,
+            std::optional<Shared_component_type_ID> const shared_component_type_id,
             std::pmr::polymorphic_allocator<std::byte> const& allocator
         ) :
-            m_component_type_ids{create_component_type_ids(component_type_infos, allocator)},
-            m_component_type_sizes{create_component_type_sizes(component_type_infos, allocator)},
+            m_component_type_ids{component_type_ids.begin(), component_type_ids.end(), allocator},
+            m_component_type_sizes{component_type_sizes.begin(), component_type_sizes.end(), allocator},
             m_shared_component_type_id{shared_component_type_id}
         {
         }
