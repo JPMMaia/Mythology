@@ -146,21 +146,21 @@ namespace Maia::ECS::Test
         std::array<Component_type_info, 2> const archetype_ab_component_type_infos =
             make_sorted_component_type_info_array<Component_a, Component_b>();
 
-        Archetype const archetype_ab{archetype_ab_component_type_infos, {}};
+        Archetype const archetype_ab{archetype_ab_component_type_infos, std::nullopt, {}};
 
         CHECK(archetype_ab.has_component(get_component_type_id<Component_a>()) == true);
         CHECK(archetype_ab.has_component(get_component_type_id<Component_b>()) == true);
         CHECK(archetype_ab.has_component(get_component_type_id<Component_c>()) == false);
 
         {
-            Archetype const archetype_ab_clone{archetype_ab_component_type_infos, {}};
+            Archetype const archetype_ab_clone{archetype_ab_component_type_infos, std::nullopt, {}};
             CHECK(archetype_ab == archetype_ab_clone);
         }
 
         std::array<Component_type_info, 2> const archetype_ba_component_type_infos =
             make_sorted_component_type_info_array<Component_b, Component_a>();
 
-        Archetype const archetype_ba{archetype_ba_component_type_infos, {}};
+        Archetype const archetype_ba{archetype_ba_component_type_infos, std::nullopt, {}};
 
         CHECK(archetype_ba.has_component(get_component_type_id<Component_a>()) == true);
         CHECK(archetype_ba.has_component(get_component_type_id<Component_b>()) == true);
@@ -171,7 +171,7 @@ namespace Maia::ECS::Test
         std::array<Component_type_info, 1> const archetype_a_component_type_infos =
             make_sorted_component_type_info_array<Component_a>();
 
-        Archetype const archetype_a{archetype_a_component_type_infos, {}};
+        Archetype const archetype_a{archetype_a_component_type_infos, std::nullopt, {}};
 
         CHECK(archetype_ab != archetype_a);
         CHECK(archetype_ba != archetype_a);
@@ -183,7 +183,7 @@ namespace Maia::ECS::Test
             std::array<Component_type_info, 2> const archetype_ab_component_type_infos =
                 make_sorted_component_type_info_array<Component_a, Component_b>();
 
-            Archetype const archetype_ab{archetype_ab_component_type_infos, {}};
+            Archetype const archetype_ab{archetype_ab_component_type_infos, std::nullopt, {}};
 
 
             CHECK(archetype_ab.has_shared_component() == false);
@@ -198,7 +198,7 @@ namespace Maia::ECS::Test
             std::array<Component_type_info, 1> const archetype_ae_component_type_infos =
                 make_sorted_component_type_info_array<Component_a>();
 
-            Archetype const archetype_ae{shared_component_e_type_id, archetype_ae_component_type_infos, {}};
+            Archetype const archetype_ae{archetype_ae_component_type_infos, shared_component_e_type_id, {}};
 
 
             CHECK(archetype_ae.has_shared_component() == true);
@@ -210,12 +210,12 @@ namespace Maia::ECS::Test
             Shared_component_type_ID const shared_component_e_type_id =
                 get_shared_component_type_id<Shared_component_e>();
 
-            Archetype const archetype_e{shared_component_e_type_id, {}, {}};
+            Archetype const archetype_e{{}, shared_component_e_type_id, {}};
 
             Shared_component_type_ID const shared_component_f_type_id =
                 get_shared_component_type_id<Shared_component_f>();
 
-            Archetype const archetype_f{shared_component_f_type_id, {}, {}};
+            Archetype const archetype_f{{}, shared_component_f_type_id, {}};
 
 
             CHECK(shared_component_e_type_id != shared_component_f_type_id);
@@ -229,7 +229,7 @@ namespace Maia::ECS::Test
         std::array<Component_type_info, 2> const archetype_ab_component_type_infos =
             make_sorted_component_type_info_array<Component_a, Component_b>();
 
-        Archetype const archetype_ab{archetype_ab_component_type_infos, {}};
+        Archetype const archetype_ab{archetype_ab_component_type_infos, std::nullopt, {}};
 
         Entity const entity_0 = entity_manager.create_entity(archetype_ab);
 
@@ -282,7 +282,7 @@ namespace Maia::ECS::Test
         std::array<Component_type_info, 1> const archetype_b_component_type_infos =
             make_sorted_component_type_info_array<Component_b>();
 
-        Archetype const archetype_b{archetype_b_component_type_infos, {}};
+        Archetype const archetype_b{archetype_b_component_type_infos, std::nullopt, {}};
 
         Entity const entity_0 = entity_manager.create_entity(archetype_b);
 
@@ -299,7 +299,7 @@ namespace Maia::ECS::Test
         std::array<Component_type_info, 1> const archetype_a_component_type_infos =
             make_sorted_component_type_info_array<Component_a>();
 
-        Archetype const archetype_a{archetype_a_component_type_infos, {}};
+        Archetype const archetype_a{archetype_a_component_type_infos, std::nullopt, {}};
 
         {
             std::span<Archetype const> const archetypes = entity_manager.get_archetypes();
@@ -404,7 +404,7 @@ namespace Maia::ECS::Test
         Shared_component_type_ID const shared_component_e_type_id =
             get_shared_component_type_id<Shared_component_e>();
 
-        Archetype const archetype_e{shared_component_e_type_id, {}, {}};
+        Archetype const archetype_e{{}, shared_component_e_type_id, {}};
 
         Entity const entity_0 = entity_manager.create_entity(archetype_e, shared_component_e);
 
