@@ -47,7 +47,7 @@ namespace Maia::ECS::Test
     TEST_CASE("A component chunk is a container for different component types", "[Component_chunk]")
     {
         std::array<Component_type_info, 2> const component_type_infos = 
-            make_component_type_info_array<Component_a, Component_b>();
+            make_sorted_component_type_info_array<Component_a, Component_b>();
 
         Component_chunk const component_chunk{component_type_infos, 1, {}};
 
@@ -59,7 +59,7 @@ namespace Maia::ECS::Test
     TEST_CASE("A component chunk is a fixed sized container", "[Component_chunk]")
     {
         std::array<Component_type_info, 2> const component_type_infos = 
-            make_component_type_info_array<Component_a, Component_b>();
+            make_sorted_component_type_info_array<Component_a, Component_b>();
 
         Component_chunk const component_chunk{component_type_infos, 3, {}};
 
@@ -69,7 +69,7 @@ namespace Maia::ECS::Test
     TEST_CASE("Set components in a chunk", "[Component_chunk]")
     {
         std::array<Component_type_info, 2> const component_type_infos = 
-            make_component_type_info_array<Component_a, Component_b>();
+            make_sorted_component_type_info_array<Component_a, Component_b>();
 
         Component_chunk component_chunk{component_type_infos, 2, {}};
 
