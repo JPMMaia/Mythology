@@ -1,5 +1,6 @@
 export module maia.ecs.component;
 
+import <algorithm>;
 import <array>;
 import <compare>;
 import <concepts>;
@@ -84,12 +85,19 @@ namespace Maia::ECS
 	}
 
 	export template<Concept::Component... Component_t>
-	std::array<Component_type_info, sizeof...(Component_t)> make_component_type_info_array() noexcept
+	std::array<Component_type_info, sizeof...(Component_t)> make_sorted_component_type_info_array() noexcept
 	{
-		std::array<Component_type_info, sizeof...(Component_t)> const type_infos
+		std::array<Component_type_info, sizeof...(Component_t)> type_infos
 		{
 			{create_component_type_info<Component_t>()...}
 		};
+
+		auto const by_type_id = [] (Component_type_info const lhs, Component_type_info const rhs) -> bool
+		{
+			return lhs.id < rhs.id;
+		};
+
+		std::sort(type_infos.begin(), type_infos.end(), by_type_id);
 
 		return type_infos;
 	}
