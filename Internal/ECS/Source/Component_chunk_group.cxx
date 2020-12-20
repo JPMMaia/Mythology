@@ -37,7 +37,7 @@ namespace Maia::ECS
 	{
 		Component_type_ID id;
 		std::size_t offset;
-		Component_size size;
+		Component_type_size size;
 	};
 
 	export using Chunk_group_hash = std::size_t;
@@ -990,9 +990,41 @@ namespace Maia::ECS
 			m_number_of_entities_per_chunk{number_of_entities_per_chunk},
 			m_chunk_allocator{chunk_allocator}
 		{
-			m_component_type_infos.reserve(component_type_infos.size());
+			m_component_type_infos.reserve(component_type_infos.size() + 1);
 			m_component_type_infos.assign(component_type_infos.begin(), component_type_infos.end());
 			m_component_type_infos.push_back({get_component_type_id<Entity>(), sizeof(Entity)});
+		}
+
+		Component_chunk_group(
+			std::span<Component_type_ID const> const component_type_ids,
+			std::span<Component_type_size const> const component_type_sizes,
+			std::size_t const number_of_entities_per_chunk,
+			std::pmr::polymorphic_allocator<std::byte> const& chunk_allocator,
+			std::pmr::polymorphic_allocator<std::byte> const& allocator
+		) noexcept :
+			m_chunk_groups{allocator},
+			m_component_type_infos{allocator},
+			m_number_of_entities_per_chunk{number_of_entities_per_chunk},
+			m_chunk_allocator{chunk_allocator}
+		{
+			assert(component_type_ids.size() == component_type_sizes.size());
+
+			auto const to_component_type_info = [] (Component_type_ID const id, Component_type_size const size) -> Component_type_info
+			{
+				return {id, size};
+			};
+
+			m_component_type_infos.resize(component_type_ids.size() + 1);
+			
+			std::transform(
+				component_type_ids.begin(),
+				component_type_ids.end(),
+				component_type_sizes.begin(),
+				m_component_type_infos.begin(),
+				to_component_type_info
+			);
+			
+			m_component_type_infos.back() = {get_component_type_id<Entity>(), sizeof(Entity)};
 		}
 
 		Index add_entity(Entity const entity, Chunk_group_hash const chunk_group_hash)
