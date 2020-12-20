@@ -63,12 +63,12 @@ namespace Maia::ECS
 	}
 
 
-	export using Component_size = std::uint16_t;
+	export using Component_type_size = std::uint16_t;
 
 	export struct Component_type_info
 	{
 		Component_type_ID id;
-		Component_size size;
+		Component_type_size size;
 	};
 
 	export template <Concept::Component Component_t>
