@@ -77,7 +77,7 @@ namespace Maia::ECS::Test
     TEST_CASE("Component chunk group hides the component types", "[component_chunk_group]")
     {
         std::array<Component_type_info, 2> const component_type_infos = 
-            make_component_type_info_array<Component_a, Component_b>();
+            make_sorted_component_type_info_array<Component_a, Component_b>();
 
         Component_chunk_group const group{component_type_infos, 1, {}, {}};
 
@@ -92,7 +92,7 @@ namespace Maia::ECS::Test
         constexpr Chunk_group_hash chunk_group_1{1};
 
         std::array<Component_type_info, 2> const component_type_infos = 
-            make_component_type_info_array<Component_a, Component_b>();
+            make_sorted_component_type_info_array<Component_a, Component_b>();
 
         Component_chunk_group group{component_type_infos, 1, {}, {}};
 
@@ -129,7 +129,7 @@ namespace Maia::ECS::Test
         constexpr Chunk_group_hash chunk_group_1{1};
 
         std::array<Component_type_info, 2> const component_type_infos = 
-            make_component_type_info_array<Component_a, Component_b>();
+            make_sorted_component_type_info_array<Component_a, Component_b>();
 
         Component_chunk_group group{component_type_infos, 2, {}, {}};
 
@@ -176,7 +176,7 @@ namespace Maia::ECS::Test
         constexpr Chunk_group_hash chunk_group_0{0};
 
         std::array<Component_type_info, 2> const component_type_infos = 
-            make_component_type_info_array<Component_a, Component_b>();
+            make_sorted_component_type_info_array<Component_a, Component_b>();
 
          Component_chunk_group group{component_type_infos, 2, {}, {}};
 
@@ -199,7 +199,7 @@ namespace Maia::ECS::Test
         constexpr Chunk_group_hash chunk_group_0{0};
 
         std::array<Component_type_info, 2> const component_type_infos = 
-            make_component_type_info_array<Component_a, Component_b>();
+            make_sorted_component_type_info_array<Component_a, Component_b>();
 
         Component_chunk_group group{component_type_infos, 2, {}, {}};
 
@@ -325,7 +325,7 @@ namespace Maia::ECS::Test
         constexpr Chunk_group_hash chunk_group_0{0};
 
         std::array<Component_type_info, 2> const component_type_infos = 
-            make_component_type_info_array<Component_a, Component_b>();
+            make_sorted_component_type_info_array<Component_a, Component_b>();
 
         Component_chunk_group group{component_type_infos, 2, {}, {}};
 
@@ -349,7 +349,7 @@ namespace Maia::ECS::Test
         constexpr Chunk_group_hash chunk_group_0{0};
 
         std::array<Component_type_info, 2> const component_type_infos = 
-            make_component_type_info_array<Component_a, Component_b>();
+            make_sorted_component_type_info_array<Component_a, Component_b>();
 
         Component_chunk_group group{component_type_infos, 2, {}, {}};
         Component_chunk_group::Index const entity_0_index = group.add_entity(Entity{1}, chunk_group_0);
@@ -435,7 +435,7 @@ namespace Maia::ECS::Test
         constexpr Entity entity{ 1 };
 
         std::array<Component_type_info, 2> const component_type_infos = 
-            make_component_type_info_array<Component_a, Component_b>();
+            make_sorted_component_type_info_array<Component_a, Component_b>();
 
         Component_chunk_group group{component_type_infos, 2, {}, {}};
         Component_chunk_group::Index const entity_index = group.add_entity(entity, chunk_group_0);
@@ -504,7 +504,7 @@ namespace Maia::ECS::Test
         constexpr Chunk_group_hash chunk_group_1{1};
 
         std::array<Component_type_info, 2> const component_type_infos = 
-            make_component_type_info_array<Component_a, Component_b>();
+            make_sorted_component_type_info_array<Component_a, Component_b>();
 
         Component_chunk_group group{component_type_infos, 2, {}, {}};
 
@@ -686,7 +686,7 @@ namespace Maia::ECS::Test
         constexpr Chunk_group_hash chunk_group_1{1};
 
         std::array<Component_type_info, 2> const component_type_infos = 
-            make_component_type_info_array<Component_a, Component_b>();
+            make_sorted_component_type_info_array<Component_a, Component_b>();
 
         Component_chunk_group group{component_type_infos, 2, {}, {}};
 
@@ -818,7 +818,7 @@ namespace Maia::ECS::Test
         constexpr Chunk_group_hash chunk_group_1{1};
 
         std::array<Component_type_info, 2> const component_type_infos = 
-            make_component_type_info_array<Component_a, Component_b>();
+            make_sorted_component_type_info_array<Component_a, Component_b>();
 
         Component_chunk_group group{component_type_infos, 2, {}, {}};
 
@@ -918,7 +918,7 @@ namespace Maia::ECS::Test
         constexpr Chunk_group_hash chunk_group_1{1};
 
         std::array<Component_type_info, 2> const component_type_infos = 
-            make_component_type_info_array<Component_a, Component_b>();
+            make_sorted_component_type_info_array<Component_a, Component_b>();
 
         Component_chunk_group group{component_type_infos, 2, {}, {}};
 
