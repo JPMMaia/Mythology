@@ -488,6 +488,11 @@ namespace Maia::ECS::Test
     {
     }
 
+    template<std::random_access_iterator T>
+    void is_random_access_iterator(T) noexcept
+    {
+    }
+
     template <std::ranges::viewable_range R>
     void is_viewable_range(R) noexcept
     {
@@ -524,10 +529,10 @@ namespace Maia::ECS::Test
         REQUIRE(group.number_of_chunks(chunk_group_1) == 2);
 
         is_viewable_range(Component_chunk_view<true, Entity>{});
-        is_bidirectional_iterator(Component_iterator<true, Entity>{});
+        is_random_access_iterator(Component_iterator<true, Entity>{});
 
         is_viewable_range(Component_chunk_view<false, Entity>{});
-        is_bidirectional_iterator(Component_iterator<false, Entity>{});
+        is_random_access_iterator(Component_iterator<false, Entity>{});
 
         Component_chunk_group const& const_group = group;
 
@@ -630,6 +635,18 @@ namespace Maia::ECS::Test
             CHECK(std::distance(view.begin(), view.end()) == 2);
             CHECK(*(view.begin() + 0) == Component_b{.value=5});
             CHECK(*(view.begin() + 1) == Component_b{.value=7});
+        }
+
+        {
+            constexpr std::size_t chunk_index = 0;
+            
+            auto const view = const_group.get_view<Component_a>(chunk_group_1, chunk_index);
+
+            auto const iterator = view.begin();
+            
+            CHECK(std::distance(view.begin(), view.end()) == 2);
+            CHECK(iterator[0] == Component_a{.value=3});
+            CHECK(iterator[1] == Component_a{.value=5});
         }
 
         {
@@ -938,6 +955,19 @@ namespace Maia::ECS::Test
 
             CHECK(*iterator++ == std::make_tuple(Entity{2}, Component_a{3}, Component_b{4}));
             CHECK(*iterator++ == std::make_tuple(Entity{3}, Component_a{5}, Component_b{6}));
+        }
+
+        {
+            constexpr std::size_t chunk_index = 0;
+            
+            auto const view = const_group.get_view<Entity, Component_a, Component_b>(chunk_group_1, chunk_index);
+            
+            CHECK(std::distance(view.begin(), view.end()) == 2);
+
+            auto const iterator = view.begin();
+
+            CHECK(iterator[0] == std::make_tuple(Entity{2}, Component_a{3}, Component_b{4}));
+            CHECK(iterator[1] == std::make_tuple(Entity{3}, Component_a{5}, Component_b{6}));
         }
 
         {
