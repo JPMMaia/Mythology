@@ -513,6 +513,34 @@ namespace Maia::ECS
 			return copy;
 		}
 
+		reference operator[](difference_type const n) const noexcept
+		{
+			if constexpr (sizeof...(Ts) == 1)
+			{
+				Component_view<Const, Ts...> view = m_view;
+				view.pointer += n * sizeof(value_type);
+				return view;
+			}
+			else
+			{
+				Component_view<Const, Ts...> view = m_view;
+
+				auto const increment_pointer = [n] (Pointer_type& pointer, std::size_t const component_size)
+				{
+					pointer += n * component_size;
+				};
+
+				constexpr std::array<std::size_t, sizeof...(Ts)> component_sizes
+				{
+					sizeof(Ts)...
+				};
+
+				apply(increment_pointer, view.pointers, component_sizes);
+
+				return view;
+			}
+		}
+
 	private:
 
 		Component_view<Const, Ts...> m_view = nullptr;
