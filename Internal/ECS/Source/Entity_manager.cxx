@@ -11,12 +11,22 @@ import <algorithm>;
 import <cassert>;
 import <cstddef>;
 import <memory_resource>;
+import <numeric>;
 import <optional>;
 import <span>;
 import <vector>;
 
 namespace Maia::ECS
 {
+    using Archetype_index = std::size_t;
+
+    struct Entity_location_info
+    {
+        Archetype_index archetype_index;
+        Chunk_group_hash chunk_group_hash;
+        Component_chunk_group::Index chunk_group_index;
+    };
+
     export class Entity_manager
     {
     public:
@@ -34,38 +44,16 @@ namespace Maia::ECS
 
         Entity create_entity(Archetype const& archetype)
         {
-            assert(!archetype.has_shared_component());
+            Archetype_index const archetype_index =
+                add_archetype_if_it_does_not_exist(archetype);
 
-            std::optional<Archetype_index> const archetype_index = find_archetype_index(archetype);
-
-            if (archetype_index)
-            {
-                Component_chunk_group& chunk_group = m_component_chunk_groups.at(*archetype_index);
-
-                return create_entity(chunk_group);
-            }
-            else
-            {
-                m_archetypes.push_back(archetype);
-                
-                std::span<Component_type_ID const> const component_type_ids = 
-                    archetype.get_component_type_ids();
-
-                m_component_chunk_groups.push_back(
-                    Component_chunk_group{component_type_ids, {}, {}}
-                );
-
-                Component_chunk_group& chunk_group = m_component_chunk_groups.back();
-
-                return create_entity(chunk_group);
-            }
+            constexpr Chunk_group_hash no_shared_component_hash{0};
+            return create_entity(archetype_index, no_shared_component_hash);
         }
 
         template<Concept::Shared_component Shared_component_t>
         Entity create_entity(Archetype const& archetype, Shared_component_t const& shared_component)
         {
-            assert(archetype.has_shared_component());
-
             return {};
         }
 
@@ -96,12 +84,33 @@ namespace Maia::ECS
         template<Concept::Component Component_t>
         Component_t get_component_value(Entity const entity) const noexcept
         {
-            return {};
+            Entity_location_info const& entity_location_info = m_entity_location_info[entity.value];
+
+            Component_chunk_group const& component_chunk_group =
+                m_component_chunk_groups[entity_location_info.archetype_index];
+
+            Component_t component = 
+                component_chunk_group.get_component_value<Component_t>(
+                    entity_location_info.chunk_group_hash,
+                    entity_location_info.chunk_group_index
+                );
+
+            return component;
         }
 
         template<Concept::Component Component_t>
-        void set_component_value(Entity const entity, Component_t const value) noexcept
+        void set_component_value(Entity const entity, Component_t const& value) noexcept
         {
+            Entity_location_info const& entity_location_info = m_entity_location_info[entity.value];
+
+            Component_chunk_group& component_chunk_group =
+                m_component_chunk_groups[entity_location_info.archetype_index];
+
+            component_chunk_group.set_component_value<Component_t>(
+                entity_location_info.chunk_group_hash,
+                entity_location_info.chunk_group_index,
+                value
+            );
         }
 
         template<Concept::Shared_component Shared_component_t>
@@ -128,7 +137,46 @@ namespace Maia::ECS
 
     private:
 
-        using Archetype_index = std::iterator_traits<std::vector<Archetype>::const_iterator>::difference_type;
+        Archetype_index add_archetype(Archetype const& archetype)
+        {
+            m_archetypes.push_back(archetype);
+
+            std::span<Component_type_size const> const component_type_sizes = archetype.get_component_type_sizes();
+            
+            std::size_t const total_component_size_in_bytes = 
+                std::accumulate(component_type_sizes.begin(), component_type_sizes.end(), sizeof(Entity));
+
+            constexpr std::size_t maximum_chunk_size_in_bytes = 16 * 1024;
+            std::size_t const number_of_entities_per_chunk = maximum_chunk_size_in_bytes / total_component_size_in_bytes;
+
+            m_component_chunk_groups.push_back(
+                Component_chunk_group
+                {
+                    archetype.get_component_type_ids(),
+                    component_type_sizes,
+                    number_of_entities_per_chunk,
+                    m_component_chunks_allocator,
+                    m_generic_allocator
+                }
+            );
+
+            return m_archetypes.size() - 1;
+        }
+
+        Archetype_index add_archetype_if_it_does_not_exist(Archetype const& archetype)
+        {
+            std::optional<Archetype_index> const archetype_index =
+                find_archetype_index(archetype);
+
+            if (archetype_index.has_value()) [[likely]]
+            {
+                return *archetype_index;
+            }
+            else
+            {
+                return add_archetype(archetype);
+            }
+        }
 
         std::optional<Archetype_index> find_archetype_index(Archetype const& archetype) const noexcept
         {
@@ -154,22 +202,38 @@ namespace Maia::ECS
             ++m_next_entity_value;
         }
 
-        Entity create_entity(Component_chunk_group& component_chunk_group)
+        Entity create_entity(Archetype_index const archetype_index, Chunk_group_hash const chunk_group_hash)
         {
             Entity::Integral_type const new_entity_value = get_next_entity_value();
             increment_next_entity_value();
 
             Entity const new_entity{new_entity_value};
-            
-            component_chunk_group.add_entity(new_entity);
+  
+            Component_chunk_group& component_chunk_group = m_component_chunk_groups[archetype_index];
+
+            Component_chunk_group::Index component_chunk_group_index = 
+                component_chunk_group.add_entity(new_entity, chunk_group_hash);
+
+            m_entity_location_info.push_back(
+                Entity_location_info
+                {
+                    archetype_index,
+                    chunk_group_hash,
+                    component_chunk_group_index
+                }
+            );
             
             return new_entity;
         }
 
         std::pmr::polymorphic_allocator<std::byte> m_generic_allocator;
         std::pmr::polymorphic_allocator<std::byte> m_component_chunks_allocator;
+        
         std::pmr::vector<Archetype> m_archetypes;
         std::pmr::vector<Component_chunk_group> m_component_chunk_groups;
+
+        std::pmr::vector<Entity_location_info> m_entity_location_info;
+        
         Entity::Integral_type m_next_entity_value;
     };
 }
