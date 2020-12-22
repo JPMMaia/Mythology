@@ -1015,14 +1015,14 @@ namespace Maia::ECS
 			};
 
 			m_component_type_infos.resize(component_type_ids.size() + 1);
-			
-			std::transform(
-				component_type_ids.begin(),
-				component_type_ids.end(),
-				component_type_sizes.begin(),
-				m_component_type_infos.begin(),
-				to_component_type_info
-			);
+
+			for (std::size_t component_type_index = 0; component_type_index < component_type_ids.size(); ++component_type_index)
+			{
+				m_component_type_infos[component_type_index] = to_component_type_info(
+					component_type_ids[component_type_index],
+					component_type_sizes[component_type_index]
+				);
+			}
 			
 			m_component_type_infos.back() = {get_component_type_id<Entity>(), sizeof(Entity)};
 		}
