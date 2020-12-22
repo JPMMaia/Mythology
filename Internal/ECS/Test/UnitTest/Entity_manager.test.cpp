@@ -292,7 +292,7 @@ namespace Maia::ECS::Test
         CHECK(initialized_value == zero_initialized_value);
     }
 
-    TEST_CASE("New archetypes can be created by adding or removing components to an entity", "[entity_manager]")
+    TEST_CASE("New archetypes can be created by adding or removing components to an entity", "[.entity_manager]")
     {
         Entity_manager entity_manager{};
 
