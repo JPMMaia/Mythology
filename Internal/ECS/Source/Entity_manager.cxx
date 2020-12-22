@@ -33,7 +33,7 @@ namespace Maia::ECS
 
         std::span<Archetype const> get_archetypes() const noexcept
         {
-            return {};
+            return m_archetypes;
         }
 
         Archetype const& get_archetype(Entity const entity) const noexcept
@@ -62,8 +62,50 @@ namespace Maia::ECS
         }
 
         template<Concept::Component Component_t>
-        void add_component_type(Entity const entity)
+        void add_component_type(Entity const entity, std::pmr::polymorphic_allocator<std::byte> const& temporaries_allocator = {})
         {
+            Entity_location_info const& entity_location_info = m_entity_location_info[entity.value];
+
+            Archetype_index const original_archetype_index = entity_location_info.archetype_index;
+
+            Archetype const& original_archetype = m_archetypes[original_archetype_index];
+
+            std::span<Component_type_ID const> const original_component_type_ids = original_archetype.get_component_type_ids();
+            std::span<Component_type_size const> const original_component_type_sizes = original_archetype.get_component_type_sizes();
+
+            auto const to_component_type_info = [] (Component_type_ID const id, Component_type_size const size) -> Component_type_info
+            {
+                return {id, size};
+            };
+
+            std::pmr::vector<Component_type_info> new_component_type_infos{temporaries_allocator};
+            new_component_type_infos.resize(original_component_type_ids.size() + 1);
+
+            std::transform(
+                original_component_type_ids.begin(),
+                original_component_type_ids.end(),
+                original_component_type_sizes.begin(),
+                new_component_type_infos.begin(),
+                to_component_type_info
+            );
+
+            new_component_type_infos.back() = create_component_type_info<Component_t>();
+
+            sort_component_type_infos(new_component_type_infos.begin(), new_component_type_infos.end());
+
+            Archetype new_archetype
+            {
+                new_component_type_infos,
+                original_archetype.get_shared_component_type_id(),
+                m_generic_allocator
+            };
+
+            Archetype_index const new_archetype_index = add_archetype_if_it_does_not_exist(std::move(new_archetype));
+
+            move_entity(entity_location_info, m_component_chunk_groups[new_archetype_index]);
+
+            Component_chunk_group& old_component_chunk_group = m_component_chunk_groups[original_archetype_index];
+            // TODO remove archetype if no other entities are left
         }
 
         template<Concept::Component Component_t>
@@ -137,10 +179,8 @@ namespace Maia::ECS
 
     private:
 
-        Archetype_index add_archetype(Archetype const& archetype)
+        Archetype_index add_archetype(Archetype archetype)
         {
-            m_archetypes.push_back(archetype);
-
             std::span<Component_type_size const> const component_type_sizes = archetype.get_component_type_sizes();
             
             std::size_t const total_component_size_in_bytes = 
@@ -159,6 +199,8 @@ namespace Maia::ECS
                     m_generic_allocator
                 }
             );
+
+            m_archetypes.push_back(std::move(archetype));
 
             return m_archetypes.size() - 1;
         }
@@ -224,6 +266,19 @@ namespace Maia::ECS
             );
             
             return new_entity;
+        }
+
+        void move_entity(Entity_location_info const& entity_location_info, Component_chunk_group& to)
+        {
+            Component_chunk_group& from = m_component_chunk_groups[entity_location_info.archetype_index];
+
+            // TODO
+
+            // Create new entity in to component chunk group
+
+            // For each old component, read from old chunk and write to new chunk
+
+            // Remove entity from from component chunk group
         }
 
         std::pmr::polymorphic_allocator<std::byte> m_generic_allocator;
