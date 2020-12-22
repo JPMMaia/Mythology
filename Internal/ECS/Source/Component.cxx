@@ -5,6 +5,7 @@ import <array>;
 import <compare>;
 import <concepts>;
 import <cstdint>;
+import <iterator>;
 import <type_traits>;
 
 namespace Maia::ECS
@@ -84,6 +85,17 @@ namespace Maia::ECS
 		return type_info;
 	}
 
+	export template<typename I, typename S>
+	void sort_component_type_infos(I const first, S const last) noexcept
+	{
+		auto const by_type_id = [] (Component_type_info const lhs, Component_type_info const rhs) -> bool
+		{
+			return lhs.id < rhs.id;
+		};
+
+		std::sort(first, last, by_type_id);
+	}
+
 	export template<Concept::Component... Component_t>
 	std::array<Component_type_info, sizeof...(Component_t)> make_sorted_component_type_info_array() noexcept
 	{
@@ -92,12 +104,7 @@ namespace Maia::ECS
 			{create_component_type_info<Component_t>()...}
 		};
 
-		auto const by_type_id = [] (Component_type_info const lhs, Component_type_info const rhs) -> bool
-		{
-			return lhs.id < rhs.id;
-		};
-
-		std::sort(type_infos.begin(), type_infos.end(), by_type_id);
+		sort_component_type_infos(type_infos.begin(), type_infos.end());
 
 		return type_infos;
 	}
