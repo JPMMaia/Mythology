@@ -1183,6 +1183,7 @@ namespace Maia::ECS
 		void set_component_value(Chunk_group_hash const chunk_group_hash, Index const index, Component_t const& value) noexcept
 		{
 			Chunk_group& chunk_group = m_chunk_groups.at(chunk_group_hash);
+			assert(index < chunk_group.number_of_elements);
 
 			std::size_t const chunk_index = index / m_number_of_entities_per_chunk;
 			Chunk& chunk = chunk_group.chunks[chunk_index];
@@ -1595,6 +1596,8 @@ namespace Maia::ECS
 		template <Concept::Component Component_t>
 		Component_t get_component_value(Chunk_group const& chunk_group, Index const index) const noexcept
 		{
+			assert(index < chunk_group.number_of_elements);
+
 			std::size_t const chunk_index = index / m_number_of_entities_per_chunk;
 			Chunk const& chunk = chunk_group.chunks[chunk_index];
 
