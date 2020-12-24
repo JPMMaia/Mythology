@@ -8,12 +8,14 @@ import maia.ecs.entity;
 import maia.ecs.shared_component;
 
 import <algorithm>;
+import <any>;
 import <cassert>;
 import <cstddef>;
 import <memory_resource>;
 import <numeric>;
 import <optional>;
 import <span>;
+import <unordered_map>;
 import <vector>;
 
 namespace Maia::ECS
@@ -25,6 +27,17 @@ namespace Maia::ECS
         Archetype_index archetype_index;
         Chunk_group_hash chunk_group_hash;
         Component_chunk_group::Index chunk_group_index;
+    };
+
+    export using Shared_component_key = Chunk_group_hash;
+
+    export template<Concept::Shared_component Shared_component_t>
+    struct Default_shared_component_hash
+    {
+        std::size_t operator()(Shared_component_t const& shared_component) const noexcept
+        {
+            return 0; // TODO
+        }
     };
 
     export class Entity_manager
@@ -51,10 +64,15 @@ namespace Maia::ECS
             return create_entity(archetype_index, no_shared_component_hash);
         }
 
-        template<Concept::Shared_component Shared_component_t>
-        Entity create_entity(Archetype const& archetype, Shared_component_t const& shared_component)
+        Entity create_entity(
+            Archetype const& archetype,
+            Shared_component_key const shared_component_key
+        )
         {
-            return {};
+            Archetype_index const archetype_index =
+                add_archetype_if_it_does_not_exist(archetype);
+
+            return create_entity(archetype_index, shared_component_key);
         }
 
         void destroy_entity(Entity const entity)
@@ -156,15 +174,56 @@ namespace Maia::ECS
         }
 
         template<Concept::Shared_component Shared_component_t>
-        Shared_component_t const& get_shared_component_value(Entity const entity) const noexcept
+        Shared_component_t const& get_shared_component(
+            Entity const entity
+        ) const noexcept
         {
-            static Shared_component_t dummy;
-            return dummy;
+            Chunk_group_hash const key = m_entity_location_info[entity.value].chunk_group_hash;
+
+            return get_shared_component<Shared_component_t>(key);
         }
 
         template<Concept::Shared_component Shared_component_t>
-        void set_shared_component_value(Entity const entity, Shared_component_t const& value) noexcept
+        Shared_component_t const& get_shared_component(
+            Shared_component_key const shared_component_key
+        ) const noexcept
         {
+            std::any const& value = m_shared_components.at(shared_component_key);
+
+            return *std::any_cast<Shared_component_t>(&value);
+        }
+
+        template<Concept::Shared_component Shared_component_t>
+        void set_shared_component(
+            Shared_component_key const shared_component_key,
+            Shared_component_t shared_component
+        ) noexcept
+        {
+            m_shared_components[shared_component_key] = shared_component;
+        }
+
+        void change_entity_shared_component(Entity const entity, Shared_component_key const shared_component_key) noexcept
+        {
+            Entity_location_info& location_info = m_entity_location_info[entity.value];
+            
+            Chunk_group_hash const old_key = location_info.chunk_group_hash;
+            Chunk_group_hash const new_key = shared_component_key;
+
+            Component_chunk_group& chunk_group = m_component_chunk_groups[location_info.archetype_index];
+            Entity_move_result const result = chunk_group.move_entity(old_key, location_info.chunk_group_index, new_key);
+
+            if (result.entity_moved_by_remove.has_value())
+            {
+                Entity const moved_entity = result.entity_moved_by_remove->entity;
+                
+                Entity_location_info& moved_location_info = m_entity_location_info[moved_entity.value];
+
+                Component_chunk_group::Index const new_moved_entity_index = location_info.chunk_group_index;
+                moved_location_info.chunk_group_index = new_moved_entity_index;
+            }
+
+            location_info.chunk_group_hash = shared_component_key;
+            location_info.chunk_group_index = result.new_index;
         }
 
         /*std::span<Component_chunk_view> get_component_chunk_views(Archetype const archetype) noexcept
@@ -288,6 +347,8 @@ namespace Maia::ECS
         std::pmr::vector<Component_chunk_group> m_component_chunk_groups;
 
         std::pmr::vector<Entity_location_info> m_entity_location_info;
+
+        std::pmr::unordered_map<Chunk_group_hash, std::any> m_shared_components;
         
         Entity::Integral_type m_next_entity_value;
     };
