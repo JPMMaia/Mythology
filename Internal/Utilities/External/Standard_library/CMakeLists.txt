@@ -9,6 +9,7 @@ add_library (Standard_library)
 set_target_properties (Standard_library PROPERTIES LINKER_LANGUAGE CXX)
 
 target_header (Standard_library PUBLIC "algorithm" "${standard_library_root}/algorithm")
+target_header (Standard_library PUBLIC "any" "${standard_library_root}/any")
 target_header (Standard_library PUBLIC "array" "${standard_library_root}/array")
 target_header (Standard_library PUBLIC "cassert" "${standard_library_root}/cassert")
 target_header (Standard_library PUBLIC "compare" "${standard_library_root}/compare")
