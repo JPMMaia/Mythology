@@ -397,7 +397,8 @@ namespace Maia::ECS::Test
 
     TEST_CASE("A shared component is a component that can be shared by multiple entities", "[entity_manager]")
     {
-        constexpr Shared_component_e shared_component_e{ .value = 1 };
+        constexpr Shared_component_e shared_component_e1{ .value = 1 };
+        constexpr Shared_component_key shared_component_e1_key = 1;
 
         Entity_manager entity_manager{};
 
@@ -406,38 +407,83 @@ namespace Maia::ECS::Test
 
         Archetype const archetype_e{{}, shared_component_e_type_id, {}};
 
-        Entity const entity_0 = entity_manager.create_entity(archetype_e, shared_component_e);
+        entity_manager.set_shared_component(shared_component_e1_key, shared_component_e1);
 
         {
-            Shared_component_e const& actual_shared_component =
-                entity_manager.get_shared_component_value<Shared_component_e>(entity_0);
+            Shared_component_e const& actual_value = entity_manager.get_shared_component<Shared_component_e>(shared_component_e1_key);
 
-            CHECK(shared_component_e == actual_shared_component);
+            CHECK(actual_value == shared_component_e1);
+        }
+
+        Entity const entity_0 = entity_manager.create_entity(archetype_e, shared_component_e1_key);
+        Entity const entity_1 = entity_manager.create_entity(archetype_e, shared_component_e1_key);
+
+        {
+            Shared_component_e const& actual_value = entity_manager.get_shared_component<Shared_component_e>(entity_0);
+            CHECK(actual_value == shared_component_e1);
         }
 
         {
-            constexpr Shared_component_e new_shared_component{ .value = 2 };
-            entity_manager.set_shared_component_value(entity_0, new_shared_component);
+            Shared_component_e const& actual_value = entity_manager.get_shared_component<Shared_component_e>(entity_1);
+            CHECK(actual_value == shared_component_e1);
+        }
 
-            Shared_component_e const& actual_shared_component =
-                entity_manager.get_shared_component_value<Shared_component_e>(entity_0);
+        constexpr Shared_component_e shared_component_e2{ .value = 2 };
 
-            CHECK(new_shared_component == actual_shared_component);
-            CHECK(shared_component_e != actual_shared_component);
+        entity_manager.set_shared_component(shared_component_e1_key, shared_component_e2);
+
+        {
+            Shared_component_e const& actual_value = entity_manager.get_shared_component<Shared_component_e>(shared_component_e1_key);
+
+            CHECK(actual_value == shared_component_e2);
         }
 
         {
-            {
-                Archetype const& original_archetype = entity_manager.get_archetype(entity_0);
-                CHECK(original_archetype.has_shared_component(get_shared_component_type_id<Shared_component_e>()));
-            }
+            Shared_component_e const& actual_value = entity_manager.get_shared_component<Shared_component_e>(entity_0);
+            CHECK(actual_value == shared_component_e2);
+        }
 
-            entity_manager.remove_shared_component_type<Shared_component_e>(entity_0);
+        {
+            Shared_component_e const& actual_value = entity_manager.get_shared_component<Shared_component_e>(entity_1);
+            CHECK(actual_value == shared_component_e2);
+        }
 
-            {
-                Archetype const& new_archetype = entity_manager.get_archetype(entity_0);
-                CHECK(!new_archetype.has_shared_component(get_shared_component_type_id<Shared_component_e>()));
-            }
+
+        std::array<Component_type_info, 2> const archetype_ab_component_type_infos =
+            make_sorted_component_type_info_array<Component_a, Component_b>();
+
+        Archetype const archetype_abe{archetype_ab_component_type_infos, shared_component_e_type_id, {}};
+
+        Entity const entity_2 = entity_manager.create_entity(archetype_abe, shared_component_e1_key);
+        entity_manager.set_component_value(entity_2, Component_a{.value=10});
+        entity_manager.set_component_value(entity_2, Component_b{.value=11});
+
+        Entity const entity_3 = entity_manager.create_entity(archetype_abe, shared_component_e1_key);
+        entity_manager.set_component_value(entity_3, Component_a{.value=12});
+        entity_manager.set_component_value(entity_3, Component_b{.value=13});
+
+        constexpr Shared_component_e shared_component_e3{ .value = 3 };
+        constexpr Shared_component_key shared_component_e3_key = 3;
+
+        entity_manager.set_shared_component(shared_component_e3_key, shared_component_e3);
+
+        entity_manager.change_entity_shared_component(entity_2, shared_component_e3_key);
+
+        {
+            Shared_component_e const& actual_value = entity_manager.get_shared_component<Shared_component_e>(entity_2);
+            CHECK(actual_value == shared_component_e3);
+        }
+
+        {
+            CHECK(entity_manager.get_component_value<Entity>(entity_2) == entity_2);
+            CHECK(entity_manager.get_component_value<Component_a>(entity_2) == Component_a{.value=10});
+            CHECK(entity_manager.get_component_value<Component_b>(entity_2) == Component_b{.value=11});
+        }
+
+        {
+            CHECK(entity_manager.get_component_value<Entity>(entity_3) == entity_3);
+            CHECK(entity_manager.get_component_value<Component_a>(entity_3) == Component_a{.value=12});
+            CHECK(entity_manager.get_component_value<Component_b>(entity_3) == Component_b{.value=13});
         }
     }
 
