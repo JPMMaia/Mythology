@@ -457,6 +457,59 @@ namespace Maia::ECS::Test
         }
     }
 
+    TEST_CASE("Move entities to a different chunk group", "[component_chunk_group]")
+    {
+        std::array<Component_type_info, 2> const component_type_infos = 
+            make_sorted_component_type_info_array<Component_a, Component_b>();
+
+        Component_chunk_group group{component_type_infos, 2, {}, {}};
+
+        group.add_entity(Entity{1}, Chunk_group_hash{0});
+        group.set_component_value(Chunk_group_hash{0}, 0, Component_a{.value=1});
+        group.set_component_value(Chunk_group_hash{0}, 0, Component_b{.value=2});
+
+        CHECK(group.number_of_entities(Chunk_group_hash{0}) == 1);
+
+        Entity_move_result const entity_move_result_0 = group.move_entity(Chunk_group_hash{0}, 0, Chunk_group_hash{1});
+
+        CHECK(entity_move_result_0.new_index == 0);
+        CHECK(!entity_move_result_0.entity_moved_by_remove.has_value());
+
+        CHECK(group.number_of_entities(Chunk_group_hash{0}) == 0);
+        
+        CHECK(group.number_of_entities(Chunk_group_hash{1}) == 1);
+        CHECK(group.get_component_value<Entity>(Chunk_group_hash{1}, entity_move_result_0.new_index) == Entity{1});
+        CHECK(group.get_component_value<Component_a>(Chunk_group_hash{1}, entity_move_result_0.new_index) == Component_a{.value=1});
+        CHECK(group.get_component_value<Component_b>(Chunk_group_hash{1}, entity_move_result_0.new_index) == Component_b{.value=2});
+
+        group.add_entity(Entity{2}, Chunk_group_hash{1});
+        
+        group.add_entity(Entity{3}, Chunk_group_hash{1});
+        group.set_component_value(Chunk_group_hash{1}, 2, Component_a{.value=3});
+        group.set_component_value(Chunk_group_hash{1}, 2, Component_b{.value=4});
+
+        group.add_entity(Entity{4}, Chunk_group_hash{1});
+
+        group.add_entity(Entity{5}, Chunk_group_hash{0});
+
+        Entity_move_result const entity_move_result_1 = group.move_entity(Chunk_group_hash{1}, 2, Chunk_group_hash{0});
+
+        CHECK(entity_move_result_1.new_index == 1);
+        CHECK(entity_move_result_1.entity_moved_by_remove.has_value());
+        
+        if (entity_move_result_1.entity_moved_by_remove.has_value())
+        {
+            CHECK(entity_move_result_1.entity_moved_by_remove->entity == Entity{4});
+        }
+
+        CHECK(group.number_of_entities(Chunk_group_hash{0}) == 2);
+        
+        CHECK(group.number_of_entities(Chunk_group_hash{1}) == 3);
+        CHECK(group.get_component_value<Entity>(Chunk_group_hash{0}, entity_move_result_1.new_index) == Entity{3});
+        CHECK(group.get_component_value<Component_a>(Chunk_group_hash{0}, entity_move_result_1.new_index) == Component_a{.value=3});
+        CHECK(group.get_component_value<Component_b>(Chunk_group_hash{0}, entity_move_result_1.new_index) == Component_b{.value=4});
+    }
+
 // chunk_group_view -> range of elements
 // Use case 1:
 // G0 [[a0, ..., an] + [b0, ..., bn] -> [c0, ..., cn], ...]

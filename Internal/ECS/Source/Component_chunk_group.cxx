@@ -941,6 +941,12 @@ namespace Maia::ECS
 
 	};
 
+	export struct Entity_move_result
+	{
+		std::size_t new_index;
+		std::optional<Component_group_entity_moved> entity_moved_by_remove;
+	};
+
 	export template <bool Const, typename... Ts>
 	class Component_chunk_group_all_view : public std::ranges::view_base
 	{
@@ -1135,49 +1141,29 @@ namespace Maia::ECS
 		std::optional<Component_group_entity_moved> remove_entity(Chunk_group_hash const chunk_group_hash, Index const index) noexcept
 		{
 			Chunk_group& chunk_group = m_chunk_groups.at(chunk_group_hash);
+			return remove_entity(chunk_group, index);
+		}
 
-			if ((index + 1) == chunk_group.number_of_elements)
-			{
-				--chunk_group.number_of_elements;
+		Entity_move_result move_entity(
+			Chunk_group_hash const from_chunk_group_hash,
+			Index const from_index,
+			Chunk_group_hash const to_chunk_group_hash
+		) noexcept
+		{
+			Chunk_group& from_group = m_chunk_groups.at(from_chunk_group_hash);
 
-				return std::nullopt;
-			}
-			else
-			{
-				std::size_t const entity_to_remove_index = index;
-				std::size_t const entity_to_move_index = chunk_group.number_of_elements - 1;
+			Entity const entity = get_component_value<Entity>(from_group, from_index);
 
-				std::size_t const entity_to_remove_chunk_index = entity_to_remove_index / m_number_of_entities_per_chunk;
-				Chunk& entity_to_remove_chunk = chunk_group.chunks[entity_to_remove_chunk_index];
+			Index const to_index = add_entity(entity, to_chunk_group_hash);
 
-				std::size_t const entity_to_move_chunk_index = entity_to_move_index / m_number_of_entities_per_chunk;
-				Chunk const& entity_to_move_chunk = chunk_group.chunks[entity_to_move_chunk_index];
-								
-				Entity const entity_to_move = get_entity(chunk_group_hash, entity_to_move_index);
+			Chunk_group& to_group = m_chunk_groups.at(to_chunk_group_hash);
 
-				std::size_t total_component_size = 0;
+			copy_components(from_group, from_index, to_group, to_index);
 
-				for (Component_type_info const& type_info : m_component_type_infos)
-				{
-					std::size_t const source_offset = 
-						m_number_of_entities_per_chunk * total_component_size + 
-						(entity_to_move_index % m_number_of_entities_per_chunk) * type_info.size;
+			std::optional<Component_group_entity_moved> const entity_moved_from_remove = 
+				remove_entity(from_group, from_index);
 
-					std::size_t const destination_offset = 
-						m_number_of_entities_per_chunk * total_component_size + 
-						(entity_to_remove_index % m_number_of_entities_per_chunk) * type_info.size;
-
-					assert((source_offset + type_info.size) <= entity_to_move_chunk.size());
-					assert((destination_offset + type_info.size) <= entity_to_remove_chunk.size());
-					std::memcpy(entity_to_remove_chunk.data() + destination_offset, entity_to_move_chunk.data() + source_offset, type_info.size);
-
-					total_component_size += type_info.size;
-				}
-
-				--chunk_group.number_of_elements;
-
-				return Component_group_entity_moved{entity_to_move};
-			}
+			return {to_index, entity_moved_from_remove};
 		}
 
 		Entity get_entity(Chunk_group_hash const chunk_group_hash, Index const index) const noexcept
@@ -1190,18 +1176,7 @@ namespace Maia::ECS
 		{
 			Chunk_group const& chunk_group = m_chunk_groups.at(chunk_group_hash);
 
-			std::size_t const chunk_index = index / m_number_of_entities_per_chunk;
-			Chunk const& chunk = chunk_group.chunks[chunk_index];
-
-			Component_type_info const component_type_info{get_component_type_id<Component_t>(), sizeof(Component_t)};
-			std::size_t const offset = get_component_element_offset(component_type_info, index);
-
-			Component_t value{};
-
-			assert((offset + component_type_info.size) <= chunk.size());
-			std::memcpy(&value, chunk.data() + offset, component_type_info.size);
-
-			return value;
+			return get_component_value<Component_t>(chunk_group, index);
 		}
 
 		template <Concept::Component Component_t>
@@ -1248,11 +1223,6 @@ namespace Maia::ECS
 
 		std::size_t number_of_entities() const noexcept
 		{
-			return {};
-		}
-
-		std::size_t number_of_entities(Chunk_group_hash const chunk_group_hash) const noexcept
-		{
 			std::size_t count = 0;
 
 			for (std::pair<Chunk_group_hash, Chunk_group> const& chunk_group : m_chunk_groups)
@@ -1261,6 +1231,15 @@ namespace Maia::ECS
 			}
 
 			return count;
+		}
+
+		std::size_t number_of_entities(Chunk_group_hash const chunk_group_hash) const noexcept
+		{
+			auto const chunk_iterator = m_chunk_groups.find(chunk_group_hash);
+
+			return chunk_iterator != m_chunk_groups.end() ?
+					chunk_iterator->second.number_of_elements :
+					0;			
 		}
 
 		std::size_t number_of_chunks() const noexcept
@@ -1611,6 +1590,79 @@ namespace Maia::ECS
 			};
 
 			return {begin, end};
+		}
+
+		template <Concept::Component Component_t>
+		Component_t get_component_value(Chunk_group const& chunk_group, Index const index) const noexcept
+		{
+			std::size_t const chunk_index = index / m_number_of_entities_per_chunk;
+			Chunk const& chunk = chunk_group.chunks[chunk_index];
+
+			Component_type_info const component_type_info{get_component_type_id<Component_t>(), sizeof(Component_t)};
+			std::size_t const offset = get_component_element_offset(component_type_info, index);
+
+			Component_t value{};
+
+			assert((offset + component_type_info.size) <= chunk.size());
+			std::memcpy(&value, chunk.data() + offset, component_type_info.size);
+
+			return value;
+		}
+
+		void copy_components(
+			Chunk_group const& from_group,
+			std::size_t const from_index,
+			Chunk_group& to_group,
+			std::size_t const to_index
+		) noexcept
+		{
+			std::size_t const from_chunk_index = from_index / m_number_of_entities_per_chunk;
+			Chunk const& from_chunk = from_group.chunks[from_chunk_index];
+
+			std::size_t const to_chunk_index = to_index / m_number_of_entities_per_chunk;
+			Chunk& to_chunk = to_group.chunks[to_chunk_index];
+
+			std::size_t total_component_size = 0;
+
+			for (Component_type_info const& type_info : m_component_type_infos)
+			{
+				std::size_t const source_offset = 
+					m_number_of_entities_per_chunk * total_component_size + 
+					(from_index % m_number_of_entities_per_chunk) * type_info.size;
+
+				std::size_t const destination_offset = 
+					m_number_of_entities_per_chunk * total_component_size + 
+					(to_index % m_number_of_entities_per_chunk) * type_info.size;
+
+				assert((source_offset + type_info.size) <= from_chunk.size());
+				assert((destination_offset + type_info.size) <= to_chunk.size());
+				std::memcpy(to_chunk.data() + destination_offset, from_chunk.data() + source_offset, type_info.size);
+
+				total_component_size += type_info.size;
+			}
+		}
+
+		std::optional<Component_group_entity_moved> remove_entity(Chunk_group& chunk_group, Index const index) noexcept
+		{
+			if ((index + 1) == chunk_group.number_of_elements)
+			{
+				--chunk_group.number_of_elements;
+
+				return std::nullopt;
+			}
+			else
+			{
+				std::size_t const entity_to_remove_index = index;
+				std::size_t const entity_to_move_index = chunk_group.number_of_elements - 1;
+
+				Entity const entity_to_move = get_component_value<Entity>(chunk_group, entity_to_move_index);
+
+				copy_components(chunk_group, entity_to_move_index, chunk_group, entity_to_remove_index);
+
+				--chunk_group.number_of_elements;
+
+				return Component_group_entity_moved{entity_to_move};
+			}
 		}
 
 	private:
