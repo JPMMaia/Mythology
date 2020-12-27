@@ -72,42 +72,61 @@ namespace Maia::ECS
 		}
 	}
 
-	template <bool Const, typename... Components_t>
-	struct Component_view;
-
-	template <bool Const, typename Component_t>
-	struct Component_view<Const, Component_t>
+	export template <typename Component_t>
+	struct Component_view
 	{
-		operator Component_t() const noexcept
+		using Pointer_type = std::conditional_t<std::is_const_v<Component_t>, std::byte const*, std::byte*>;
+
+		Component_view(Pointer_type const pointer) noexcept :
+			pointer{pointer}
 		{
-			Component_t component;
-			std::memcpy(&component, this->pointer, sizeof(Component_t));
-			return component;
 		}
 
-		template <typename = typename std::enable_if<!Const>>
-		Component_view& operator=(Component_t const& component) noexcept
+		template <typename = typename std::enable_if<std::is_const_v<Component_t>>>
+		Component_view(Component_view<std::remove_const_t<Component_t>> const& other) noexcept :
+			pointer{other.pointer}
 		{
-			std::memcpy(this->pointer, &component, sizeof(Component_t));
+		}
+
+		operator Component_t() const noexcept
+		{
+			return read();
+		}
+
+		template <typename = typename std::enable_if<!std::is_const_v<Component_t>>>
+		Component_view& operator=(Component_t const& component) const noexcept
+		{
+			write(component);
 			
 			return *this;
 		}
 
-		template <typename = typename std::enable_if<!Const>>
-		Component_view& operator=(Component_t&& component) noexcept
+		template <typename = typename std::enable_if<!std::is_const_v<Component_t>>>
+		Component_view& operator=(Component_t&& component) const noexcept
 		{
-			std::memcpy(this->pointer, &component, sizeof(Component_t));
+			write(component);
 
 			return *this;
 		}
 
-		using Pointer_type = std::conditional_t<Const, std::byte const*, std::byte*>;
+		std::remove_const_t<Component_t> read() const noexcept
+		{
+			std::remove_const_t<Component_t> component;
+			std::memcpy(&component, this->pointer, sizeof(Component_t));
+			return component;
+		}
+
+		template <typename = typename std::enable_if<!std::is_const_v<Component_t>>>
+		void write(std::remove_const_t<Component_t> const component) const noexcept
+		{
+			std::memcpy(this->pointer, &component, sizeof(Component_t));
+		}
 
 		Pointer_type pointer;
 	};
 
-	export template <bool Const, typename T>
-	std::ostream& operator<<(std::ostream& output_stream, Component_view<Const, T> const view) noexcept
+	export template <typename T>
+	std::ostream& operator<<(std::ostream& output_stream, Component_view<T> const view) noexcept
 	{
 		T const value = view;
 		output_stream << value;
@@ -115,6 +134,14 @@ namespace Maia::ECS
 		return output_stream;
 	}
 
+	export template <typename Callable>
+	auto call_with_tuple_arguments(Callable&& callable) noexcept
+	{
+		return [&callable] <typename Tuple> (Tuple&& tuple) noexcept
+		{
+			std::apply(std::forward<Callable>(callable), std::forward<Tuple>(tuple));
+		};
+	}
 
 	template <typename Function, typename Tuple, typename Pointer_type, std::size_t... Indices>
 	void apply(
@@ -205,125 +232,76 @@ namespace Maia::ECS
 		return create_array<Type>(std::forward<Function>(generator), indices);
 	};
 
-
-	export template <bool Const, typename... Components_t>
-	struct Component_view<Const, Components_t...>
+	template <typename... Ts, typename Function, std::size_t... Indices> 
+	std::tuple<Ts...> create_tuple(Function&& generator, std::index_sequence<Indices...>) noexcept
 	{
-		using value_type = std::tuple<Components_t...>;
-
-		operator std::tuple<Components_t...>() const noexcept
-		{
-			auto const read_component = [] <typename T> (T& component, std::byte const* const pointer)
-			{
-				std::memcpy(&component, pointer, sizeof(T));
-			};
-
-			std::tuple<Components_t...> components;
-			apply(read_component, components, this->pointers);
-
-			return components;
-		}
-
-		template <typename = typename std::enable_if<!Const>>
-		Component_view& operator=(std::tuple<Components_t...> const& components) noexcept
-		{
-			auto const write_component = [] <typename T> (T const& component, std::byte* const pointer)
-			{
-				std::memcpy(pointer, &component, sizeof(T));
-			};
-
-			apply(write_component, components, this->pointers);
-			
-			return *this;
-		}
-
-		template <typename = typename std::enable_if<!Const>>
-		Component_view& operator=(std::tuple<Components_t...>&& components) noexcept
-		{
-			auto const write_component = [] <typename T> (T const& component, std::byte* const pointer)
-			{
-				std::memcpy(pointer, &component, sizeof(T));
-			};
-			
-			apply(write_component, components, this->pointers);
-			
-			return *this;
-		}
-
-		bool operator==(std::tuple<Components_t...> const& rhs) const noexcept
-		{
-			std::tuple<Components_t...> const components = *this;
-			return components == rhs;
-		}
-
-		using Pointer_type = std::conditional_t<Const, std::byte const*, std::byte*>;
-
-		std::array<Pointer_type, sizeof...(Components_t)> pointers;
+		return std::make_tuple<Ts...>(
+			generator(Indices)...
+		);
 	};
 
-	export template <bool Const, typename... Ts>
-	std::ostream& operator<<(std::ostream& output_stream, Component_view<Const, Ts...> const view) noexcept
+	template <typename... Ts, typename Function> 
+	std::tuple<Ts...> create_tuple(Function&& generator) noexcept
 	{
-		std::tuple<Ts...> const tuple = view;
+		constexpr auto indices = std::make_index_sequence<sizeof...(Ts)>{};
 
-		output_stream << '{';
-		std::apply
-		(
-			[&output_stream](Ts const&... values)
-			{
-				std::size_t index = 0;
-				((output_stream << values << (++index != sizeof...(Ts) ? ", " : "")), ...);
-			},
-			tuple
-		);
-		output_stream << '}';
-		
-		return output_stream;
-	}
+		return create_tuple<Ts...>(std::forward<Function>(generator), indices);
+	};
 
-	export template <bool Const, typename... Ts>
+	export template <typename... Ts>
 	class Component_iterator
 	{
+	private:
+
+		using First_type = std::tuple_element_t<0, std::tuple<Ts...>>;
+
 	public:
 
 		using difference_type = std::ptrdiff_t;
-		using value_type = std::conditional_t<sizeof...(Ts) == 1, std::tuple_element_t<0, std::tuple<Ts...>>, std::tuple<Ts...>>;
-		using pointer = Component_view<Const, Ts...>*;
-		using reference = Component_view<Const, Ts...>;
+		using value_type = std::conditional_t<sizeof...(Ts) == 1, Component_view<First_type>, std::tuple<Component_view<Ts>...>>;
+		using pointer = std::conditional_t<sizeof...(Ts) == 1, Component_view<First_type>*, std::tuple<Component_view<Ts>...>*>;
+		using reference = std::conditional_t<sizeof...(Ts) == 1, Component_view<First_type>, std::tuple<Component_view<Ts>...>>;
 		using iterator_category = std::random_access_iterator_tag;
 
-		using Pointer_type = std::conditional_t<Const, std::byte const*, std::byte*>;
+		template<typename T>
+		using Pointer_type = std::conditional_t<std::is_const_v<T>, std::byte const*, std::byte*>;
 
 		using Pointers_type = std::conditional_t<
 			sizeof...(Ts) == 1,
-			Pointer_type,
-			std::array<Pointer_type, sizeof...(Ts)>
+			Pointer_type<First_type>,
+			std::tuple<Pointer_type<Ts>...>
 		>;
 
 		explicit Component_iterator(Pointers_type const data_pointers = {}) noexcept :
-			m_view{data_pointers}
+			m_views{data_pointers}
+		{
+		}
+
+		template <typename = typename std::enable_if<std::conjunction_v<std::is_const<Ts>...>>>
+		Component_iterator(Component_iterator<std::remove_const_t<Ts>...> const& other) noexcept :
+			m_views{other.m_views}
 		{
 		}
 
 		reference operator*() const noexcept
 		{
-			return m_view;
+			return m_views;
 		}
 
 		pointer operator->() const noexcept
 		{
-			return &m_view;
+			return &m_views;
 		}
 
 		bool operator==(Component_iterator const rhs) const noexcept
 		{
 			if constexpr (sizeof...(Ts) == 1)
 			{
-				return m_view.pointer == rhs.m_view.pointer;
+				return m_views.pointer == rhs.m_views.pointer;
 			}
 			else
 			{
-				return m_view.pointers[0] == rhs.m_view.pointers[0];
+				return std::get<0>(m_views).pointer == std::get<0>(rhs.m_views).pointer;
 			}
 		}
 
@@ -331,13 +309,13 @@ namespace Maia::ECS
 		{
 			if constexpr (sizeof...(Ts) == 1)
 			{
-				m_view.pointer += sizeof(value_type);
+				m_views.pointer += sizeof(First_type);
 			}
 			else
 			{
-				auto const increment_pointer = [] (Pointer_type& pointer, std::size_t const component_size)
+				auto const increment_pointer = [] <typename T> (Component_view<T>& view, std::size_t const component_size)
 				{
-					pointer += component_size;
+					view.pointer += component_size;
 				};
 
 				constexpr std::array<std::size_t, sizeof...(Ts)> component_sizes
@@ -345,7 +323,7 @@ namespace Maia::ECS
 					sizeof(Ts)...
 				};
 
-				apply<value_type>(increment_pointer, m_view.pointers, component_sizes);
+				apply(increment_pointer, m_views, component_sizes);
 			}
 
 			return *this;
@@ -362,13 +340,13 @@ namespace Maia::ECS
 		{
 			if constexpr (sizeof...(Ts) == 1)
 			{
-				m_view.pointer -= sizeof(value_type);
+				m_views.pointer -= sizeof(First_type);
 			}
 			else
 			{
-				auto const decrement_pointer = [] (Pointer_type& pointer, std::size_t const component_size)
+				auto const decrement_pointer = [] <typename T> (Component_view<T>& view, std::size_t const component_size)
 				{
-					pointer -= component_size;
+					view.pointer -= component_size;
 				};
 
 				constexpr std::array<std::size_t, sizeof...(Ts)> component_sizes
@@ -376,7 +354,7 @@ namespace Maia::ECS
 					sizeof(Ts)...
 				};
 
-				apply<value_type>(decrement_pointer, m_view.pointers, component_sizes);
+				apply(decrement_pointer, m_views, component_sizes);
 			}
 
 			return *this;
@@ -393,11 +371,11 @@ namespace Maia::ECS
 		{
 			if constexpr (sizeof...(Ts) == 1)
 			{
-				return m_view.pointer < rhs.m_view.pointer;
+				return m_views.pointer < rhs.m_views.pointer;
 			}
 			else
 			{
-				return m_view.pointers[0] < rhs.m_view.pointers[0];
+				return std::get<0>(m_views).pointer < std::get<0>(rhs.m_views).pointer;
 			}
 		}
 
@@ -405,11 +383,11 @@ namespace Maia::ECS
 		{
 			if constexpr (sizeof...(Ts) == 1)
 			{
-				return m_view.pointer > rhs.m_view.pointer;
+				return m_views.pointer > rhs.m_views.pointer;
 			}
 			else
 			{
-				return m_view.pointers[0] > rhs.m_view.pointers[0];
+				return std::get<0>(m_views).pointer > std::get<0>(rhs.m_views).pointer;
 			}
 		}
 
@@ -417,11 +395,11 @@ namespace Maia::ECS
 		{
 			if constexpr (sizeof...(Ts) == 1)
 			{
-				return m_view.pointer <= rhs.m_view.pointer;
+				return m_views.pointer <= rhs.m_views.pointer;
 			}
 			else
 			{
-				return m_view.pointers[0] <= rhs.m_view.pointers[0];
+				return std::get<0>(m_views).pointer <= std::get<0>(rhs.m_views).pointer;
 			}
 		}
 
@@ -429,11 +407,11 @@ namespace Maia::ECS
 		{
 			if constexpr (sizeof...(Ts) == 1)
 			{
-				return m_view.pointer <= rhs.m_view.pointer;
+				return m_views.pointer <= rhs.m_views.pointer;
 			}
 			else
 			{
-				return m_view.pointers[0] <= rhs.m_view.pointers[0];
+				return std::get<0>(m_views).pointer <= std::get<0>(rhs.m_views).pointer;
 			}
 		}
 
@@ -441,15 +419,15 @@ namespace Maia::ECS
 		{
 			if constexpr (sizeof...(Ts) == 1)
 			{
-				assert((m_view.pointer - rhs.m_view.pointer) % sizeof(value_type) == 0);
+				assert((m_views.pointer - rhs.m_views.pointer) % sizeof(First_type) == 0);
 
-				return (m_view.pointer - rhs.m_view.pointer) / sizeof(value_type);
+				return (m_views.pointer - rhs.m_views.pointer) / sizeof(First_type);
 			}
 			else
 			{
-				assert((m_view.pointers[0] - rhs.m_view.pointers[0]) % sizeof(std::tuple_element_t<0, value_type>) == 0);
+				assert((std::get<0>(m_views).pointer - std::get<0>(rhs.m_views).pointer) % sizeof(First_type) == 0);
 
-				return (m_view.pointers[0] - rhs.m_view.pointers[0]) / sizeof(std::tuple_element_t<0, value_type>);
+				return (std::get<0>(m_views).pointer - std::get<0>(rhs.m_views).pointer) / sizeof(First_type);
 			}
 		}
 
@@ -457,13 +435,13 @@ namespace Maia::ECS
 		{
 			if constexpr (sizeof...(Ts) == 1)
 			{
-				m_view.pointer += n * sizeof(value_type);
+				m_views.pointer += n * sizeof(First_type);
 			}
 			else
 			{
-				auto const increment_pointer = [n] <typename T> (Pointer_type& pointer, std::size_t const component_size)
+				auto const increment_pointer = [n] <typename T> (Component_view<T>& view, std::size_t const component_size)
 				{
-					pointer += n * component_size;
+					view.pointer += n * component_size;
 				};
 
 				constexpr std::array<std::size_t, sizeof...(Ts)> component_sizes
@@ -471,7 +449,7 @@ namespace Maia::ECS
 					sizeof(Ts)...
 				};
 
-				apply(increment_pointer, m_view.pointers, component_sizes);
+				apply(increment_pointer, m_views, component_sizes);
 			}
 			
 			return *this;
@@ -488,13 +466,13 @@ namespace Maia::ECS
 		{
 			if constexpr (sizeof...(Ts) == 1)
 			{
-				m_view.pointer -= n * sizeof(value_type);
+				m_views.pointer -= n * sizeof(First_type);
 			}
 			else
 			{
-				auto const decrement_pointer = [n] (Pointer_type& pointer, std::size_t const component_size)
+				auto const decrement_pointer = [n] <typename T> (Component_view<T>& view, std::size_t const component_size)
 				{
-					pointer -= n * component_size;
+					view.pointer -= n * component_size;
 				};
 
 				constexpr std::array<std::size_t, sizeof...(Ts)> component_sizes
@@ -502,7 +480,7 @@ namespace Maia::ECS
 					sizeof(Ts)...
 				};
 
-				apply(decrement_pointer, m_view.pointers, component_sizes);
+				apply(decrement_pointer, m_views, component_sizes);
 			}
 		}
 
@@ -517,17 +495,17 @@ namespace Maia::ECS
 		{
 			if constexpr (sizeof...(Ts) == 1)
 			{
-				Component_view<Const, Ts...> view = m_view;
-				view.pointer += n * sizeof(value_type);
+				Component_view<First_type> view = m_views;
+				view.pointer += n * sizeof(First_type);
 				return view;
 			}
 			else
 			{
-				Component_view<Const, Ts...> view = m_view;
+				std::tuple<Component_view<Ts>...> views = m_views;
 
-				auto const increment_pointer = [n] (Pointer_type& pointer, std::size_t const component_size)
+				auto const increment_pointer = [n] <typename T> (Component_view<T>& view, std::size_t const component_size)
 				{
-					pointer += n * component_size;
+					view.pointer += n * component_size;
 				};
 
 				constexpr std::array<std::size_t, sizeof...(Ts)> component_sizes
@@ -535,32 +513,41 @@ namespace Maia::ECS
 					sizeof(Ts)...
 				};
 
-				apply(increment_pointer, view.pointers, component_sizes);
+				apply(increment_pointer, views, component_sizes);
 
-				return view;
+				return views;
 			}
 		}
 
 	private:
 
-		Component_view<Const, Ts...> m_view = nullptr;
+		friend Component_iterator<Ts const...>;
+
+		value_type m_views;
 
 	};
 
-	export template <bool Const, typename... Ts>
-	Component_iterator<Const, Ts...> operator+(typename Component_iterator<Const, Ts...>::difference_type const lhs, Component_iterator<Const, Ts...> const rhs) noexcept
+	export template <typename... Ts>
+	Component_iterator<Ts...> operator+(typename Component_iterator<Ts...>::difference_type const lhs, Component_iterator<Ts...> const rhs) noexcept
 	{
 		return rhs + lhs;
 	}
 
-	export template <bool Const, typename... Ts>
+	export template <typename... Ts>
 	class Component_chunk_view : public std::ranges::view_base
 	{
 	public:
 
-		using Iterator = Component_iterator<Const, Ts...>;
+		using Iterator = Component_iterator<Ts...>;
 
 		Component_chunk_view() noexcept = default;
+
+		template <typename = typename std::enable_if<std::conjunction_v<std::is_const<Ts>...>>>
+		Component_chunk_view(Component_chunk_view<std::remove_const_t<Ts>...> const& other) noexcept :
+			m_begin{other.begin()},
+			m_end{other.end()}
+		{
+		}
 
 		Component_chunk_view(Iterator const begin, Iterator const end) noexcept :
 			m_begin{begin},
@@ -584,25 +571,35 @@ namespace Maia::ECS
 		Iterator m_end{};
 	};
 
-	export template <bool Const, typename... Ts>
+	export template <typename... Ts>
 	class Component_chunk_iterator
 	{
 	public:
 
 		using difference_type = std::ptrdiff_t;
-		using value_type = Component_chunk_view<Const, Ts...>;
-		using pointer = Component_chunk_view<Const, Ts...> const*;
-		using reference = Component_chunk_view<Const, Ts...> const&;
+		using value_type = Component_chunk_view<Ts...>;
+		using pointer = Component_chunk_view<Ts...> const*;
+		using reference = Component_chunk_view<Ts...> const&;
 		using iterator_category = std::bidirectional_iterator_tag;
 
 		using Chunk_group_type =
 			std::conditional_t<
-				Const,
+				std::conjunction_v<std::is_const<Ts>...>,
 				Chunk_group const,
 				Chunk_group
 			>;
 
 		Component_chunk_iterator() noexcept = default;
+
+		template <typename = typename std::enable_if<std::conjunction_v<std::is_const<Ts>...>>>
+		Component_chunk_iterator(Component_chunk_iterator<std::remove_const_t<Ts>...> const& other) noexcept :
+			m_chunk_group{other.m_chunk_group},
+			m_current_chunk_index{other.m_current_chunk_index},
+			m_number_of_elements_per_chunk{other.m_number_of_elements_per_chunk},
+			m_component_offsets{other.m_component_offsets},
+			m_component_chunk_view{other.m_component_chunk_view}
+		{
+		}
 
 		Component_chunk_iterator(
 			Chunk_group_type& chunk_group,
@@ -689,7 +686,7 @@ namespace Maia::ECS
 
 	private:
 
-		Component_chunk_view<Const, Ts...> create_component_view() const noexcept
+		Component_chunk_view<Ts...> create_component_view() const noexcept
 		{
 			std::size_t const number_of_elements_in_chunk = get_number_of_elements(
 				m_chunk_group->number_of_elements,
@@ -699,11 +696,16 @@ namespace Maia::ECS
 
 			if (number_of_elements_in_chunk != 0) [[likely]]
 			{
-				using Pointer_type = typename Component_iterator<Const, Ts...>::Pointer_type;
+				using Pointer_type = 
+					std::conditional_t<
+						std::conjunction_v<std::is_const<Ts>...>,
+						std::byte const*,
+						std::byte*
+					>;
 
 				using Chunk_type =
 					std::conditional_t<
-						Const,
+						std::conjunction_v<std::is_const<Ts>...>,
 						Chunk const,
 						Chunk
 					>;
@@ -712,14 +714,14 @@ namespace Maia::ECS
 
 				if constexpr (sizeof...(Ts) == 1)
 				{
-					Component_iterator<Const, Ts...> const chunk_begin
+					Component_iterator<Ts...> const chunk_begin
 					{
 						chunk.data() + m_component_offsets[0]
 					};
 
 					using T = std::tuple_element_t<0, std::tuple<Ts...>>;
 
-					Component_iterator<Const, Ts...> const chunk_end
+					Component_iterator<Ts...> const chunk_end
 					{
 						chunk.data() + m_component_offsets[0] + number_of_elements_in_chunk * sizeof(T)
 					};
@@ -733,9 +735,11 @@ namespace Maia::ECS
 						return chunk.data() + m_component_offsets[index];
 					};
 
-					Component_iterator<Const, Ts...> const chunk_begin
+					Component_iterator<Ts...> const chunk_begin
 					{
-						create_array<Pointer_type, sizeof...(Ts)>(create_begin_pointer)
+						create_tuple<std::conditional_t<std::is_const_v<Ts>, std::byte const*, std::byte*>...>(
+							create_begin_pointer
+						)
 					};
 
 					constexpr std::array<std::size_t, sizeof...(Ts)> component_sizes
@@ -748,9 +752,11 @@ namespace Maia::ECS
 						return chunk.data() + m_component_offsets[index] + number_of_elements_in_chunk * component_sizes[index];
 					};
 
-					Component_iterator<Const, Ts...> const chunk_end
+					Component_iterator<Ts...> const chunk_end
 					{
-						create_array<Pointer_type, sizeof...(Ts)>(create_end_pointer)
+						create_tuple<std::conditional_t<std::is_const_v<Ts>, std::byte const*, std::byte*>...>(
+							create_end_pointer
+						)
 					};
 
 					return {chunk_begin, chunk_end};
@@ -762,22 +768,31 @@ namespace Maia::ECS
 			}
 		}
 		
+		friend Component_chunk_iterator<Ts const...>;
+
 		Chunk_group_type* m_chunk_group;
 		std::size_t m_current_chunk_index;
 		std::size_t m_number_of_elements_per_chunk;
 		std::array<std::size_t, sizeof...(Ts)> m_component_offsets;
-		Component_chunk_view<Const, Ts...> m_component_chunk_view;
+		Component_chunk_view<Ts...> m_component_chunk_view;
 
 	};
 
-	export template <bool Const, typename... Ts>
+	export template <typename... Ts>
 	class Component_chunk_group_view : public std::ranges::view_base
 	{
 	public:
 
-		using Iterator = Component_chunk_iterator<Const, Ts...>;
+		using Iterator = Component_chunk_iterator<Ts...>;
 
 		Component_chunk_group_view() noexcept = default;
+
+		template <typename = typename std::enable_if<std::conjunction_v<std::is_const<Ts>...>>>
+		Component_chunk_group_view(Component_chunk_group_view<std::remove_const_t<Ts>...> const& other) noexcept :
+			m_begin{other.begin()},
+			m_end{other.end()}
+		{
+		}
 
 		Component_chunk_group_view(Iterator const begin, Iterator const end) noexcept :
 			m_begin{begin},
@@ -802,25 +817,33 @@ namespace Maia::ECS
 
 	};
 
-	export template <bool Const, typename... Ts>
+	export template <typename... Ts>
 	class Component_chunk_group_iterator
 	{
 	public:
 
 		using difference_type = std::ptrdiff_t;
-		using value_type = Component_chunk_group_view<Const, Ts...>;
-		using pointer = Component_chunk_group_view<Const, Ts...> const*;
-		using reference = Component_chunk_group_view<Const, Ts...> const&;
+		using value_type = Component_chunk_group_view<Ts...>;
+		using pointer = Component_chunk_group_view<Ts...> const*;
+		using reference = Component_chunk_group_view<Ts...> const&;
 		using iterator_category = std::bidirectional_iterator_tag;
 
 		using Chunk_group_iterator = 
 			std::conditional_t<
-				Const,
+				std::conjunction_v<std::is_const<Ts>...>,
 				std::pmr::unordered_map<Chunk_group_hash, Chunk_group>::const_iterator,
 				std::pmr::unordered_map<Chunk_group_hash, Chunk_group>::iterator
 			>;
 
 		Component_chunk_group_iterator() noexcept = default;
+
+		template <typename = typename std::enable_if<std::conjunction_v<std::is_const<Ts>...>>>
+		Component_chunk_group_iterator(Component_chunk_group_iterator<std::remove_const_t<Ts>...> const& other) noexcept :
+			m_current{other.m_current},
+			m_end{other.m_end},
+			m_component_chunk_group_view{other.m_component_chunk_group_view}
+		{
+		}
 
 		Component_chunk_group_iterator(
 			Chunk_group_iterator const begin,
@@ -885,18 +908,18 @@ namespace Maia::ECS
 
 	private:
 
-		Component_chunk_group_view<Const, Ts...> create_component_group_view(
+		Component_chunk_group_view<Ts...> create_component_group_view(
 			std::size_t const number_of_elements_per_chunk,
 			std::array<std::size_t, sizeof...(Ts)> const& component_offsets
 		) const noexcept
 		{
 			if (m_current != m_end) [[likely]]
 			{
-				using Chunk_group_type = typename Component_chunk_iterator<Const, Ts...>::Chunk_group_type;
+				using Chunk_group_type = typename Component_chunk_iterator<Ts...>::Chunk_group_type;
 
 				Chunk_group_type& chunk_group = m_current->second;
 
-				Component_chunk_iterator<Const, Ts...> const begin
+				Component_chunk_iterator<Ts...> const begin
 				{
 					chunk_group,
 					0,
@@ -904,7 +927,7 @@ namespace Maia::ECS
 					component_offsets
 				};
 
-				Component_chunk_iterator<Const, Ts...> const end
+				Component_chunk_iterator<Ts...> const end
 				{
 					chunk_group,
 					chunk_group.number_of_elements,
@@ -920,7 +943,7 @@ namespace Maia::ECS
 			}			
 		}
 
-		Component_chunk_group_view<Const, Ts...> create_component_group_view() const noexcept
+		Component_chunk_group_view<Ts...> create_component_group_view() const noexcept
 		{
 			assert(m_component_chunk_group_view.begin() != m_component_chunk_group_view.end());
 
@@ -934,10 +957,12 @@ namespace Maia::ECS
 
 			return create_component_group_view(number_of_elements_per_chunk, component_offsets);
 		}
+
+		friend Component_chunk_group_iterator<Ts const...>;
 		
 		Chunk_group_iterator m_current;
 		Chunk_group_iterator m_end;
-		Component_chunk_group_view<Const, Ts...> m_component_chunk_group_view;
+		Component_chunk_group_view<Ts...> m_component_chunk_group_view;
 
 	};
 
@@ -947,14 +972,21 @@ namespace Maia::ECS
 		std::optional<Component_group_entity_moved> entity_moved_by_remove;
 	};
 
-	export template <bool Const, typename... Ts>
+	export template <typename... Ts>
 	class Component_chunk_group_all_view : public std::ranges::view_base
 	{
 	public:
 
-		using Iterator = Component_chunk_group_iterator<Const, Ts...>;
+		using Iterator = Component_chunk_group_iterator<Ts...>;
 
 		Component_chunk_group_all_view() noexcept = default;
+
+		template <typename = typename std::enable_if<std::conjunction_v<std::is_const<Ts>...>>>
+		Component_chunk_group_all_view(Component_chunk_group_all_view<std::remove_const_t<Ts>...> const& other) noexcept :
+			m_begin{other.begin()},
+			m_end{other.end()}
+		{
+		}
 
 		Component_chunk_group_all_view(Iterator const begin, Iterator const end) noexcept :
 			m_begin{begin},
@@ -1271,31 +1303,23 @@ namespace Maia::ECS
 		}
 
 		template <Concept::Component... Component_ts>
-		Component_chunk_view<true, Component_ts...> get_view(Chunk_group_hash const chunk_group_hash, std::size_t const chunk_index) const noexcept
+		Component_chunk_view<Component_ts const...> get_view(Chunk_group_hash const chunk_group_hash, std::size_t const chunk_index) const noexcept
 		{
 			using Self = std::remove_reference_t<decltype(*this)>;
 
-			return get_view_aux<Self, Component_ts...>(this, chunk_group_hash, chunk_index);
+			return get_view<Self, Component_ts...>(this, chunk_group_hash, chunk_index);
 		}
 
 		template <Concept::Component... Component_ts>
-		Component_chunk_view<false, Component_ts...> get_view(Chunk_group_hash const chunk_group_hash, std::size_t const chunk_index) noexcept
+		Component_chunk_view<Component_ts...> get_view(Chunk_group_hash const chunk_group_hash, std::size_t const chunk_index) noexcept
 		{
 			using Self = std::remove_reference_t<decltype(*this)>;
 
-			return get_view_aux<Self, Component_ts...>(this, chunk_group_hash, chunk_index);
+			return get_view<Self, Component_ts...>(this, chunk_group_hash, chunk_index);
 		}
 
 		template <Concept::Component... Component_ts>
-		Component_chunk_group_view<true, Component_ts...> get_view(Chunk_group_hash const chunk_group_hash) const noexcept
-		{
-			using Self = std::remove_reference_t<decltype(*this)>;
-
-			return get_view<Self, Component_ts...>(this, chunk_group_hash);
-		}
-
-		template <Concept::Component... Component_ts>
-		Component_chunk_group_view<false, Component_ts...> get_view(Chunk_group_hash const chunk_group_hash) noexcept
+		Component_chunk_group_view<Component_ts const...> get_view(Chunk_group_hash const chunk_group_hash) const noexcept
 		{
 			using Self = std::remove_reference_t<decltype(*this)>;
 
@@ -1303,7 +1327,15 @@ namespace Maia::ECS
 		}
 
 		template <Concept::Component... Component_ts>
-		Component_chunk_group_all_view<true, Component_ts...> get_view() const noexcept
+		Component_chunk_group_view<Component_ts...> get_view(Chunk_group_hash const chunk_group_hash) noexcept
+		{
+			using Self = std::remove_reference_t<decltype(*this)>;
+
+			return get_view<Self, Component_ts...>(this, chunk_group_hash);
+		}
+
+		template <Concept::Component... Component_ts>
+		Component_chunk_group_all_view<Component_ts const...> get_view() const noexcept
 		{
 			using Self = std::remove_reference_t<decltype(*this)>;
 
@@ -1311,7 +1343,7 @@ namespace Maia::ECS
 		}
 
 		template <Concept::Component... Component_ts>
-		Component_chunk_group_all_view<false, Component_ts...> get_view() noexcept
+		Component_chunk_group_all_view<Component_ts...> get_view() noexcept
 		{
 			using Self = std::remove_reference_t<decltype(*this)>;
 
@@ -1408,14 +1440,15 @@ namespace Maia::ECS
 		}
 
 		template <typename Self, Concept::Component... Component_ts>
-		static Component_chunk_view<std::is_const_v<Self>, Component_ts...> get_view_aux(
+		static auto get_view(
 			Self* const self,
 			Chunk_group_hash const chunk_group_hash,
 			std::size_t const chunk_index
 		) noexcept
 		{
 			constexpr bool is_const = std::is_const_v<Self>;
-			using Component_chunk_iterator_type = Component_iterator<is_const, Component_ts...>;
+			using Component_chunk_iterator_type = std::conditional_t<is_const, Component_iterator<Component_ts const...>, Component_iterator<Component_ts...>>;
+			using Component_chunk_view_type = std::conditional_t<is_const, Component_chunk_view<Component_ts const...>, Component_chunk_view<Component_ts...>>;
 			using Chunk_group_type = std::conditional_t<is_const, Chunk_group const, Chunk_group>;
 			using Chunk_type = std::conditional_t<is_const, Chunk const, Chunk>;
 			using Pointer_type = std::conditional_t<is_const, std::byte const*, std::byte*>;
@@ -1423,7 +1456,7 @@ namespace Maia::ECS
 			auto const chunk_group_location = self->m_chunk_groups.find(chunk_group_hash);
 			if (chunk_group_location == self->m_chunk_groups.end()) [[unlikely]]
 			{
-				return {};
+				return Component_chunk_view_type{};
 			}
 
 			Chunk_group_type& chunk_group = chunk_group_location->second;
@@ -1431,7 +1464,7 @@ namespace Maia::ECS
 
 			if (chunk_index >= chunk_group.chunks.size()) [[unlikely]]
 			{
-				return {};
+				return Component_chunk_view_type{};
 			}
 
 			Chunk_type& chunk = chunk_group.chunks[chunk_index];
@@ -1463,17 +1496,32 @@ namespace Maia::ECS
 					chunk.data() + offsets[0] + number_of_elements_in_chunk * sizeof(Component_t)
 				};
 
-				return {begin, end};
+				return Component_chunk_view_type{begin, end};
 			}
 			else
 			{
+				auto const create_tuple_aux = [] <typename F> (F&& generator) -> auto
+				{
+					if constexpr (std::is_const_v<Self>)
+					{
+						return create_tuple<
+							std::conditional_t<std::is_const_v<Component_ts const>, std::byte const*, std::byte*>...
+						>(std::forward<F>(generator));
+					}
+					else
+					{
+						return create_tuple<
+							std::conditional_t<std::is_const_v<Component_ts>, std::byte const*, std::byte*>...
+						>(std::forward<F>(generator));
+					}
+				};
+
 				auto const create_begin_pointer = [&chunk, &offsets] (std::size_t const index) -> Pointer_type
 				{
 					return chunk.data() + offsets[index];
 				};
 
-				std::array<Pointer_type, sizeof...(Component_ts)> const begin_pointers = 
-					create_array<Pointer_type, sizeof...(Component_ts)>(create_begin_pointer);
+				auto const begin_pointers = create_tuple_aux(create_begin_pointer);
 
 				Component_chunk_iterator_type const begin
 				{
@@ -1491,8 +1539,7 @@ namespace Maia::ECS
 					return chunk.data() + offsets[index] + number_of_elements_in_chunk * component_sizes[index];
 				};
 
-				std::array<Pointer_type, sizeof...(Component_ts)> const end_pointers = 
-					create_array<Pointer_type, sizeof...(Component_ts)>(create_end_pointer);
+				auto const end_pointers = create_tuple_aux(create_end_pointer);
 				
 				Component_chunk_iterator_type const end
 				{
@@ -1500,24 +1547,25 @@ namespace Maia::ECS
 				};
 
 
-				return {begin, end};
+				return Component_chunk_view_type{begin, end};
 			}			
 		}
 
 		template <typename Self, Concept::Component... Component_ts>
-		static Component_chunk_group_view<std::is_const_v<Self>, Component_ts...> get_view(
+		static auto get_view(
 			Self* const self,
 			Chunk_group_hash const chunk_group_hash
 		) noexcept
 		{
 			constexpr bool is_const = std::is_const_v<Self>;
-			using Component_chunk_iterator_type = Component_chunk_iterator<is_const, Component_ts...>;
+			using Component_chunk_group_iterator_type = std::conditional_t<is_const, Component_chunk_iterator<Component_ts const...>, Component_chunk_iterator<Component_ts...>>;
+			using Component_chunk_group_view_type = std::conditional_t<is_const, Component_chunk_group_view<Component_ts const...>, Component_chunk_group_view<Component_ts...>>;
 			using Chunk_group_type = std::conditional_t<is_const, Chunk_group const, Chunk_group>;
 
 			auto const chunk_group_location = self->m_chunk_groups.find(chunk_group_hash);
 			if (chunk_group_location == self->m_chunk_groups.end()) [[unlikely]]
 			{
-				return {};
+				return Component_chunk_group_view_type{};
 			}
 
 			Chunk_group_type& chunk_group = chunk_group_location->second;
@@ -1533,7 +1581,7 @@ namespace Maia::ECS
 				)...
 			};
 
-			Component_chunk_iterator_type const begin
+			Component_chunk_group_iterator_type const begin
 			{
 				chunk_group,
 				0,
@@ -1541,7 +1589,7 @@ namespace Maia::ECS
 				component_offsets
 			};
 
-			Component_chunk_iterator_type const end
+			Component_chunk_group_iterator_type const end
 			{
 				chunk_group,
 				chunk_group.number_of_elements,
@@ -1549,16 +1597,19 @@ namespace Maia::ECS
 				component_offsets
 			};
 
-			return {begin, end};
+			return Component_chunk_group_view_type{begin, end};
 		}
 
 
 		template <typename Self, Concept::Component... Component_ts>
-		static Component_chunk_group_all_view<std::is_const_v<Self>, Component_ts...> get_view(
+		static auto get_view(
 			Self* const self
 		) noexcept
 		{
 			constexpr bool is_const = std::is_const_v<Self>;
+
+			using Component_chunk_group_all_iterator_type = std::conditional_t<is_const, Component_chunk_group_iterator<Component_ts const...>, Component_chunk_group_iterator<Component_ts...>>;
+			using Component_chunk_group_all_view_type = std::conditional_t<is_const, Component_chunk_group_all_view<Component_ts const...>, Component_chunk_group_all_view<Component_ts...>>;
 
 			auto const chunk_groups_begin = self->m_chunk_groups.begin();
 			auto const chunk_groups_end = self->m_chunk_groups.end();
@@ -1574,7 +1625,7 @@ namespace Maia::ECS
 				)...
 			};
 
-			Component_chunk_group_iterator<is_const, Component_ts...> const begin
+			Component_chunk_group_all_iterator_type const begin
 			{
 				chunk_groups_begin,
 				chunk_groups_end,
@@ -1582,7 +1633,7 @@ namespace Maia::ECS
 				component_offsets
 			};
 
-			Component_chunk_group_iterator<is_const, Component_ts...> const end
+			Component_chunk_group_all_iterator_type const end
 			{
 				chunk_groups_end,
 				chunk_groups_end,
@@ -1590,7 +1641,7 @@ namespace Maia::ECS
 				component_offsets
 			};
 
-			return {begin, end};
+			return Component_chunk_group_all_view_type{begin, end};
 		}
 
 		template <Concept::Component Component_t>
