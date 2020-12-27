@@ -581,18 +581,22 @@ namespace Maia::ECS::Test
         REQUIRE(group.number_of_chunks(chunk_group_0) == 1);
         REQUIRE(group.number_of_chunks(chunk_group_1) == 2);
 
-        is_viewable_range(Component_chunk_view<true, Entity>{});
-        is_random_access_iterator(Component_iterator<true, Entity>{});
+        is_viewable_range(Component_chunk_view<Entity const>{});
+        is_random_access_iterator(Component_iterator<Entity const>{});
 
-        is_viewable_range(Component_chunk_view<false, Entity>{});
-        is_random_access_iterator(Component_iterator<false, Entity>{});
+        is_viewable_range(Component_chunk_view<Entity>{});
+        is_random_access_iterator(Component_iterator<Entity>{});
 
         Component_chunk_group const& const_group = group;
 
         {
+            Component_chunk_view<Entity const> const view = group.get_view<Entity>(chunk_group_0, 0);
+        }
+
+        {
             constexpr std::size_t chunk_index = 0;
             
-            auto const view = const_group.get_view<Entity>(chunk_group_0, chunk_index);
+            Component_chunk_view<Entity const> const view = const_group.get_view<Entity>(chunk_group_0, chunk_index);
             
             CHECK(std::distance(view.begin(), view.end()) == 1);
             CHECK(*(view.begin() + 0) == Entity{1});
@@ -678,12 +682,14 @@ namespace Maia::ECS::Test
 
             auto const view = group.get_view<Component_b>(chunk_group_1, chunk_index);
 
-            auto const plus_one = [](Component_b const component) -> Component_b
+            auto const plus_one = [](Component_view<Component_b> const component_view) -> void
             {
-                return {component.value + 1};
+                Component_b component = component_view.read();
+                component.value += 1;
+                component_view.write(component);
             };
 
-            std::transform(view.begin(), view.end(), view.begin(), plus_one);
+            std::for_each(view.begin(), view.end(), plus_one);
 
             CHECK(std::distance(view.begin(), view.end()) == 2);
             CHECK(*(view.begin() + 0) == Component_b{.value=5});
@@ -763,13 +769,17 @@ namespace Maia::ECS::Test
         REQUIRE(group.number_of_chunks(chunk_group_0) == 1);
         REQUIRE(group.number_of_chunks(chunk_group_1) == 2);
 
-        is_viewable_range(Component_chunk_group_view<true, Entity>{});
-        is_bidirectional_iterator(Component_chunk_iterator<true, Entity>{});
+        is_viewable_range(Component_chunk_group_view<Entity const>{});
+        is_bidirectional_iterator(Component_chunk_iterator<Entity const>{});
 
-        is_viewable_range(Component_chunk_group_view<false, Entity>{});
-        is_bidirectional_iterator(Component_chunk_iterator<false, Entity>{});
+        is_viewable_range(Component_chunk_group_view<Entity>{});
+        is_bidirectional_iterator(Component_chunk_iterator<Entity>{});
 
         Component_chunk_group const& const_group = group;
+
+        {
+            Component_chunk_group_view<Entity const> const view = group.get_view<Entity>(chunk_group_0);
+        }
 
         {
             auto const view = const_group.get_view<Component_a>(chunk_group_0) | views::join;
@@ -825,12 +835,14 @@ namespace Maia::ECS::Test
         {
             auto const view = group.get_view<Component_b>(chunk_group_1) | views::join;
 
-            auto const plus_one = [](Component_b const component) -> Component_b
+            auto const plus_one = [](Component_view<Component_b> const component_view) -> void
             {
-                return {component.value + 1};
+                Component_b component = component_view.read();
+                component.value += 1;
+                component_view.write(component);
             };
 
-            std::transform(view.begin(), view.end(), view.begin(), plus_one);
+            std::for_each(view.begin(), view.end(), plus_one);
 
             CHECK(std::distance(view.begin(), view.end()) == 3);
 
@@ -901,13 +913,17 @@ namespace Maia::ECS::Test
         REQUIRE(group.number_of_chunks(chunk_group_0) == 1);
         REQUIRE(group.number_of_chunks(chunk_group_1) == 2);
 
-        is_viewable_range(Component_chunk_group_all_view<true, Entity>{});
-        is_bidirectional_iterator(Component_chunk_group_iterator<true, Entity>{});
+        is_viewable_range(Component_chunk_group_all_view<Entity const>{});
+        is_bidirectional_iterator(Component_chunk_group_iterator<Entity const>{});
 
-        is_viewable_range(Component_chunk_group_all_view<false, Entity>{});
-        is_bidirectional_iterator(Component_chunk_group_iterator<false, Entity>{});
+        is_viewable_range(Component_chunk_group_all_view<Entity>{});
+        is_bidirectional_iterator(Component_chunk_group_iterator<Entity>{});
 
         Component_chunk_group const& const_group = group;
+
+        {
+            Component_chunk_group_all_view<Entity const> const view = group.get_view<Entity>();
+        }
 
         {
             auto const view = const_group.get_view<Entity>() | views::join | views::join;
@@ -948,12 +964,14 @@ namespace Maia::ECS::Test
         {
             auto const view = group.get_view<Component_b>() | views::join | views::join;
 
-            auto const plus_one = [](Component_b const component) -> Component_b
+            auto const plus_one = [](Component_view<Component_b> const component_view) -> void
             {
-                return {component.value + 1};
+                Component_b component = component_view.read();
+                component.value += 1;
+                component_view.write(component);
             };
 
-            std::transform(view.begin(), view.end(), view.begin(), plus_one);
+            std::for_each(view.begin(), view.end(), plus_one);
 
             CHECK(std::distance(view.begin(), view.end()) == 4);
 
@@ -1051,14 +1069,28 @@ namespace Maia::ECS::Test
         {
             auto const view = group.get_view<Entity, Component_a, Component_b>() | views::join | views::join;
 
-            auto const plus_one = [](std::tuple<Entity, Component_a, Component_b> components) -> std::tuple<Entity, Component_a, Component_b>
+            auto const plus_one = [](
+                Component_view<Entity const> const entity_view,
+                Component_view<Component_a> const component_a_view,
+                Component_view<Component_b> const component_b_view
+            ) -> void
             {
-                std::get<1>(components).value += 1;
-                std::get<2>(components).value += 1;
-                return components;
+                {                    
+                    Component_a component = component_a_view.read();
+                    component.value += 1;
+                    
+                    component_a_view.write(component);
+                }
+
+                {                    
+                    Component_b component = component_b_view.read();
+                    component.value += 1;
+                    
+                    component_b_view.write(component);
+                }
             };
 
-            std::transform(view.begin(), view.end(), view.begin(), plus_one);
+            std::for_each(view.begin(), view.end(), call_with_tuple_arguments(plus_one));
 
             CHECK(std::distance(view.begin(), view.end()) == 4);
 
