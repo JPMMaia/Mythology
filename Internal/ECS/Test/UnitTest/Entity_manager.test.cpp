@@ -13,6 +13,7 @@ import <ostream>;
 import <ranges>;
 import <span>;
 import <vector>;
+import <utility>;
 
 namespace Maia::ECS::Test
 {
@@ -487,228 +488,275 @@ namespace Maia::ECS::Test
         }
     }
 
-    /*TEST_CASE("Entity components are grouped by archetype in component chunks", "[entity_manager]")
+    TEST_CASE("Use entity manager components view", "[entity_manager]")
     {
         Entity_manager entity_manager{};
 
-        std::array<Component_type_ID, 3> const archetype_abd_component_type_ids
-        {
-            get_component_type_id<Component_a>(),
-            get_component_type_id<Component_b>(),
-            get_component_type_id<Component_d>(),
-        };
-        Archetype const archetype_abd{archetype_abd_component_type_ids, {}};
+        std::array<Component_type_info, 3> const archetype_abd_component_type_infos =
+            make_sorted_component_type_info_array<Component_a, Component_b, Component_d>();
+        
+        Archetype const archetype_abd{archetype_abd_component_type_infos, std::nullopt, {}};
 
-        std::array<Component_type_ID, 3> const archetype_bcd_component_type_ids
-        {
-            get_component_type_id<Component_b>(),
-            get_component_type_id<Component_c>(),
-            get_component_type_id<Component_d>(),
-        };
-        Archetype const archetype_bcd{archetype_bcd_component_type_ids, {}};
+        std::array<Component_type_info, 3> const archetype_bcd_component_type_infos =
+            make_sorted_component_type_info_array<Component_b, Component_c, Component_d>();
+
+        Archetype const archetype_bcd{archetype_bcd_component_type_infos, std::nullopt, {}};
 
         Entity const entity_0 = entity_manager.create_entity(archetype_abd);
+        entity_manager.set_component_value(entity_0, Component_a{1});
+        entity_manager.set_component_value(entity_0, Component_b{2});
+        entity_manager.set_component_value(entity_0, Component_d{3});
+
         Entity const entity_1 = entity_manager.create_entity(archetype_abd);
+        entity_manager.set_component_value(entity_1, Component_a{4});
+        entity_manager.set_component_value(entity_1, Component_b{5});
+        entity_manager.set_component_value(entity_1, Component_d{6});
+
         Entity const entity_2 = entity_manager.create_entity(archetype_bcd);
+        entity_manager.set_component_value(entity_2, Component_b{7});
+        entity_manager.set_component_value(entity_2, Component_c{8});
+        entity_manager.set_component_value(entity_2, Component_d{9});
+
         Entity const entity_3 = entity_manager.create_entity(archetype_bcd);
+        entity_manager.set_component_value(entity_3, Component_b{10});
+        entity_manager.set_component_value(entity_3, Component_c{11});
+        entity_manager.set_component_value(entity_3, Component_d{12});
 
-
-        CHECK(entity_0 != entity_1);
-        CHECK(entity_0 != entity_2);
-        CHECK(entity_0 != entity_3);
-        CHECK(entity_1 != entity_2);
-        CHECK(entity_1 != entity_3);
-        CHECK(entity_2 != entity_3);
+        Entity_manager const& const_entity_manager = entity_manager;
 
         {
-            std::span<Component_chunk_view const> const component_chunk_views = entity_manager.get_component_chunk_views(archetype_abd);
-            REQUIRE(component_chunk_views.size() == 1);
+            auto const view = const_entity_manager.get_view<Component_a>();
 
-            std::span<Entity const> const entities = component_chunk_views[0].get_entities();
+            REQUIRE(std::distance(view.begin(), view.end()) == 2);
 
-
-            CHECK(entities.size() == 2);
-            CHECK(entities[0] == entity_0);
-            CHECK(entities[1] == entity_1);
+            auto iterator = view.begin();
+            CHECK(*iterator++ == Component_a{1});
+            CHECK(*iterator++ == Component_a{4});
         }
 
         {
-            std::span<Component_chunk_view const> const component_chunk_views = entity_manager.get_component_chunk_views(archetype_bcd);
-            REQUIRE(component_chunk_views.size() == 1);
+            auto const view = const_entity_manager.get_view<Component_b>();
 
-            std::span<Entity const> const entities = component_chunk_views[0].get_entities();
+            REQUIRE(std::distance(view.begin(), view.end()) == 4);
 
+            auto iterator = view.begin();
+            CHECK(*iterator++ == Component_b{2});
+            CHECK(*iterator++ == Component_b{5});
+            CHECK(*iterator++ == Component_b{7});
+            CHECK(*iterator++ == Component_b{10});
+        }
 
-            CHECK(entities.size() == 2);
-            CHECK(entities[0] == entity_2);
-            CHECK(entities[1] == entity_3);
+        {
+            auto const view = const_entity_manager.get_view<Component_b, Component_a, Entity>();
+
+            REQUIRE(std::distance(view.begin(), view.end()) == 2);
+
+            auto iterator = view.begin();
+            CHECK(*iterator++ == std::make_tuple(Component_b{2}, Component_a{1}, entity_0));
+            CHECK(*iterator++ == std::make_tuple(Component_b{5}, Component_a{4}, entity_1));
+        }
+
+        {
+            auto const view = const_entity_manager.get_view<Component_d, Component_b, Entity>();
+
+            REQUIRE(std::distance(view.begin(), view.end()) == 4);
+
+            auto iterator = view.begin();
+            CHECK(*iterator++ == std::make_tuple(Component_d{3}, Component_b{2}, entity_0));
+            CHECK(*iterator++ == std::make_tuple(Component_d{6}, Component_b{5}, entity_1));
+            CHECK(*iterator++ == std::make_tuple(Component_d{9}, Component_b{7}, entity_2));
+            CHECK(*iterator++ == std::make_tuple(Component_d{12}, Component_b{10}, entity_3));
+        }
+
+        {
+            auto const view = const_entity_manager.get_view<Component_a, Component_c>();
+
+            CHECK(std::distance(view.begin(), view.end()) == 0);
+        }
+
+        {
+            auto const view = entity_manager.get_view<Component_b, Component_d>();
+
+            auto const add_b_to_d = [](
+                Component_view<Component_b const> const component_b_view,
+                Component_view<Component_d> const component_d_view
+            ) -> void
+            {
+                Component_b const component_b = component_d_view.read();     
+                
+                Component_d component_d = component_b_view.read();
+                component_d.value += component_b.value;
+                
+                component_d_view.write(component_d);
+            };
+
+            std::for_each(view.begin(), view.end(), call_with_tuple_arguments(add_b_to_d));
+
+            CHECK(std::distance(view.begin(), view.end()) == 4);
+
+            auto iterator = view.begin();
+
+            CHECK(*iterator++ == std::make_tuple(Component_b{2},Component_d{5}));
+            CHECK(*iterator++ == std::make_tuple(Component_b{5},Component_d{11}));
+            CHECK(*iterator++ == std::make_tuple(Component_b{7},Component_d{16}));
+            CHECK(*iterator++ == std::make_tuple(Component_b{10}, Component_d{22}));
         }
     }
 
-    TEST_CASE("Components are grouped by archetype and shared component in chunks", "[entity_manager]")
+    TEST_CASE("Use entity manager components view grouped by shared components", "[entity_manager]")
     {
         Entity_manager entity_manager{};
 
         Shared_component_type_ID const shared_component_e_type_id = get_shared_component_type_id<Shared_component_e>();
+        Shared_component_type_ID const shared_component_f_type_id = get_shared_component_type_id<Shared_component_f>();
 
-        std::array<Component_type_ID, 1> const archetype_a_component_type_ids
+        std::array<Component_type_info, 3> const archetype_abd_component_type_infos =
+            make_sorted_component_type_info_array<Component_a, Component_b, Component_d>();
+        
+        Archetype const archetype_abde{archetype_abd_component_type_infos, shared_component_e_type_id, {}};
+
+        std::array<Component_type_info, 3> const archetype_bcd_component_type_infos =
+            make_sorted_component_type_info_array<Component_b, Component_c, Component_d>();
+
+        Archetype const archetype_bcde{archetype_bcd_component_type_infos, shared_component_e_type_id, {}};
+
+        Archetype const archetype_bcdf{archetype_bcd_component_type_infos, shared_component_f_type_id, {}};
+
+        constexpr Shared_component_key key_1{1};
+        constexpr Shared_component_key key_2{2};
+        constexpr Shared_component_key key_3{3};
+
+        Entity const entity_0 = entity_manager.create_entity(archetype_abde, key_1);
+        entity_manager.set_component_value(entity_0, Component_a{1});
+        entity_manager.set_component_value(entity_0, Component_b{2});
+        entity_manager.set_component_value(entity_0, Component_d{3});
+
+        Entity const entity_1 = entity_manager.create_entity(archetype_abde, key_1);
+        entity_manager.set_component_value(entity_1, Component_a{4});
+        entity_manager.set_component_value(entity_1, Component_b{5});
+        entity_manager.set_component_value(entity_1, Component_d{6});
+
+        Entity const entity_2 = entity_manager.create_entity(archetype_abde, key_2);
+        entity_manager.set_component_value(entity_2, Component_a{7});
+        entity_manager.set_component_value(entity_2, Component_b{8});
+        entity_manager.set_component_value(entity_2, Component_d{9});
+
+        Entity const entity_3 = entity_manager.create_entity(archetype_bcde, key_1);
+        entity_manager.set_component_value(entity_3, Component_b{10});
+        entity_manager.set_component_value(entity_3, Component_c{11});
+        entity_manager.set_component_value(entity_3, Component_d{12});
+
+        Entity const entity_4 = entity_manager.create_entity(archetype_bcde, key_2);
+        entity_manager.set_component_value(entity_4, Component_b{13});
+        entity_manager.set_component_value(entity_4, Component_c{14});
+        entity_manager.set_component_value(entity_4, Component_d{15});
+
+        Entity const entity_5 = entity_manager.create_entity(archetype_bcdf, key_3);
+        entity_manager.set_component_value(entity_5, Component_b{16});
+        entity_manager.set_component_value(entity_5, Component_c{17});
+        entity_manager.set_component_value(entity_5, Component_d{18});
+
         {
-            get_component_type_id<Component_a>(),
-        };
-        Archetype const archetype_ae{shared_component_e_type_id, archetype_a_component_type_ids, {}};
+            auto const view = entity_manager.get_view_grouped_by_shared_component<Shared_component_e, Component_a, Component_b>();
 
-        std::array<Component_type_ID, 1> const archetype_b_component_type_ids
-        {
-            get_component_type_id<Component_a>(),
-        };
-        Archetype const archetype_be{shared_component_e_type_id, archetype_b_component_type_ids, {}};
+            REQUIRE(std::distance(view.begin(), view.end()) == 2);
 
-        Shared_component_e constexpr shared_component_e_0{ .value = 1 };
-        Shared_component_e constexpr shared_component_e_1{ .value = 2 };
-
-        Entity const entity_0 = entity_manager.create_entity(archetype_ae, shared_component_e_0);
-        Entity const entity_1 = entity_manager.create_entity(archetype_ae, shared_component_e_1);
-        Entity const entity_2 = entity_manager.create_entity(archetype_ae, shared_component_e_1);
-        Entity const entity_3 = entity_manager.create_entity(archetype_ae, shared_component_e_0);
-        Entity const entity_4 = entity_manager.create_entity(archetype_be, shared_component_e_0);
-
-
-        CHECK(entity_0 != entity_1);
-        CHECK(entity_0 != entity_2);
-        CHECK(entity_0 != entity_3);
-        CHECK(entity_0 != entity_4);
-        CHECK(entity_1 != entity_2);
-        CHECK(entity_1 != entity_3);
-        CHECK(entity_1 != entity_4);
-        CHECK(entity_2 != entity_3);
-        CHECK(entity_2 != entity_4);
-        CHECK(entity_3 != entity_4);
-
-        {
-            std::span<Component_chunk_view const> const component_chunk_views = entity_manager.get_component_chunk_views(archetype_ae);
-
-            CHECK(component_chunk_views.size() == 2);
+            auto iterator = view.begin();
 
             {
-                auto const contains_shared_component_e_0 = [&shared_component_e_0](Component_chunk_view const view) -> bool
-                {
-                    return view.get_shared_component<Shared_component_e>().value == shared_component_e_0.value;
-                };
+                CHECK(iterator.get_chunk_group_key() == key_1);
 
-                auto const shared_component_it = std::find_if(
-                    component_chunk_views.begin(),
-                    component_chunk_views.end(),
-                    contains_shared_component_e_0
-                );
+                auto const underlying_view = *iterator++;
 
-                CHECK(shared_component_it != component_chunk_views.end());
+                REQUIRE(std::distance(underlying_view.begin(), underlying_view.end()) == 2);
+
+                auto underlying_iterator = underlying_view.begin();
+                CHECK(*underlying_iterator++ == std::make_tuple(Component_a{1}, Component_b{2}));
+                CHECK(*underlying_iterator++ == std::make_tuple(Component_a{4}, Component_b{5}));
             }
 
             {
-                auto const contains_shared_component_e_1 = [&shared_component_e_1](Component_chunk_view const view) -> bool
-                {
-                    return view.get_shared_component<Shared_component_e>().value == shared_component_e_1.value;
-                };
+                CHECK(iterator.get_chunk_group_key() == key_2);
 
-                auto const shared_component_it = std::find_if(
-                    component_chunk_views.begin(),
-                    component_chunk_views.end(),
-                    contains_shared_component_e_1
-                );
+                auto const underlying_view = *iterator++;
 
-                CHECK(shared_component_it != component_chunk_views.end());
-            }
+                REQUIRE(std::distance(underlying_view.begin(), underlying_view.end()) == 1);
 
-            //CHECK(contains_shared_component(component_chunk_views, shared_component_e_0));
-            //CHECK(contains_shared_component(component_chunk_views, shared_component_e_1));
-
-            for (Component_chunk_view const component_chunk_view : component_chunk_views)
-            {
-                Shared_component_e const& chunk_shared_component = component_chunk_view.get_shared_component<Shared_component_e>();
-                CHECK((chunk_shared_component.value == shared_component_e_0.value || chunk_shared_component.value == shared_component_e_1.value));
-
-                if (chunk_shared_component.value == shared_component_e_0.value)
-                {
-                    std::span<Entity const> const entities = component_chunk_view.get_entities();
-
-                    CHECK(entities.size() == 2);
-                    CHECK(contains(entities, entity_0));
-                    CHECK(contains(entities, entity_3));
-                }
-                else if (chunk_shared_component.value == shared_component_e_1.value)
-                {
-                    std::span<Entity const> const entities = component_chunk_view.get_entities();
-
-                    CHECK(entities.size() == 2);
-                    CHECK(contains(entities, entity_1));
-                    CHECK(contains(entities, entity_2));
-                }
+                auto underlying_iterator = underlying_view.begin();
+                CHECK(*underlying_iterator++ == std::make_tuple(Component_a{7}, Component_b{8}));
             }
         }
 
         {
-            std::span<Component_chunk_view const> const component_chunk_views = entity_manager.get_component_chunk_views(archetype_be);
+            auto const view = entity_manager.get_view_grouped_by_shared_component<Shared_component_e, Component_b>();
 
-            REQUIRE(component_chunk_views.size() == 1);
+            REQUIRE(std::distance(view.begin(), view.end()) == 4);
 
-            Component_chunk_view const component_chunk_view = component_chunk_views[0];
+            auto iterator = view.begin();
 
-            Shared_component_e const& chunk_shared_component = component_chunk_view.get_shared_component<Shared_component_e>();
-            CHECK(chunk_shared_component.value == shared_component_e_0.value);
+            {
+                CHECK(iterator.get_chunk_group_key() == key_1);
 
-            std::span<Entity const> const entities = component_chunk_view.get_entities();
+                auto const underlying_view = *iterator++;
 
-            REQUIRE(entities.size() == 1);
-            CHECK(entities[0] == entity_4);
+                REQUIRE(std::distance(underlying_view.begin(), underlying_view.end()) == 2);
+
+                auto underlying_iterator = underlying_view.begin();
+                CHECK(*underlying_iterator++ == std::make_tuple(Component_b{2}));
+                CHECK(*underlying_iterator++ == std::make_tuple(Component_b{5}));
+            }
+
+            {
+                CHECK(iterator.get_chunk_group_key() == key_2);
+
+                auto const underlying_view = *iterator++;
+
+                REQUIRE(std::distance(underlying_view.begin(), underlying_view.end()) == 1);
+
+                auto underlying_iterator = underlying_view.begin();
+                CHECK(*underlying_iterator++ == std::make_tuple(Component_b{8}));
+            }
+
+            {
+                CHECK(iterator.get_chunk_group_key() == key_1);
+
+                auto const underlying_view = *iterator++;
+
+                REQUIRE(std::distance(underlying_view.begin(), underlying_view.end()) == 1);
+
+                auto underlying_iterator = underlying_view.begin();
+                CHECK(*underlying_iterator++ == std::make_tuple(Component_b{10}));
+            }
+
+            {
+                CHECK(iterator.get_chunk_group_key() == key_2);
+
+                auto const underlying_view = *iterator++;
+
+                REQUIRE(std::distance(underlying_view.begin(), underlying_view.end()) == 1);
+
+                auto underlying_iterator = underlying_view.begin();
+                CHECK(*underlying_iterator++ == std::make_tuple(Component_b{13}));
+            }
+        }
+
+        {
+            auto const view = entity_manager.get_view_grouped_by_shared_component<Shared_component_f, Component_b>();
+
+            REQUIRE(std::distance(view.begin(), view.end()) == 1);
+
+            auto iterator = view.begin();
+
+            {
+                CHECK(iterator.get_chunk_group_key() == key_3);
+
+                auto const underlying_view = *iterator++;
+
+                REQUIRE(std::distance(underlying_view.begin(), underlying_view.end()) == 1);
+
+                auto underlying_iterator = underlying_view.begin();
+                CHECK(*underlying_iterator++ == std::make_tuple(Component_b{16}));
+            }
         }
     }
-
-    TEST_CASE("Access and change component values from Entity_component_views", "[entity_manager]")
-    {
-        Entity_manager entity_manager{};
-
-        std::array<Component_type_ID, 1> const archetype_a_component_type_id
-        {
-            get_component_type_id<Component_a>(),
-        };
-        Archetype const archetype_a{archetype_a_component_type_id, {}};
-
-        Entity const entity_0 = entity_manager.create_entity(archetype_a);
-
-        constexpr Component_a original_component_a{ .value = 1 };
-        entity_manager.set_component_value(entity_0, original_component_a);
-
-
-        {
-            Component_a const actual_component_a = entity_manager.get_component_value<Component_a>(entity_0);
-            CHECK(actual_component_a == original_component_a);
-        }
-
-        {
-            {
-                std::span<Component_chunk_view const> const component_chunk_views = entity_manager.get_component_chunk_views(archetype_a);
-                REQUIRE(component_chunk_views.size() == 1);
-                REQUIRE(component_chunk_views[0].get_entity_count() == 1);
-
-                Const_entity_components_view const entity_components_view = component_chunk_views[0].get_entity_components_view(0);
-
-                Component_a const actual_component_a = entity_components_view.get<Component_a>();
-                CHECK(actual_component_a == original_component_a);
-            }
-
-            {
-                std::span<Component_chunk_view> const component_chunk_views = entity_manager.get_component_chunk_views(archetype_a);
-                REQUIRE(component_chunk_views.size() == 1);
-                REQUIRE(component_chunk_views[0].get_entity_count() == 1);
-
-                Entity_components_view const entity_components_view = component_chunk_views[0].get_entity_components_view(0);
-
-                constexpr Component_a new_component_a{ .value = 2 };
-                entity_components_view.set(new_component_a);
-
-                Component_a const actual_component_a = entity_components_view.get<Component_a>();
-                CHECK(actual_component_a == new_component_a);
-            }
-        }
-    }*/
 }
