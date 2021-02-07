@@ -77,6 +77,40 @@ namespace Maia::ECS
 
         void destroy_entity(Entity const entity)
         {
+            Entity_location_info const& entity_location_info = m_entity_location_info[entity.value];
+
+            Component_chunk_group& component_chunk_group =
+                m_component_chunk_groups[entity_location_info.archetype_index];
+
+            std::optional<Component_group_entity_moved> const entity_moved = component_chunk_group.remove_entity(
+                entity_location_info.chunk_group_hash,
+                entity_location_info.chunk_group_index
+            );
+
+            if (entity_moved)
+            {
+                Entity_location_info& entity_moved_location_info = m_entity_location_info[entity_moved->entity.value];
+                entity_moved_location_info.chunk_group_index = entity_location_info.chunk_group_index;
+            }
+
+            // TODO invalidate entity and free its info from m_entity_location_info
+        }
+
+        std::size_t get_number_of_entities(Archetype const& archetype) const noexcept
+        {
+            auto const location = std::find(m_archetypes.begin(), m_archetypes.end(), archetype);
+
+            if (location != m_archetypes.end())
+            {
+                std::size_t const archetype_index = std::distance(m_archetypes.begin(), location);
+
+                Component_chunk_group const& chunk_group = m_component_chunk_groups[archetype_index];
+                return chunk_group.number_of_entities();
+            }
+            else
+            {
+                return 0;
+        }
         }
 
         template<Concept::Component Component_t>

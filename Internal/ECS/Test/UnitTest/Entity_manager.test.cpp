@@ -293,6 +293,62 @@ namespace Maia::ECS::Test
         CHECK(initialized_value == zero_initialized_value);
     }
 
+    TEST_CASE("Deleting entities must not invalidate other elements", "[entity_manager]")
+    {
+        Entity_manager entity_manager{};
+
+        std::array<Component_type_info, 2> const archetype_ab_component_type_infos =
+            make_sorted_component_type_info_array<Component_a, Component_b>();
+
+        Archetype const archetype_ab{archetype_ab_component_type_infos, std::nullopt, {}};
+
+        Entity const entity_0 = entity_manager.create_entity(archetype_ab);
+
+        constexpr Component_a entity_0_a{ .value = 1 };
+        entity_manager.set_component_value(entity_0, entity_0_a);
+
+        constexpr Component_b entity_0_b{ .value = 2 };
+        entity_manager.set_component_value(entity_0, entity_0_b);
+
+        Entity const entity_1 = entity_manager.create_entity(archetype_ab);
+
+        constexpr Component_a entity_1_a{ .value = 3 };
+        entity_manager.set_component_value(entity_1, entity_1_a);
+
+        constexpr Component_b entity_1_b{ .value = 4 };
+        entity_manager.set_component_value(entity_1, entity_1_b);
+
+
+        CHECK(entity_0 != entity_1);
+        CHECK(entity_manager.get_number_of_entities(archetype_ab) == 2);
+
+        {
+            Component_a const actual_entity_0_a = entity_manager.get_component_value<Component_a>(entity_0);
+            CHECK(actual_entity_0_a == entity_0_a);
+        }
+
+        {
+            Component_b const actual_entity_0_b = entity_manager.get_component_value<Component_b>(entity_0);
+            CHECK(actual_entity_0_b == entity_0_b);
+        }
+
+        entity_manager.destroy_entity(entity_0);
+        CHECK(entity_manager.get_number_of_entities(archetype_ab) == 1);
+
+        {
+            Component_a const actual_entity_1_a = entity_manager.get_component_value<Component_a>(entity_1);
+            CHECK(actual_entity_1_a == entity_1_a);
+        }
+
+        {
+            Component_b const actual_entity_1_b = entity_manager.get_component_value<Component_b>(entity_1);
+            CHECK(actual_entity_1_b == entity_1_b);
+        }
+
+        entity_manager.destroy_entity(entity_1);
+        CHECK(entity_manager.get_number_of_entities(archetype_ab) == 0);
+    }
+
     TEST_CASE("New archetypes can be created by adding or removing components to an entity", "[.entity_manager]")
     {
         Entity_manager entity_manager{};
