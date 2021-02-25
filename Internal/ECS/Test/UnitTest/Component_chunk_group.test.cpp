@@ -1102,4 +1102,83 @@ namespace Maia::ECS::Test
             CHECK(*iterator++ == std::make_tuple(Entity{4}, Component_a{8}, Component_b{9}));
         }
     }
+
+    TEST_CASE("Use generic allocator for component chunks", "[component_chunk_group]")
+    {
+        constexpr std::array<Component_type_size, 2> component_type_sizes
+        {
+            sizeof(Component_a),
+            sizeof(Component_b)
+        };
+
+        constexpr std::array<std::size_t, 3> number_of_entities_per_group = {20, 5, 15};
+        constexpr std::size_t number_of_entities_per_chunk = 10;
+
+        constexpr std::size_t required_memory_size = Component_chunk_group::get_required_generic_memory_size(
+            number_of_entities_per_group,
+            number_of_entities_per_chunk,
+            component_type_sizes
+        );
+
+        std::array<std::byte, required_memory_size> buffer_storage;
+        std::pmr::monotonic_buffer_resource buffer_resource{buffer_storage.data(), buffer_storage.size(), std::pmr::null_memory_resource()};
+        std::pmr::polymorphic_allocator<> generic_allocator{&buffer_resource};
+
+        std::array<Component_type_info, 2> const component_type_infos = 
+            make_sorted_component_type_info_array<Component_a, Component_b>();
+
+        auto const add_all_entities = [=](Component_chunk_group& groups) -> void
+        {
+            for (std::size_t group_index = 0; group_index < number_of_entities_per_group.size(); ++group_index)
+            {
+                Chunk_group_hash const group_hash = {group_index};
+                std::size_t const number_entities_in_group = number_of_entities_per_group[group_index];
+
+                for (std::size_t entity_index = 0; entity_index < number_entities_in_group; ++entity_index)
+                {
+                    Entity const entity = {static_cast<Entity::Integral_type>(entity_index)};
+                    
+                    groups.add_entity(entity, group_hash);
+                }
+            }
+        };
+
+        auto const remove_all_entities = [=](Component_chunk_group& groups) -> void
+        {
+            for (std::size_t group_index = 0; group_index < number_of_entities_per_group.size(); ++group_index)
+            {
+                Chunk_group_hash const group_hash = {group_index};
+                std::size_t const number_entities_in_group = number_of_entities_per_group[group_index];
+
+                for (std::size_t entity_index = 0; entity_index < number_entities_in_group; ++entity_index)
+                {
+                    groups.remove_entity(group_hash, 0);
+                }
+            }
+        };
+
+        CHECK_NOTHROW([&]()
+        {
+            constexpr std::array<Chunk_group_hash, 3> chunk_group_hashes
+            {
+                Chunk_group_hash{0}, Chunk_group_hash{1}, Chunk_group_hash{2}
+            };
+
+            Component_chunk_group groups
+            {
+                component_type_infos,
+                number_of_entities_per_chunk,
+                chunk_group_hashes,
+                number_of_entities_per_group,
+                {},
+                generic_allocator
+            };
+
+            for (std::size_t i = 0; i < 100; ++i)
+            {
+                add_all_entities(groups);
+                remove_all_entities(groups);
+            }
+        }());
+    }
 }

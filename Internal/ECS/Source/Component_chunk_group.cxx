@@ -1065,6 +1065,23 @@ namespace Maia::ECS
 			m_component_type_infos.back() = {get_component_type_id<Entity>(), sizeof(Entity)};
 		}
 
+		Component_chunk_group(
+			std::span<Component_type_info const> const component_type_infos,
+			std::size_t const number_of_entities_per_chunk,
+			std::span<Chunk_group_hash const> const group_hashes,
+			std::span<std::size_t const> const number_of_entities_per_group,
+			std::pmr::polymorphic_allocator<std::byte> const& chunk_allocator,
+			std::pmr::polymorphic_allocator<std::byte> const& allocator
+		) noexcept :
+			Component_chunk_group(component_type_infos, number_of_entities_per_chunk, chunk_allocator, allocator)
+		{
+			allocate_generic_memory(
+				group_hashes,
+				number_of_entities_per_group,
+				number_of_entities_per_chunk
+			);
+		}
+
 		Index add_entity(Entity const entity, Chunk_group_hash const chunk_group_hash)
 		{
 			auto const location = m_chunk_groups.find(chunk_group_hash);
@@ -1072,7 +1089,6 @@ namespace Maia::ECS
 			if (location != m_chunk_groups.end())
 			{
 				Chunk_group& chunk_group = location->second;
-				assert(!chunk_group.chunks.empty());
 
 				std::size_t const chunk_group_capacity = m_number_of_entities_per_chunk * chunk_group.chunks.size();
 
@@ -1350,7 +1366,94 @@ namespace Maia::ECS
 			return get_view<Self, Component_ts...>(this);
 		}
 
+		static constexpr std::size_t get_instance_required_memory_size(
+			std::size_t const number_of_component_types
+		) noexcept
+		{
+			return 512;
+		}
+
+		static constexpr std::size_t get_new_chunk_group_required_memory_size() noexcept
+		{
+			return sizeof(decltype(m_chunk_groups)::value_type);
+		}
+
+		static constexpr std::size_t get_new_chunk_required_memory_size() noexcept
+		{
+			return sizeof(Chunk); 
+		}
+
+		static constexpr std::size_t get_components_required_memory_size(
+			std::span<Component_type_size const> const component_type_sizes,
+			std::size_t const number_of_entities_per_chunk
+		) noexcept
+		{
+			std::size_t total_component_size = 
+				std::accumulate(
+					component_type_sizes.begin(),
+					component_type_sizes.end(),
+					sizeof(Entity)
+				);
+
+			std::size_t const total_size = total_component_size * number_of_entities_per_chunk;
+
+			return total_size;
+		}
+
+		static constexpr std::size_t get_required_generic_memory_size(
+			std::span<std::size_t const> const number_of_entities_per_group,
+			std::size_t const number_of_entities_per_chunk,
+			std::span<Component_type_size const> const component_type_sizes
+		) noexcept
+		{
+			std::size_t const instance_required_size = get_instance_required_memory_size(component_type_sizes.size());
+
+			std::size_t const groups_required_size = get_new_chunk_group_required_memory_size() * number_of_entities_per_group.size();
+
+			std::size_t chunks_size = 0;
+
+			for (std::size_t const number_of_entities_in_group : number_of_entities_per_group)
+			{
+				std::size_t const number_of_chunks_in_group =
+					number_of_entities_in_group / number_of_entities_per_chunk +
+					(number_of_entities_in_group % number_of_entities_per_chunk == 0 ? 0 : 1);
+
+				chunks_size += number_of_chunks_in_group * get_new_chunk_required_memory_size();
+			}
+
+			std::size_t const total_size = instance_required_size + groups_required_size + chunks_size;
+
+			return 3000;
+		}
+
 	private:
+
+		void allocate_generic_memory(
+			std::span<Chunk_group_hash const> const group_hashes,
+			std::span<std::size_t const> const number_of_entities_per_group,
+			std::size_t const number_of_entities_per_chunk		)
+		{
+			assert(group_hashes.size() == number_of_entities_per_group.size());
+
+			m_chunk_groups.reserve(group_hashes.size());
+
+			for (std::size_t group_index = 0; group_index < group_hashes.size(); ++group_index)
+			{
+				Chunk_group_hash const group_hash = group_hashes[group_index];
+				assert(!m_chunk_groups.contains(group_hash));
+
+				std::size_t const number_of_entities_in_group = number_of_entities_per_group[group_index];
+
+				std::size_t const number_of_chunks_in_group =
+					number_of_entities_in_group / number_of_entities_per_chunk +
+					(number_of_entities_in_group % number_of_entities_per_chunk == 0 ? 0 : 1);
+
+				std::pmr::vector<Chunk> chunks{m_chunk_groups.get_allocator()};
+				Chunk_group group = {std::move(chunks)};
+				group.chunks.reserve(number_of_chunks_in_group);
+				m_chunk_groups.emplace(group_hash, std::move(group));
+			}
+		}
 
 		std::size_t number_of_elements(std::size_t const number_of_elements_in_chunk_group, std::size_t const chunk_index) const noexcept
 		{
