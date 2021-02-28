@@ -904,7 +904,6 @@ namespace Maia::ECS::Test
             }
         };
 
-        //CHECK_NOTHROW(create_and_destroy_entities());
-        create_and_destroy_entities();
+        CHECK_NOTHROW(create_and_destroy_entities());
     }
 }

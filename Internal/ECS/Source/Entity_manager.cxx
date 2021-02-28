@@ -55,6 +55,7 @@ namespace Maia::ECS
             m_archetypes{generic_allocator},
             m_component_chunk_groups{generic_allocator},
             m_entity_location_info{generic_allocator},
+            m_free_entity_indices{generic_allocator},
             m_shared_components{generic_allocator}
         {
         }
@@ -113,6 +114,7 @@ namespace Maia::ECS
                 );
 
                 m_entity_location_info.reserve(total_number_of_entities);
+                m_free_entity_indices.reserve(total_number_of_entities);
             }
 
             {
@@ -178,7 +180,8 @@ namespace Maia::ECS
                 entity_moved_location_info.chunk_group_index = entity_location_info.chunk_group_index;
             }
 
-            // TODO invalidate entity and free its info from m_entity_location_info
+            m_entity_location_info[entity.value] = {};
+            m_free_entity_indices.push_back(entity.value);
         }
 
         std::size_t get_number_of_entities(Archetype const& archetype) const noexcept
@@ -424,12 +427,22 @@ namespace Maia::ECS
 
         Entity::Integral_type get_next_entity_value() const noexcept
         {
-            return m_next_entity_value;
+            if (!m_free_entity_indices.empty())
+            {
+                return m_free_entity_indices.back();
+        }
+            else
+            {
+                return m_entity_location_info.size();
+            }
         }
 
         void increment_next_entity_value() noexcept
         {
-            ++m_next_entity_value;
+            if (!m_free_entity_indices.empty())
+            {
+                m_free_entity_indices.pop_back();
+            }
         }
 
         Entity create_entity(Archetype_index const archetype_index, Chunk_group_hash const chunk_group_hash)
@@ -441,17 +454,26 @@ namespace Maia::ECS
   
             Component_chunk_group& component_chunk_group = m_component_chunk_groups[archetype_index];
 
-            Component_chunk_group::Index component_chunk_group_index = 
+            Component_chunk_group::Index const component_chunk_group_index = 
                 component_chunk_group.add_entity(new_entity, chunk_group_hash);
 
-            m_entity_location_info.push_back(
-                Entity_location_info
+            Entity_location_info const entity_location_info
                 {
                     archetype_index,
                     chunk_group_hash,
                     component_chunk_group_index
+            };
+
+            if (new_entity_value < m_entity_location_info.size())
+            {
+                m_entity_location_info[new_entity_value] = entity_location_info;
                 }
-            );
+            else
+            {
+                assert(new_entity_value == m_entity_location_info.size());
+
+                m_entity_location_info.push_back(entity_location_info);
+            }
             
             return new_entity;
         }
@@ -476,9 +498,8 @@ namespace Maia::ECS
         std::pmr::vector<Component_chunk_group> m_component_chunk_groups;
 
         std::pmr::vector<Entity_location_info> m_entity_location_info;
+        std::pmr::vector<std::size_t> m_free_entity_indices;
 
         std::pmr::unordered_map<Chunk_group_hash, std::any> m_shared_components;
-        
-        Entity::Integral_type m_next_entity_value = 0;
     };
 }
