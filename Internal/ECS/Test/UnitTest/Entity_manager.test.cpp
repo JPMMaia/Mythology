@@ -814,5 +814,97 @@ namespace Maia::ECS::Test
                 CHECK(*underlying_iterator++ == std::make_tuple(Component_b{16}));
             }
         }
+    template<std::size_t Shared_component_count, std::size_t Component_count>
+    struct Archetype_info
+    {
+        std::array<Component_type_size, Component_count> component_type_sizes;
+        std::array<std::size_t, Shared_component_count> number_of_entities_per_shared_component;
+    };
+
+    template<std::size_t Shared_component_count, typename... Component_type>
+    constexpr Archetype_info<Shared_component_count, sizeof...(Component_type)> create_archetype_info(
+        std::array<std::size_t, Shared_component_count> const number_of_entities_per_shared_component
+    ) noexcept
+    {
+        return
+        {
+            {
+                sizeof(Component_type)...
+            },
+            number_of_entities_per_shared_component
+        };
+    }
+
+    TEST_CASE("Memory is reused after removing an entity", "[entity_manager]")
+    {
+        constexpr std::size_t maximum_number_of_entities = 20;
+
+        constexpr Archetype_info<1, 2> archetype_ab_info = create_archetype_info<1, Component_a, Component_b>({maximum_number_of_entities});
+
+        constexpr std::size_t required_memory_size = 
+            Entity_manager::get_generic_required_memory_size(
+                archetype_ab_info
+            );
+
+        std::array<std::byte, required_memory_size> buffer_storage;
+        std::pmr::monotonic_buffer_resource buffer_resource{buffer_storage.data(), buffer_storage.size(), std::pmr::null_memory_resource()};
+        std::pmr::polymorphic_allocator<> generic_allocator{&buffer_resource};
+
+        std::array<Component_type_info, 2> const archetype_ab_component_type_infos =
+            make_sorted_component_type_info_array<Component_a, Component_b>();
+
+        Archetype const archetype_ab{archetype_ab_component_type_infos, std::nullopt, {}};
+
+        constexpr std::array<Shared_component_key, 1> archetype_ab_shared_component_keys
+        {
+            {}
+        };
+
+        constexpr std::array<std::span<Shared_component_key const>, 1> shared_component_keys
+        {
+            archetype_ab_shared_component_keys
+        };
+
+        constexpr std::array<std::span<std::size_t const>, 1> number_of_entities_per_shared_component
+        {
+            archetype_ab_info.number_of_entities_per_shared_component
+        };
+
+
+
+        auto const create_and_destroy_entities = [&]() -> void
+        {
+            Entity_manager entity_manager
+            {
+                {&archetype_ab, 1},
+                shared_component_keys,
+                number_of_entities_per_shared_component,
+                generic_allocator,
+                {}
+            };
+
+            {
+                std::vector<Entity> entities;
+                entities.reserve(maximum_number_of_entities);
+
+                for (std::size_t i = 0; i < 100; ++i)
+                {
+                    for (std::size_t j = 0; j < maximum_number_of_entities; ++j)
+                    {
+                        Entity const entity = entity_manager.create_entity(archetype_ab);
+                        entities.push_back(entity);
+                    }
+
+                    for (Entity const entity : entities)
+                    {
+                        entity_manager.destroy_entity(entity);
+                    }
+                    entities.clear();
+                }
+            }
+        };
+
+        //CHECK_NOTHROW(create_and_destroy_entities());
+        create_and_destroy_entities();
     }
 }
