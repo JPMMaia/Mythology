@@ -23,10 +23,28 @@ namespace Maia::ECS
         using Iterator = std::pair<Key_t const, Value_t>*;
         using Const_iterator = std::pair<Key_t const, Value_t> const*;
 
-        Hash_map() = default;
+        Hash_map() noexcept = default;
+
+        Hash_map(Hash_map const& other)
+        {
+        }
+
+        Hash_map(Hash_map&& other) noexcept
+        {
+        }
 
         explicit Hash_map(Allocator_t const& allocator) noexcept
         {
+        }
+
+        Hash_map& operator=(Hash_map const& other)
+        {
+            return *this;
+        }
+
+        Hash_map& operator=(Hash_map&& other) noexcept
+        {
+            return *this;
         }
 
         bool empty() noexcept
