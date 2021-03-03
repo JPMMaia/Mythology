@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <memory_resource>
+#include <utility>
 
 import maia.ecs.hash_map;
 
@@ -68,7 +69,7 @@ namespace Maia::ECS::Test
         CHECK(std::distance(hash_map.begin(), hash_map.end()) == 2);
 
         {
-            auto const is_valid = [&](auto const iterator) -> bool
+            auto const is_valid = [](auto& hash_map, auto const iterator) -> bool
             {
                 if (iterator == hash_map.end())
                 {
@@ -88,16 +89,33 @@ namespace Maia::ECS::Test
                 }
             };
 
-            auto iterator = hash_map.begin();
-            REQUIRE(iterator != hash_map.end());
-            CHECK(is_valid(iterator));
+            {
+                auto iterator = hash_map.begin();
+                REQUIRE(iterator != hash_map.end());
+                CHECK(is_valid(hash_map, iterator));
 
-            ++iterator;
-            REQUIRE(iterator != hash_map.end());
-            CHECK(is_valid(iterator));
+                ++iterator;
+                REQUIRE(iterator != hash_map.end());
+                CHECK(is_valid(hash_map, iterator));
 
-            ++iterator;
-            CHECK(iterator == hash_map.end());
+                ++iterator;
+                CHECK(iterator == hash_map.end());
+            }
+
+            {
+                Hash_map<int, int> const_hash_map = hash_map;
+
+                auto iterator = const_hash_map.begin();
+                REQUIRE(iterator != const_hash_map.end());
+                CHECK(is_valid(const_hash_map, iterator));
+
+                ++iterator;
+                REQUIRE(iterator != const_hash_map.end());
+                CHECK(is_valid(const_hash_map, iterator));
+
+                ++iterator;
+                CHECK(iterator == const_hash_map.end());
+            }
         }
     }
 
@@ -129,6 +147,30 @@ namespace Maia::ECS::Test
             
             CHECK(iterator == hash_map.end());
         }
+
+        Hash_map<int, int> const& const_hash_map = hash_map;
+
+        {
+            auto const iterator = const_hash_map.find(1);
+            
+            REQUIRE(iterator != const_hash_map.end());
+            CHECK(iterator->first == 1);
+            CHECK(iterator->second == 2);
+        }
+
+        {
+            auto const iterator = const_hash_map.find(2);
+            
+            REQUIRE(iterator != const_hash_map.end());
+            CHECK(iterator->first == 2);
+            CHECK(iterator->second == 1);
+        }
+
+        {
+            auto const iterator = const_hash_map.find(3);
+            
+            CHECK(iterator == const_hash_map.end());
+        }
     }
 
     TEST_CASE("Hash_map.at can be used to access an element", "[hash_map]")
@@ -140,6 +182,11 @@ namespace Maia::ECS::Test
 
         CHECK(hash_map.at(1) == 2);
         CHECK(hash_map.at(2) == 1);
+
+        Hash_map<int, int> const& const_hash_map = hash_map;
+
+        CHECK(const_hash_map.at(1) == 2);
+        CHECK(const_hash_map.at(2) == 1);
     }
 
     TEST_CASE("Hash_map.contains checks if the container contains an element", "[hash_map]")
@@ -237,5 +284,73 @@ namespace Maia::ECS::Test
         };
 
         CHECK_NOTHROW(add_and_clear_multiple_times());
+    }
+
+    TEST_CASE("Hash_map copy constructor copies content", "[hash_map]")
+    {
+        Hash_map<int, int> hash_map = []() -> Hash_map<int, int>
+        {
+            Hash_map<int, int> other;
+            other.emplace(1, 2);
+            other.emplace(2, 1);
+
+            Hash_map<int, int> copy{other};
+            return copy;
+        }();
+
+        CHECK(hash_map.at(1) == 2);
+        CHECK(hash_map.at(2) == 1);
+    }
+
+    TEST_CASE("Hash_map copy assignment copies content", "[hash_map]")
+    {
+        Hash_map<int, int> hash_map = []() -> Hash_map<int, int>
+        {
+            Hash_map<int, int> other;
+            other.emplace(1, 2);
+            other.emplace(2, 1);
+
+            Hash_map<int, int> copy;
+            copy.emplace(1, 3);
+            copy = other;
+            return copy;
+        }();
+
+        CHECK(hash_map.at(1) == 2);
+        CHECK(hash_map.at(2) == 1);
+    }
+
+    TEST_CASE("Hash_map move constructor moves content", "[hash_map]")
+    {
+        Hash_map<int, int> hash_map = []() -> Hash_map<int, int>
+        {
+            Hash_map<int, int> other;
+            other.emplace(1, 2);
+            other.emplace(2, 1);
+
+            Hash_map<int, int> moved{std::move(other)};
+            return moved;
+        }();
+
+        CHECK(hash_map.at(1) == 2);
+        CHECK(hash_map.at(2) == 1);
+    }
+
+    TEST_CASE("Hash_map move assignment moves content", "[hash_map]")
+    {
+        Hash_map<int, int> hash_map = []() -> Hash_map<int, int>
+        {
+            Hash_map<int, int> other;
+            other.emplace(1, 2);
+            other.emplace(2, 1);
+
+            Hash_map<int, int> moved;
+            moved.emplace(1, 3);
+            moved = std::move(other);
+            return moved;
+        }();
+
+        CHECK(hash_map.at(1) == 2);
+        CHECK(hash_map.at(2) == 1);
     }
 }
