@@ -49,6 +49,9 @@ namespace Maia::ECS::Test
 
         hash_map.clear();
         CHECK(hash_map.empty());
+
+        CHECK(!hash_map.contains(1));
+        CHECK(!hash_map.contains(2));
     }
 
     TEST_CASE("Hash_map.begin and Hash_map.end are the same if empty", "[hash_map]")
@@ -253,7 +256,7 @@ namespace Maia::ECS::Test
         {
             for (std::size_t element_index = 0; element_index < number_of_elements; ++element_index)
             {
-                hash_map.emplace(element_index, element_index);
+                hash_map.emplace(static_cast<int>(element_index), static_cast<int>(element_index));
             }
         };
 
