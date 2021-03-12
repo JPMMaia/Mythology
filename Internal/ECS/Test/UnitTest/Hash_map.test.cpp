@@ -15,7 +15,7 @@ namespace Maia::ECS::Test
 
         CHECK(hash_map.empty());
 
-        hash_map.emplace(1, 2);
+        hash_map.insert_or_assign({1, 2});
 
         CHECK(!hash_map.empty());
     }
@@ -26,16 +26,16 @@ namespace Maia::ECS::Test
 
         CHECK(hash_map.size() == 0);
 
-        hash_map.emplace(1, 2);
+        hash_map.insert_or_assign({1, 2});
 
         CHECK(hash_map.size() == 1);
     }
 
-    TEST_CASE("Hash_map.emplace adds a new key-value pair", "[hash_map]")
+    TEST_CASE("Hash_map.insert_or_assign {adds a new key-value pair", "[hash_map]}")
     {
         Hash_map<int, int> hash_map;
 
-        hash_map.emplace(1, 2);
+        hash_map.insert_or_assign({1, 2});
         CHECK(hash_map.size() == 1);
     }
 
@@ -43,8 +43,8 @@ namespace Maia::ECS::Test
     {
         Hash_map<int, int> hash_map;
 
-        hash_map.emplace(1, 2);
-        hash_map.emplace(2, 2);
+        hash_map.insert_or_assign({1, 2});
+        hash_map.insert_or_assign({2, 2});
         CHECK(hash_map.size() == 2);
 
         hash_map.clear();
@@ -65,8 +65,8 @@ namespace Maia::ECS::Test
     {
         Hash_map<int, int> hash_map;
 
-        hash_map.emplace(1, 2);
-        hash_map.emplace(2, 1);
+        hash_map.insert_or_assign({1, 2});
+        hash_map.insert_or_assign({2, 1});
 
         CHECK(hash_map.begin() != hash_map.end());
         CHECK(std::distance(hash_map.begin(), hash_map.end()) == 2);
@@ -106,7 +106,7 @@ namespace Maia::ECS::Test
             }
 
             {
-                Hash_map<int, int> const_hash_map = hash_map;
+                Hash_map<int, int> const& const_hash_map = hash_map;
 
                 auto iterator = const_hash_map.begin();
                 REQUIRE(iterator != const_hash_map.end());
@@ -126,8 +126,8 @@ namespace Maia::ECS::Test
     {
         Hash_map<int, int> hash_map;
 
-        hash_map.emplace(1, 2);
-        hash_map.emplace(2, 1);
+        hash_map.insert_or_assign({1, 2});
+        hash_map.insert_or_assign({2, 1});
 
         {
             auto const iterator = hash_map.find(1);
@@ -180,8 +180,8 @@ namespace Maia::ECS::Test
     {
         Hash_map<int, int> hash_map;
 
-        hash_map.emplace(1, 2);
-        hash_map.emplace(2, 1);
+        hash_map.insert_or_assign({1, 2});
+        hash_map.insert_or_assign({2, 1});
 
         CHECK(hash_map.at(1) == 2);
         CHECK(hash_map.at(2) == 1);
@@ -196,8 +196,8 @@ namespace Maia::ECS::Test
     {
         Hash_map<int, int> hash_map;
 
-        hash_map.emplace(1, 2);
-        hash_map.emplace(2, 1);
+        hash_map.insert_or_assign({1, 2});
+        hash_map.insert_or_assign({2, 1});
 
         CHECK(hash_map.contains(1));
         CHECK(hash_map.contains(2));
@@ -208,8 +208,8 @@ namespace Maia::ECS::Test
     {
         Hash_map<int, int> hash_map;
 
-        hash_map.emplace(1, 2);
-        hash_map.emplace(2, 1);
+        hash_map.insert_or_assign({1, 2});
+        hash_map.insert_or_assign({2, 1});
 
         REQUIRE(hash_map.contains(1));
         REQUIRE(hash_map.contains(2));
@@ -220,15 +220,35 @@ namespace Maia::ECS::Test
         CHECK(hash_map.at(2) == 1);
     }
 
+    TEST_CASE("Hash_map.erase does not invalidate other elemenets", "[hash_map]")
+    {
+        constexpr std::size_t element_count = 100;
+
+        Hash_map<int, int> hash_map;
+        hash_map.reserve(element_count);
+
+        for (std::size_t index = 0; index < element_count; ++index)
+        {
+            hash_map.insert_or_assign({static_cast<int>(index), static_cast<int>(index)});
+        }
+
+        for (std::size_t index = 0; index < element_count; ++index)
+        {
+            hash_map.erase(index);
+        }
+
+        CHECK(hash_map.size() == 0);
+    }
+
     TEST_CASE("Hash_map.swap swaps the content with another hash map", "[hash_map]")
     {
         Hash_map<int, int> hash_map_a;
-        hash_map_a.emplace(1, 3);
-        hash_map_a.emplace(2, 2);
+        hash_map_a.insert_or_assign({1, 3});
+        hash_map_a.insert_or_assign({2, 2});
 
         Hash_map<int, int> hash_map_b;
-        hash_map_b.emplace(3, 1);
-        hash_map_b.emplace(4, 0);
+        hash_map_b.insert_or_assign({3, 1});
+        hash_map_b.insert_or_assign({4, 0});
 
         hash_map_a.swap(hash_map_b);
 
@@ -256,7 +276,7 @@ namespace Maia::ECS::Test
         {
             for (std::size_t element_index = 0; element_index < number_of_elements; ++element_index)
             {
-                hash_map.emplace(static_cast<int>(element_index), static_cast<int>(element_index));
+                hash_map.insert_or_assign({static_cast<int>(element_index), static_cast<int>(element_index)});
             }
         };
 
@@ -289,38 +309,125 @@ namespace Maia::ECS::Test
         CHECK_NOTHROW(add_and_clear_multiple_times());
     }
 
+    TEST_CASE("Calling Hash_map.reserve twice does not invalidate content", "[hash_map]")
+    {
+        constexpr std::size_t element_count = 100;
+
+        Hash_map<std::size_t, std::size_t> hash_map;
+        hash_map.reserve(element_count);
+
+        for (std::size_t index = 0; index < element_count; ++index)
+        {
+            hash_map.insert_or_assign({index, index});
+        }
+
+        hash_map.reserve(element_count + element_count);
+
+        for (std::size_t index = 0; index < element_count; ++index)
+        {
+            CHECK(hash_map.at(index) == index);
+        }
+    }
+
     TEST_CASE("Hash_map copy constructor copies content", "[hash_map]")
     {
-        Hash_map<int, int> hash_map = []() -> Hash_map<int, int>
-        {
-            Hash_map<int, int> other;
-            other.emplace(1, 2);
-            other.emplace(2, 1);
+        static std::size_t copy_constructor_called = 0;
 
-            Hash_map<int, int> copy{other};
+        struct Copiable
+        {
+            Copiable() noexcept = default;
+
+            explicit Copiable(int const value) noexcept :
+                value{value}
+            {
+            }
+
+            Copiable(Copiable const& other) noexcept :
+                value{other.value}
+            {
+                ++copy_constructor_called;
+            }
+
+            Copiable(Copiable&& other) noexcept = default;
+            Copiable& operator=(Copiable const& other) noexcept = default;
+            Copiable& operator=(Copiable&& other) noexcept = default;
+
+            bool operator==(Copiable const& rhs) const noexcept 
+            {
+                return value == rhs.value;
+            }
+
+            int value = 0;
+        };
+
+        Hash_map<int, Copiable> hash_map = []() -> Hash_map<int, Copiable>
+        {
+            Hash_map<int, Copiable> other;
+            other.insert_or_assign({1, Copiable{2}});
+            other.insert_or_assign({2, Copiable{1}});
+
+            std::size_t const number_of_copies = copy_constructor_called;
+            
+            Hash_map<int, Copiable> copy{other};
+            
+            CHECK(copy_constructor_called == (number_of_copies + 2));
+            
             return copy;
         }();
 
-        CHECK(hash_map.at(1) == 2);
-        CHECK(hash_map.at(2) == 1);
+        CHECK(hash_map.at(1) == Copiable{2});
+        CHECK(hash_map.at(2) == Copiable{1});
     }
 
     TEST_CASE("Hash_map copy assignment copies content", "[hash_map]")
     {
-        Hash_map<int, int> hash_map = []() -> Hash_map<int, int>
-        {
-            Hash_map<int, int> other;
-            other.emplace(1, 2);
-            other.emplace(2, 1);
+        static std::size_t copy_constructor_called = 0;
 
-            Hash_map<int, int> copy;
-            copy.emplace(1, 3);
+        struct Copiable
+        {
+            Copiable() noexcept = default;
+
+            explicit Copiable(int const value) noexcept :
+                value{value}
+            {
+            }
+
+            Copiable(Copiable const& other) noexcept :
+                value{other.value}
+            {
+                ++copy_constructor_called;
+            }
+
+            Copiable(Copiable&& other) noexcept = default;
+            Copiable& operator=(Copiable const& other) noexcept = default;
+            Copiable& operator=(Copiable&& other) noexcept = default;
+
+            bool operator==(Copiable const& rhs) const noexcept 
+            {
+                return value == rhs.value;
+            }
+
+            int value = 0;
+        };
+
+        Hash_map<int, Copiable> hash_map = []() -> Hash_map<int, Copiable>
+        {
+            Hash_map<int, Copiable> other;
+            other.insert_or_assign({1, Copiable{2}});
+            other.insert_or_assign({2, Copiable{1}});
+
+            Hash_map<int, Copiable> copy;
+            copy.insert_or_assign({1, Copiable{3}});
+
+            std::size_t const number_of_copies = copy_constructor_called;
             copy = other;
+            CHECK(copy_constructor_called == (number_of_copies + 2));
+
             return copy;
         }();
 
-        CHECK(hash_map.at(1) == 2);
-        CHECK(hash_map.at(2) == 1);
+        CHECK(hash_map.at(1) == Copiable{2});
+        CHECK(hash_map.at(2) == Copiable{1});
     }
 
     TEST_CASE("Hash_map move constructor moves content", "[hash_map]")
@@ -328,8 +435,8 @@ namespace Maia::ECS::Test
         Hash_map<int, int> hash_map = []() -> Hash_map<int, int>
         {
             Hash_map<int, int> other;
-            other.emplace(1, 2);
-            other.emplace(2, 1);
+            other.insert_or_assign({1, 2});
+            other.insert_or_assign({2, 1});
 
             Hash_map<int, int> moved{std::move(other)};
             return moved;
@@ -344,11 +451,11 @@ namespace Maia::ECS::Test
         Hash_map<int, int> hash_map = []() -> Hash_map<int, int>
         {
             Hash_map<int, int> other;
-            other.emplace(1, 2);
-            other.emplace(2, 1);
+            other.insert_or_assign({1, 2});
+            other.insert_or_assign({2, 1});
 
             Hash_map<int, int> moved;
-            moved.emplace(1, 3);
+            moved.insert_or_assign({1, 3});
             moved = std::move(other);
             return moved;
         }();
