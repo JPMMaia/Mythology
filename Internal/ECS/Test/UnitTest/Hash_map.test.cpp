@@ -31,12 +31,37 @@ namespace Maia::ECS::Test
         CHECK(hash_map.size() == 1);
     }
 
-    TEST_CASE("Hash_map.insert_or_assign {adds a new key-value pair", "[hash_map]}")
+    TEST_CASE("Hash_map.insert_or_assign adds a new key-value pair", "[hash_map]")
     {
         Hash_map<int, int> hash_map;
 
         hash_map.insert_or_assign({1, 2});
         CHECK(hash_map.size() == 1);
+    }
+
+    TEST_CASE("Hash_map.insert_or_assign returns iterator and whether it inserted", "[hash_map]")
+    {
+        Hash_map<int, int> hash_map;
+
+        {
+            auto const result = hash_map.insert_or_assign({1, 2});
+        
+            auto const iterator = result.first;
+            CHECK(iterator->first == 1);
+            CHECK(iterator->second == 2);
+
+            CHECK(result.second);
+        }
+
+        {
+            auto const result = hash_map.insert_or_assign({1, 3});
+        
+            auto const iterator = result.first;
+            CHECK(iterator->first == 1);
+            CHECK(iterator->second == 3);
+
+            CHECK(!result.second);
+        }
     }
 
     TEST_CASE("Hash_map.clear removes all elements", "[hash_map]")

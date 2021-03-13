@@ -298,14 +298,15 @@ namespace Maia::ECS
                 std::construct_at(location, std::move(value));
             }
 
+            bool const inserted = !is_content_valid(index);
             set_content_valid(index, true);
 
             m_count++;
 
             return
             {
-                Iterator{m_content, m_is_content_valid, m_capacity, m_count - 1},
-                true // TODO test
+                Iterator{m_content, m_is_content_valid, m_capacity, index},
+                inserted
             };
         }
 
