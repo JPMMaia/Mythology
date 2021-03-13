@@ -116,6 +116,7 @@ namespace Maia::ECS
 
         Hash_map_iterator operator++(int) noexcept
         {
+            // TODO test
             Hash_map_iterator const copy = *this;
             ++(*this);
             return copy;
@@ -123,6 +124,7 @@ namespace Maia::ECS
 
         Hash_map_iterator& operator--() noexcept
         {
+            // TODO test
             std::size_t previous_index = m_index;
             ++previous_index;
 
@@ -138,6 +140,7 @@ namespace Maia::ECS
 
         Hash_map_iterator operator--(int) noexcept
         {
+            // TODO test
             Hash_map_iterator const copy = *this;
             --(*this);
             return copy;
@@ -332,6 +335,11 @@ namespace Maia::ECS
 
         Iterator find(Key_t const& key) noexcept
         {
+            if (m_count == 0)
+            {
+                return end();
+            }
+
             std::size_t index = calculate_index_hint(key);
 
             while (is_content_valid(index) && !is_same_key(index, key))
@@ -351,6 +359,11 @@ namespace Maia::ECS
 
         Const_iterator find(Key_t const& key) const noexcept
         {
+            if (m_count == 0)
+            {
+                return end();
+            }
+
             std::size_t index = calculate_index_hint(key);
 
             while (is_content_valid(index) && !is_same_key(index, key))
@@ -378,7 +391,6 @@ namespace Maia::ECS
             }
             else
             {
-                // TODO test
                 throw std::out_of_range{"Key was not found!"};
             }
         }
@@ -393,7 +405,6 @@ namespace Maia::ECS
             }
             else
             {
-                // TODO test
                 throw std::out_of_range{"Key was not found!"};
             }
         }
@@ -593,7 +604,9 @@ namespace Maia::ECS
         }
 
         std::size_t calculate_index_hint(Key_t const& key) const noexcept
-        {            
+        {
+            assert(m_capacity != 0);
+
             std::size_t const hash_value = Hash_t{}(key);
             
             return hash_value % m_capacity;
@@ -612,6 +625,7 @@ namespace Maia::ECS
         std::size_t m_capacity = 0;
         std::size_t m_count = 0;
         Allocator_t m_allocator;
+        // TODO custom equal and hash
 
     };
 

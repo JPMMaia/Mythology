@@ -126,6 +126,9 @@ namespace Maia::ECS::Test
     {
         Hash_map<int, int> hash_map;
 
+        CHECK(hash_map.find(1) == hash_map.end());
+        CHECK(std::as_const(hash_map).find(1) == std::as_const(hash_map).end());
+
         hash_map.insert_or_assign({1, 2});
         hash_map.insert_or_assign({2, 1});
 
@@ -190,6 +193,15 @@ namespace Maia::ECS::Test
 
         CHECK(const_hash_map.at(1) == 2);
         CHECK(const_hash_map.at(2) == 1);
+    }
+
+    TEST_CASE("Hash_map.at throws exception if key does not exist", "[hash_map]")
+    {
+        Hash_map<int, int> hash_map;
+        CHECK_THROWS_AS(hash_map.at(1), std::out_of_range);
+
+        Hash_map<int, int> const& const_hash_map = hash_map;
+        CHECK_THROWS_AS(const_hash_map.at(1), std::out_of_range);
     }
 
     TEST_CASE("Hash_map.contains checks if the container contains an element", "[hash_map]")
@@ -463,4 +475,6 @@ namespace Maia::ECS::Test
         CHECK(hash_map.at(1) == 2);
         CHECK(hash_map.at(2) == 1);
     }
+
+    // TODO benchmark
 }
