@@ -220,7 +220,7 @@ namespace Maia::ECS
         {
             // TODO test calling destructors
 
-            /*if (m_content != nullptr)
+            if (m_content != nullptr)
             {
                 m_allocator.deallocate(m_content, m_capacity);
             }
@@ -229,12 +229,12 @@ namespace Maia::ECS
             {
                 using Byte_allocator = std::allocator_traits<decltype(m_allocator)>::template rebind_alloc<std::byte>;
                 
-                Byte_allocator bytes_allocator;
+                Byte_allocator bytes_allocator{m_allocator};
 
                 constexpr std::size_t number_of_bits_in_a_byte = 8;
                 std::size_t const number_of_bytes_to_deallocate = (m_capacity / number_of_bits_in_a_byte) + ((m_capacity % number_of_bits_in_a_byte) != 0 ? 1 : 0);
                 bytes_allocator.deallocate(m_is_content_valid, number_of_bytes_to_deallocate);
-            }*/
+            }
         }
 
         Hash_map& operator=(Hash_map const& other)
@@ -482,7 +482,7 @@ namespace Maia::ECS
             {
                 using Byte_allocator = std::allocator_traits<decltype(m_allocator)>::template rebind_alloc<std::byte>;
                 
-                Byte_allocator bytes_allocator;
+                Byte_allocator bytes_allocator{m_allocator};
 
                 constexpr std::size_t number_of_bits_in_a_byte = 8;
 

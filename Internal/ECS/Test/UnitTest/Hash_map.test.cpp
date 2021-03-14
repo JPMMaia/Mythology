@@ -9,6 +9,57 @@ import maia.ecs.hash_map;
 
 namespace Maia::ECS::Test
 {
+    namespace
+    {
+        class Debug_resource final : public std::pmr::memory_resource
+        {
+        public:
+
+            Debug_resource(
+                std::size_t* const allocated_bytes_counter,
+                std::size_t* const deallocated_bytes_counter,
+                std::pmr::memory_resource* const upstream = std::pmr::get_default_resource()
+            ) :
+                m_allocated_bytes_counter{allocated_bytes_counter},
+                m_deallocated_bytes_counter{deallocated_bytes_counter},
+                m_upstream{upstream}
+            {
+            }
+
+            void* do_allocate(std::size_t const bytes, std::size_t const alignment) final
+            {
+                {
+                    std::size_t const aligned_bytes = (bytes + alignment - 1) & -alignment;
+                    *m_allocated_bytes_counter += aligned_bytes;
+                }
+
+                return m_upstream->allocate(bytes, alignment);
+            }
+
+            void do_deallocate(void* const ptr, std::size_t const bytes, std::size_t const alignment) final
+            {
+                {
+                    std::size_t const aligned_bytes = (bytes + alignment - 1) & -alignment;
+                    *m_deallocated_bytes_counter += aligned_bytes;
+                }
+
+                m_upstream->deallocate(ptr, bytes, alignment);
+            }
+
+            bool do_is_equal(std::pmr::memory_resource const& other) const noexcept final
+            {
+                return m_upstream->is_equal(other);
+            }
+
+        private:
+
+            std::size_t* m_allocated_bytes_counter;
+            std::size_t* m_deallocated_bytes_counter;
+            std::pmr::memory_resource* m_upstream;
+
+        };
+    }
+
     TEST_CASE("Hash_map.empty checks if it does not contain any element", "[hash_map]")
     {
         Hash_map<int, int> hash_map;
@@ -499,6 +550,22 @@ namespace Maia::ECS::Test
 
         CHECK(hash_map.at(1) == 2);
         CHECK(hash_map.at(2) == 1);
+    }
+
+    TEST_CASE("Hash_map destructor releases all memory", "[hash_map]")
+    {
+        std::size_t allocated_bytes_counter = 0;
+        std::size_t deallocated_bytes_counter = 0;
+        Debug_resource debug_resource{&allocated_bytes_counter, &deallocated_bytes_counter};
+        std::pmr::polymorphic_allocator<> allocator{&debug_resource};
+
+        {
+            pmr::Hash_map<int, int> hash_map{allocator};
+            hash_map.reserve(16);
+        }
+
+        CHECK(allocated_bytes_counter != 0);
+        CHECK(allocated_bytes_counter == deallocated_bytes_counter);
     }
 
     // TODO benchmark
