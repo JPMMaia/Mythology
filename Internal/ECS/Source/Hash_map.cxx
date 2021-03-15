@@ -218,7 +218,7 @@ namespace Maia::ECS
 
         ~Hash_map() noexcept
         {
-            // TODO test calling destructors
+            clear();
 
             if (m_content != nullptr)
             {
@@ -453,9 +453,13 @@ namespace Maia::ECS
 
         void clear() noexcept
         {
+            for (auto iterator = begin(); iterator != end(); ++iterator)
+            {
+                std::destroy_at(&(*iterator));
+            }
+
             m_count = 0;
             std::memset(m_is_content_valid, 0, m_capacity / 8);
-            // TODO destroy objects
         }
 
         void swap(Hash_map& other) noexcept

@@ -19,7 +19,7 @@ namespace Maia::ECS::Test
                 std::size_t* const allocated_bytes_counter,
                 std::size_t* const deallocated_bytes_counter,
                 std::pmr::memory_resource* const upstream = std::pmr::get_default_resource()
-            ) :
+            ) noexcept :
                 m_allocated_bytes_counter{allocated_bytes_counter},
                 m_deallocated_bytes_counter{deallocated_bytes_counter},
                 m_upstream{upstream}
@@ -56,6 +56,46 @@ namespace Maia::ECS::Test
             std::size_t* m_allocated_bytes_counter;
             std::size_t* m_deallocated_bytes_counter;
             std::pmr::memory_resource* m_upstream;
+
+        };
+
+        class Debug_object
+        {
+        public:
+
+            Debug_object(
+                std::size_t* const constructor_counter,
+                std::size_t* const destructor_counter
+            ) noexcept :
+                m_constructor_counter{constructor_counter},
+                m_destructor_counter{destructor_counter}
+            {
+                ++(*m_constructor_counter);
+            }
+
+            Debug_object(Debug_object const& other) noexcept :
+                m_constructor_counter{other.m_constructor_counter},
+                m_destructor_counter{other.m_destructor_counter}
+            {
+                ++(*m_constructor_counter);
+            }
+
+            Debug_object(Debug_object&& other) noexcept :
+                m_constructor_counter{other.m_constructor_counter},
+                m_destructor_counter{other.m_destructor_counter}
+            {
+                ++(*m_constructor_counter);
+            }
+
+            ~Debug_object() noexcept
+            {
+                ++(*m_destructor_counter);
+            }
+
+        private:
+
+            std::size_t* m_constructor_counter;
+            std::size_t* m_destructor_counter;
 
         };
     }
@@ -129,6 +169,22 @@ namespace Maia::ECS::Test
         CHECK(!hash_map.contains(1));
         CHECK(!hash_map.contains(2));
     }
+
+    TEST_CASE("Hash_map.clear destroys all objects", "[hash_map]")
+    {
+        std::size_t constructor_counter = 0;
+        std::size_t destructor_counter = 0;
+
+        pmr::Hash_map<int, Debug_object> hash_map;
+        hash_map.reserve(16);
+        hash_map.insert_or_assign({1, Debug_object{&constructor_counter, &destructor_counter}});
+        hash_map.insert_or_assign({2, Debug_object{&constructor_counter, &destructor_counter}});
+        hash_map.clear();
+
+        CHECK(constructor_counter != 0);
+        CHECK(constructor_counter == destructor_counter);
+    }
+
 
     TEST_CASE("Hash_map.begin and Hash_map.end are the same if empty", "[hash_map]")
     {
@@ -566,6 +622,22 @@ namespace Maia::ECS::Test
 
         CHECK(allocated_bytes_counter != 0);
         CHECK(allocated_bytes_counter == deallocated_bytes_counter);
+    }
+
+    TEST_CASE("Hash_map destructor destroys all objects", "[hash_map]")
+    {
+        std::size_t constructor_counter = 0;
+        std::size_t destructor_counter = 0;
+
+        {
+            pmr::Hash_map<int, Debug_object> hash_map;
+            hash_map.reserve(16);
+            hash_map.insert_or_assign({1, Debug_object{&constructor_counter, &destructor_counter}});
+            hash_map.insert_or_assign({2, Debug_object{&constructor_counter, &destructor_counter}});
+        }
+
+        CHECK(constructor_counter != 0);
+        CHECK(constructor_counter == destructor_counter);
     }
 
     // TODO benchmark
