@@ -384,6 +384,28 @@ namespace Maia::ECS::Test
         CHECK(hash_map.size() == 0);
     }
 
+    TEST_CASE("Hash_map.erase calls destructor", "[hash_map]")
+    {
+        std::size_t constructor_counter = 0;
+        std::size_t destructor_counter = 0;
+
+        auto const create_debug_object = [&]() -> Debug_object
+        {
+            return {&constructor_counter, &destructor_counter};
+        };
+
+        Hash_map<int, Debug_object> hash_map;
+        hash_map.reserve(2);
+        hash_map.insert_or_assign({1, create_debug_object()});
+        hash_map.insert_or_assign({2, create_debug_object()});
+
+        CHECK((constructor_counter - destructor_counter) == 2);
+        hash_map.erase(1);
+        CHECK((constructor_counter - destructor_counter) == 1);
+        hash_map.erase(2);
+        CHECK((constructor_counter - destructor_counter) == 0);
+    }
+
     TEST_CASE("Hash_map.swap swaps the content with another hash map", "[hash_map]")
     {
         Hash_map<int, int> hash_map_a;
@@ -451,6 +473,51 @@ namespace Maia::ECS::Test
         };
 
         CHECK_NOTHROW(add_and_clear_multiple_times());
+    }
+
+    TEST_CASE("Hash_map.reserve calls constructors and destructors", "[hash_map]")
+    {
+        std::size_t constructor_counter = 0;
+        std::size_t destructor_counter = 0;
+
+        auto const create_debug_object = [&]() -> Debug_object
+        {
+            return {&constructor_counter, &destructor_counter};
+        };
+
+        {
+            Hash_map<int, Debug_object> hash_map;
+            hash_map.reserve(16);
+            hash_map.insert_or_assign({1, create_debug_object()});
+            hash_map.insert_or_assign({2, create_debug_object()});
+
+            CHECK((constructor_counter - destructor_counter) == 2);
+
+            hash_map.reserve(32);
+
+            CHECK((constructor_counter - destructor_counter) == 2);
+        }
+
+        CHECK(constructor_counter > 0);
+        CHECK(constructor_counter == destructor_counter);
+    }
+
+    TEST_CASE("Hash_map.reserve releases memory", "[hash_map]")
+    {
+        std::size_t allocated_bytes_counter = 0;
+        std::size_t deallocated_bytes_counter = 0;
+        Debug_resource debug_resource{&allocated_bytes_counter, &deallocated_bytes_counter};
+        std::pmr::polymorphic_allocator<> allocator{&debug_resource};
+
+        {
+            pmr::Hash_map<int, int> hash_map{allocator};
+            hash_map.reserve(16);
+            hash_map.reserve(32);
+            hash_map.reserve(64);
+        }
+
+        CHECK(allocated_bytes_counter != 0);
+        CHECK(allocated_bytes_counter == deallocated_bytes_counter);
     }
 
     TEST_CASE("Calling Hash_map.reserve twice does not invalidate content", "[hash_map]")

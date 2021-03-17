@@ -425,7 +425,6 @@ namespace Maia::ECS
             {
                 {
                     std::size_t const index = iterator.m_index;
-                    // TODO std::destroy_at test
                     std::destroy_at(&m_content[index]);
                 }
                 {
@@ -483,9 +482,13 @@ namespace Maia::ECS
             
             m_capacity = new_capacity;
 
+            // TODO if bellow throws, then this will leak
+            std::pair<Key_t const, Value_t>* const old_content = m_content;
+            std::byte* const old_is_content_valid = m_is_content_valid;
+
+            using Byte_allocator = std::allocator_traits<decltype(m_allocator)>::template rebind_alloc<std::byte>;
+
             {
-                using Byte_allocator = std::allocator_traits<decltype(m_allocator)>::template rebind_alloc<std::byte>;
-                
                 Byte_allocator bytes_allocator{m_allocator};
 
                 constexpr std::size_t number_of_bits_in_a_byte = 8;
@@ -495,38 +498,34 @@ namespace Maia::ECS
 
                 std::memset(new_is_content_valid, 0, number_of_bytes_to_allocate);
                 
-                if (m_is_content_valid != nullptr)
-                {
-                    std::size_t const number_of_bytes_to_deallocate = (old_capacity / number_of_bits_in_a_byte) + ((old_capacity % number_of_bits_in_a_byte) != 0 ? 1 : 0);
-                    
-                    std::memcpy(new_is_content_valid, m_is_content_valid, number_of_bytes_to_deallocate);
-                    
-                    bytes_allocator.deallocate(m_is_content_valid, number_of_bytes_to_deallocate);
-                }
-                
                 m_is_content_valid = new_is_content_valid;
             }
 
+            m_content = m_allocator.allocate(new_capacity);
+
+            if (old_content != nullptr)
             {
-                std::pair<Key_t const, Value_t>* const old_content = m_content;
-                m_content = m_allocator.allocate(new_capacity);
+                m_count = 0;
 
-                if (old_content != nullptr)
                 {
-                    m_count = 0;
-
+                    Iterator const old_content_begin{old_content, old_is_content_valid, old_capacity, get_first_valid_index(old_is_content_valid, old_capacity)};
+                    Iterator const old_content_end{old_content, old_is_content_valid, old_capacity, old_capacity};
+                    
+                    for (auto iterator = old_content_begin; iterator != old_content_end; ++iterator)
                     {
-                        Iterator const old_content_begin{old_content, m_is_content_valid, old_capacity, get_first_valid_index(m_is_content_valid, old_capacity)};
-                        Iterator const old_content_end{old_content, m_is_content_valid, old_capacity, old_capacity};
-                        
-                        for (auto iterator = old_content_begin; iterator != old_content_end; ++iterator)
-                        {
-                            insert_or_assign(std::move(*iterator));
-                            std::destroy_at(&(*iterator));
-                        }
+                        insert_or_assign(std::move(*iterator));
+                        std::destroy_at(&(*iterator));
                     }
+                }
 
-                    m_allocator.deallocate(old_content, old_capacity);
+                m_allocator.deallocate(old_content, old_capacity);
+
+                {
+                    constexpr std::size_t number_of_bits_in_a_byte = 8;
+                    std::size_t const number_of_bytes_to_deallocate = (old_capacity / number_of_bits_in_a_byte) + ((old_capacity % number_of_bits_in_a_byte) != 0 ? 1 : 0);
+
+                    Byte_allocator bytes_allocator{m_allocator};
+                    bytes_allocator.deallocate(old_is_content_valid, number_of_bytes_to_deallocate);
                 }
             }
         }
