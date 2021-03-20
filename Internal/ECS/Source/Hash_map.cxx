@@ -25,6 +25,31 @@ namespace Maia::ECS
             std::byte const bit_mask = std::byte{1} << bit_index;
             return (mask & bit_mask) != std::byte{0};
         }
+
+        template <class Allocator, class Value_type = typename std::allocator_traits<Allocator>::value_type>
+        auto create_unique_ptr(Value_type* const pointer, Allocator& allocator, std::size_t const size) noexcept
+        {
+            auto const deallocate = [&allocator, size](Value_type* const pointer) -> void
+            {
+                allocator.deallocate(pointer, size);
+            };
+
+            return std::unique_ptr<Value_type, decltype(deallocate)>
+            {
+                pointer,
+                deallocate
+            };
+        }
+
+        template <class Allocator>
+        auto create_unique_ptr(Allocator& allocator, std::size_t const size)
+        {
+            return create_unique_ptr(
+                allocator.allocate(size),
+                allocator,
+                size
+            );
+        }
     }
 
     export template <
@@ -479,53 +504,47 @@ namespace Maia::ECS
             {
                 return;
             }
+
+            auto const old_content = detail::create_unique_ptr(m_content, m_allocator, old_capacity);
             
-            m_capacity = new_capacity;
-
-            // TODO if bellow throws, then this will leak
-            std::pair<Key_t const, Value_t>* const old_content = m_content;
-            std::byte* const old_is_content_valid = m_is_content_valid;
-
             using Byte_allocator = std::allocator_traits<decltype(m_allocator)>::template rebind_alloc<std::byte>;
+            Byte_allocator bytes_allocator{m_allocator};
+            
+            constexpr std::size_t number_of_bits_in_a_byte = 8;
+            std::size_t const old_content_is_valid_capacity = (old_capacity / number_of_bits_in_a_byte) + ((old_capacity % number_of_bits_in_a_byte) != 0 ? 1 : 0);
+            auto const old_is_content_valid = detail::create_unique_ptr(m_is_content_valid, bytes_allocator, old_content_is_valid_capacity);
 
             {
-                Byte_allocator bytes_allocator{m_allocator};
+                auto new_content = detail::create_unique_ptr(m_allocator, new_capacity);
 
-                constexpr std::size_t number_of_bits_in_a_byte = 8;
+                auto new_is_content_valid = [&]
+                {
+                    std::size_t const number_of_bytes_to_allocate = (new_capacity / number_of_bits_in_a_byte) + ((new_capacity % number_of_bits_in_a_byte) != 0 ? 1 : 0);
+                    auto new_is_content_valid = detail::create_unique_ptr(bytes_allocator, number_of_bytes_to_allocate);
 
-                std::size_t const number_of_bytes_to_allocate = (new_capacity / number_of_bits_in_a_byte) + ((new_capacity % number_of_bits_in_a_byte) != 0 ? 1 : 0);
-                std::byte* const new_is_content_valid = bytes_allocator.allocate(number_of_bytes_to_allocate);
+                    std::memset(new_is_content_valid.get(), 0, number_of_bytes_to_allocate);
+                    
+                    return new_is_content_valid;
+                }();
 
-                std::memset(new_is_content_valid, 0, number_of_bytes_to_allocate);
-                
-                m_is_content_valid = new_is_content_valid;
+                m_content = new_content.release();
+                m_is_content_valid = new_is_content_valid.release();
+                m_capacity = new_capacity;
             }
 
-            m_content = m_allocator.allocate(new_capacity);
-
-            if (old_content != nullptr)
+            if (old_content.get() != nullptr)
             {
                 m_count = 0;
 
                 {
-                    Iterator const old_content_begin{old_content, old_is_content_valid, old_capacity, get_first_valid_index(old_is_content_valid, old_capacity)};
-                    Iterator const old_content_end{old_content, old_is_content_valid, old_capacity, old_capacity};
+                    Iterator const old_content_begin{old_content.get(), old_is_content_valid.get(), old_capacity, get_first_valid_index(old_is_content_valid.get(), old_capacity)};
+                    Iterator const old_content_end{old_content.get(), old_is_content_valid.get(), old_capacity, old_capacity};
                     
                     for (auto iterator = old_content_begin; iterator != old_content_end; ++iterator)
                     {
                         insert_or_assign(std::move(*iterator));
                         std::destroy_at(&(*iterator));
                     }
-                }
-
-                m_allocator.deallocate(old_content, old_capacity);
-
-                {
-                    constexpr std::size_t number_of_bits_in_a_byte = 8;
-                    std::size_t const number_of_bytes_to_deallocate = (old_capacity / number_of_bits_in_a_byte) + ((old_capacity % number_of_bits_in_a_byte) != 0 ? 1 : 0);
-
-                    Byte_allocator bytes_allocator{m_allocator};
-                    bytes_allocator.deallocate(old_is_content_valid, number_of_bytes_to_deallocate);
                 }
             }
         }

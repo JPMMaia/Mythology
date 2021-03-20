@@ -20,28 +20,50 @@ namespace Maia::ECS::Test
                 std::size_t* const deallocated_bytes_counter,
                 std::pmr::memory_resource* const upstream = std::pmr::get_default_resource()
             ) noexcept :
+                Debug_resource(allocated_bytes_counter, deallocated_bytes_counter, nullptr, upstream)
+            {
+            }
+
+            Debug_resource(
+                std::size_t* const allocated_bytes_counter,
+                std::size_t* const deallocated_bytes_counter,
+                std::size_t* const remaining_memory,
+                std::pmr::memory_resource* const upstream = std::pmr::get_default_resource()
+            ) noexcept :
                 m_allocated_bytes_counter{allocated_bytes_counter},
                 m_deallocated_bytes_counter{deallocated_bytes_counter},
+                m_remaining_memory{remaining_memory},
                 m_upstream{upstream}
             {
             }
 
             void* do_allocate(std::size_t const bytes, std::size_t const alignment) final
             {
+                if (m_remaining_memory != nullptr)
                 {
-                    std::size_t const aligned_bytes = (bytes + alignment - 1) & -alignment;
-                    *m_allocated_bytes_counter += aligned_bytes;
+                    if (bytes <= *m_remaining_memory)
+                    {
+                        *m_remaining_memory -= bytes;
+                    }
+                    else
+                    {
+                        throw std::bad_alloc{};
+                    }
                 }
+
+                *m_allocated_bytes_counter += bytes;
 
                 return m_upstream->allocate(bytes, alignment);
             }
 
             void do_deallocate(void* const ptr, std::size_t const bytes, std::size_t const alignment) final
             {
+                if (m_remaining_memory != nullptr)
                 {
-                    std::size_t const aligned_bytes = (bytes + alignment - 1) & -alignment;
-                    *m_deallocated_bytes_counter += aligned_bytes;
+                    *m_remaining_memory -= bytes;
                 }
+    
+                *m_deallocated_bytes_counter += bytes;
 
                 m_upstream->deallocate(ptr, bytes, alignment);
             }
@@ -55,6 +77,7 @@ namespace Maia::ECS::Test
 
             std::size_t* m_allocated_bytes_counter;
             std::size_t* m_deallocated_bytes_counter;
+            std::size_t* m_remaining_memory;
             std::pmr::memory_resource* m_upstream;
 
         };
@@ -538,6 +561,25 @@ namespace Maia::ECS::Test
         {
             CHECK(hash_map.at(index) == index);
         }
+    }
+
+    TEST_CASE("Hash_map.reserve does not leak memory if it fails", "[hash_map]")
+    {
+        constexpr std::size_t number_of_elements = 16;
+        constexpr std::size_t required_memory_size = Hash_map<int, int>::get_required_memory_size(number_of_elements);
+
+        std::size_t allocated_bytes_counter = 0;
+        std::size_t deallocated_bytes_counter = 0;
+        std::size_t remaining_memory = required_memory_size - 1;
+        Debug_resource debug_resource{&allocated_bytes_counter, &deallocated_bytes_counter, &remaining_memory};
+        std::pmr::polymorphic_allocator<> allocator{&debug_resource};
+
+        {
+            pmr::Hash_map<int, int> hash_map{allocator};
+            REQUIRE_THROWS_AS(hash_map.reserve(number_of_elements), std::bad_alloc);
+        }
+
+        CHECK(allocated_bytes_counter == deallocated_bytes_counter);
     }
 
     TEST_CASE("Hash_map copy constructor copies content", "[hash_map]")
