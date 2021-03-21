@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <memory_resource>
+#include <numeric>
 #include <utility>
 
 import maia.ecs.hash_map;
@@ -452,50 +453,60 @@ namespace Maia::ECS::Test
         CHECK(!hash_map_b.contains(4));
     }
 
+    namespace
+    {
+        template <std::size_t number_of_elements>
+        void test_reserve()
+        {
+            auto const add_elements = [](pmr::Hash_map<int, int>& hash_map) -> void
+            {
+                for (std::size_t element_index = 0; element_index < number_of_elements; ++element_index)
+                {
+                    hash_map.insert_or_assign({static_cast<int>(element_index), static_cast<int>(element_index)});
+                }
+            };
+
+            auto const remove_elements = [](pmr::Hash_map<int, int>& hash_map) -> void
+            {
+                for (std::size_t element_index = 0; element_index < number_of_elements; ++element_index)
+                {
+                    hash_map.erase(element_index);
+                }
+            };
+
+            auto const add_and_clear_multiple_times = [&]() -> void
+            {
+                constexpr std::size_t required_memory_size = Hash_map<int, int>::get_required_memory_size(number_of_elements);
+
+                std::array<std::byte, required_memory_size> buffer_storage;
+                std::pmr::monotonic_buffer_resource buffer_resource{buffer_storage.data(), buffer_storage.size(), std::pmr::null_memory_resource()};
+                std::pmr::polymorphic_allocator<> allocator{&buffer_resource};
+
+                pmr::Hash_map<int, int> hash_map{allocator};
+                hash_map.reserve(number_of_elements);
+
+                for (std::size_t i = 0; i < 100; ++i)
+                {
+                    add_elements(hash_map);
+                    remove_elements(hash_map);
+                }
+
+                for (std::size_t i = 0; i < 100; ++i)
+                {
+                    add_elements(hash_map);
+                    hash_map.clear();
+                }
+            };
+
+            CHECK_NOTHROW(add_and_clear_multiple_times());
+        }
+    }
+    
     TEST_CASE("Hash_map.reserve reserves memory to accomodate elements", "[hash_map]")
     {
-        constexpr std::size_t number_of_elements = 48;
-        constexpr std::size_t required_memory_size = Hash_map<int, int>::get_required_memory_size(number_of_elements);
-
-        std::array<std::byte, required_memory_size> buffer_storage;
-        std::pmr::monotonic_buffer_resource buffer_resource{buffer_storage.data(), buffer_storage.size(), std::pmr::null_memory_resource()};
-        std::pmr::polymorphic_allocator<> allocator{&buffer_resource};
-
-        auto const add_elements = [number_of_elements](pmr::Hash_map<int, int>& hash_map) -> void
-        {
-            for (std::size_t element_index = 0; element_index < number_of_elements; ++element_index)
-            {
-                hash_map.insert_or_assign({static_cast<int>(element_index), static_cast<int>(element_index)});
-            }
-        };
-
-        auto const remove_elements = [number_of_elements](pmr::Hash_map<int, int>& hash_map) -> void
-        {
-            for (std::size_t element_index = 0; element_index < number_of_elements; ++element_index)
-            {
-                hash_map.erase(element_index);
-            }
-        };
-
-        auto const add_and_clear_multiple_times = [&]() -> void
-        {
-            pmr::Hash_map<int, int> hash_map{allocator};
-            hash_map.reserve(number_of_elements);
-
-            for (std::size_t i = 0; i < 100; ++i)
-            {
-                add_elements(hash_map);
-                remove_elements(hash_map);
-            }
-
-            for (std::size_t i = 0; i < 100; ++i)
-            {
-                add_elements(hash_map);
-                hash_map.clear();
-            }
-        };
-
-        CHECK_NOTHROW(add_and_clear_multiple_times());
+        test_reserve<2>();
+        test_reserve<16>();
+        test_reserve<48>();
     }
 
     TEST_CASE("Hash_map.reserve calls constructors and destructors", "[hash_map]")
@@ -580,6 +591,39 @@ namespace Maia::ECS::Test
         }
 
         CHECK(allocated_bytes_counter == deallocated_bytes_counter);
+    }
+
+    TEST_CASE("Hash_map.get_required_memory_size takes alignment into account", "[hash_map]")
+    {
+        constexpr std::array<std::size_t, 3> number_of_elements
+        {
+            20,
+            21,
+            22
+        };
+
+        constexpr std::array<std::size_t, 3> required_memory_sizes
+        {
+           Hash_map<int, int>::get_required_memory_size(number_of_elements[0]),
+           Hash_map<int, int>::get_required_memory_size(number_of_elements[1]),
+           Hash_map<int, int>::get_required_memory_size(number_of_elements[2]),
+        };
+
+        constexpr std::size_t total_required_memory_size = std::accumulate(required_memory_sizes.begin(), required_memory_sizes.end(), std::size_t{0}) + 1;
+
+        std::array<std::byte, total_required_memory_size> buffer_storage;
+        std::pmr::monotonic_buffer_resource buffer_resource{buffer_storage.data(), buffer_storage.size(), std::pmr::null_memory_resource()};
+        std::pmr::polymorphic_allocator<> allocator{&buffer_resource};
+        
+        {
+            void* const pointer = allocator.allocate_bytes(1, 1);
+            allocator.deallocate_bytes(pointer, 1, 1);
+        }
+
+        pmr::Hash_map<int, int> hash_map{allocator};
+        CHECK_NOTHROW(hash_map.reserve(number_of_elements[0]));
+        CHECK_NOTHROW(hash_map.reserve(number_of_elements[1]));
+        CHECK_NOTHROW(hash_map.reserve(number_of_elements[2]));
     }
 
     TEST_CASE("Hash_map copy constructor copies content", "[hash_map]")
@@ -748,6 +792,126 @@ namespace Maia::ECS::Test
         CHECK(constructor_counter != 0);
         CHECK(constructor_counter == destructor_counter);
     }
+
+    TEST_CASE("Hash_map uses custom hash and equal functions")
+    {
+        struct Custom_key
+        {
+            int value = 0;
+        };
+
+        bool hash_used = false;
+        auto const hash = [&hash_used](Custom_key const value) -> std::size_t
+        {
+            hash_used = true;
+            return std::hash<std::size_t>{}(value.value);
+        };
+
+        bool equal_used = false;
+        auto const equal = [&equal_used](Custom_key const lhs, Custom_key const rhs) -> std::size_t
+        {
+            equal_used = true;
+            return lhs.value == rhs.value;
+        };
+
+        Hash_map<Custom_key, int, decltype(hash), decltype(equal)> hash_map{hash, equal};
+        hash_map.insert_or_assign({Custom_key{0}, 1});
+        hash_map.insert_or_assign({Custom_key{1}, 0});
+        hash_map.insert_or_assign({Custom_key{1}, 1});
+
+        CHECK(hash_used);
+        CHECK(equal_used);
+    }
+
+    TEST_CASE("Hash_map_iterator pre-increment")
+    {
+        Hash_map<int, int> hash_map;
+        hash_map.insert_or_assign({1, 2});
+        hash_map.insert_or_assign({2, 1});
+
+        auto iterator = hash_map.begin();
+
+        {
+            auto const previous = iterator;
+            CHECK(++iterator != previous);
+            CHECK(iterator != previous);
+        }
+
+        CHECK(++iterator == hash_map.end());
+        CHECK(iterator == hash_map.end());
+    }
+
+    TEST_CASE("Hash_map_iterator post-increment")
+    {
+        Hash_map<int, int> hash_map;
+        hash_map.insert_or_assign({1, 2});
+        hash_map.insert_or_assign({2, 1});
+
+        auto iterator = hash_map.begin();
+
+        {
+            auto const previous = iterator;
+            CHECK(iterator++ == previous);
+            CHECK(iterator != previous);
+        }
+
+        {
+            auto const previous = iterator;
+            CHECK(iterator++ == previous);
+            CHECK(iterator != previous);
+            CHECK(iterator == hash_map.end());
+        }
+    }
+
+    TEST_CASE("Hash_map_iterator pre-decrement")
+    {
+        Hash_map<int, int> hash_map;
+        hash_map.insert_or_assign({1, 2});
+        hash_map.insert_or_assign({2, 1});
+
+        auto iterator = hash_map.begin();
+        ++iterator;
+        ++iterator;
+
+        {
+            auto const next = iterator;
+            CHECK(--iterator != next);
+            CHECK(iterator != next);
+        }
+
+        {
+            auto const next = iterator;
+            CHECK(--iterator != next);
+            CHECK(iterator != next);
+            auto begin = hash_map.begin();
+            CHECK(iterator == hash_map.begin());
+        }
+    }
+
+    TEST_CASE("Hash_map_iterator post-decrement")
+    {
+        Hash_map<int, int> hash_map;
+        hash_map.insert_or_assign({1, 2});
+        hash_map.insert_or_assign({2, 1});
+
+        auto iterator = hash_map.begin();
+        ++iterator;
+        ++iterator;
+
+        {
+            auto const next = iterator;
+            CHECK(iterator-- == next);
+            CHECK(iterator != next);
+        }
+
+        {
+            auto const next = iterator;
+            CHECK(iterator-- == next);
+            CHECK(iterator != next);
+            CHECK(iterator == hash_map.begin());
+        }
+    }
+
 
     // TODO benchmark
 }

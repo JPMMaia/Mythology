@@ -141,7 +141,6 @@ namespace Maia::ECS
 
         Hash_map_iterator operator++(int) noexcept
         {
-            // TODO test
             Hash_map_iterator const copy = *this;
             ++(*this);
             return copy;
@@ -149,11 +148,10 @@ namespace Maia::ECS
 
         Hash_map_iterator& operator--() noexcept
         {
-            // TODO test
             std::size_t previous_index = m_index;
-            ++previous_index;
+            --previous_index;
 
-            while (previous_index > 0 && !detail::is_content_valid(m_is_valid, previous_index - 1))
+            while (previous_index > 0 && !detail::is_content_valid(m_is_valid, previous_index))
             {
                 --previous_index;
             }
@@ -165,7 +163,6 @@ namespace Maia::ECS
 
         Hash_map_iterator operator--(int) noexcept
         {
-            // TODO test
             Hash_map_iterator const copy = *this;
             --(*this);
             return copy;
@@ -213,7 +210,9 @@ namespace Maia::ECS
             m_is_content_valid{nullptr},
             m_capacity{0},
             m_count{0},
-            m_allocator{other.m_allocator}
+            m_allocator{other.m_allocator},
+            m_hash{other.m_hash},
+            m_key_equal{other.m_key_equal}
         {
             reserve(other.m_count);
 
@@ -228,17 +227,30 @@ namespace Maia::ECS
             m_is_content_valid{std::exchange(other.m_is_content_valid, nullptr)},
             m_capacity{std::exchange(other.m_capacity, 0)},
             m_count{std::exchange(other.m_count, 0)},
-            m_allocator{other.m_allocator}
+            m_allocator{other.m_allocator},
+            m_hash{other.m_hash},
+            m_key_equal{other.m_key_equal}
         {
         }
 
         explicit Hash_map(Allocator_t const& allocator) noexcept :
+            Hash_map(Hash_t{}, Key_equal_t{}, allocator)
+        {
+        }
+
+        Hash_map(
+            Hash_t hash,
+            Key_equal_t key_equal,
+            Allocator_t const& allocator = Allocator_t{}
+        ) noexcept :
             m_content{nullptr},
             m_is_content_valid{nullptr},
             m_capacity{0},
             m_count{0},
-            m_allocator{allocator}
-        {
+            m_allocator{allocator},
+            m_hash{hash},
+            m_key_equal{key_equal}
+        {         
         }
 
         ~Hash_map() noexcept
@@ -553,8 +565,9 @@ namespace Maia::ECS
         {
             std::size_t const required_capacity = calculate_capacity(count);
 
-            return required_capacity * sizeof(std::pair<Key_t const, Value_t>) + required_capacity / 8 + ((required_capacity % 8 != 0) ? 1 : 0);
-            // TODO test std::max(c_minimum_number_of_elements, count)
+            std::size_t const alignment_offset = alignof(std::pair<Key_t const, Value_t>) - 1;
+
+            return required_capacity * sizeof(std::pair<Key_t const, Value_t>) + required_capacity / 8 + ((required_capacity % 8 != 0) ? 1 : 0) + alignment_offset;
         }
 
     private:
@@ -623,14 +636,14 @@ namespace Maia::ECS
 
             std::pair<Key_t const, Value_t> const& pair = m_content[index];
 
-            return Key_equal_t{}(pair.first, key);
+            return m_key_equal(pair.first, key);
         }
 
         std::size_t calculate_index_hint(Key_t const& key) const noexcept
         {
             assert(m_capacity != 0);
 
-            std::size_t const hash_value = Hash_t{}(key);
+            std::size_t const hash_value = m_hash(key);
             
             return hash_value % m_capacity;
         }
@@ -648,7 +661,8 @@ namespace Maia::ECS
         std::size_t m_capacity = 0;
         std::size_t m_count = 0;
         Allocator_t m_allocator;
-        // TODO custom equal and hash
+        Hash_t m_hash;
+        Key_equal_t m_key_equal;
 
     };
 
