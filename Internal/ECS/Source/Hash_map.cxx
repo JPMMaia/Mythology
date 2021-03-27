@@ -79,21 +79,6 @@ namespace Maia::ECS
         {
         }
 
-        std::strong_ordering operator<=>(Hash_map_iterator const& other) const noexcept
-        {
-            if (auto cmp = (m_content <=> other.m_content); cmp != 0)
-            {
-                return cmp;
-            }
-            else
-            {
-                assert(m_is_valid == other.m_is_valid);
-                assert(m_capacity == other.m_capacity);
-
-                return m_index <=> other.m_index;
-            }
-        }
-
         bool operator==(Hash_map_iterator const& other) const noexcept
         {
             if (m_content != other.m_content)
@@ -189,6 +174,18 @@ namespace Maia::ECS
     constexpr std::size_t c_minimum_number_of_elements = 16;
     static_assert((c_minimum_number_of_elements % 2 == 0));
 
+    /**
+     * @brief A container that maps keys to values.
+     * 
+     * The method used to resolve hash collisions is open addressing with
+     * linear probing.
+     * 
+     * It supports custom hash functions, key comparisions and allocators.
+     * 
+     * It's possible to allocate all dynamic memory beforehand by using the
+     * #reserve method. To get the number of bytes needed for the allocation,
+     * use the static constexpr method #get_required_memory_size.
+     */
     export template <
         typename Key_t,
         typename Value_t,
@@ -203,8 +200,21 @@ namespace Maia::ECS
         using Iterator = Hash_map_iterator<Key_t, Value_t, false>;
         using Const_iterator = Hash_map_iterator<Key_t, Value_t, true>;
 
+        /**
+         * @brief Default constructor.
+         * 
+         * Create an empty hash map.
+         * 
+         */
         Hash_map() noexcept = default;
 
+        /**
+         * @brief Copy constructor.
+         * 
+         * Create a new hash map and copy the content of @other.
+         * 
+         * @param other is the hash map to copy.
+         */
         Hash_map(Hash_map const& other) :
             m_content{nullptr},
             m_is_content_valid{nullptr},
@@ -222,22 +232,46 @@ namespace Maia::ECS
             }
         }
 
+        /**
+         * @brief Move constructor.
+         * 
+         * Create a new hash map with the same content of @other.
+         * It uses the same memory as @other.
+         * After this operation, @other becomes an empty object.
+         * 
+         * @param other is the hash map to move.
+         */
         Hash_map(Hash_map&& other) noexcept :
             m_content{std::exchange(other.m_content, nullptr)},
             m_is_content_valid{std::exchange(other.m_is_content_valid, nullptr)},
             m_capacity{std::exchange(other.m_capacity, 0)},
             m_count{std::exchange(other.m_count, 0)},
-            m_allocator{other.m_allocator},
+            m_allocator{std::allocator_traits<Allocator_t>::select_on_container_copy_construction(other.m_allocator)},
             m_hash{other.m_hash},
             m_key_equal{other.m_key_equal}
         {
         }
 
+        /**
+         * @brief Construct a new hash map using a custom allocator.
+         * 
+         * @param allocator is the allocator that will be used to allocate all
+         * dynamic memory.
+         */
         explicit Hash_map(Allocator_t const& allocator) noexcept :
             Hash_map(Hash_t{}, Key_equal_t{}, allocator)
         {
         }
 
+        /**
+         * @brief Construct a hash map using a custom hash function, key
+         * comparison and allocator.
+         * 
+         * @param hash is a function that accepts a key and computes a hash.
+         * @param key_equal is a function that compares two keys.
+         * @param allocator is the allocator that will be used to allocate all
+         * dynamic memory.
+         */
         Hash_map(
             Hash_t hash,
             Key_equal_t key_equal,
@@ -253,30 +287,57 @@ namespace Maia::ECS
         {         
         }
 
+        /**
+         * @brief Destroy the hash map object.
+         * 
+         * Destroy all objects and deallocate all dynamic memory.
+         * 
+         */
         ~Hash_map() noexcept
         {
-            clear();
-
-            if (m_content != nullptr)
-            {
-                m_allocator.deallocate(m_content, m_capacity);
-            }
-
-            if (m_is_content_valid != nullptr)
-            {
-                using Byte_allocator = std::allocator_traits<decltype(m_allocator)>::template rebind_alloc<std::byte>;
-                
-                Byte_allocator bytes_allocator{m_allocator};
-
-                constexpr std::size_t number_of_bits_in_a_byte = 8;
-                std::size_t const number_of_bytes_to_deallocate = (m_capacity / number_of_bits_in_a_byte) + ((m_capacity % number_of_bits_in_a_byte) != 0 ? 1 : 0);
-                bytes_allocator.deallocate(m_is_content_valid, number_of_bytes_to_deallocate);
-            }
+            clear_and_deallocate_memory();
         }
 
+        /**
+         * @brief Copy assignment.
+         * 
+         * Destroy all keys and values. If
+         * std::allocator_traits<Allocator_t>::propagate_on_container_copy_assignment
+         * is true and allocators are different, then deallocate all
+         * memory and copy @other allocator. Then reserve memory and copy all
+         * content from @other.
+         * 
+         * @param other is the hash map to copy.
+         * @return Hash_map& is a reference to itself.
+         */
         Hash_map& operator=(Hash_map const& other)
         {
-            clear();
+            // TODO test all objects are destructed
+            // TODO test all possibilities
+
+            using Propagate_on_container_copy_assignment =
+                typename std::allocator_traits<Allocator_t>::propagate_on_container_copy_assignment;
+
+            if constexpr (Propagate_on_container_copy_assignment::value)
+            {
+                if (m_allocator == other.m_allocator)
+                {
+                    clear();
+                }
+                else
+                {
+                    clear_and_deallocate_memory();
+                    m_allocator = other.m_allocator;
+                }
+            }
+            else
+            {
+                clear();
+            }
+
+            m_hash = other.m_hash;
+            m_key_equal = other.m_key_equal;
+
             reserve(other.m_count);
 
             for (std::pair<Key_t const, Value_t> const& value : other)
@@ -287,33 +348,114 @@ namespace Maia::ECS
             return *this;
         }
 
+        /**
+         * @brief Move assignment.
+         * 
+         * Destroy all keys and values and deallocate all memory. Move hash and
+         * key comparison functions.
+         * If std::allocator_traits<Allocator_t>::propagate_on_container_move_assignment
+         * is true, then reuse memory and content of @other and move its
+         * allocator. If it's false and the allocators are equal, then also
+         * reuse memory and content of @other. Otherwise allocate the necessary
+         * memory and move the elements of @other into the new memory.
+         * 
+         * @param other is the hash map to move.
+         * @return Hash_map& is a reference to itself.
+         */
         Hash_map& operator=(Hash_map&& other) noexcept
         {
-            m_content = std::exchange(other.m_content, nullptr);
-            m_is_content_valid = std::exchange(other.m_is_content_valid, nullptr);
-            m_capacity = std::exchange(other.m_capacity, 0);
-            m_count = std::exchange(other.m_count, 0);
-            m_allocator = other.m_allocator;
+            // TODO test custom key and hash map are moved
+            // TODO test possible scenarios
+            // TODO test all objects are destructed
+
+            clear_and_deallocate_memory();
+
+            m_hash = std::move(other.m_hash);
+            m_key_equal = std::move(other.m_key_equal);
+
+            using Propagate_on_container_move_assignment =
+                typename std::allocator_traits<Allocator_t>::propagate_on_container_move_assignment;
+
+            if constexpr (Propagate_on_container_move_assignment::value)
+            {
+                m_content = std::exchange(other.m_content, nullptr);
+                m_is_content_valid = std::exchange(other.m_is_content_valid, nullptr);
+                m_capacity = std::exchange(other.m_capacity, 0);
+                m_count = std::exchange(other.m_count, 0);
+                m_allocator = std::move(other.m_allocator);
+            }
+            else
+            {
+                if (m_allocator == other.m_allocator)
+                {
+                    m_content = std::exchange(other.m_content, nullptr);
+                    m_is_content_valid = std::exchange(other.m_is_content_valid, nullptr);
+                    m_capacity = std::exchange(other.m_capacity, 0);
+                    m_count = std::exchange(other.m_count, 0);
+                }
+                else
+                {
+                    reserve(other.m_count);
+
+                    for (auto iterator = other.begin(); iterator != other.end(); ++iterator)
+                    {
+                        insert_or_assign(std::move(*iterator));
+                    }
+                }
+            }
 
             return *this;
         }
 
+        /**
+         * @brief Check if the container contains no elements.
+         * 
+         * @return true if the container is empty
+         * @return false otherwise
+         */
         bool empty() noexcept
         {
             return size() == 0;
         }
 
+        /**
+         * @brief Return the number of key-value pairs in the container.
+         * 
+         * @return std::size_t The number of key-value pairs in the container.
+         */
         std::size_t size() noexcept
         {
             return m_count;
         }
 
+        /**
+         * @brief Add a key-value pair to the hash map.
+         * 
+         * If an equivalent key already exists, then the value is replaced.
+         * This overload makes a copy of the element.
+         * 
+         * @param value is a key-value pair to add to the hash map.
+         * @return std::pair<Iterator, bool> The bool component is true if
+         * adding the element did not replace an existing one. The iterator
+         * component is pointing at the element that was inserted or updated.
+         */
         std::pair<Iterator, bool> insert_or_assign(std::pair<Key_t const, Value_t> const& value)
         {
             std::pair<Key_t const, Value_t> copy = value;
             return insert_or_assign(std::move(copy));
         }
 
+        /**
+         * @brief Add a key-value pair to the hash map.
+         * 
+         * If an equivalent key already exists, then the value is replaced.
+         * This overload make moves the element.
+         * 
+         * @param value is a key-value pair to add to the hash map.
+         * @return std::pair<Iterator, bool> The bool component is true if
+         * adding the element did not replace an existing one. The iterator
+         * component is pointing at the element that was inserted or updated.
+         */
         std::pair<Iterator, bool> insert_or_assign(std::pair<Key_t const, Value_t>&& value)
         {
             if (should_resize(m_count + 1, m_capacity))
@@ -347,6 +489,13 @@ namespace Maia::ECS
             };
         }
 
+        /**
+         * @brief Return an iterator to the first element.
+         * 
+         * If the iterator is empty, the returned iterator will be equal to end().
+         * 
+         * @return Iterator to the first element.
+         */
         Iterator begin() noexcept
         {
             std::size_t const first_valid_index = get_first_valid_index();
@@ -354,6 +503,13 @@ namespace Maia::ECS
             return Iterator{m_content, m_is_content_valid, m_capacity, first_valid_index};
         }
 
+        /**
+         * @brief Return an iterator to the first element.
+         * 
+         * If the iterator is empty, the returned iterator will be equal to end().
+         * 
+         * @return Iterator to the first element.
+         */
         Const_iterator begin() const noexcept
         {
             std::size_t const first_valid_index = get_first_valid_index();
@@ -361,16 +517,39 @@ namespace Maia::ECS
             return Const_iterator{m_content, m_is_content_valid, m_capacity, first_valid_index};
         }
 
+        /**
+         * @brief Return an iterator to the element following the last element.
+         * 
+         * This iterator can be used to compare with other iterators. It cannot
+         * be used to access the element it points to as it is invalid.
+         * 
+         * @return Iterator to the element following the last element.
+         */
         Iterator end() noexcept
         {
             return Iterator{m_content, m_is_content_valid, m_capacity, m_capacity};
         }
 
+        /**
+         * @brief Return an iterator to the element following the last element.
+         * 
+         * This iterator can be used to compare with other iterators. It cannot
+         * be used to access the element it points to as it is invalid.
+         * 
+         * @return Iterator to the element following the last element.
+         */
         Const_iterator end() const noexcept
         {
             return Const_iterator{m_content, m_is_content_valid, m_capacity, m_capacity};
         }
 
+        /**
+         * @brief Find an element with key equivalent to @key.
+         * 
+         * @param key of the value to search for.
+         * @return Iterator to an element with key equivalent to @key. If it is
+         * not found, the returned iterator is end().
+         */
         Iterator find(Key_t const& key) noexcept
         {
             if (m_count == 0)
@@ -395,6 +574,13 @@ namespace Maia::ECS
             }
         }
 
+        /**
+         * @brief Find an element with key equivalent to @key.
+         * 
+         * @param key of the value to search for.
+         * @return Iterator to an element with key equivalent to @key. If it is
+         * not found, the returned iterator is end().
+         */
         Const_iterator find(Key_t const& key) const noexcept
         {
             if (m_count == 0)
@@ -419,6 +605,17 @@ namespace Maia::ECS
             }
         }
 
+        /**
+         * @brief Return a reference to the mapped value of the element with
+         * key equivalent to @key.
+         * 
+         * If an element is not found, then an exception of type
+         * std::out_of_range is thrown.
+         * 
+         * @param key of the value to search for.
+         * @return Value_t& Reference to the mapped value that corresponds to
+         * @key.
+         */
         Value_t& at(Key_t const& key)
         {
             Iterator const iterator = find(key);
@@ -433,6 +630,17 @@ namespace Maia::ECS
             }
         }
 
+        /**
+         * @brief Return a reference to the mapped value of the element with
+         * key equivalent to @key.
+         * 
+         * If an element is not found, then an exception of type
+         * std::out_of_range is thrown.
+         * 
+         * @param key of the value to search for.
+         * @return Value_t& Reference to the mapped value that corresponds to
+         * @key.
+         */
         Value_t const& at(Key_t const& key) const
         {
             Const_iterator const iterator = find(key);
@@ -447,6 +655,13 @@ namespace Maia::ECS
             }
         }
 
+        /**
+         * @brief Check if there is an element with key equivalent to @key.
+         * 
+         * @param key of the value to search for.
+         * @return true if there is an element with key equivalent to @key.
+         * @return false otherwise.
+         */
         bool contains(Key_t const& key) const noexcept
         {
             Const_iterator const iterator = find(key);
@@ -454,6 +669,12 @@ namespace Maia::ECS
             return iterator != end();
         }
 
+        /**
+         * @brief Remove the element with key equivalent to @key if such an
+         * element exists.
+         * 
+         * @param key of the value to search for.
+         */
         void erase(Key_t const& key) noexcept
         {
             Iterator const iterator = find(key);
@@ -487,6 +708,10 @@ namespace Maia::ECS
             }
         }
 
+        /**
+         * @brief Remove all elements from the container.
+         * 
+         */
         void clear() noexcept
         {
             for (auto iterator = begin(); iterator != end(); ++iterator)
@@ -498,15 +723,36 @@ namespace Maia::ECS
             std::memset(m_is_content_valid, 0, m_capacity / 8);
         }
 
+        /**
+         * @brief Swap contents with @other.
+         * 
+         * If std::allocator_traits<allocator_type>::propagate_on_container_swap
+         * is true, then the allocators are also swapped. Otherwise, they are
+         * not.
+         * 
+         * @param other is the object to swap with.
+         */
         void swap(Hash_map& other) noexcept
         {
             std::swap(m_content, other.m_content);
             std::swap(m_is_content_valid, other.m_is_content_valid);
             std::swap(m_capacity, other.m_capacity);
             std::swap(m_count, other.m_count);
-            std::swap(m_allocator, other.m_allocator);
+
+            using Propagate_on_container_swap =
+                typename std::allocator_traits<Allocator_t>::propagate_on_container_swap;
+
+            if constexpr (Propagate_on_container_swap::value)
+            {
+                std::swap(m_allocator, other.m_allocator);
+            }
         }
 
+        /**
+         * @brief Reserve memory for at least the specified number of elements.
+         * 
+         * @param count is the new capacity of the container.
+         */
         void reserve(std::size_t const count)
         {
             std::size_t const old_capacity = m_capacity;
@@ -561,6 +807,14 @@ namespace Maia::ECS
             }
         }
 
+        /**
+         * @brief Get the required memory that is needed to reserve
+         * memory for the specified number of elements.
+         * 
+         * @param count is the capacity of the container.
+         * @return std::size_t The maximum number of bytes that will be
+         * allocated when calling reserve() given @count.
+         */
         static constexpr std::size_t get_required_memory_size(std::size_t const count) noexcept
         {
             std::size_t const required_capacity = calculate_capacity(count);
@@ -571,6 +825,27 @@ namespace Maia::ECS
         }
 
     private:
+
+        void clear_and_deallocate_memory() noexcept
+        {
+            clear();
+
+            if (m_content != nullptr)
+            {
+                m_allocator.deallocate(m_content, m_capacity);
+            }
+
+            if (m_is_content_valid != nullptr)
+            {
+                using Byte_allocator = std::allocator_traits<decltype(m_allocator)>::template rebind_alloc<std::byte>;
+                
+                Byte_allocator bytes_allocator{m_allocator};
+
+                constexpr std::size_t number_of_bits_in_a_byte = 8;
+                std::size_t const number_of_bytes_to_deallocate = (m_capacity / number_of_bits_in_a_byte) + ((m_capacity % number_of_bits_in_a_byte) != 0 ? 1 : 0);
+                bytes_allocator.deallocate(m_is_content_valid, number_of_bytes_to_deallocate);
+            }
+        }
 
         static bool should_resize(std::size_t const count, std::size_t const capacity) noexcept
         {

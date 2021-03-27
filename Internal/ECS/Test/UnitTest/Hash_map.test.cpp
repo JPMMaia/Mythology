@@ -581,7 +581,7 @@ namespace Maia::ECS::Test
 
         std::size_t allocated_bytes_counter = 0;
         std::size_t deallocated_bytes_counter = 0;
-        std::size_t remaining_memory = required_memory_size - 1;
+        std::size_t remaining_memory = required_memory_size - 4;
         Debug_resource debug_resource{&allocated_bytes_counter, &deallocated_bytes_counter, &remaining_memory};
         std::pmr::polymorphic_allocator<> allocator{&debug_resource};
 
@@ -759,6 +759,26 @@ namespace Maia::ECS::Test
 
         CHECK(hash_map.at(1) == 2);
         CHECK(hash_map.at(2) == 1);
+    }
+
+    TEST_CASE("Hash_map move assignment releases all memory", "[hash_map]")
+    {
+        std::size_t allocated_bytes_counter = 0;
+        std::size_t deallocated_bytes_counter = 0;
+        Debug_resource debug_resource{&allocated_bytes_counter, &deallocated_bytes_counter};
+        std::pmr::polymorphic_allocator<> allocator{&debug_resource};
+
+        {
+            pmr::Hash_map<int, int> hash_map_0{allocator};
+            hash_map_0.reserve(16);
+
+            pmr::Hash_map<int, int> hash_map_1{allocator};
+            hash_map_1.reserve(32);
+            hash_map_1 = std::move(hash_map_0);
+        }
+
+        CHECK(allocated_bytes_counter != 0);
+        CHECK(allocated_bytes_counter == deallocated_bytes_counter);
     }
 
     TEST_CASE("Hash_map destructor releases all memory", "[hash_map]")
