@@ -2,128 +2,21 @@
 
 #include <array>
 #include <cstddef>
+#include <iterator>
 #include <memory_resource>
 #include <numeric>
+#include <ranges>
 #include <unordered_map>
 #include <utility>
 
 import maia.ecs.hash_map;
+import maia.test.debug_object;
+import maia.test.debug_resource;
 
 namespace Maia::ECS::Test
 {
-    namespace
-    {
-        class Debug_resource final : public std::pmr::memory_resource
-        {
-        public:
-
-            Debug_resource(
-                std::size_t* const allocated_bytes_counter,
-                std::size_t* const deallocated_bytes_counter,
-                std::pmr::memory_resource* const upstream = std::pmr::get_default_resource()
-            ) noexcept :
-                Debug_resource(allocated_bytes_counter, deallocated_bytes_counter, nullptr, upstream)
-            {
-            }
-
-            Debug_resource(
-                std::size_t* const allocated_bytes_counter,
-                std::size_t* const deallocated_bytes_counter,
-                std::size_t* const remaining_memory,
-                std::pmr::memory_resource* const upstream = std::pmr::get_default_resource()
-            ) noexcept :
-                m_allocated_bytes_counter{allocated_bytes_counter},
-                m_deallocated_bytes_counter{deallocated_bytes_counter},
-                m_remaining_memory{remaining_memory},
-                m_upstream{upstream}
-            {
-            }
-
-            void* do_allocate(std::size_t const bytes, std::size_t const alignment) final
-            {
-                if (m_remaining_memory != nullptr)
-                {
-                    if (bytes <= *m_remaining_memory)
-                    {
-                        *m_remaining_memory -= bytes;
-                    }
-                    else
-                    {
-                        throw std::bad_alloc{};
-                    }
-                }
-
-                *m_allocated_bytes_counter += bytes;
-
-                return m_upstream->allocate(bytes, alignment);
-            }
-
-            void do_deallocate(void* const ptr, std::size_t const bytes, std::size_t const alignment) final
-            {
-                if (m_remaining_memory != nullptr)
-                {
-                    *m_remaining_memory -= bytes;
-                }
-    
-                *m_deallocated_bytes_counter += bytes;
-
-                m_upstream->deallocate(ptr, bytes, alignment);
-            }
-
-            bool do_is_equal(std::pmr::memory_resource const& other) const noexcept final
-            {
-                return m_upstream->is_equal(other);
-            }
-
-        private:
-
-            std::size_t* m_allocated_bytes_counter;
-            std::size_t* m_deallocated_bytes_counter;
-            std::size_t* m_remaining_memory;
-            std::pmr::memory_resource* m_upstream;
-
-        };
-
-        class Debug_object
-        {
-        public:
-
-            Debug_object(
-                std::size_t* const constructor_counter,
-                std::size_t* const destructor_counter
-            ) noexcept :
-                m_constructor_counter{constructor_counter},
-                m_destructor_counter{destructor_counter}
-            {
-                ++(*m_constructor_counter);
-            }
-
-            Debug_object(Debug_object const& other) noexcept :
-                m_constructor_counter{other.m_constructor_counter},
-                m_destructor_counter{other.m_destructor_counter}
-            {
-                ++(*m_constructor_counter);
-            }
-
-            Debug_object(Debug_object&& other) noexcept :
-                m_constructor_counter{other.m_constructor_counter},
-                m_destructor_counter{other.m_destructor_counter}
-            {
-                ++(*m_constructor_counter);
-            }
-
-            ~Debug_object() noexcept
-            {
-                ++(*m_destructor_counter);
-            }
-
-        private:
-
-            std::size_t* m_constructor_counter;
-            std::size_t* m_destructor_counter;
-
-        };
-    }
+    using Maia::Test::Debug_resource;
+    using Maia::Test::Debug_object;
 
     TEST_CASE("Hash_map.capacity returns the number of reserved elements", "[hash_map]")
     {
@@ -169,7 +62,7 @@ namespace Maia::ECS::Test
         CHECK(hash_map.size() == 1);
     }
 
-    TEST_CASE("Hash_map.insert_or_assign dds a new key-value pair", "[hash_map")
+    TEST_CASE("Hash_map.insert_or_assign dds a new key-value pair", "[hash_map]")
     {
         Hash_map<int, int> hash_map;
 
@@ -177,7 +70,7 @@ namespace Maia::ECS::Test
         CHECK(hash_map.size() == 1);
     }
 
-    TEST_CASE("Hash_map.insert_or_assign eturns iterator and whether it inserted", "[hash_map")
+    TEST_CASE("Hash_map.insert_or_assign eturns iterator and whether it inserted", "[hash_map]")
     {
         Hash_map<int, int> hash_map;
 
@@ -697,6 +590,20 @@ namespace Maia::ECS::Test
 
         CHECK(hash_map.at(1) == Copiable{2});
         CHECK(hash_map.at(2) == Copiable{1});
+    }
+
+    TEST_CASE("Hash_map copy constructor copies allocator", "[hash_map]")
+    {
+        std::size_t allocated_bytes_counter = 0;
+        std::size_t deallocated_bytes_counter = 0;
+        Debug_resource debug_resource{&allocated_bytes_counter, &deallocated_bytes_counter};
+        std::pmr::polymorphic_allocator<> allocator{&debug_resource};
+        
+        pmr::Hash_map<int, int> other{allocator};
+        
+        pmr::Hash_map<int, int> copy{other};
+        
+        CHECK(copy.get_allocator() == allocator);
     }
 
     TEST_CASE("Hash_map copy assignment copies content", "[hash_map]")

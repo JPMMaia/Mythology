@@ -71,11 +71,22 @@ namespace Maia::ECS
         using Content_pointer = std::conditional_t<is_const_t, std::pair<Key_t const, Value_t> const*, std::pair<Key_t const, Value_t>*>;
         using Is_valid_pointer = std::conditional_t<is_const_t, std::byte const*, std::byte*>;
 
+        Hash_map_iterator() noexcept = default;
+
         Hash_map_iterator(Content_pointer const content, Is_valid_pointer const is_valid, std::size_t const capacity, std::size_t const index) noexcept :
             m_content{content},
             m_is_valid{is_valid},
             m_index{index},
             m_capacity{capacity}
+        {
+        }
+
+        template <typename = typename std::enable_if<is_const_t>>
+        Hash_map_iterator(Hash_map_iterator<Key_t, Value_t, false> const& other) noexcept :
+            m_content{other.m_content},
+            m_is_valid{other.m_is_valid},
+            m_index{other.m_index},
+            m_capacity{other.m_capacity}
         {
         }
 
@@ -155,10 +166,12 @@ namespace Maia::ECS
 
     private:
 
-        Content_pointer m_content;
-        Is_valid_pointer m_is_valid;
-        std::size_t m_index;
-        std::size_t m_capacity;
+        Content_pointer m_content = nullptr;
+        Is_valid_pointer m_is_valid = nullptr;
+        std::size_t m_index = 0;
+        std::size_t m_capacity = 0;
+
+        friend Hash_map_iterator<Key_t, Value_t, true>;
 
         template <
             typename Key_t,
@@ -197,8 +210,18 @@ namespace Maia::ECS
     {
     public:
 
-        using Iterator = Hash_map_iterator<Key_t, Value_t, false>;
-        using Const_iterator = Hash_map_iterator<Key_t, Value_t, true>;
+        using value_type = std::pair<Key_t const, Value_t>;
+        using size_type = std::size_t;
+        using difference_type = std::ptrdiff_t;
+        using hasher = Hash_t;
+        using key_equal = Key_equal_t;
+        using allocator_type = Allocator_t;
+        using reference = value_type&;
+        using const_reference = value_type const&;
+        using pointer = std::allocator_traits<allocator_type>::pointer;
+        using const_pointer = std::allocator_traits<allocator_type>::const_pointer;
+        using iterator = Hash_map_iterator<Key_t, Value_t, false>;
+        using const_iterator = Hash_map_iterator<Key_t, Value_t, true>;
 
         /**
          * @brief Default constructor.
@@ -445,11 +468,11 @@ namespace Maia::ECS
          * 
          * @param key is the key used both to look up and to insert if not found.
          * @param value is a value to insert or assign.
-         * @return std::pair<Iterator, bool> The bool component is true if
+         * @return std::pair<iterator, bool> The bool component is true if
          * adding the element did not replace an existing one. The iterator
          * component is pointing at the element that was inserted or updated.
          */
-        std::pair<Iterator, bool> insert_or_assign(Key_t key, Value_t value)
+        std::pair<iterator, bool> insert_or_assign(Key_t key, Value_t value)
         {
             if (should_resize(m_count + 1, m_capacity))
             {
@@ -475,7 +498,7 @@ namespace Maia::ECS
 
             return
             {
-                Iterator{m_content, m_is_content_valid, m_capacity, index},
+                iterator{m_content, m_is_content_valid, m_capacity, index},
                 inserted
             };
         }
@@ -485,13 +508,13 @@ namespace Maia::ECS
          * 
          * If the iterator is empty, the returned iterator will be equal to end().
          * 
-         * @return Iterator to the first element.
+         * @return iterator to the first element.
          */
-        Iterator begin() noexcept
+        iterator begin() noexcept
         {
             std::size_t const first_valid_index = get_first_valid_index();
 
-            return Iterator{m_content, m_is_content_valid, m_capacity, first_valid_index};
+            return iterator{m_content, m_is_content_valid, m_capacity, first_valid_index};
         }
 
         /**
@@ -499,13 +522,13 @@ namespace Maia::ECS
          * 
          * If the iterator is empty, the returned iterator will be equal to end().
          * 
-         * @return Iterator to the first element.
+         * @return iterator to the first element.
          */
-        Const_iterator begin() const noexcept
+        const_iterator begin() const noexcept
         {
             std::size_t const first_valid_index = get_first_valid_index();
 
-            return Const_iterator{m_content, m_is_content_valid, m_capacity, first_valid_index};
+            return const_iterator{m_content, m_is_content_valid, m_capacity, first_valid_index};
         }
 
         /**
@@ -514,11 +537,11 @@ namespace Maia::ECS
          * This iterator can be used to compare with other iterators. It cannot
          * be used to access the element it points to as it is invalid.
          * 
-         * @return Iterator to the element following the last element.
+         * @return iterator to the element following the last element.
          */
-        Iterator end() noexcept
+        iterator end() noexcept
         {
-            return Iterator{m_content, m_is_content_valid, m_capacity, m_capacity};
+            return iterator{m_content, m_is_content_valid, m_capacity, m_capacity};
         }
 
         /**
@@ -527,21 +550,21 @@ namespace Maia::ECS
          * This iterator can be used to compare with other iterators. It cannot
          * be used to access the element it points to as it is invalid.
          * 
-         * @return Iterator to the element following the last element.
+         * @return iterator to the element following the last element.
          */
-        Const_iterator end() const noexcept
+        const_iterator end() const noexcept
         {
-            return Const_iterator{m_content, m_is_content_valid, m_capacity, m_capacity};
+            return const_iterator{m_content, m_is_content_valid, m_capacity, m_capacity};
         }
 
         /**
          * @brief Find an element with key equivalent to @key.
          * 
          * @param key of the value to search for.
-         * @return Iterator to an element with key equivalent to @key. If it is
+         * @return iterator to an element with key equivalent to @key. If it is
          * not found, the returned iterator is end().
          */
-        Iterator find(Key_t const& key) noexcept
+        iterator find(Key_t const& key) noexcept
         {
             if (m_count == 0)
             {
@@ -557,7 +580,7 @@ namespace Maia::ECS
 
             if (is_content_valid(index))
             {
-                return Iterator{m_content, m_is_content_valid, m_capacity, index};
+                return iterator{m_content, m_is_content_valid, m_capacity, index};
             }
             else
             {
@@ -569,10 +592,10 @@ namespace Maia::ECS
          * @brief Find an element with key equivalent to @key.
          * 
          * @param key of the value to search for.
-         * @return Iterator to an element with key equivalent to @key. If it is
+         * @return iterator to an element with key equivalent to @key. If it is
          * not found, the returned iterator is end().
          */
-        Const_iterator find(Key_t const& key) const noexcept
+        const_iterator find(Key_t const& key) const noexcept
         {
             if (m_count == 0)
             {
@@ -588,7 +611,7 @@ namespace Maia::ECS
 
             if (is_content_valid(index))
             {
-                return Const_iterator{m_content, m_is_content_valid, m_capacity, index};
+                return const_iterator{m_content, m_is_content_valid, m_capacity, index};
             }
             else
             {
@@ -609,7 +632,7 @@ namespace Maia::ECS
          */
         Value_t& at(Key_t const& key)
         {
-            Iterator const iterator = find(key);
+            iterator const iterator = find(key);
 
             if (iterator != end())
             {
@@ -634,7 +657,7 @@ namespace Maia::ECS
          */
         Value_t const& at(Key_t const& key) const
         {
-            Const_iterator const iterator = find(key);
+            const_iterator const iterator = find(key);
 
             if (iterator != end())
             {
@@ -655,7 +678,7 @@ namespace Maia::ECS
          */
         bool contains(Key_t const& key) const noexcept
         {
-            Const_iterator const iterator = find(key);
+            const_iterator const iterator = find(key);
 
             return iterator != end();
         }
@@ -668,7 +691,7 @@ namespace Maia::ECS
          */
         void erase(Key_t const& key) noexcept
         {
-            Iterator const iterator = find(key);
+            iterator const iterator = find(key);
 
             if (iterator != end())
             {
@@ -786,8 +809,8 @@ namespace Maia::ECS
                 m_count = 0;
 
                 {
-                    Iterator const old_content_begin{old_content.get(), old_is_content_valid.get(), old_capacity, get_first_valid_index(old_is_content_valid.get(), old_capacity)};
-                    Iterator const old_content_end{old_content.get(), old_is_content_valid.get(), old_capacity, old_capacity};
+                    iterator const old_content_begin{old_content.get(), old_is_content_valid.get(), old_capacity, get_first_valid_index(old_is_content_valid.get(), old_capacity)};
+                    iterator const old_content_end{old_content.get(), old_is_content_valid.get(), old_capacity, old_capacity};
                     
                     for (auto iterator = old_content_begin; iterator != old_content_end; ++iterator)
                     {
@@ -796,6 +819,16 @@ namespace Maia::ECS
                     }
                 }
             }
+        }
+
+        /**
+         * @brief Return the associated allocator.
+         * 
+         * @return Allocator_t const& The associated allocator.
+         */
+        Allocator_t const& get_allocator() const noexcept
+        {
+            return m_allocator;
         }
 
         /**
