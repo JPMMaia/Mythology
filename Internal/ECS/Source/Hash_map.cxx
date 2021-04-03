@@ -226,9 +226,9 @@ namespace Maia::ECS
         {
             reserve(other.m_count);
 
-            for (std::pair<Key_t const, Value_t> const& value : other)
+            for (std::pair<Key_t const, Value_t> const& keyValue : other)
             {
-                insert_or_assign(value);
+                insert_or_assign(keyValue.first, keyValue.second);
             }
         }
 
@@ -340,9 +340,9 @@ namespace Maia::ECS
 
             reserve(other.m_count);
 
-            for (std::pair<Key_t const, Value_t> const& value : other)
+            for (std::pair<Key_t const, Value_t> const& keyValue : other)
             {
-                insert_or_assign(value);
+                insert_or_assign(keyValue.first, keyValue.second);
             }
 
             return *this;
@@ -399,7 +399,7 @@ namespace Maia::ECS
 
                     for (auto iterator = other.begin(); iterator != other.end(); ++iterator)
                     {
-                        insert_or_assign(std::move(*iterator));
+                        insert_or_assign(std::move(iterator->first), std::move(iterator->second));
                     }
                 }
             }
@@ -408,12 +408,22 @@ namespace Maia::ECS
         }
 
         /**
+         * @brief Return the number of elements that the container has currently allocated space for.
+         * 
+         * @return std::size_t Capacity of the currently allocated storage.
+         */
+        std::size_t capacity() const noexcept
+        {
+            return calculate_allocated_count(m_capacity);
+        }
+
+        /**
          * @brief Check if the container contains no elements.
          * 
          * @return true if the container is empty
          * @return false otherwise
          */
-        bool empty() noexcept
+        bool empty() const noexcept
         {
             return size() == 0;
         }
@@ -423,7 +433,7 @@ namespace Maia::ECS
          * 
          * @return std::size_t The number of key-value pairs in the container.
          */
-        std::size_t size() noexcept
+        std::size_t size() const noexcept
         {
             return m_count;
         }
@@ -432,49 +442,30 @@ namespace Maia::ECS
          * @brief Add a key-value pair to the hash map.
          * 
          * If an equivalent key already exists, then the value is replaced.
-         * This overload makes a copy of the element.
          * 
-         * @param value is a key-value pair to add to the hash map.
+         * @param key is the key used both to look up and to insert if not found.
+         * @param value is a value to insert or assign.
          * @return std::pair<Iterator, bool> The bool component is true if
          * adding the element did not replace an existing one. The iterator
          * component is pointing at the element that was inserted or updated.
          */
-        std::pair<Iterator, bool> insert_or_assign(std::pair<Key_t const, Value_t> const& value)
-        {
-            std::pair<Key_t const, Value_t> copy = value;
-            return insert_or_assign(std::move(copy));
-        }
-
-        /**
-         * @brief Add a key-value pair to the hash map.
-         * 
-         * If an equivalent key already exists, then the value is replaced.
-         * This overload make moves the element.
-         * 
-         * @param value is a key-value pair to add to the hash map.
-         * @return std::pair<Iterator, bool> The bool component is true if
-         * adding the element did not replace an existing one. The iterator
-         * component is pointing at the element that was inserted or updated.
-         */
-        std::pair<Iterator, bool> insert_or_assign(std::pair<Key_t const, Value_t>&& value)
+        std::pair<Iterator, bool> insert_or_assign(Key_t key, Value_t value)
         {
             if (should_resize(m_count + 1, m_capacity))
             {
                 reserve(2 * m_count);
             }
-
-            Key_t const& new_key = value.first;
             
-            std::size_t index = calculate_index_hint(new_key);
+            std::size_t index = calculate_index_hint(key);
 
-            while (is_content_valid(index) && !is_same_key(index, new_key))
+            while (is_content_valid(index) && !is_same_key(index, key))
             {
                 index = (index + 1) % m_capacity;
             }
 
             {
                 std::pair<Key_t const, Value_t>* location = &m_content[index];
-                std::construct_at(location, std::move(value));
+                std::construct_at(location, std::make_pair(std::move(key), std::move(value)));
             }
 
             bool const inserted = !is_content_valid(index);
@@ -800,7 +791,7 @@ namespace Maia::ECS
                     
                     for (auto iterator = old_content_begin; iterator != old_content_end; ++iterator)
                     {
-                        insert_or_assign(std::move(*iterator));
+                        insert_or_assign(std::move(iterator->first), std::move(iterator->second));
                         std::destroy_at(&(*iterator));
                     }
                 }
@@ -927,6 +918,15 @@ namespace Maia::ECS
         {
             constexpr std::size_t load_factor = 70;
             return std::max<std::size_t>(count, c_minimum_number_of_elements) * 100 / load_factor;
+        }
+
+        static constexpr std::size_t calculate_allocated_count(std::size_t capacity) noexcept
+        {
+            constexpr std::size_t load_factor = 70;
+            std::size_t const numerator = capacity * load_factor;
+            std::size_t const denominator = 100;
+
+            return numerator / denominator + ((numerator % denominator) != 0 ? 1 : 0);
         }
 
     private:

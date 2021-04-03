@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <memory_resource>
 #include <numeric>
+#include <unordered_map>
 #include <utility>
 
 import maia.ecs.hash_map;
@@ -124,13 +125,35 @@ namespace Maia::ECS::Test
         };
     }
 
+    TEST_CASE("Hash_map.capacity returns the number of reserved elements", "[hash_map]")
+    {
+        auto const test_capacity = [](std::size_t const capacity) -> void
+        {
+            Hash_map<int, int> hash_map;
+            CHECK(hash_map.capacity() == 0);
+
+            hash_map.reserve(capacity);
+            CHECK(hash_map.capacity() == capacity);
+            hash_map.insert_or_assign(1, 2);
+            CHECK(hash_map.capacity() == capacity);
+        };
+
+        test_capacity(16);
+        test_capacity(17);
+        test_capacity(18);
+        test_capacity(19);
+        test_capacity(70);
+        test_capacity(100);
+        test_capacity(101);
+    }
+
     TEST_CASE("Hash_map.empty checks if it does not contain any element", "[hash_map]")
     {
         Hash_map<int, int> hash_map;
 
         CHECK(hash_map.empty());
 
-        hash_map.insert_or_assign({1, 2});
+        hash_map.insert_or_assign(1, 2);
 
         CHECK(!hash_map.empty());
     }
@@ -141,25 +164,25 @@ namespace Maia::ECS::Test
 
         CHECK(hash_map.size() == 0);
 
-        hash_map.insert_or_assign({1, 2});
+        hash_map.insert_or_assign(1, 2);
 
         CHECK(hash_map.size() == 1);
     }
 
-    TEST_CASE("Hash_map.insert_or_assign adds a new key-value pair", "[hash_map]")
+    TEST_CASE("Hash_map.insert_or_assign dds a new key-value pair", "[hash_map")
     {
         Hash_map<int, int> hash_map;
 
-        hash_map.insert_or_assign({1, 2});
+        hash_map.insert_or_assign(1, 2);
         CHECK(hash_map.size() == 1);
     }
 
-    TEST_CASE("Hash_map.insert_or_assign returns iterator and whether it inserted", "[hash_map]")
+    TEST_CASE("Hash_map.insert_or_assign eturns iterator and whether it inserted", "[hash_map")
     {
         Hash_map<int, int> hash_map;
 
         {
-            auto const result = hash_map.insert_or_assign({1, 2});
+            auto const result = hash_map.insert_or_assign(1, 2);
         
             auto const iterator = result.first;
             CHECK(iterator->first == 1);
@@ -169,7 +192,7 @@ namespace Maia::ECS::Test
         }
 
         {
-            auto const result = hash_map.insert_or_assign({1, 3});
+            auto const result = hash_map.insert_or_assign(1, 3);
         
             auto const iterator = result.first;
             CHECK(iterator->first == 1);
@@ -183,8 +206,8 @@ namespace Maia::ECS::Test
     {
         Hash_map<int, int> hash_map;
 
-        hash_map.insert_or_assign({1, 2});
-        hash_map.insert_or_assign({2, 2});
+        hash_map.insert_or_assign(1, 2);
+        hash_map.insert_or_assign(2, 2);
         CHECK(hash_map.size() == 2);
 
         hash_map.clear();
@@ -201,8 +224,8 @@ namespace Maia::ECS::Test
 
         pmr::Hash_map<int, Debug_object> hash_map;
         hash_map.reserve(16);
-        hash_map.insert_or_assign({1, Debug_object{&constructor_counter, &destructor_counter}});
-        hash_map.insert_or_assign({2, Debug_object{&constructor_counter, &destructor_counter}});
+        hash_map.insert_or_assign(1, Debug_object{&constructor_counter, &destructor_counter});
+        hash_map.insert_or_assign(2, Debug_object{&constructor_counter, &destructor_counter});
         hash_map.clear();
 
         CHECK(constructor_counter != 0);
@@ -221,8 +244,8 @@ namespace Maia::ECS::Test
     {
         Hash_map<int, int> hash_map;
 
-        hash_map.insert_or_assign({1, 2});
-        hash_map.insert_or_assign({2, 1});
+        hash_map.insert_or_assign(1, 2);
+        hash_map.insert_or_assign(2, 1);
 
         CHECK(hash_map.begin() != hash_map.end());
         CHECK(std::distance(hash_map.begin(), hash_map.end()) == 2);
@@ -285,8 +308,8 @@ namespace Maia::ECS::Test
         CHECK(hash_map.find(1) == hash_map.end());
         CHECK(std::as_const(hash_map).find(1) == std::as_const(hash_map).end());
 
-        hash_map.insert_or_assign({1, 2});
-        hash_map.insert_or_assign({2, 1});
+        hash_map.insert_or_assign(1, 2);
+        hash_map.insert_or_assign(2, 1);
 
         {
             auto const iterator = hash_map.find(1);
@@ -339,8 +362,8 @@ namespace Maia::ECS::Test
     {
         Hash_map<int, int> hash_map;
 
-        hash_map.insert_or_assign({1, 2});
-        hash_map.insert_or_assign({2, 1});
+        hash_map.insert_or_assign(1, 2);
+        hash_map.insert_or_assign(2, 1);
 
         CHECK(hash_map.at(1) == 2);
         CHECK(hash_map.at(2) == 1);
@@ -364,8 +387,8 @@ namespace Maia::ECS::Test
     {
         Hash_map<int, int> hash_map;
 
-        hash_map.insert_or_assign({1, 2});
-        hash_map.insert_or_assign({2, 1});
+        hash_map.insert_or_assign(1, 2);
+        hash_map.insert_or_assign(2, 1);
 
         CHECK(hash_map.contains(1));
         CHECK(hash_map.contains(2));
@@ -376,8 +399,8 @@ namespace Maia::ECS::Test
     {
         Hash_map<int, int> hash_map;
 
-        hash_map.insert_or_assign({1, 2});
-        hash_map.insert_or_assign({2, 1});
+        hash_map.insert_or_assign(1, 2);
+        hash_map.insert_or_assign(2, 1);
 
         REQUIRE(hash_map.contains(1));
         REQUIRE(hash_map.contains(2));
@@ -397,7 +420,7 @@ namespace Maia::ECS::Test
 
         for (std::size_t index = 0; index < element_count; ++index)
         {
-            hash_map.insert_or_assign({static_cast<int>(index), static_cast<int>(index)});
+            hash_map.insert_or_assign(static_cast<int>(index), static_cast<int>(index));
         }
 
         for (std::size_t index = 0; index < element_count; ++index)
@@ -420,8 +443,8 @@ namespace Maia::ECS::Test
 
         Hash_map<int, Debug_object> hash_map;
         hash_map.reserve(2);
-        hash_map.insert_or_assign({1, create_debug_object()});
-        hash_map.insert_or_assign({2, create_debug_object()});
+        hash_map.insert_or_assign(1, create_debug_object());
+        hash_map.insert_or_assign(2, create_debug_object());
 
         CHECK((constructor_counter - destructor_counter) == 2);
         hash_map.erase(1);
@@ -433,12 +456,12 @@ namespace Maia::ECS::Test
     TEST_CASE("Hash_map.swap swaps the content with another hash map", "[hash_map]")
     {
         Hash_map<int, int> hash_map_a;
-        hash_map_a.insert_or_assign({1, 3});
-        hash_map_a.insert_or_assign({2, 2});
+        hash_map_a.insert_or_assign(1, 3);
+        hash_map_a.insert_or_assign(2, 2);
 
         Hash_map<int, int> hash_map_b;
-        hash_map_b.insert_or_assign({3, 1});
-        hash_map_b.insert_or_assign({4, 0});
+        hash_map_b.insert_or_assign(3, 1);
+        hash_map_b.insert_or_assign(4, 0);
 
         hash_map_a.swap(hash_map_b);
 
@@ -462,7 +485,7 @@ namespace Maia::ECS::Test
             {
                 for (std::size_t element_index = 0; element_index < number_of_elements; ++element_index)
                 {
-                    hash_map.insert_or_assign({static_cast<int>(element_index), static_cast<int>(element_index)});
+                    hash_map.insert_or_assign(static_cast<int>(element_index), static_cast<int>(element_index));
                 }
             };
 
@@ -522,8 +545,8 @@ namespace Maia::ECS::Test
         {
             Hash_map<int, Debug_object> hash_map;
             hash_map.reserve(16);
-            hash_map.insert_or_assign({1, create_debug_object()});
-            hash_map.insert_or_assign({2, create_debug_object()});
+            hash_map.insert_or_assign(1, create_debug_object());
+            hash_map.insert_or_assign(2, create_debug_object());
 
             CHECK((constructor_counter - destructor_counter) == 2);
 
@@ -563,7 +586,7 @@ namespace Maia::ECS::Test
 
         for (std::size_t index = 0; index < element_count; ++index)
         {
-            hash_map.insert_or_assign({index, index});
+            hash_map.insert_or_assign(index, index);
         }
 
         hash_map.reserve(element_count + element_count);
@@ -660,8 +683,8 @@ namespace Maia::ECS::Test
         Hash_map<int, Copiable> hash_map = []() -> Hash_map<int, Copiable>
         {
             Hash_map<int, Copiable> other;
-            other.insert_or_assign({1, Copiable{2}});
-            other.insert_or_assign({2, Copiable{1}});
+            other.insert_or_assign(1, Copiable{2});
+            other.insert_or_assign(2, Copiable{1});
 
             std::size_t const number_of_copies = copy_constructor_called;
             
@@ -710,11 +733,11 @@ namespace Maia::ECS::Test
         Hash_map<int, Copiable> hash_map = []() -> Hash_map<int, Copiable>
         {
             Hash_map<int, Copiable> other;
-            other.insert_or_assign({1, Copiable{2}});
-            other.insert_or_assign({2, Copiable{1}});
+            other.insert_or_assign(1, Copiable{2});
+            other.insert_or_assign(2, Copiable{1});
 
             Hash_map<int, Copiable> copy;
-            copy.insert_or_assign({1, Copiable{3}});
+            copy.insert_or_assign(1, Copiable{3});
 
             std::size_t const number_of_copies = copy_constructor_called;
             copy = other;
@@ -732,8 +755,8 @@ namespace Maia::ECS::Test
         Hash_map<int, int> hash_map = []() -> Hash_map<int, int>
         {
             Hash_map<int, int> other;
-            other.insert_or_assign({1, 2});
-            other.insert_or_assign({2, 1});
+            other.insert_or_assign(1, 2);
+            other.insert_or_assign(2, 1);
 
             Hash_map<int, int> moved{std::move(other)};
             return moved;
@@ -748,11 +771,11 @@ namespace Maia::ECS::Test
         Hash_map<int, int> hash_map = []() -> Hash_map<int, int>
         {
             Hash_map<int, int> other;
-            other.insert_or_assign({1, 2});
-            other.insert_or_assign({2, 1});
+            other.insert_or_assign(1, 2);
+            other.insert_or_assign(2, 1);
 
             Hash_map<int, int> moved;
-            moved.insert_or_assign({1, 3});
+            moved.insert_or_assign(1, 3);
             moved = std::move(other);
             return moved;
         }();
@@ -805,15 +828,15 @@ namespace Maia::ECS::Test
         {
             pmr::Hash_map<int, Debug_object> hash_map;
             hash_map.reserve(16);
-            hash_map.insert_or_assign({1, Debug_object{&constructor_counter, &destructor_counter}});
-            hash_map.insert_or_assign({2, Debug_object{&constructor_counter, &destructor_counter}});
+            hash_map.insert_or_assign(1, Debug_object{&constructor_counter, &destructor_counter});
+            hash_map.insert_or_assign(2, Debug_object{&constructor_counter, &destructor_counter});
         }
 
         CHECK(constructor_counter != 0);
         CHECK(constructor_counter == destructor_counter);
     }
 
-    TEST_CASE("Hash_map uses custom hash and equal functions")
+    TEST_CASE("Hash_map uses custom hash and equal functions", "[hash_map]")
     {
         struct Custom_key
         {
@@ -835,19 +858,19 @@ namespace Maia::ECS::Test
         };
 
         Hash_map<Custom_key, int, decltype(hash), decltype(equal)> hash_map{hash, equal};
-        hash_map.insert_or_assign({Custom_key{0}, 1});
-        hash_map.insert_or_assign({Custom_key{1}, 0});
-        hash_map.insert_or_assign({Custom_key{1}, 1});
+        hash_map.insert_or_assign(Custom_key{0}, 1);
+        hash_map.insert_or_assign(Custom_key{1}, 0);
+        hash_map.insert_or_assign(Custom_key{1}, 1);
 
         CHECK(hash_used);
         CHECK(equal_used);
     }
 
-    TEST_CASE("Hash_map_iterator pre-increment")
+    TEST_CASE("Hash_map_iterator pre-increment", "[hash_map]")
     {
         Hash_map<int, int> hash_map;
-        hash_map.insert_or_assign({1, 2});
-        hash_map.insert_or_assign({2, 1});
+        hash_map.insert_or_assign(1, 2);
+        hash_map.insert_or_assign(2, 1);
 
         auto iterator = hash_map.begin();
 
@@ -861,11 +884,11 @@ namespace Maia::ECS::Test
         CHECK(iterator == hash_map.end());
     }
 
-    TEST_CASE("Hash_map_iterator post-increment")
+    TEST_CASE("Hash_map_iterator post-increment", "[hash_map]")
     {
         Hash_map<int, int> hash_map;
-        hash_map.insert_or_assign({1, 2});
-        hash_map.insert_or_assign({2, 1});
+        hash_map.insert_or_assign(1, 2);
+        hash_map.insert_or_assign(2, 1);
 
         auto iterator = hash_map.begin();
 
@@ -883,11 +906,11 @@ namespace Maia::ECS::Test
         }
     }
 
-    TEST_CASE("Hash_map_iterator pre-decrement")
+    TEST_CASE("Hash_map_iterator pre-decrement", "[hash_map]")
     {
         Hash_map<int, int> hash_map;
-        hash_map.insert_or_assign({1, 2});
-        hash_map.insert_or_assign({2, 1});
+        hash_map.insert_or_assign(1, 2);
+        hash_map.insert_or_assign(2, 1);
 
         auto iterator = hash_map.begin();
         ++iterator;
@@ -908,11 +931,11 @@ namespace Maia::ECS::Test
         }
     }
 
-    TEST_CASE("Hash_map_iterator post-decrement")
+    TEST_CASE("Hash_map_iterator post-decrement", "[hash_map]")
     {
         Hash_map<int, int> hash_map;
-        hash_map.insert_or_assign({1, 2});
-        hash_map.insert_or_assign({2, 1});
+        hash_map.insert_or_assign(1, 2);
+        hash_map.insert_or_assign(2, 1);
 
         auto iterator = hash_map.begin();
         ++iterator;
@@ -933,5 +956,157 @@ namespace Maia::ECS::Test
     }
 
 
-    // TODO benchmark
+    TEST_CASE("Hash_map.insert_or_assign benchmark", "[hash_map][benchmark]")
+    {
+        auto const benchmark = [](auto& hash_map, std::size_t const size)
+        {
+            hash_map.reserve(size);
+
+            for (int i = 0; i < size; ++i)
+            {
+                hash_map.insert_or_assign(i, i);
+            }
+        };
+
+        constexpr std::size_t size = 100000;
+
+        BENCHMARK("Hash_map insert entries")
+        {
+            Hash_map<int, int> hash_map;
+            return benchmark(hash_map, size);
+        };
+
+        BENCHMARK("Unordered_map insert entries")
+        {
+            std::unordered_map<int, int> hash_map;
+            return benchmark(hash_map, size);
+        };
+    }
+
+    TEST_CASE("Hash_map.at benchmark", "[hash_map][benchmark]")
+    {
+        auto const benchmark = [](Catch::Benchmark::Chronometer& meter, auto& hash_map, std::size_t const size)
+        {
+            hash_map.reserve(size);
+
+            for (int i = 0; i < size; ++i)
+            {
+                hash_map.insert_or_assign(i, i);
+            }
+
+            meter.measure(
+                [&hash_map, size]
+                {
+                    bool dummy = false;
+
+                    for (int i = 0; i < size; ++i)
+                    {
+                        dummy = dummy && (hash_map.at(i) == i);
+                    }
+
+                    return dummy;
+                }
+            );
+
+            return hash_map;
+        };
+
+        constexpr std::size_t size = 100000;
+
+        BENCHMARK_ADVANCED("Hash_map find entries")(Catch::Benchmark::Chronometer meter)
+        {
+            Hash_map<int, int> hash_map;
+            return benchmark(meter, hash_map, size);
+        };
+
+        BENCHMARK_ADVANCED("Unordered_map find entries")(Catch::Benchmark::Chronometer meter)
+        {
+            std::unordered_map<int, int> hash_map;
+            return benchmark(meter, hash_map, size);
+        };
+    }
+
+    TEST_CASE("Hash_map iteration benchmark", "[hash_map][benchmark]")
+    {
+        auto const benchmark = [](Catch::Benchmark::Chronometer& meter, auto& hash_map, std::size_t const size)
+        {
+            hash_map.reserve(size);
+
+            for (int i = 0; i < size; ++i)
+            {
+                hash_map.insert_or_assign(i, i);
+            }
+
+            meter.measure(
+                [&hash_map, size]
+                {
+                    int accummulator = 0;
+
+                    for (auto iterator = hash_map.begin(); iterator != hash_map.end(); ++iterator)
+                    {
+                        accummulator += iterator->second;
+                    }
+
+                    return accummulator;
+                }
+            );
+
+            return hash_map;
+        };
+
+        constexpr std::size_t size = 100000;
+
+        BENCHMARK_ADVANCED("Hash_map iteration")(Catch::Benchmark::Chronometer meter)
+        {
+            Hash_map<int, int> hash_map;
+            return benchmark(meter, hash_map, size);
+        };
+
+        BENCHMARK_ADVANCED("Unordered_map iteration")(Catch::Benchmark::Chronometer meter)
+        {
+            std::unordered_map<int, int> hash_map;
+            return benchmark(meter, hash_map, size);
+        };
+    }
+
+    TEST_CASE("Hash_map.erase benchmark", "[hash_map][benchmark]")
+    {
+        auto const benchmark = [](Catch::Benchmark::Chronometer& meter, auto& hash_map, std::size_t const size)
+        {
+            hash_map.reserve(size);
+
+            for (int i = 0; i < size; ++i)
+            {
+                hash_map.insert_or_assign(i, i);
+            }
+
+            meter.measure(
+                [&hash_map, size]
+                {
+                    for (int i = 0; i < size; ++i)
+                    {
+                        hash_map.erase(i);
+                    }
+
+                    return hash_map;
+                }
+            );
+
+            return hash_map;
+        };
+
+        constexpr std::size_t size = 100000;
+
+        BENCHMARK_ADVANCED("Hash_map erase")(Catch::Benchmark::Chronometer meter)
+        {
+            Hash_map<int, int> hash_map;
+            return benchmark(meter, hash_map, size);
+        };
+
+        BENCHMARK_ADVANCED("Unordered_map erase")(Catch::Benchmark::Chronometer meter)
+        {
+            std::unordered_map<int, int> hash_map;
+            return benchmark(meter, hash_map, size);
+        };
+    }
 }
