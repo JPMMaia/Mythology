@@ -26,7 +26,7 @@ target_sources (MaiaECSUnitTest
 		"main.cpp"
 		"Entity_manager.test.cpp"
 		"Component_chunk_group.test.cpp"
-		"Component_chunk.test.cpp"
+		"Hash_map.test.cpp"
 		#"Archetype.test.cpp"
 		#"Component.test.cpp"
 		#"Component_group.test.cpp"
