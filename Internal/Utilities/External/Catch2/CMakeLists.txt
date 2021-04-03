@@ -14,6 +14,8 @@ target_header (Catch2_header PUBLIC "catch2.catch" "${Catch2_include_directory}/
 
 add_library (Catch2_runner)
 
+target_compile_definitions (Catch2_runner PUBLIC CATCH_CONFIG_ENABLE_BENCHMARKING)
+
 target_link_libraries (Catch2_runner PUBLIC Catch2::Catch2)
 
 set_target_properties (Catch2_runner PROPERTIES LINKER_LANGUAGE CXX)
