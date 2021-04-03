@@ -7,6 +7,8 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../../..//Utilities/CMa
 add_executable (MaiaECSUnitTest)
 add_executable (Maia::ECS::UnitTest ALIAS MaiaECSUnitTest)
 
+target_compile_definitions (MaiaECSUnitTest PRIVATE CATCH_CONFIG_ENABLE_BENCHMARKING)
+
 target_compile_features (MaiaECSUnitTest PRIVATE cxx_std_20)
 
 
