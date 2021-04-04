@@ -1,22 +1,25 @@
+module;
+
+#include <array>
+#include <cassert>
+#include <cstddef>
+#include <iterator>
+#include <memory_resource>
+#include <numeric>
+#include <optional>
+#include <ostream>
+#include <ranges>
+#include <span>
+#include <tuple>
+#include <utility>
+#include <vector>
+
 export module maia.ecs.component_chunk_group;
 
 import maia.ecs.component;
 import maia.ecs.entity;
+import maia.ecs.hash_map;
 import maia.ecs.shared_component;
-
-import <array>;
-import <cassert>;
-import <cstddef>;
-import <iterator>;
-import <memory_resource>;
-import <optional>;
-import <ostream>;
-import <ranges>;
-import <span>;
-import <tuple>;
-import <utility>;
-import <vector>;
-import <unordered_map>;
 
 namespace Maia::ECS
 {
@@ -831,8 +834,8 @@ namespace Maia::ECS
 		using Chunk_group_iterator = 
 			std::conditional_t<
 				std::conjunction_v<std::is_const<Ts>...>,
-				std::pmr::unordered_map<Chunk_group_hash, Chunk_group>::const_iterator,
-				std::pmr::unordered_map<Chunk_group_hash, Chunk_group>::iterator
+				pmr::Hash_map<Chunk_group_hash, Chunk_group>::const_iterator,
+				pmr::Hash_map<Chunk_group_hash, Chunk_group>::iterator
 			>;
 
 		Component_chunk_group_iterator() noexcept = default;
@@ -1028,9 +1031,7 @@ namespace Maia::ECS
 			m_number_of_entities_per_chunk{number_of_entities_per_chunk},
 			m_chunk_allocator{chunk_allocator}
 		{
-			m_component_type_infos.reserve(component_type_infos.size() + 1);
-			m_component_type_infos.assign(component_type_infos.begin(), component_type_infos.end());
-			m_component_type_infos.push_back({get_component_type_id<Entity>(), sizeof(Entity)});
+			assign_component_types(component_type_infos);
 		}
 
 		Component_chunk_group(
@@ -1045,24 +1046,7 @@ namespace Maia::ECS
 			m_number_of_entities_per_chunk{number_of_entities_per_chunk},
 			m_chunk_allocator{chunk_allocator}
 		{
-			assert(component_type_ids.size() == component_type_sizes.size());
-
-			auto const to_component_type_info = [] (Component_type_ID const id, Component_type_size const size) -> Component_type_info
-			{
-				return {id, size};
-			};
-
-			m_component_type_infos.resize(component_type_ids.size() + 1);
-
-			for (std::size_t component_type_index = 0; component_type_index < component_type_ids.size(); ++component_type_index)
-			{
-				m_component_type_infos[component_type_index] = to_component_type_info(
-					component_type_ids[component_type_index],
-					component_type_sizes[component_type_index]
-				);
-			}
-			
-			m_component_type_infos.back() = {get_component_type_id<Entity>(), sizeof(Entity)};
+			assign_component_types(component_type_ids, component_type_sizes);
 		}
 
 		Component_chunk_group(
@@ -1073,8 +1057,36 @@ namespace Maia::ECS
 			std::pmr::polymorphic_allocator<std::byte> const& chunk_allocator,
 			std::pmr::polymorphic_allocator<std::byte> const& allocator
 		) noexcept :
-			Component_chunk_group(component_type_infos, number_of_entities_per_chunk, chunk_allocator, allocator)
+			m_chunk_groups{allocator},
+			m_component_type_infos{allocator},
+			m_number_of_entities_per_chunk{number_of_entities_per_chunk},
+			m_chunk_allocator{chunk_allocator}
 		{
+			assign_component_types(component_type_infos);
+
+			allocate_generic_memory(
+				group_hashes,
+				number_of_entities_per_group,
+				number_of_entities_per_chunk
+			);
+		}
+
+		Component_chunk_group(
+			std::span<Component_type_ID const> const component_type_ids,
+			std::span<Component_type_size const> const component_type_sizes,
+			std::size_t const number_of_entities_per_chunk,
+			std::span<Chunk_group_hash const> const group_hashes,
+			std::span<std::size_t const> const number_of_entities_per_group,
+			std::pmr::polymorphic_allocator<std::byte> const& chunk_allocator,
+			std::pmr::polymorphic_allocator<std::byte> const& allocator
+		) noexcept :
+			m_chunk_groups{allocator},
+			m_component_type_infos{allocator},
+			m_number_of_entities_per_chunk{number_of_entities_per_chunk},
+			m_chunk_allocator{chunk_allocator}
+		{
+			assign_component_types(component_type_ids, component_type_sizes);
+
 			allocate_generic_memory(
 				group_hashes,
 				number_of_entities_per_group,
@@ -1180,7 +1192,7 @@ namespace Maia::ECS
 
 				Chunk_group chunk_group{std::move(chunks), 1};
 
-				m_chunk_groups.emplace(chunk_group_hash, std::move(chunk_group));
+				m_chunk_groups.insert_or_assign(chunk_group_hash, std::move(chunk_group));
 
 				return 0;
 			}
@@ -1366,13 +1378,6 @@ namespace Maia::ECS
 			return get_view<Self, Component_ts...>(this);
 		}
 
-		static constexpr std::size_t get_instance_required_memory_size(
-			std::size_t const number_of_component_types
-		) noexcept
-		{
-			return 512;
-		}
-
 		static constexpr std::size_t get_new_chunk_group_required_memory_size() noexcept
 		{
 			return sizeof(decltype(m_chunk_groups)::value_type);
@@ -1406,11 +1411,14 @@ namespace Maia::ECS
 			std::span<Component_type_size const> const component_type_sizes
 		) noexcept
 		{
-			std::size_t const instance_required_size = get_instance_required_memory_size(component_type_sizes.size());
+			std::size_t const component_type_info_required_size =
+				(component_type_sizes.size() + 1) * sizeof(decltype(m_component_type_infos)::value_type);
 
-			std::size_t const groups_required_size = get_new_chunk_group_required_memory_size() * number_of_entities_per_group.size();
+			std::size_t const groups_required_size =
+				decltype(m_chunk_groups)::get_required_memory_size(number_of_entities_per_group.size());
 
 			std::size_t chunks_size = 0;
+
 
 			for (std::size_t const number_of_entities_in_group : number_of_entities_per_group)
 			{
@@ -1421,17 +1429,58 @@ namespace Maia::ECS
 				chunks_size += number_of_chunks_in_group * get_new_chunk_required_memory_size();
 			}
 
-			std::size_t const total_size = instance_required_size + groups_required_size + chunks_size;
+			constexpr std::size_t vector_proxy_size = 16;
+			constexpr std::size_t debug_mode_size = vector_proxy_size * 5;
 
-			return 3000;
+			std::size_t const total_size =
+				vector_proxy_size +
+				3 * (number_of_entities_per_group.size() + 1) * debug_mode_size +
+				component_type_info_required_size +
+				groups_required_size +
+				chunks_size;
+
+			return total_size;
 		}
 
 	private:
 
+		void assign_component_types(std::span<Component_type_info const> const component_type_infos)
+		{
+			m_component_type_infos.reserve(component_type_infos.size() + 1);
+			m_component_type_infos.assign(component_type_infos.begin(), component_type_infos.end());
+			m_component_type_infos.push_back({get_component_type_id<Entity>(), sizeof(Entity)});
+		}
+
+		void assign_component_types(
+			std::span<Component_type_ID const> const component_type_ids,
+			std::span<Component_type_size const> const component_type_sizes
+		)
+		{
+			assert(component_type_ids.size() == component_type_sizes.size());
+
+			auto const to_component_type_info = [] (Component_type_ID const id, Component_type_size const size) -> Component_type_info
+			{
+				return {id, size};
+			};
+
+			m_component_type_infos.resize(component_type_ids.size() + 1);
+
+			for (std::size_t component_type_index = 0; component_type_index < component_type_ids.size(); ++component_type_index)
+			{
+				m_component_type_infos[component_type_index] = to_component_type_info(
+					component_type_ids[component_type_index],
+					component_type_sizes[component_type_index]
+				);
+			}
+			
+			m_component_type_infos.back() = {get_component_type_id<Entity>(), sizeof(Entity)};
+		}
+
 		void allocate_generic_memory(
 			std::span<Chunk_group_hash const> const group_hashes,
 			std::span<std::size_t const> const number_of_entities_per_group,
-			std::size_t const number_of_entities_per_chunk		)
+			std::size_t const number_of_entities_per_chunk
+		)
 		{
 			assert(group_hashes.size() == number_of_entities_per_group.size());
 
@@ -1451,7 +1500,7 @@ namespace Maia::ECS
 				std::pmr::vector<Chunk> chunks{m_chunk_groups.get_allocator()};
 				Chunk_group group = {std::move(chunks)};
 				group.chunks.reserve(number_of_chunks_in_group);
-				m_chunk_groups.emplace(group_hash, std::move(group));
+				m_chunk_groups.insert_or_assign(group_hash, std::move(group));
 			}
 		}
 
@@ -1824,7 +1873,7 @@ namespace Maia::ECS
 
 	private:
 
-		std::pmr::unordered_map<Chunk_group_hash, Chunk_group> m_chunk_groups;
+		pmr::Hash_map<Chunk_group_hash, Chunk_group> m_chunk_groups;
 		std::pmr::vector<Component_type_info> m_component_type_infos;
 		std::size_t m_number_of_entities_per_chunk;
 		std::pmr::polymorphic_allocator<std::byte> m_chunk_allocator;

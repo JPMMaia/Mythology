@@ -1,15 +1,17 @@
+#include <catch2/catch.hpp>
+
+#include <array>
+#include <cstring>
+#include <iterator>
+#include <memory_resource>
+#include <ranges>
+
 import maia.ecs.component;
 import maia.ecs.component_chunk_group;
 import maia.ecs.entity;
+import maia.test.debug_resource;
 
 import join_view;
-
-import <catch2/catch.hpp>;
-
-import <array>;
-import <cstring>;
-import <iterator>;
-import <ranges>;
 
 namespace Maia::ECS::Test
 {
@@ -930,11 +932,17 @@ namespace Maia::ECS::Test
             
             CHECK(std::distance(view.begin(), view.end()) == 4);
 
-            auto iterator = view.begin();
-            CHECK(*iterator++ == Entity{1});
-            CHECK(*iterator++ == Entity{2});
-            CHECK(*iterator++ == Entity{3});
-            CHECK(*iterator++ == Entity{4});
+            std::vector<Entity> const actual{view.begin(), view.end()};
+            
+            std::vector<Entity> const expected
+            {
+                {1},
+                {2},
+                {3},
+                {4},
+            };
+            
+            CHECK_THAT(actual, Catch::Matchers::UnorderedEquals(expected));
         }
 
         {
@@ -942,11 +950,17 @@ namespace Maia::ECS::Test
             
             CHECK(std::distance(view.begin(), view.end()) == 4);
 
-            auto iterator = view.begin();
-            CHECK(*iterator++ == Component_a{.value=1});
-            CHECK(*iterator++ == Component_a{.value=3});
-            CHECK(*iterator++ == Component_a{.value=5});
-            CHECK(*iterator++ == Component_a{.value=7});
+            std::vector<Component_a> const actual{view.begin(), view.end()};
+            
+            std::vector<Component_a> const expected
+            {
+                {1},
+                {3},
+                {5},
+                {7},
+            };
+            
+            CHECK_THAT(actual, Catch::Matchers::UnorderedEquals(expected));
         }
 
         {
@@ -954,11 +968,17 @@ namespace Maia::ECS::Test
             
             CHECK(std::distance(view.begin(), view.end()) == 4);
 
-            auto iterator = view.begin();
-            CHECK(*iterator++ == Component_b{.value=2});
-            CHECK(*iterator++ == Component_b{.value=4});
-            CHECK(*iterator++ == Component_b{.value=6});
-            CHECK(*iterator++ == Component_b{.value=8});
+            std::vector<Component_b> const actual{view.begin(), view.end()};
+            
+            std::vector<Component_b> const expected
+            {
+                {2},
+                {4},
+                {6},
+                {8},
+            };
+            
+            CHECK_THAT(actual, Catch::Matchers::UnorderedEquals(expected));
         }
 
         {
@@ -975,11 +995,17 @@ namespace Maia::ECS::Test
 
             CHECK(std::distance(view.begin(), view.end()) == 4);
 
-            auto iterator = view.begin();
-            CHECK(*iterator++ == Component_b{.value=3});
-            CHECK(*iterator++ == Component_b{.value=5});
-            CHECK(*iterator++ == Component_b{.value=7});
-            CHECK(*iterator++ == Component_b{.value=9});
+            std::vector<Component_b> const actual{view.begin(), view.end()};
+            
+            std::vector<Component_b> const expected
+            {
+                {3},
+                {5},
+                {7},
+                {9},
+            };
+            
+            CHECK_THAT(actual, Catch::Matchers::UnorderedEquals(expected));
         }
     }
 
@@ -1058,12 +1084,17 @@ namespace Maia::ECS::Test
             
             CHECK(std::distance(view.begin(), view.end()) == 4);
 
-            auto iterator = view.begin();
-
-            CHECK(*iterator++ == std::make_tuple(Entity{1}, Component_a{1}, Component_b{2}));
-            CHECK(*iterator++ == std::make_tuple(Entity{2}, Component_a{3}, Component_b{4}));
-            CHECK(*iterator++ == std::make_tuple(Entity{3}, Component_a{5}, Component_b{6}));
-            CHECK(*iterator++ == std::make_tuple(Entity{4}, Component_a{7}, Component_b{8}));
+            std::vector<std::tuple<Entity, Component_a, Component_b>> const actual{view.begin(), view.end()};
+            
+            std::vector<std::tuple<Entity, Component_a, Component_b>> const expected
+            {
+                std::make_tuple(Entity{1}, Component_a{1}, Component_b{2}),
+                std::make_tuple(Entity{2}, Component_a{3}, Component_b{4}),
+                std::make_tuple(Entity{3}, Component_a{5}, Component_b{6}),
+                std::make_tuple(Entity{4}, Component_a{7}, Component_b{8}),
+            };
+            
+            CHECK_THAT(actual, Catch::Matchers::UnorderedEquals(expected));
         }
 
         {
@@ -1094,12 +1125,17 @@ namespace Maia::ECS::Test
 
             CHECK(std::distance(view.begin(), view.end()) == 4);
 
-            auto iterator = view.begin();
-
-            CHECK(*iterator++ == std::make_tuple(Entity{1}, Component_a{2}, Component_b{3}));
-            CHECK(*iterator++ == std::make_tuple(Entity{2}, Component_a{4}, Component_b{5}));
-            CHECK(*iterator++ == std::make_tuple(Entity{3}, Component_a{6}, Component_b{7}));
-            CHECK(*iterator++ == std::make_tuple(Entity{4}, Component_a{8}, Component_b{9}));
+            std::vector<std::tuple<Entity, Component_a, Component_b>> const actual{view.begin(), view.end()};
+            
+            std::vector<std::tuple<Entity, Component_a, Component_b>> const expected
+            {
+                std::make_tuple(Entity{1}, Component_a{2}, Component_b{3}),
+                std::make_tuple(Entity{2}, Component_a{4}, Component_b{5}),
+                std::make_tuple(Entity{3}, Component_a{6}, Component_b{7}),
+                std::make_tuple(Entity{4}, Component_a{8}, Component_b{9}),
+            };
+            
+            CHECK_THAT(actual, Catch::Matchers::UnorderedEquals(expected));
         }
     }
 
@@ -1157,7 +1193,7 @@ namespace Maia::ECS::Test
             }
         };
 
-        CHECK_NOTHROW([&]()
+        auto const add_and_remove_entities = [&]() -> void
         {
             constexpr std::array<Chunk_group_hash, 3> chunk_group_hashes
             {
@@ -1179,6 +1215,8 @@ namespace Maia::ECS::Test
                 add_all_entities(groups);
                 remove_all_entities(groups);
             }
-        }());
+        };
+
+        CHECK_NOTHROW(add_and_remove_entities());
     }
 }
