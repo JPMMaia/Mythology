@@ -1014,12 +1014,45 @@ namespace Maia::ECS
 
 	};
 
+	/**
+	 * @brief A container that groups components of the same type together in
+	 * space.
+	 * 
+	 * The components are first grouped by a group ID and then inserted into 
+	 * chunks of memory of the same size. Inside each chunk, the components
+	 * are also grouped by component type.
+	 * 
+	 * Example for 2 group IDs, 3 entities per chunk, P and R component types,
+	 * 5 entities in group ID 0, 2 entities in group ID 1:
+	 * 
+	 * Group ID 0 -> 2 chunks: 
+	 * - [P, P, P, R, R, R, E, E, E]
+	 * - [P, P, 0, R, R, 0, E, E, 0]
+	 * 
+	 * Group ID 1 -> 1 chunk
+	 * - [P, P, 0, R, R, 0, E, E, 0]
+	 * 
+	 */
 	export class Component_chunk_group
 	{
 	public:
 
+		/**
+		 * @brief Index of the entity components.
+		 * 
+		 */
 		using Index = std::size_t;
 
+		/**
+		 * @brief Create a Component_chunk_group.
+		 * 
+		 * @param component_type_infos A set of objects that describe each
+		 * component type.
+		 * @param number_of_entities_per_chunk The maximum number of entities
+		 * that each chunk should hold.
+		 * @param chunk_allocator An allocator for the chunk memory.
+		 * @param allocator An allocator for all the rest.
+		 */
 		Component_chunk_group(
 			std::span<Component_type_info const> const component_type_infos,
 			std::size_t const number_of_entities_per_chunk,
@@ -1034,6 +1067,17 @@ namespace Maia::ECS
 			assign_component_types(component_type_infos);
 		}
 
+		/**
+		 * @brief Create a Component_chunk_group.
+		 * 
+		 * @param component_type_ids A set of component type IDs.
+		 * @param component_type_sizes A set of component type sizes in bytes
+		 * corresponding to each ID in @component_type_ids.
+		 * @param number_of_entities_per_chunk The maximum number of entities
+		 * that each chunk should hold.
+		 * @param chunk_allocator An allocator for the chunk memory.
+		 * @param allocator An allocator for all the rest.
+		 */
 		Component_chunk_group(
 			std::span<Component_type_ID const> const component_type_ids,
 			std::span<Component_type_size const> const component_type_sizes,
@@ -1048,7 +1092,19 @@ namespace Maia::ECS
 		{
 			assign_component_types(component_type_ids, component_type_sizes);
 		}
-
+		
+		/**
+		 * @brief Create a Component_chunk_group and allocate as much memory as
+		 * possible.
+		 * 
+		 * @param component_type_infos A set of objects that describe each
+		 * component type.
+		 * @param number_of_entities_per_chunk The maximum number of entities
+		 * that each chunk should hold.
+		 * @param group_hashes The group IDs to create in advance.
+		 * @param chunk_allocator An allocator for the chunk memory.
+		 * @param allocator An allocator for all the rest.
+		 */
 		Component_chunk_group(
 			std::span<Component_type_info const> const component_type_infos,
 			std::size_t const number_of_entities_per_chunk,
@@ -1071,6 +1127,19 @@ namespace Maia::ECS
 			);
 		}
 
+		/**
+		 * @brief Create a Component_chunk_group and allocate as much memory as
+		 * possible.
+		 * 
+		 * @param component_type_ids A set of component type IDs.
+		 * @param component_type_sizes A set of component type sizes in bytes
+		 * corresponding to each ID in @component_type_ids.
+		 * @param number_of_entities_per_chunk The maximum number of entities
+		 * that each chunk should hold.
+		 * @param group_hashes The group IDs to create in advance.
+		 * @param chunk_allocator An allocator for the chunk memory.
+		 * @param allocator An allocator for all the rest.
+		 */
 		Component_chunk_group(
 			std::span<Component_type_ID const> const component_type_ids,
 			std::span<Component_type_size const> const component_type_sizes,
@@ -1094,6 +1163,17 @@ namespace Maia::ECS
 			);
 		}
 
+		/**
+		 * @brief Add a new entity.
+		 * 
+		 * Initializes the components with 0s.
+		 * 
+		 * @param entity The new entity to add.
+		 * @param chunk_group_hash The group ID with which the entity will be
+		 * associated.
+		 * @return Index An index that identifies the location where the entity
+		 * and its corresponding components are located.
+		 */
 		Index add_entity(Entity const entity, Chunk_group_hash const chunk_group_hash)
 		{
 			auto const location = m_chunk_groups.find(chunk_group_hash);
@@ -1198,12 +1278,39 @@ namespace Maia::ECS
 			}
 		}
 
+		/**
+		 * @brief Remove an entity and its corresponding components.
+		 * 
+		 * If removing an entity in the middle, then the last entity will be
+		 * moved into that location, so that there isn't any empty space.
+		 * In this case, a Component_group_entity_moved value is returned to
+		 * indicate that the last entity was moved and its index needs to be
+		 * updated.
+		 * 
+		 * @param chunk_group_hash The group ID with which the entity is associated.
+		 * @param index The index that identifies the location of the
+		 * entity and its components.
+		 * @return std::optional<Component_group_entity_moved> If this is
+		 * defined then an entity location moved and its index needs to be
+		 * updated.
+		 */
 		std::optional<Component_group_entity_moved> remove_entity(Chunk_group_hash const chunk_group_hash, Index const index) noexcept
 		{
 			Chunk_group& chunk_group = m_chunk_groups.at(chunk_group_hash);
 			return remove_entity(chunk_group, index);
 		}
 
+		/**
+		 * @brief Move an entity from one group to another.
+		 * 
+		 * @param from_chunk_group_hash The group ID in which the entity is
+		 * currently associated with.
+		 * @param from_index The index of the entity and its components.
+		 * @param to_chunk_group_hash The new group ID with which the entity and
+		 * its components will be associated.
+		 * @return Entity_move_result The new index and an optional value to 
+		 * indicate if any other entity was moved in the process.
+		 */
 		Entity_move_result move_entity(
 			Chunk_group_hash const from_chunk_group_hash,
 			Index const from_index,
@@ -1226,11 +1333,28 @@ namespace Maia::ECS
 			return {to_index, entity_moved_from_remove};
 		}
 
+		/**
+		 * @brief Get an entity value.
+		 * 
+		 * @param chunk_group_hash The group ID with which the entity is
+		 * associated.
+		 * @param index The index of the entity.
+		 * @return Entity The returned entity.
+		 */
 		Entity get_entity(Chunk_group_hash const chunk_group_hash, Index const index) const noexcept
 		{
 			return get_component_value<Entity>(chunk_group_hash, index);
 		}
 
+		/**
+		 * @brief Get a component value.
+		 * 
+		 * @tparam Component_t The component type.
+		 * @param chunk_group_hash The group ID with which the component is
+		 * associated with.
+		 * @param index The index of the corresponding entity/component.
+		 * @return Component_t The returned component's value.
+		 */
 		template <Concept::Component Component_t>
 		Component_t get_component_value(Chunk_group_hash const chunk_group_hash, Index const index) const noexcept
 		{
@@ -1239,6 +1363,15 @@ namespace Maia::ECS
 			return get_component_value<Component_t>(chunk_group, index);
 		}
 
+		/**
+		 * @brief Set the value of a component.
+		 * 
+		 * @tparam Component_t The component type.
+		 * @param chunk_group_hash The group ID with which the component is
+		 * associated with.
+		 * @param index The index of the corresponding entity/component.
+		 * @param value The new value of the component.
+		 */
 		template <Concept::Component Component_t>
 		void set_component_value(Chunk_group_hash const chunk_group_hash, Index const index, Component_t const& value) noexcept
 		{
@@ -1255,6 +1388,13 @@ namespace Maia::ECS
 			std::memcpy(chunk.data() + offset, &value, component_type_info.size);
 		}
 
+		/**
+		 * @brief Deallocate any unused memory associated with the given group
+		 * ID.
+		 * 
+		 * @param chunk_group_hash The group which chunks should be
+		 * deallocated.
+		 */
 		void shrink_to_fit(Chunk_group_hash const chunk_group_hash) noexcept
 		{
 			Chunk_group& chunk_group = m_chunk_groups.at(chunk_group_hash);
@@ -1266,6 +1406,13 @@ namespace Maia::ECS
 			chunk_group.chunks.resize(minimal_number_of_chunks);
 		}
 
+		/**
+		 * @brief Check if container supports a component type.
+		 * 
+		 * @param id The ID of the component type.
+		 * @return true If the container supports the given component type.
+		 * @return false Otherwise.
+		 */
 		bool has_component_type(Component_type_ID const id) const noexcept
 		{
 			auto const is_component_type = [&id](Component_type_info const info) -> bool
@@ -1282,6 +1429,12 @@ namespace Maia::ECS
 			return location != m_component_type_infos.end();
 		}
 
+		/**
+		 * @brief Return the total number of entities in the container accross
+		 * all groups and chunks.
+		 * 
+		 * @return std::size_t The total number of entities.
+		 */
 		std::size_t number_of_entities() const noexcept
 		{
 			std::size_t count = 0;
@@ -1294,6 +1447,13 @@ namespace Maia::ECS
 			return count;
 		}
 
+		/**
+		 * @brief The number of entities in a group.
+		 * 
+		 * @param chunk_group_hash The group ID to check the number of
+		 * entities.
+		 * @return std::size_t The number of entities in the given group.
+		 */
 		std::size_t number_of_entities(Chunk_group_hash const chunk_group_hash) const noexcept
 		{
 			auto const chunk_iterator = m_chunk_groups.find(chunk_group_hash);
@@ -1303,6 +1463,11 @@ namespace Maia::ECS
 					0;			
 		}
 
+		/**
+		 * @brief Return the total number of chunks accross all groups.
+		 * 
+		 * @return std::size_t The total number of chunks.
+		 */
 		std::size_t number_of_chunks() const noexcept
 		{
 			std::size_t count = 0;
@@ -1315,6 +1480,12 @@ namespace Maia::ECS
 			return count;
 		}
 
+		/**
+		 * @brief Return the number of chunks in a group.
+		 * 
+		 * @param chunk_group_hash The group ID to check the number of chunks.
+		 * @return std::size_t The number of chunks in a group.
+		 */
 		std::size_t number_of_chunks(Chunk_group_hash const chunk_group_hash) const noexcept
 		{
 			auto const location = m_chunk_groups.find(chunk_group_hash);
@@ -1330,6 +1501,14 @@ namespace Maia::ECS
 			}
 		}
 
+		/**
+		 * @brief Get a view of all the components in a chunk of a group.
+		 * 
+		 * @tparam Component_ts The types of the components to view.
+		 * @param chunk_group_hash The group ID to get the view.
+		 * @param chunk_index The chunk of the group to get the view.
+		 * @return A view of the components.
+		 */
 		template <Concept::Component... Component_ts>
 		Component_chunk_view<Component_ts const...> get_view(Chunk_group_hash const chunk_group_hash, std::size_t const chunk_index) const noexcept
 		{
@@ -1338,6 +1517,14 @@ namespace Maia::ECS
 			return get_view<Self, Component_ts...>(this, chunk_group_hash, chunk_index);
 		}
 
+		/**
+		 * @brief Get a view of all the components in a chunk of a group.
+		 * 
+		 * @tparam Component_ts The types of the components to view.
+		 * @param chunk_group_hash The group ID to get the view.
+		 * @param chunk_index The chunk of the group to get the view.
+		 * @return A view of the components.
+		 */
 		template <Concept::Component... Component_ts>
 		Component_chunk_view<Component_ts...> get_view(Chunk_group_hash const chunk_group_hash, std::size_t const chunk_index) noexcept
 		{
@@ -1346,6 +1533,13 @@ namespace Maia::ECS
 			return get_view<Self, Component_ts...>(this, chunk_group_hash, chunk_index);
 		}
 
+		/**
+		 * @brief Get a view of all the components in a group.
+		 * 
+		 * @tparam Component_ts The types of the components to view.
+		 * @param chunk_group_hash The group ID to get the view.
+		 * @return A view of the components.
+		 */
 		template <Concept::Component... Component_ts>
 		Component_chunk_group_view<Component_ts const...> get_view(Chunk_group_hash const chunk_group_hash) const noexcept
 		{
@@ -1354,6 +1548,13 @@ namespace Maia::ECS
 			return get_view<Self, Component_ts...>(this, chunk_group_hash);
 		}
 
+		/**
+		 * @brief Get a view of all the components in a group.
+		 * 
+		 * @tparam Component_ts The types of the components to view.
+		 * @param chunk_group_hash The group ID to get the view.
+		 * @return A view of the components.
+		 */
 		template <Concept::Component... Component_ts>
 		Component_chunk_group_view<Component_ts...> get_view(Chunk_group_hash const chunk_group_hash) noexcept
 		{
@@ -1362,6 +1563,12 @@ namespace Maia::ECS
 			return get_view<Self, Component_ts...>(this, chunk_group_hash);
 		}
 
+		/**
+		 * @brief Get a view of all the components of all groups and chunks.
+		 * 
+		 * @tparam Component_ts The types of the components to view.
+		 * @return A view of the components.
+		 */
 		template <Concept::Component... Component_ts>
 		Component_chunk_group_all_view<Component_ts const...> get_view() const noexcept
 		{
@@ -1370,6 +1577,12 @@ namespace Maia::ECS
 			return get_view<Self, Component_ts...>(this);
 		}
 
+		/**
+		 * @brief Get a view of all the components of all groups and chunks.
+		 * 
+		 * @tparam Component_ts The types of the components to view.
+		 * @return A view of the components.
+		 */
 		template <Concept::Component... Component_ts>
 		Component_chunk_group_all_view<Component_ts...> get_view() noexcept
 		{
@@ -1378,33 +1591,15 @@ namespace Maia::ECS
 			return get_view<Self, Component_ts...>(this);
 		}
 
-		static constexpr std::size_t get_new_chunk_group_required_memory_size() noexcept
-		{
-			return sizeof(decltype(m_chunk_groups)::value_type);
-		}
-
-		static constexpr std::size_t get_new_chunk_required_memory_size() noexcept
-		{
-			return sizeof(Chunk); 
-		}
-
-		static constexpr std::size_t get_components_required_memory_size(
-			std::span<Component_type_size const> const component_type_sizes,
-			std::size_t const number_of_entities_per_chunk
-		) noexcept
-		{
-			std::size_t total_component_size = 
-				std::accumulate(
-					component_type_sizes.begin(),
-					component_type_sizes.end(),
-					sizeof(Entity)
-				);
-
-			std::size_t const total_size = total_component_size * number_of_entities_per_chunk;
-
-			return total_size;
-		}
-
+		/**
+		 * @brief Get the required memory needed by the container.
+		 * 
+		 * @param number_of_entities_per_group The number of entities per group.
+		 * @param number_of_entities_per_chunk The maximum number of entities
+		 * in a chunk.
+		 * @param component_type_sizes The component type sizes.
+		 * @return The required memory size in bytes.
+		 */
 		static constexpr std::size_t get_required_generic_memory_size(
 			std::span<std::size_t const> const number_of_entities_per_group,
 			std::size_t const number_of_entities_per_chunk,
@@ -1443,6 +1638,33 @@ namespace Maia::ECS
 		}
 
 	private:
+
+		static constexpr std::size_t get_new_chunk_group_required_memory_size() noexcept
+		{
+			return sizeof(decltype(m_chunk_groups)::value_type);
+		}
+
+		static constexpr std::size_t get_new_chunk_required_memory_size() noexcept
+		{
+			return sizeof(Chunk); 
+		}
+
+		static constexpr std::size_t get_components_required_memory_size(
+			std::span<Component_type_size const> const component_type_sizes,
+			std::size_t const number_of_entities_per_chunk
+		) noexcept
+		{
+			std::size_t total_component_size = 
+				std::accumulate(
+					component_type_sizes.begin(),
+					component_type_sizes.end(),
+					sizeof(Entity)
+				);
+
+			std::size_t const total_size = total_component_size * number_of_entities_per_chunk;
+
+			return total_size;
+		}
 
 		void assign_component_types(std::span<Component_type_info const> const component_type_infos)
 		{
