@@ -1219,4 +1219,63 @@ namespace Maia::ECS::Test
 
         CHECK_NOTHROW(add_and_remove_entities());
     }
+
+    TEST_CASE("Component_chunk_group component iteration time", "[component_chunk_group][benchmark]")
+    {
+        constexpr std::uint32_t number_of_entities = 1000000;
+
+        constexpr Chunk_group_hash chunk_group_0{0};
+
+        std::array<Component_type_info, 2> const component_type_infos = 
+            make_sorted_component_type_info_array<Component_a, Component_b>();
+
+        Component_chunk_group group{component_type_infos, 2, {}, {}};
+
+        for (std::uint32_t entity_index = 0; entity_index < number_of_entities; ++entity_index)
+        {
+            Entity const new_entity{entity_index};
+            Component_a const new_component_a{static_cast<int>(entity_index)};
+            Component_b const new_component_b{static_cast<int>(entity_index)};
+
+            Component_chunk_group::Index const index = group.add_entity(new_entity, chunk_group_0);
+            group.set_component_value(chunk_group_0, index, new_component_a);
+            group.set_component_value(chunk_group_0, index, new_component_b);
+        }
+
+        BENCHMARK("Component_chunk_group component iteration time with for loop")
+        {
+            std::size_t dummy = 0;
+
+            auto const view = group.get_view<Component_a>();
+
+            for (auto const& group_view : view)
+            {
+                for (auto const& chunk_view : group_view)
+                {
+                    for (Component_view<Component_a> const component_view : chunk_view)
+                    {
+                        Component_a const component = component_view.read();
+                        dummy += component.value;
+                    }
+                }
+            }
+
+            return dummy;
+        };
+
+        BENCHMARK("Component_chunk_group component iteration time with join")
+        {
+            std::size_t dummy = 0;
+
+            auto const view = group.get_view<Component_a>() | views::join | views::join;
+
+            for (Component_view<Component_a> const component_view : view)
+            {
+                Component_a const component = component_view.read();
+                dummy += component.value;
+            }
+
+            return dummy;
+        };
+    }
 }
