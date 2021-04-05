@@ -1229,7 +1229,8 @@ namespace Maia::ECS::Test
         std::array<Component_type_info, 2> const component_type_infos = 
             make_sorted_component_type_info_array<Component_a, Component_b>();
 
-        Component_chunk_group group{component_type_infos, 2, {}, {}};
+        constexpr std::size_t number_of_entites_per_chunk = 16*1024 / sizeof(Component_a) + sizeof(Component_b) + sizeof(Entity);
+        Component_chunk_group group{component_type_infos, number_of_entites_per_chunk, {}, {}};
 
         for (std::uint32_t entity_index = 0; entity_index < number_of_entities; ++entity_index)
         {
@@ -1242,17 +1243,36 @@ namespace Maia::ECS::Test
             group.set_component_value(chunk_group_0, index, new_component_b);
         }
 
-        BENCHMARK("Component_chunk_group component iteration time with for loop")
+        BENCHMARK("Component_chunk_group component iteration time with for loop only")
         {
             std::size_t dummy = 0;
 
-            auto const view = group.get_view<Component_a>();
+            for (auto const& chunk_group : group.get_chunk_groups())
+            {
+                for (auto const& chunk : chunk_group.second.chunks)
+                {
+                    for (Component_view<Component_a const> const component_view : group.get_view<Component_a>(chunk_group.second, chunk))
+                    {
+                        Component_a const component = component_view.read();
+                        dummy += component.value;
+                    }
+                }
+            }
+
+            return dummy;
+        };
+
+        BENCHMARK("Component_chunk_group component iteration time with view and for loop")
+        {
+            std::size_t dummy = 0;
+
+            auto const view = std::as_const(group).get_view<Component_a>();
 
             for (auto const& group_view : view)
             {
                 for (auto const& chunk_view : group_view)
                 {
-                    for (Component_view<Component_a> const component_view : chunk_view)
+                    for (Component_view<Component_a const> const component_view : chunk_view)
                     {
                         Component_a const component = component_view.read();
                         dummy += component.value;

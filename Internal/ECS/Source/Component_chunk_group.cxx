@@ -1502,6 +1502,54 @@ namespace Maia::ECS
 		}
 
 		/**
+		 * @brief Get all the chunk groups.
+		 * 
+		 * @return The returned chunk groups.
+		 */
+		pmr::Hash_map<Chunk_group_hash, Chunk_group> const& get_chunk_groups() const noexcept
+		{
+			return m_chunk_groups;
+		}
+
+		/**
+		 * @brief Get a view of all the components in a chunk of a group.
+		 * 
+		 * @tparam Component_ts The types of the components to view.
+		 * @param chunk_group The chunk group that contains the @chunk.
+		 * @param chunk The chunk of the group to get the view.
+		 * @return A view of the components.
+		 */
+		template <Concept::Component... Component_ts>
+		auto get_view(
+			Chunk_group const& chunk_group,
+			Chunk const& chunk
+		) const noexcept
+		{
+			using Self = std::remove_reference_t<decltype(*this)>;
+
+			return get_view<Self, Component_ts...>(this, chunk_group, chunk);
+		}
+
+		/**
+		 * @brief Get a view of all the components in a chunk of a group.
+		 * 
+		 * @tparam Component_ts The types of the components to view.
+		 * @param chunk_group The chunk group that contains the @chunk.
+		 * @param chunk The chunk of the group to get the view.
+		 * @return A view of the components.
+		 */
+		template <Concept::Component... Component_ts>
+		auto get_view(
+			Chunk_group& chunk_group,
+			Chunk& chunk
+		) noexcept
+		{
+			using Self = std::remove_reference_t<decltype(*this)>;
+
+			return get_view<Self, Component_ts...>(this, chunk_group, chunk);
+		}
+
+		/**
 		 * @brief Get a view of all the components in a chunk of a group.
 		 * 
 		 * @tparam Component_ts The types of the components to view.
@@ -1813,11 +1861,12 @@ namespace Maia::ECS
 			return m_component_type_infos.back();
 		}
 
+	private:
 		template <typename Self, Concept::Component... Component_ts>
 		static auto get_view(
 			Self* const self,
-			Chunk_group_hash const chunk_group_hash,
-			std::size_t const chunk_index
+			auto& chunk_group,
+			auto& chunk
 		) noexcept
 		{
 			constexpr bool is_const = std::is_const_v<Self>;
@@ -1827,21 +1876,8 @@ namespace Maia::ECS
 			using Chunk_type = std::conditional_t<is_const, Chunk const, Chunk>;
 			using Pointer_type = std::conditional_t<is_const, std::byte const*, std::byte*>;
 
-			auto const chunk_group_location = self->m_chunk_groups.find(chunk_group_hash);
-			if (chunk_group_location == self->m_chunk_groups.end()) [[unlikely]]
-			{
-				return Component_chunk_view_type{};
-			}
-
-			Chunk_group_type& chunk_group = chunk_group_location->second;
-
-
-			if (chunk_index >= chunk_group.chunks.size()) [[unlikely]]
-			{
-				return Component_chunk_view_type{};
-			}
-
-			Chunk_type& chunk = chunk_group.chunks[chunk_index];
+			std::size_t const number_of_elements_in_group = chunk_group.number_of_elements;
+			std::size_t const chunk_index = std::distance(&chunk_group.chunks[0], &chunk);
 
 			std::array<std::size_t, sizeof...(Component_ts)> const offsets
 			{
@@ -1854,7 +1890,7 @@ namespace Maia::ECS
 				)...
 			};
 
-			std::size_t const number_of_elements_in_chunk = self->number_of_elements(chunk_group.number_of_elements, chunk_index);
+			std::size_t const number_of_elements_in_chunk = self->number_of_elements(number_of_elements_in_group, chunk_index);
 
 			if constexpr (sizeof...(Component_ts) == 1)
 			{
@@ -1923,6 +1959,39 @@ namespace Maia::ECS
 
 				return Component_chunk_view_type{begin, end};
 			}			
+		}
+
+		template <typename Self, Concept::Component... Component_ts>
+		static auto get_view(
+			Self* const self,
+			Chunk_group_hash const chunk_group_hash,
+			std::size_t const chunk_index
+		) noexcept
+		{
+			constexpr bool is_const = std::is_const_v<Self>;
+			using Component_chunk_iterator_type = std::conditional_t<is_const, Component_iterator<Component_ts const...>, Component_iterator<Component_ts...>>;
+			using Component_chunk_view_type = std::conditional_t<is_const, Component_chunk_view<Component_ts const...>, Component_chunk_view<Component_ts...>>;
+			using Chunk_group_type = std::conditional_t<is_const, Chunk_group const, Chunk_group>;
+			using Chunk_type = std::conditional_t<is_const, Chunk const, Chunk>;
+			using Pointer_type = std::conditional_t<is_const, std::byte const*, std::byte*>;
+
+			auto const chunk_group_location = self->m_chunk_groups.find(chunk_group_hash);
+			if (chunk_group_location == self->m_chunk_groups.end()) [[unlikely]]
+			{
+				return Component_chunk_view_type{};
+			}
+
+			Chunk_group_type& chunk_group = chunk_group_location->second;
+
+
+			if (chunk_index >= chunk_group.chunks.size()) [[unlikely]]
+			{
+				return Component_chunk_view_type{};
+			}
+
+			Chunk_type& chunk = chunk_group.chunks[chunk_index];
+
+			return get_view<Self, Component_ts...>(self, chunk_group, chunk);
 		}
 
 		template <typename Self, Concept::Component... Component_ts>
