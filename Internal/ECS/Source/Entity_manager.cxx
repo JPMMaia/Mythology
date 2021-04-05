@@ -40,12 +40,26 @@ namespace Maia::ECS
         }
     };
 
+    /**
+     * @brief Container for entities, components and shared components.
+     * 
+     */
     export class Entity_manager
     {
     public:
 
+        /**
+         * @brief Construct an empty container.
+         * 
+         */
         Entity_manager() noexcept = default;
         
+        /**
+         * @brief Construct an empty container with custom allocators.
+         * 
+         * @param generic_allocator Allocator for all memory except component chunks memory.
+         * @param component_chunks_allocator Allocator for component chunks memory.
+         */
         Entity_manager(
             std::pmr::polymorphic_allocator<> const& generic_allocator,
             std::pmr::polymorphic_allocator<> const& component_chunks_allocator
@@ -60,6 +74,17 @@ namespace Maia::ECS
         {
         }
 
+        /**
+         * @brief Construct a container and allocate as much memory as
+         * possible.
+         * 
+         * @param archetypes Archetypes to add.
+         * @param shared_component_keys The keys for the shared components.
+         * @param number_of_entities_per_shared_component The number of 
+         * entities associated with each shared component.
+         * @param generic_allocator Allocator for all memory except component chunks memory.
+         * @param component_chunks_allocator Allocator for component chunks memory.
+         */
         Entity_manager(
             std::span<Archetype const> const archetypes,
             std::span<std::span<Shared_component_key const> const> const shared_component_keys,
@@ -82,7 +107,7 @@ namespace Maia::ECS
                 std::size_t const total_component_size_in_bytes = 
                     std::accumulate(component_type_sizes.begin(), component_type_sizes.end(), sizeof(Entity));
 
-                constexpr std::size_t maximum_chunk_size_in_bytes = 16 * 1024;
+                std::size_t const maximum_chunk_size_in_bytes = get_maximum_chunk_size_in_bytes();
                 std::size_t const number_of_entities_per_chunk = maximum_chunk_size_in_bytes / total_component_size_in_bytes;
                 
                 std::span<Chunk_group_hash const> const group_hashes = shared_component_keys[archetype_index];
@@ -131,17 +156,36 @@ namespace Maia::ECS
             }
         }
 
+        /**
+         * @brief Get all archetypes.
+         * 
+         * @return The returned archetypes.
+         */
         std::span<Archetype const> get_archetypes() const noexcept
         {
             return m_archetypes;
         }
 
+        /**
+         * @brief Get the archetype to which an entity belongs.
+         * 
+         * @param entity The entity.
+         * @return The entity's archetype.
+         */
         Archetype const& get_archetype(Entity const entity) const noexcept
         {
             static Archetype dummy;
             return dummy;
         }
 
+        /**
+         * @brief Create an entity and associated component data initialized to
+         * 0.
+         * 
+         * @param archetype The archetype that describes the component data
+         * types of the entity.
+         * @return The created entity.
+         */
         Entity create_entity(Archetype const& archetype)
         {
             Archetype_index const archetype_index =
@@ -151,6 +195,15 @@ namespace Maia::ECS
             return create_entity(archetype_index, no_shared_component_hash);
         }
 
+        /**
+         * @brief Create an entity, associate it with a shared component and
+         * initialize component data to 0.
+         * 
+         * @param archetype The archetype that describes the component data
+         * types of the entity.
+         * @param shared_component_key The key of the shared component.
+         * @return The created entity.
+         */
         Entity create_entity(
             Archetype const& archetype,
             Shared_component_key const shared_component_key
@@ -162,6 +215,11 @@ namespace Maia::ECS
             return create_entity(archetype_index, shared_component_key);
         }
 
+        /**
+         * @brief Destroy an entity.
+         * 
+         * @param entity The entity to destroy.
+         */
         void destroy_entity(Entity const entity)
         {
             Entity_location_info const& entity_location_info = m_entity_location_info[entity.value];
@@ -184,6 +242,14 @@ namespace Maia::ECS
             m_free_entity_indices.push_back(entity.value);
         }
 
+        /**
+         * @brief Get the number of entities described by an archetype.
+         * 
+         * @param archetype The archetype that describes the entity's component
+         * data types.
+         * @return The number of entities that have component data types that
+         * match @archetype.
+         */
         std::size_t get_number_of_entities(Archetype const& archetype) const noexcept
         {
             auto const location = std::find(m_archetypes.begin(), m_archetypes.end(), archetype);
@@ -263,6 +329,13 @@ namespace Maia::ECS
         {
         }
 
+        /**
+         * @brief Get the value of an entity's component. 
+         * 
+         * @tparam Component_t The component data type.
+         * @param entity The entity.
+         * @return The value of the entity's component data.
+         */
         template<Concept::Component Component_t>
         Component_t get_component_value(Entity const entity) const noexcept
         {
@@ -280,6 +353,13 @@ namespace Maia::ECS
             return component;
         }
 
+        /**
+         * @brief Set the value of an entity's component.
+         * 
+         * @tparam Component_t The component data type.
+         * @param entity The entity.
+         * @param value The value of the entity's component data.
+         */
         template<Concept::Component Component_t>
         void set_component_value(Entity const entity, Component_t const& value) noexcept
         {
@@ -295,6 +375,13 @@ namespace Maia::ECS
             );
         }
 
+        /**
+         * @brief Get the shared component data associated with an entity.
+         * 
+         * @tparam Shared_component_t The shared component data type.
+         * @param entity The entity.
+         * @return The value of the entity's shared component.
+         */
         template<Concept::Shared_component Shared_component_t>
         Shared_component_t const& get_shared_component(
             Entity const entity
@@ -305,6 +392,13 @@ namespace Maia::ECS
             return get_shared_component<Shared_component_t>(key);
         }
 
+        /**
+         * @brief Get the shared component data associated with a key.
+         * 
+         * @tparam Shared_component_t The shared component data type.
+         * @param shared_component_key The shared component's key.
+         * @return The value of the shared component.
+         */
         template<Concept::Shared_component Shared_component_t>
         Shared_component_t const& get_shared_component(
             Shared_component_key const shared_component_key
@@ -315,6 +409,13 @@ namespace Maia::ECS
             return *std::any_cast<Shared_component_t>(&value);
         }
 
+        /**
+         * @brief Set the shared component value for a given key.
+         * 
+         * @tparam Shared_component_t The shared component data type.
+         * @param shared_component_key The shared component's key.
+         * @param shared_component The value of the shared component.
+         */
         template<Concept::Shared_component Shared_component_t>
         void set_shared_component(
             Shared_component_key const shared_component_key,
@@ -324,6 +425,12 @@ namespace Maia::ECS
             m_shared_components[shared_component_key] = shared_component;
         }
 
+        /**
+         * @brief Change the entity's shared component data.
+         * 
+         * @param entity The entity to change.
+         * @param shared_component_key The new shared component key.
+         */
         void change_entity_shared_component(Entity const entity, Shared_component_key const shared_component_key) noexcept
         {
             Entity_location_info& location_info = m_entity_location_info[entity.value];
