@@ -95,6 +95,31 @@ namespace Maia::ECS::Test
         }
     }
 
+    template <typename Tuple, typename Function>
+    void visit(Tuple&& tuple, std::size_t const index, Function&& function) noexcept
+    {
+        std::size_t counter = 0;
+
+        auto const visit_aux = [index, &function, &counter] <typename T> (T&& value) noexcept -> void
+        {
+            if (index == counter)
+            {
+                function(value);
+            }
+
+            ++counter;
+        };
+
+        std::apply(
+            [&visit_aux] (auto const&... values) noexcept
+            {
+                
+                ((visit_aux(values)), ...);
+            },
+            tuple
+        );
+    }
+
     TEST_CASE("get_number_of_entities returns the number of elements in a component group")
     {
         Component_groups_0 component_groups;
@@ -166,6 +191,68 @@ namespace Maia::ECS::Test
         CHECK(contains<std::tuple_element_t<1, Component_groups_0>, std::vector<int>>());
         CHECK(contains<std::tuple_element_t<1, Component_groups_0>, std::vector<float>>());
         CHECK(contains<std::tuple_element_t<1, Component_groups_0>, std::vector<double>>());
+    }
+
+    TEST_CASE("visit calls function with tuple argument at runtime index")
+    {
+        std::tuple<int, float, double> tuple;
+
+        {
+            std::size_t count = 0;
+
+            auto const visit_element = [&count]<typename T>(T const& value) -> void
+            {
+                if constexpr (std::is_same_v<T, int>)
+                {
+                    ++count;
+                }
+                else
+                {
+                    FAIL_CHECK();
+                }
+            };
+
+            visit(tuple, 0, visit_element);
+            CHECK(count == 1);
+        }
+
+        {
+            std::size_t count = 0;
+
+            auto const visit_element = [&count]<typename T>(T const& value) -> void
+            {
+                if constexpr (std::is_same_v<T, float>)
+                {
+                    ++count;
+                }
+                else
+                {
+                    FAIL_CHECK();
+                }
+            };
+
+            visit(tuple, 1, visit_element);
+            CHECK(count == 1);
+        }
+
+        {
+            std::size_t count = 0;
+
+            auto const visit_element = [&count]<typename T>(T const& value) -> void
+            {
+                if constexpr (std::is_same_v<T, double>)
+                {
+                    ++count;
+                }
+                else
+                {
+                    FAIL_CHECK();
+                }
+            };
+
+            visit(tuple, 2, visit_element);
+            CHECK(count == 1);
+        }
     }
 
     TEST_CASE("Benchmark iterate through components", "[benchmark]")
