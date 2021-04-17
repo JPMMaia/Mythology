@@ -7,6 +7,21 @@
 
 namespace Maia::ECS::Test
 {
+    template <class T, class Tuple>
+    struct Tuple_element_index;
+
+    template <class T, class... Types>
+    struct Tuple_element_index<T, std::tuple<T, Types...>>
+    {
+        static constexpr std::size_t value = 0;
+    };
+
+    template <class T, class U, class... Types>
+    struct Tuple_element_index<T, std::tuple<U, Types...>>
+    {
+        static constexpr std::size_t value = 1 + Tuple_element_index<T, std::tuple<Types...>>::value;
+    };
+
     template <typename... Component_ts>
     using Vector_tuple = std::tuple<std::vector<Component_ts>...>;
 
@@ -32,8 +47,14 @@ namespace Maia::ECS::Test
             0;
     }
 
+    struct Entity_index_range
+    {
+        std::size_t begin;
+        std::size_t end;
+    };
+
     template <typename Component_groups_t, typename Key_t, typename... Component_ts>
-    void add_entities(
+    Entity_index_range add_entities(
         Component_groups_t& component_groups,
         std::size_t const number_of_entities,
         Key_t&& key,
@@ -54,7 +75,14 @@ namespace Maia::ECS::Test
         };
 
         auto& vector_tuple = component_group[key];
+
+        std::size_t const first_entity_index = std::get<0>(vector_tuple).size();
+
         ((add_components(std::get<std::vector<Component_ts>>(vector_tuple), std::forward<Component_ts>(components))), ...);
+
+        std::size_t const last_entity_index = std::get<0>(vector_tuple).size();
+
+        return {first_entity_index, last_entity_index};
     }
 
     template <typename Component_groups_t, typename Function_t>
@@ -82,17 +110,12 @@ namespace Maia::ECS::Test
     template <typename T, typename... Ts>
     struct Has_type<T, std::tuple<T, Ts...>> : std::true_type {};
 
-    template <typename Component_group_t, typename Component_vector>
+    template <typename Component_group_t, typename... Component_vector_ts>
     constexpr bool contains() noexcept
     {
-        if constexpr (Has_type<Component_vector, typename Component_group_t::mapped_type>::value)
-        {
-            return true;
-        }
-        else
-        {
-            return false;
-        }
+        return std::conjunction_v<
+            Has_type<Component_vector_ts, typename Component_group_t::mapped_type>...
+        >;
     }
 
     template <typename Tuple, typename Function>
@@ -318,6 +341,221 @@ namespace Maia::ECS::Test
 
                 return dummy;
             };
+        }
+    }
+
+    struct Entity_info_location
+    {
+        std::size_t vector_index;
+        std::size_t index_in_vector;
+    };
+
+    template <typename Key_t>
+    struct Entity_info
+    {
+        std::size_t map_index;
+        Key_t key;
+        std::size_t index_in_vector;
+    };
+
+    template <typename... Key_ts>
+    struct Entity_manager
+    {
+        std::vector<Entity_info_location> entity_info_locations;
+        
+        std::tuple<
+            std::vector<Entity_info<Key_ts>>...
+        > entity_infos;
+    };
+
+    using Entity_manager_0 = Entity_manager<int>;
+    struct Entity
+    {
+        std::size_t index;
+    };
+
+    template <typename Entity_manager_t, typename Component_groups_t, typename Key_t, typename... Component_ts>
+    std::pmr::vector<Entity> create_entities(
+        Entity_manager_t& entity_manager,
+        Component_groups_t& component_groups,
+        std::size_t const number_of_entities,
+        std::pmr::polymorphic_allocator<> const& output_allocator,
+        Key_t&& key,
+        Component_ts&&... components
+    )
+    {
+        Key_t const key_copy = key;
+
+        Entity_index_range const entity_index_range = 
+            add_entities(
+                component_groups,
+                number_of_entities,
+                std::forward<Key_t>(key),
+                std::forward<Component_ts>(components)...
+            );
+
+        using Entity_info_vector = std::vector<Entity_info<Key_t>>;
+            
+        constexpr std::size_t vector_index = Tuple_element_index<
+            Entity_info_vector,
+            decltype(entity_manager.entity_infos)
+        >::value;
+
+        Entity_info_vector& entity_infos = std::get<vector_index>(entity_manager.entity_infos);
+        std::vector<Entity_info_location>& entity_info_locations = entity_manager.entity_info_locations;
+
+        std::size_t const first_entity_value = entity_infos.size();
+        std::size_t const last_entity_value = first_entity_value + (entity_index_range.end - entity_index_range.begin);
+
+        for (std::size_t entity_index = entity_index_range.begin; entity_index < entity_index_range.end; ++entity_index)
+        {
+            {
+                Entity_info_location const entity_info_location
+                {
+                    .vector_index = vector_index,
+                    .index_in_vector = entity_infos.size(),
+                };
+
+                entity_info_locations.push_back(entity_info_location);
+            }
+
+            {
+                constexpr std::size_t map_index = Tuple_element_index<
+                    std::unordered_map<std::decay_t<Key_t>, std::tuple<std::vector<Component_ts>...>>,
+                    Component_groups_t
+                >::value;
+
+                Entity_info<Key_t> const entity_info
+                {
+                    .map_index = map_index,
+                    .key = key_copy,
+                    .index_in_vector = entity_index,
+                };
+
+                entity_infos.push_back(entity_info);
+            }
+        }
+
+        std::pmr::vector<Entity> new_entities{output_allocator};
+        new_entities.resize(last_entity_value - first_entity_value);
+        for (std::size_t index = 0; index < new_entities.size(); ++index)
+        {
+            new_entities[index] = {first_entity_value + index};
+        }
+
+        return new_entities;
+    }
+
+    template <typename... Component_ts, typename Entity_manager_t, typename Component_groups_t>
+    std::tuple<Component_ts...> get_components(
+        Entity_manager_t const& entity_manager,
+        Component_groups_t const& component_groups,
+        Entity const entity
+    ) noexcept
+    {
+        std::vector<Entity_info_location> const& entity_info_locations = entity_manager.entity_info_locations;
+        Entity_info_location const& entity_info_location = entity_info_locations[entity.index];
+
+        std::tuple<Component_ts...> components{};
+
+        visit(entity_manager.entity_infos, entity_info_location.vector_index,
+            [&](auto const& entity_infos) -> void
+            {
+                auto const entity_info = entity_infos[entity_info_location.index_in_vector];
+
+                visit(component_groups, entity_info.map_index,
+                    [&] <typename T> (T const& component_map) -> void
+                    {
+                        if constexpr (contains<T, std::vector<Component_ts>...>())
+                        {
+                            auto const& vector_tuple = component_map.at(entity_info.key);
+
+                            components = std::make_tuple(
+                                std::get<std::vector<Component_ts>>(vector_tuple)[entity_info.index_in_vector]...
+                            );
+                        }
+                    }
+                );
+            }
+        );
+
+        return components;
+    }
+
+    TEST_CASE("create_entities adds components")
+    {
+        Entity_manager_0 entity_manager;
+        Component_groups_0 component_groups;
+
+        create_entities(entity_manager, component_groups, 1, {}, 0, 1, 1.0f);
+
+        {
+            auto const& map = std::get<0>(component_groups);
+            REQUIRE(map.contains(0));
+
+            auto const& group = map.at(0);
+            
+            {
+                std::vector<int> const& int_components = std::get<0>(group);
+                REQUIRE(int_components.size() == 1);
+                
+                CHECK(int_components[0] == 1);
+            }
+            
+            {
+                std::vector<float> const& float_components = std::get<1>(group);
+                REQUIRE(float_components.size() == 1);
+                
+                CHECK(float_components[0] == 1.0f);
+            }
+        }
+    }
+
+    TEST_CASE("create_entities returns objects that identify components")
+    {
+        Entity_manager_0 entity_manager;
+        Component_groups_0 component_groups;
+
+        {
+            std::pmr::vector<Entity> const entities =
+                create_entities(entity_manager, component_groups, 1, {}, 0, 1, 1.0f);
+
+            REQUIRE(entities.size() == 1);
+
+            {
+                Entity const entity = entities[0];
+
+                std::tuple<int, float> const components = get_components<int, float>(entity_manager, component_groups, entity);
+                CHECK(components == std::make_tuple(1, 1.0f));
+            }
+        }
+
+        {
+            std::pmr::vector<Entity> const entities =
+                create_entities(entity_manager, component_groups, 1, {}, 1, 2, 2.0f, 2.0);
+
+            REQUIRE(entities.size() == 1);
+
+            {
+                Entity const entity = entities[0];
+
+                std::tuple<int, float, double> const components = get_components<int, float, double>(entity_manager, component_groups, entity);
+                CHECK(components == std::make_tuple(2, 2.0f, 2.0));
+            }
+        }
+
+        {
+            std::pmr::vector<Entity> const entities =
+                create_entities(entity_manager, component_groups, 1, {}, 1, 3, 3.0f, 3.0);
+
+            REQUIRE(entities.size() == 1);
+
+            {
+                Entity const entity = entities[0];
+
+                std::tuple<int, float, double> const components = get_components<int, float, double>(entity_manager, component_groups, entity);
+                CHECK(components == std::make_tuple(3, 3.0f, 3.0));
+            }
         }
     }
 }
