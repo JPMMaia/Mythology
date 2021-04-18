@@ -1,11 +1,14 @@
 #include <catch2/catch.hpp>
 
-#include <iostream>
+#include <cstddef>
 #include <ostream>
+#include <span>
+#include <sstream>
 #include <tuple>
 #include <type_traits>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 namespace Catch
 {
@@ -80,19 +83,19 @@ namespace Maia::ECS::Test
         Component_groups_t& component_groups,
         std::size_t const number_of_entities,
         Key_t&& key,
-        Component_ts&&... components
+        std::tuple<Component_ts...> const& components
     )
     {
         using Component_group_t = Component_group<Key_t, Vector_tuple<Component_ts...>>;
 
         Component_group_t& component_group = std::get<Component_group_t>(component_groups);
 
-        auto const add_components = [number_of_entities]<typename T>(std::vector<T>& components, T&& component)
+        auto const add_components = [number_of_entities]<typename T>(std::vector<T>& components, T const& component)
         {
             components.insert(
                 components.end(),
                 number_of_entities,
-                std::forward<T>(component)
+                component
             );
         };
 
@@ -100,7 +103,7 @@ namespace Maia::ECS::Test
 
         std::size_t const first_entity_index = std::get<0>(vector_tuple).size();
 
-        ((add_components(std::get<std::vector<Component_ts>>(vector_tuple), std::forward<Component_ts>(components))), ...);
+        ((add_components(std::get<std::vector<Component_ts>>(vector_tuple), std::get<Component_ts>(components))), ...);
 
         std::size_t const last_entity_index = std::get<0>(vector_tuple).size();
 
@@ -170,22 +173,22 @@ namespace Maia::ECS::Test
         
         CHECK(get_number_of_entities<Vector_tuple<int, float>>(component_groups, 0) == 0);
 
-        add_entities(component_groups, 1, 0, 1, 1.0f);
+        add_entities(component_groups, 1, 0, std::make_tuple(1, 1.0f));
         CHECK(get_number_of_entities<Vector_tuple<int, float>>(component_groups, 0) == 1);
 
-        add_entities(component_groups, 1, 0, 2, 2.0f);
+        add_entities(component_groups, 1, 0, std::make_tuple(2, 2.0f));
         CHECK(get_number_of_entities<Vector_tuple<int, float>>(component_groups, 0) == 2);
 
-        add_entities(component_groups, 1, 1, 3, 3.0f);
+        add_entities(component_groups, 1, 1, std::make_tuple(3, 3.0f));
         CHECK(get_number_of_entities<Vector_tuple<int, float>>(component_groups, 1) == 1);
         CHECK(get_number_of_entities<Vector_tuple<int, float>>(component_groups, 0) == 2);
 
-        add_entities(component_groups, 1, 0, 4, 4.0f, 4.0);
+        add_entities(component_groups, 1, 0, std::make_tuple(4, 4.0f, 4.0));
         CHECK(get_number_of_entities<Vector_tuple<int, float, double>>(component_groups, 0) == 1);
         CHECK(get_number_of_entities<Vector_tuple<int, float>>(component_groups, 1) == 1);
         CHECK(get_number_of_entities<Vector_tuple<int, float>>(component_groups, 0) == 2);
 
-        add_entities(component_groups, 1, 1, 5, 5.0f, 5.0);
+        add_entities(component_groups, 1, 1, std::make_tuple(5, 5.0f, 5.0));
         CHECK(get_number_of_entities<Vector_tuple<int, float, double>>(component_groups, 1) == 1);
         CHECK(get_number_of_entities<Vector_tuple<int, float, double>>(component_groups, 0) == 1);
         CHECK(get_number_of_entities<Vector_tuple<int, float>>(component_groups, 1) == 1);
@@ -195,9 +198,9 @@ namespace Maia::ECS::Test
     TEST_CASE("for_each iterates through all component groups")
     {
         Component_groups_0 component_groups;
-        add_entities(component_groups, 1, 0, 1, 1.0f);
-        add_entities(component_groups, 1, 1, 2, 2.0f);
-        add_entities(component_groups, 1, 0, 3, 3.0f, 3.0);
+        add_entities(component_groups, 1, 0, std::make_tuple(1, 1.0f));
+        add_entities(component_groups, 1, 1, std::make_tuple(2, 2.0f));
+        add_entities(component_groups, 1, 0, std::make_tuple(3, 3.0f, 3.0));
 
         bool int_float_iterated = false;
         bool int_float_double_iterated = false;
@@ -330,8 +333,8 @@ namespace Maia::ECS::Test
 
         {
             Component_groups_0 component_groups;
-            add_entities(component_groups, number_of_elements, 0, 1, 1.0f);
-            add_entities(component_groups, number_of_elements, 0, 2, 2.0f, 2.0);
+            add_entities(component_groups, number_of_elements, 0, std::make_tuple(1, 1.0f));
+            add_entities(component_groups, number_of_elements, 0, std::make_tuple(2, 2.0f, 2.0));
 
             BENCHMARK("New Component_group iteration")
             {
@@ -379,32 +382,47 @@ namespace Maia::ECS::Test
         std::size_t index_in_vector;
     };
 
-    template <typename... Key_ts>
+    template <typename Entity_infos_t, typename Component_groups_t>
     struct Entity_manager
     {
         std::vector<Entity_info_location> entity_info_locations;
-        
-        std::tuple<
-            std::vector<Entity_info<Key_ts>>...
-        > entity_infos;
+        Entity_infos_t entity_infos;
+        Component_groups_t component_groups;
     };
 
-    using Entity_manager_0 = Entity_manager<int>;
+    using Entity_manager_0 = Entity_manager<
+        std::tuple<
+            std::vector<Entity_info<int>>
+        >,
+        std::tuple<
+            Component_group<int, Vector_tuple<int, float>>,
+            Component_group<int, Vector_tuple<int, float, double>>
+        >
+    >;
+
     struct Entity
     {
         std::size_t index;
     };
 
-    template <typename Entity_manager_t, typename Component_groups_t, typename Key_t, typename... Component_ts>
+    std::ostream& operator<<(std::ostream& output_stream, Entity const entity) noexcept
+    {
+        output_stream << '{' << entity.index << '}';
+        return output_stream;
+    }
+
+    template <typename Entity_manager_t, typename Key_t, typename... Component_ts>
     std::pmr::vector<Entity> create_entities(
         Entity_manager_t& entity_manager,
-        Component_groups_t& component_groups,
         std::size_t const number_of_entities,
         std::pmr::polymorphic_allocator<> const& output_allocator,
         Key_t&& key,
-        Component_ts&&... components
+        std::tuple<Component_ts...> const& components
     )
     {
+        using Component_groups_t = decltype(entity_manager.component_groups);
+        auto& component_groups = entity_manager.component_groups;
+
         Key_t const key_copy = key;
 
         Entity_index_range const entity_index_range = 
@@ -412,7 +430,7 @@ namespace Maia::ECS::Test
                 component_groups,
                 number_of_entities,
                 std::forward<Key_t>(key),
-                std::forward<Component_ts>(components)...
+                components
             );
 
         using Entity_info_vector = std::vector<Entity_info<Key_t>>;
@@ -467,13 +485,23 @@ namespace Maia::ECS::Test
         return new_entities;
     }
 
-    template <typename... Component_ts, typename Entity_manager_t, typename Component_groups_t>
+    template <typename Entity_manager_t, typename Key_t, typename... Component_ts>
+    void remove_entities(
+        Entity_manager_t& entity_manager,
+        std::span<Entity const> entities
+    )
+    {
+        
+    }
+
+    template <typename... Component_ts, typename Entity_manager_t>
     std::tuple<Component_ts...> get_components(
         Entity_manager_t const& entity_manager,
-        Component_groups_t const& component_groups,
         Entity const entity
     ) noexcept
     {
+        auto const& component_groups = entity_manager.component_groups;
+
         std::vector<Entity_info_location> const& entity_info_locations = entity_manager.entity_info_locations;
         Entity_info_location const& entity_info_location = entity_info_locations[entity.index];
 
@@ -503,14 +531,15 @@ namespace Maia::ECS::Test
         return components;
     }
 
-    template <typename... Component_ts, typename Entity_manager_t, typename Component_groups_t>
+    template <typename... Component_ts, typename Entity_manager_t>
     void set_components(
-        Entity_manager_t const& entity_manager,
-        Component_groups_t& component_groups,
+        Entity_manager_t& entity_manager,
         Entity const entity,
         std::tuple<Component_ts...> const& components
     ) noexcept
     {
+        auto& component_groups = entity_manager.component_groups;
+
         std::vector<Entity_info_location> const& entity_info_locations = entity_manager.entity_info_locations;
         Entity_info_location const& entity_info_location = entity_info_locations[entity.index];
 
@@ -537,12 +566,11 @@ namespace Maia::ECS::Test
     TEST_CASE("create_entities adds components")
     {
         Entity_manager_0 entity_manager;
-        Component_groups_0 component_groups;
 
-        create_entities(entity_manager, component_groups, 1, {}, 0, 1, 1.0f);
+        create_entities(entity_manager, 1, {}, 0, std::make_tuple(1, 1.0f));
 
         {
-            auto const& map = std::get<0>(component_groups);
+            auto const& map = std::get<0>(entity_manager.component_groups);
             REQUIRE(map.contains(0));
 
             auto const& group = map.at(0);
@@ -566,46 +594,45 @@ namespace Maia::ECS::Test
     TEST_CASE("create_entities returns objects that identify components")
     {
         Entity_manager_0 entity_manager;
-        Component_groups_0 component_groups;
 
         {
             std::pmr::vector<Entity> const entities =
-                create_entities(entity_manager, component_groups, 1, {}, 0, 1, 1.0f);
+                create_entities(entity_manager, 1, {}, 0, std::make_tuple(1, 1.0f));
 
             REQUIRE(entities.size() == 1);
 
             {
                 Entity const entity = entities[0];
 
-                std::tuple<int, float> const components = get_components<int, float>(entity_manager, component_groups, entity);
+                std::tuple<int, float> const components = get_components<int, float>(entity_manager, entity);
                 CHECK(components == std::make_tuple(1, 1.0f));
             }
         }
 
         {
             std::pmr::vector<Entity> const entities =
-                create_entities(entity_manager, component_groups, 1, {}, 1, 2, 2.0f, 2.0);
+                create_entities(entity_manager, 1, {}, 1, std::make_tuple(2, 2.0f, 2.0));
 
             REQUIRE(entities.size() == 1);
 
             {
                 Entity const entity = entities[0];
 
-                std::tuple<int, float, double> const components = get_components<int, float, double>(entity_manager, component_groups, entity);
+                std::tuple<int, float, double> const components = get_components<int, float, double>(entity_manager, entity);
                 CHECK(components == std::make_tuple(2, 2.0f, 2.0));
             }
         }
 
         {
             std::pmr::vector<Entity> const entities =
-                create_entities(entity_manager, component_groups, 1, {}, 1, 3, 3.0f, 3.0);
+                create_entities(entity_manager, 1, {}, 1, std::make_tuple(3, 3.0f, 3.0));
 
             REQUIRE(entities.size() == 1);
 
             {
                 Entity const entity = entities[0];
 
-                std::tuple<int, float, double> const components = get_components<int, float, double>(entity_manager, component_groups, entity);
+                std::tuple<int, float, double> const components = get_components<int, float, double>(entity_manager, entity);
                 CHECK(components == std::make_tuple(3, 3.0f, 3.0));
             }
         }
@@ -614,18 +641,17 @@ namespace Maia::ECS::Test
     TEST_CASE("set_components sets the value of an entity's components")
     {
         Entity_manager_0 entity_manager;
-        Component_groups_0 component_groups;
 
-        std::pmr::vector<Entity> const entities = create_entities(entity_manager, component_groups, 1, {}, 0, 0, 0.0f);
+        std::pmr::vector<Entity> const entities = create_entities(entity_manager, 1, {}, 0, std::make_tuple(0, 0.0f));
         REQUIRE(entities.size() == 1);
 
         {
             Entity const entity = entities[0];
 
             std::tuple<int, float> const new_components{1, 2.0f};
-            set_components(entity_manager, component_groups, entity, new_components);
+            set_components(entity_manager, entity, new_components);
 
-            std::tuple<int, float> const actual_components = get_components<int, float>(entity_manager, component_groups, entity);
+            std::tuple<int, float> const actual_components = get_components<int, float>(entity_manager, entity);
             CHECK(actual_components == new_components);
         }
     }
