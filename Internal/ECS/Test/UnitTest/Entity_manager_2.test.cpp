@@ -1,9 +1,31 @@
 #include <catch2/catch.hpp>
 
+#include <iostream>
+#include <ostream>
 #include <tuple>
 #include <type_traits>
 #include <unordered_map>
 #include <utility>
+
+namespace Catch
+{
+    template<typename... Component_ts>
+    struct StringMaker<std::tuple<Component_ts...>>
+    {
+        static std::string convert(std::tuple<Component_ts...> const& components)
+        {
+            using Tuple_t = std::tuple<Component_ts...>;
+            using Last_component_t = std::tuple_element_t<std::tuple_size_v<Tuple_t> - 1, Tuple_t>; 
+
+            std::stringstream stream;
+            stream << '{';
+            ((stream << std::get<Component_ts>(components) << (std::is_same_v<Component_ts, Last_component_t> ? "" : ", ")), ...);
+            stream << '}';
+
+            return stream.str();
+        }
+    };
+}
 
 namespace Maia::ECS::Test
 {
@@ -134,10 +156,9 @@ namespace Maia::ECS::Test
         };
 
         std::apply(
-            [&visit_aux] (auto const&... values) noexcept
+            [&visit_aux] <typename... T> (T&&... values) noexcept
             {
-                
-                ((visit_aux(values)), ...);
+                ((visit_aux(std::forward<T>(values))), ...);
             },
             tuple
         );
@@ -482,6 +503,37 @@ namespace Maia::ECS::Test
         return components;
     }
 
+    template <typename... Component_ts, typename Entity_manager_t, typename Component_groups_t>
+    void set_components(
+        Entity_manager_t const& entity_manager,
+        Component_groups_t& component_groups,
+        Entity const entity,
+        std::tuple<Component_ts...> const& components
+    ) noexcept
+    {
+        std::vector<Entity_info_location> const& entity_info_locations = entity_manager.entity_info_locations;
+        Entity_info_location const& entity_info_location = entity_info_locations[entity.index];
+
+        visit(entity_manager.entity_infos, entity_info_location.vector_index,
+            [&](auto const& entity_infos) -> void
+            {
+                auto const entity_info = entity_infos[entity_info_location.index_in_vector];
+
+                visit(component_groups, entity_info.map_index,
+                    [&] <typename T> (T& component_map) -> void
+                    {
+                        if constexpr (contains<T, std::vector<Component_ts>...>())
+                        {
+                            auto& vector_tuple = component_map.at(entity_info.key);
+
+                            ((std::get<std::vector<Component_ts>>(vector_tuple)[entity_info.index_in_vector] = std::get<Component_ts>(components)), ...);
+                        }
+                    }
+                );
+            }
+        );
+    }
+
     TEST_CASE("create_entities adds components")
     {
         Entity_manager_0 entity_manager;
@@ -556,6 +608,25 @@ namespace Maia::ECS::Test
                 std::tuple<int, float, double> const components = get_components<int, float, double>(entity_manager, component_groups, entity);
                 CHECK(components == std::make_tuple(3, 3.0f, 3.0));
             }
+        }
+    }
+
+    TEST_CASE("set_components sets the value of an entity's components")
+    {
+        Entity_manager_0 entity_manager;
+        Component_groups_0 component_groups;
+
+        std::pmr::vector<Entity> const entities = create_entities(entity_manager, component_groups, 1, {}, 0, 0, 0.0f);
+        REQUIRE(entities.size() == 1);
+
+        {
+            Entity const entity = entities[0];
+
+            std::tuple<int, float> const new_components{1, 2.0f};
+            set_components(entity_manager, component_groups, entity, new_components);
+
+            std::tuple<int, float> const actual_components = get_components<int, float>(entity_manager, component_groups, entity);
+            CHECK(actual_components == new_components);
         }
     }
 }
