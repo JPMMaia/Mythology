@@ -1,13 +1,14 @@
+module;
+
+#include <functional>
+#include <ostream>
+
 module maia.ecs.entity;
-
-import <functional>;
-import <ostream>;
-
 namespace Maia::ECS
 {
 	bool operator==(Entity const lhs, Entity const rhs) noexcept
 	{
-		return lhs.value == rhs.value;
+		return lhs.index == rhs.index;
 	}
 
 	bool operator!=(Entity const lhs, Entity const rhs) noexcept
@@ -17,7 +18,7 @@ namespace Maia::ECS
 
 	std::ostream& operator<<(std::ostream& output_stream, Entity const value) noexcept
 	{
-		output_stream << "{" << value.value << "}";
+		output_stream << '{' << value.index << '}';
 		return output_stream;
 	}
 }

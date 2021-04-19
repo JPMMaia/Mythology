@@ -1,16 +1,18 @@
-export module maia.ecs.entity;
+module;
 
-import <cstdint>;
-import <functional>;
-import <iosfwd>;
+#include <cstddef>
+#include <functional>
+#include <iosfwd>
+
+export module maia.ecs.entity;
 
 namespace Maia::ECS
 {
 	export struct Entity
 	{
-		using Integral_type = std::uint32_t;
+		using Integral_type = std::size_t;
 
-		Integral_type value{0};
+		Integral_type index{0};
 	};
 
 	export bool operator==(Entity lhs, Entity rhs) noexcept;
@@ -27,7 +29,7 @@ namespace Maia::ECS
 
 		result_type operator()(argument_type const& entity) const noexcept
 		{
-			return std::hash<Maia::ECS::Entity::Integral_type>{}(entity.value);
+			return std::hash<Maia::ECS::Entity::Integral_type>{}(entity.index);
 		}
 	};
 }

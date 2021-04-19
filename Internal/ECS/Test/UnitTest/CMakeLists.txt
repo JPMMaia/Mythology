@@ -5,6 +5,10 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../../..//Utilities/CMa
 add_library (MaiaTest)
 add_library (Maia::Test ALIAS MaiaTest)
 
+find_package (Catch2 CONFIG REQUIRED)
+target_link_libraries (MaiaTest PUBLIC Catch2_header Catch2_runner)
+add_module_dependency (MaiaTest "catch2.catch")
+
 set_target_properties(MaiaTest 
 	PROPERTIES 
 		LINKER_LANGUAGE CXX
@@ -22,6 +26,12 @@ target_module (
     INTERFACE "Debug_resource.cxx"
 )
 
+target_module (
+    MaiaTest
+    PUBLIC "maia.test.print_tuple"
+    INTERFACE "Print_tuple.cxx"
+)
+
 # Unit tests
 
 add_executable (MaiaECSUnitTest)
@@ -34,16 +44,13 @@ target_compile_features (MaiaECSUnitTest PRIVATE cxx_std_20)
 
 add_module_compile_options (MaiaECSUnitTest)
 
-find_package (Catch2 CONFIG REQUIRED)
-target_link_libraries (MaiaECSUnitTest PRIVATE Catch2_header Catch2_runner)
-add_module_dependency (MaiaECSUnitTest "catch2.catch")
-
 target_link_libraries (MaiaECSUnitTest PRIVATE Maia::ECS Maia::Test)
 
 target_sources (MaiaECSUnitTest 
 	PRIVATE
 		"main.cpp"
-		"Entity_manager_2.test.cpp"
+		"Component_groups.test.cpp"
+		"Entity_manager.test.cpp"
 )
 
 include (Catch)
@@ -60,11 +67,7 @@ target_compile_features (MaiaECSConstexprTests PRIVATE cxx_std_20)
 
 add_module_compile_options (MaiaECSConstexprTests)
 
-find_package (Catch2 CONFIG REQUIRED)
-target_link_libraries (MaiaECSConstexprTests PRIVATE Catch2_header Catch2_runner)
-add_module_dependency (MaiaECSConstexprTests "catch2.catch")
-
-target_link_libraries (MaiaECSConstexprTests PRIVATE Maia::ECS)
+target_link_libraries (MaiaECSConstexprTests PRIVATE Maia::ECS Maia::Test)
 
 target_sources (MaiaECSConstexprTests 
 	PRIVATE
