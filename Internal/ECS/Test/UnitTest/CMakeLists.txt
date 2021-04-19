@@ -38,19 +38,12 @@ find_package (Catch2 CONFIG REQUIRED)
 target_link_libraries (MaiaECSUnitTest PRIVATE Catch2_header Catch2_runner)
 add_module_dependency (MaiaECSUnitTest "catch2.catch")
 
-target_link_libraries (MaiaECSUnitTest PRIVATE Maia::ECS Maia::ECS::Components Maia::Test)
+target_link_libraries (MaiaECSUnitTest PRIVATE Maia::ECS Maia::Test)
 
 target_sources (MaiaECSUnitTest 
 	PRIVATE
 		"main.cpp"
-		"Entity_manager.test.cpp"
-		"Component_chunk_group.test.cpp"
-		"Hash_map.test.cpp"
-		#"Archetype.test.cpp"
-		#"Component.test.cpp"
-		#"Component_group.test.cpp"
-		#"Entity_manager.test.cpp"
-		#"Systems/Transform_system.test.cpp"
+		"Entity_manager_2.test.cpp"
 )
 
 include (Catch)
@@ -71,13 +64,11 @@ find_package (Catch2 CONFIG REQUIRED)
 target_link_libraries (MaiaECSConstexprTests PRIVATE Catch2_header Catch2_runner)
 add_module_dependency (MaiaECSConstexprTests "catch2.catch")
 
-target_link_libraries (MaiaECSConstexprTests PRIVATE Maia::ECS Maia::ECS::Components)
-target_link_libraries (MaiaECSConstexprTests PRIVATE Standard_library)
+target_link_libraries (MaiaECSConstexprTests PRIVATE Maia::ECS)
 
 target_sources (MaiaECSConstexprTests 
 	PRIVATE
 		"main.cpp"
-		"Archetype.constexpr.test.cpp"
 )
 
 catch_discover_tests (MaiaECSConstexprTests)
