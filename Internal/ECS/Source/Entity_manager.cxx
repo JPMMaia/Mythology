@@ -11,46 +11,95 @@ export module maia.ecs.entity_manager;
 
 import maia.ecs.component_groups;
 import maia.ecs.entity;
+import maia.ecs.tuple_helpers;
 
 namespace Maia::ECS
 {
-    template <class T, class Tuple>
-    struct Tuple_element_index;
-
-    template <class T, class... Types>
-    struct Tuple_element_index<T, std::tuple<T, Types...>>
-    {
-        static constexpr std::size_t value = 0;
-    };
-
-    template <class T, class U, class... Types>
-    struct Tuple_element_index<T, std::tuple<U, Types...>>
-    {
-        static constexpr std::size_t value = 1 + Tuple_element_index<T, std::tuple<Types...>>::value;
-    };
-
+    /**
+     * @brief Describes the location of an entity info.
+     * 
+     */
     export struct Entity_info_location
     {
+        /**
+         * @brief Index of a vector in a tuple.
+         * 
+         */
         std::size_t vector_index;
+
+        /**
+         * @brief Index of the entity info inside the vector.
+         * 
+         */
         std::size_t index_in_vector;
     };
 
+    /**
+     * @brief Describes the location of an entity.
+     * 
+     */
     export template <typename Key_t>
     struct Entity_info
     {
+        /**
+         * @brief Index of a map in a tuple.
+         * 
+         */
         std::size_t map_index;
+
+        /**
+         * @brief Key in a component group map.
+         * 
+         */
         Key_t key;
+
+        /**
+         * @brief Index of the entity components.
+         * 
+         */
         std::size_t index_in_vector;
     };
 
+    /**
+     * @brief Container for entities and respective components.
+     * 
+     */
     export template <typename Entity_infos_t, typename Component_groups_t>
     struct Entity_manager
     {
+        /**
+         * @brief Location of each entity info.
+         * 
+         * Indexed by Entity::index.
+         * 
+         */
         std::vector<Entity_info_location> entity_info_locations;
+
+        /**
+         * @brief Location of each entity.
+         * 
+         * Indexed by Entity_info_location::vector_index.
+         * 
+         */
         Entity_infos_t entity_infos;
+
+        /**
+         * @brief The container that holds the entities' components.
+         * 
+         */
         Component_groups_t component_groups;
     };
 
+    /**
+     * @brief Create entities and respective components.
+     * 
+     * @param entity_manager Container for entities and components.
+     * @param number_of_entities The number of entities to create.
+     * @param output_allocator The allocator used for allocating memory for the returned vector.
+     * @param key The key of the component group to which the entities will be added.
+     * @param components The initial values of the components associated with the entities.
+     * @return The created entities.
+     */
     export template <typename Entity_manager_t, typename Key_t, typename... Component_ts>
     std::pmr::vector<Entity> create_entities(
         Entity_manager_t& entity_manager,
@@ -136,6 +185,12 @@ namespace Maia::ECS
         return new_entities;
     }
 
+    /**
+     * @brief Destroy entities and respective components.
+     * 
+     * @param entity_manager Container for entities and components.
+     * @param entities The entities to destroy.
+     */
     export template <typename Entity_manager_t>
     void destroy_entities(
         Entity_manager_t& entity_manager,
@@ -197,6 +252,13 @@ namespace Maia::ECS
         }
     }
 
+    /**
+     * @brief Get the components associated with an entity.
+     * 
+     * @param entity_manager Container for entities and components.
+     * @param entity The entity that identifies the components.
+     * @return The value of the entity's components.
+     */
     export template <typename... Component_ts, typename Entity_manager_t>
     std::tuple<Component_ts...> get_components(
         Entity_manager_t const& entity_manager,
@@ -234,6 +296,13 @@ namespace Maia::ECS
         return components;
     }
 
+    /**
+     * @brief Set the components associated with an entity.
+     * 
+     * @param entity_manager Container for entities and components.
+     * @param entity The entity that identifies the components.
+     * @param components The value of the entity's components to set.
+     */
     export template <typename... Component_ts, typename Entity_manager_t>
     void set_components(
         Entity_manager_t& entity_manager,

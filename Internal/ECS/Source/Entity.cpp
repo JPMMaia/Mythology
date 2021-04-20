@@ -4,6 +4,7 @@ module;
 #include <ostream>
 
 module maia.ecs.entity;
+
 namespace Maia::ECS
 {
 	bool operator==(Entity const lhs, Entity const rhs) noexcept

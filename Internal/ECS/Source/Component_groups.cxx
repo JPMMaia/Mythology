@@ -8,14 +8,24 @@ module;
 
 export module maia.ecs.component_groups;
 
+import maia.ecs.tuple_helpers; 
+
 namespace Maia::ECS
 {
-    export template <typename... Component_ts>
-    using Vector_tuple = std::tuple<std::vector<Component_ts>...>;
-
+    /**
+     * @brief A component group is a map from key to a tuple of components.
+     * 
+     */
     export template <typename Key_t, typename Tuple>
     using Component_group = std::unordered_map<Key_t, Tuple>;
 
+    /**
+     * @brief Get the number of entities in a component group that are associated with a certain \p key.
+     * 
+     * @param component_groups All component groups.
+     * @param key The key to use to find the number of entities.
+     * @return The number of entities in a component group that are associated with a certain \p key.
+     */
     export template <typename Tuple, typename Component_groups_t, typename Key_t>
     std::size_t get_number_of_entities(Component_groups_t const& component_groups, Key_t const& key) noexcept
     {
@@ -30,12 +40,34 @@ namespace Maia::ECS
             0;
     }
 
+    /**
+     * @brief A range of entity indices in a component group.
+     * 
+     */
     export struct Entity_index_range
     {
+        /**
+         * @brief First entity index in the range.
+         * 
+         */
         std::size_t begin;
+
+        /**
+         * @brief One past the last entity index in the range.
+         * 
+         */
         std::size_t end;
     };
 
+    /**
+     * @brief Add entities and corresponding components.
+     * 
+     * @param component_groups All component groups.
+     * @param number_of_entities The number of entities to add. The components of each entity will be identical.
+     * @param key The key on the component group to add the entities.
+     * @param components The initial value of the added entities' components.
+     * @return A range of entity indices describing the position in which these were added.
+     */
     export template <typename Component_groups_t, typename Key_t, typename... Component_ts>
     Entity_index_range add_entities(
         Component_groups_t& component_groups,
@@ -68,6 +100,12 @@ namespace Maia::ECS
         return {first_entity_index, last_entity_index};
     }
 
+    /**
+     * @brief Iterate through all component groups.
+     * 
+     * @param component_groups Component groups to iterate.
+     * @param function Function that will be called for each component group.
+     */
     export template <typename Component_groups_t, typename Function_t>
     void for_each(Component_groups_t const& component_groups, Function_t&& function) noexcept
     {
@@ -80,19 +118,11 @@ namespace Maia::ECS
         );
     }
 
-
-    template <typename T, typename Tuple>
-    struct Has_type;
-
-    template <typename T>
-    struct Has_type<T, std::tuple<>> : std::false_type {};
-
-    template <typename T, typename U, typename... Ts>
-    struct Has_type<T, std::tuple<U, Ts...>> : Has_type<T, std::tuple<Ts...>> {};
-
-    template <typename T, typename... Ts>
-    struct Has_type<T, std::tuple<T, Ts...>> : std::true_type {};
-
+    /**
+     * @brief Check if component group contains the given component vectors.
+     * 
+     * @return True if component group contains all component vectors. False otherwise.
+     */
     export template <typename Component_group_t, typename... Component_vector_ts>
     constexpr bool contains() noexcept
     {
@@ -101,6 +131,13 @@ namespace Maia::ECS
         >;
     }
 
+    /**
+     * @brief Call function with the tuple element corresponding to the given non-compile-time index.
+     * 
+     * @param tuple Tuple which contains element to visit.
+     * @param index Index of the tuple element to visit.
+     * @param function Function that is called with the tuple element that corresponds to the given index.
+     */
     export template <typename Tuple, typename Function>
     void visit(Tuple&& tuple, std::size_t const index, Function&& function) noexcept
     {

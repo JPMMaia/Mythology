@@ -16,8 +16,17 @@ target_include_directories (MaiaECS
 target_module (
     MaiaECS
     PUBLIC
+    "maia.ecs.tuple_helpers"
+    INTERFACE "Tuple_helpers.cxx"
+)
+
+target_module (
+    MaiaECS
+    PUBLIC
     "maia.ecs.component_groups"
     INTERFACE "Component_groups.cxx"
+    INTERFACE_DEPENDS
+        "maia.ecs.tuple_helpers"
 )
 
 target_module (
@@ -36,4 +45,5 @@ target_module (
     INTERFACE_DEPENDS
         "maia.ecs.component_groups"
         "maia.ecs.entity"
+        "maia.ecs.tuple_helpers"
 )
