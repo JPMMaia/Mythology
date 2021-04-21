@@ -1,6 +1,6 @@
 if (MSVC)
 
-    set(_output_ifc_dir "${CMAKE_BINARY_DIR}/ifc")
+    set(_output_ifc_dir "${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/ifc")
     file(MAKE_DIRECTORY "${_output_ifc_dir}")
 
     find_program(
