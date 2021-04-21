@@ -1,6 +1,7 @@
 #include <catch2/catch.hpp>
 
 #include <cstddef>
+#include <memory_resource>
 #include <ostream>
 #include <span>
 #include <sstream>
@@ -164,5 +165,33 @@ namespace Maia::ECS::Test
             std::tuple<int, float> const actual_components = entity_manager.get_components<int, float>(entity);
             CHECK(actual_components == new_components);
         }
+    }
+
+    TEST_CASE("Create entity manager with custom allocator")
+    {
+        std::pmr::monotonic_buffer_resource buffer_resource;
+        std::pmr::polymorphic_allocator<> allocator{&buffer_resource};
+        Entity_manager_0 entity_manager{allocator};
+
+        entity_manager.create_entities(1, {}, 0, std::make_tuple(0, 0.0f));
+
+        for_each(
+            entity_manager.get_component_groups(),
+            [&](auto const& component_group) noexcept
+            {
+                CHECK(component_group.get_allocator() == allocator);
+
+                for (auto const& pair : component_group)
+                {
+                    for_each(
+                        pair.second,
+                        [&](auto const& components_vector) noexcept
+                        {
+                            CHECK(components_vector.get_allocator() == allocator);
+                        }
+                    );
+                }
+            }
+        );
     }
 }

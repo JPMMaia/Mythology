@@ -70,6 +70,25 @@ namespace Maia::ECS
     public:
 
         /**
+         * @brief Create an empty entity manager.
+         * 
+         */
+        Entity_manager() noexcept = default;
+
+        /**
+         * @brief Create an empty entity manager in which all dynamic memory is allocated
+         * using the given custom allocator.
+         * 
+         * @param allocator The allocator to use for all dynamic memory allocation.
+         */
+        explicit Entity_manager(std::pmr::polymorphic_allocator<> const& allocator) noexcept :
+            m_entity_info_locations{allocator},
+            m_entity_infos{allocator},
+            m_component_groups{construct_tuple<Component_groups_t>(allocator)}
+        {
+        }
+
+        /**
          * @brief Create entities and respective components.
          * 
          * @param number_of_entities The number of entities to create.

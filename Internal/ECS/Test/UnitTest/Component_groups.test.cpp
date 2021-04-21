@@ -87,12 +87,12 @@ namespace Maia::ECS::Test
 
     TEST_CASE("contains returns true if tuple contains type and false otherwise")
     {
-        /*CHECK(contains<std::tuple_element_t<0, Component_groups_0>, std::pmr::vector<int>>());
+        CHECK(contains<std::tuple_element_t<0, Component_groups_0>, std::pmr::vector<int>>());
         CHECK(contains<std::tuple_element_t<0, Component_groups_0>, std::pmr::vector<float>>());
         CHECK(!contains<std::tuple_element_t<0, Component_groups_0>, std::pmr::vector<double>>());
         CHECK(contains<std::tuple_element_t<1, Component_groups_0>, std::pmr::vector<int>>());
         CHECK(contains<std::tuple_element_t<1, Component_groups_0>, std::pmr::vector<float>>());
-        CHECK(contains<std::tuple_element_t<1, Component_groups_0>, std::pmr::vector<double>>());*/
+        CHECK(contains<std::tuple_element_t<1, Component_groups_0>, std::pmr::vector<double>>());
     }
 
     TEST_CASE("visit calls function with tuple argument at runtime index")

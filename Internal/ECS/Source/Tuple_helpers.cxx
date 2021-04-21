@@ -37,6 +37,24 @@ namespace Maia::ECS
         static constexpr std::size_t value = 1 + Tuple_element_index<T, std::tuple<Types...>>::value;
     };
 
+    
+    template <class T> struct Tuple_construct_t;
+
+    template <class... Ts> struct Tuple_construct_t<std::tuple<Ts...>>
+    {
+        template <class... Argument_ts>
+        static std::tuple<Ts...> make_tuple(Argument_ts&&... arguments)
+        {
+            return std::make_tuple(Ts{arguments...}...);
+        }
+    };
+
+    export template <class Tuple_t, class... Argument_ts>
+    Tuple_t construct_tuple(Argument_ts&&... arguments)
+    {
+        return Tuple_construct_t<Tuple_t>::make_tuple(std::forward<Argument_ts>(arguments)...);
+    }
+
 
     export template <typename... Component_ts>
     using Vector_tuple = std::tuple<std::pmr::vector<Component_ts>...>;
