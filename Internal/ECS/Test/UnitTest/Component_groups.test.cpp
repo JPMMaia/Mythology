@@ -189,7 +189,7 @@ namespace Maia::ECS::Test
             add_entities(component_groups, number_of_elements, 0, std::make_tuple(1, 1.0f));
             add_entities(component_groups, number_of_elements, 0, std::make_tuple(2, 2.0f, 2.0));
 
-            BENCHMARK("New Component_group iteration")
+            BENCHMARK("Component_group iteration")
             {
                 int dummy = 0;
 
