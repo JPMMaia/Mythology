@@ -1,6 +1,7 @@
 #include <catch2/catch.hpp>
 
 #include <cstddef>
+#include <memory_resource>
 #include <ostream>
 #include <span>
 #include <sstream>
@@ -11,13 +12,14 @@
 #include <vector>
 
 import maia.ecs.component_groups;
+import maia.ecs.tuple_helpers;
 import maia.test.print_tuple;
 
 namespace Maia::ECS::Test
 {
     using Component_groups_0 = std::tuple<
-        Component_group<int, Vector_tuple<int, float>>,
-        Component_group<int, Vector_tuple<int, float, double>>
+        Maia::ECS::Component_group<int, Maia::ECS::Vector_tuple<int, float>>,
+        Maia::ECS::Component_group<int, Maia::ECS::Vector_tuple<int, float, double>>
     >;
 
     TEST_CASE("get_number_of_entities returns the number of elements in a component group")
@@ -85,12 +87,12 @@ namespace Maia::ECS::Test
 
     TEST_CASE("contains returns true if tuple contains type and false otherwise")
     {
-        CHECK(contains<std::tuple_element_t<0, Component_groups_0>, std::vector<int>>());
-        CHECK(contains<std::tuple_element_t<0, Component_groups_0>, std::vector<float>>());
-        CHECK(!contains<std::tuple_element_t<0, Component_groups_0>, std::vector<double>>());
-        CHECK(contains<std::tuple_element_t<1, Component_groups_0>, std::vector<int>>());
-        CHECK(contains<std::tuple_element_t<1, Component_groups_0>, std::vector<float>>());
-        CHECK(contains<std::tuple_element_t<1, Component_groups_0>, std::vector<double>>());
+        /*CHECK(contains<std::tuple_element_t<0, Component_groups_0>, std::pmr::vector<int>>());
+        CHECK(contains<std::tuple_element_t<0, Component_groups_0>, std::pmr::vector<float>>());
+        CHECK(!contains<std::tuple_element_t<0, Component_groups_0>, std::pmr::vector<double>>());
+        CHECK(contains<std::tuple_element_t<1, Component_groups_0>, std::pmr::vector<int>>());
+        CHECK(contains<std::tuple_element_t<1, Component_groups_0>, std::pmr::vector<float>>());
+        CHECK(contains<std::tuple_element_t<1, Component_groups_0>, std::pmr::vector<double>>());*/
     }
 
     TEST_CASE("visit calls function with tuple argument at runtime index")
@@ -197,13 +199,13 @@ namespace Maia::ECS::Test
                     component_groups,
                     [&dummy]<typename T>(T const& component_group) -> void
                     {
-                        if constexpr (contains<T, std::vector<int>>())
+                        if constexpr (contains<T, std::pmr::vector<int>>())
                         {
                             int dummy_2 = 0;
 
                             for (auto const& pair : component_group)
                             {
-                                std::vector<int> const& int_components = std::get<std::vector<int>>(pair.second);
+                                std::pmr::vector<int> const& int_components = std::get<std::pmr::vector<int>>(pair.second);
 
                                 for (int const value : int_components)
                                 {

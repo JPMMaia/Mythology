@@ -98,7 +98,7 @@ namespace Maia::ECS
                     std::tuple_cat(components, std::make_tuple(Entity{0}))
                 );
 
-            using Entity_info_vector = std::vector<Entity_info<Key_t>>;
+            using Entity_info_vector = std::pmr::vector<Entity_info<Key_t>>;
 
             constexpr std::size_t vector_index = Tuple_element_index<
                 Entity_info_vector,
@@ -106,7 +106,7 @@ namespace Maia::ECS
             >::value;
 
             Entity_info_vector& entity_infos = std::get<vector_index>(m_entity_infos);
-            std::vector<Entity_info_location>& entity_info_locations = m_entity_info_locations;
+            std::pmr::vector<Entity_info_location>& entity_info_locations = m_entity_info_locations;
 
             std::size_t const first_entity_value = entity_infos.size();
             std::size_t const last_entity_value = first_entity_value + (entity_index_range.end - entity_index_range.begin);
@@ -114,7 +114,7 @@ namespace Maia::ECS
             {
                 using Component_group_t = Component_group<Key_t, Vector_tuple<Component_ts..., Entity>>;
                 Component_group_t& component_group = std::get<Component_group_t>(component_groups);
-                std::vector<Entity>& entities_vector = std::get<std::vector<Entity>>(component_group.at(key_copy));
+                std::pmr::vector<Entity>& entities_vector = std::get<std::pmr::vector<Entity>>(component_group.at(key_copy));
 
                 for (std::size_t entity_index = entity_index_range.begin; entity_index < entity_index_range.end; ++entity_index)
                 {
@@ -136,7 +136,7 @@ namespace Maia::ECS
 
                 {
                     constexpr std::size_t map_index = Tuple_element_index<
-                        std::unordered_map<std::decay_t<Key_t>, std::tuple<std::vector<Component_ts>..., std::vector<Entity>>>,
+                        std::pmr::unordered_map<std::decay_t<Key_t>, std::tuple<std::pmr::vector<Component_ts>..., std::pmr::vector<Entity>>>,
                         Component_groups_t
                     >::value;
 
@@ -172,7 +172,7 @@ namespace Maia::ECS
         {
             auto& component_groups = m_component_groups;
 
-            std::vector<Entity_info_location> const& entity_info_locations = m_entity_info_locations;
+            std::pmr::vector<Entity_info_location> const& entity_info_locations = m_entity_info_locations;
 
             for (Entity const entity : entities)
             {
@@ -203,7 +203,7 @@ namespace Maia::ECS
                                     std::size_t const entity_to_remove_index = entity_info.index_in_vector;
 
                                     {
-                                        Entity const entity_to_move = std::get<std::vector<Entity>>(vector_tuple).back();
+                                        Entity const entity_to_move = std::get<std::pmr::vector<Entity>>(vector_tuple).back();
                                         Entity_info_location const& entity_to_move_info_location = entity_info_locations[entity_to_move.index];
                                         auto& entity_to_move_info = entity_infos[entity_to_move_info_location.index_in_vector];
                                         entity_to_move_info.index_in_vector = entity_to_remove_index;
@@ -238,7 +238,7 @@ namespace Maia::ECS
         {
             auto const& component_groups = m_component_groups;
 
-            std::vector<Entity_info_location> const& entity_info_locations = m_entity_info_locations;
+            std::pmr::vector<Entity_info_location> const& entity_info_locations = m_entity_info_locations;
             Entity_info_location const& entity_info_location = entity_info_locations[entity.index];
 
             std::tuple<Component_ts...> components{};
@@ -251,12 +251,12 @@ namespace Maia::ECS
                     visit(component_groups, entity_info.map_index,
                         [&] <typename T> (T const& component_map) -> void
                         {
-                            if constexpr (contains<T, std::vector<Component_ts>...>())
+                            if constexpr (contains<T, std::pmr::vector<Component_ts>...>())
                             {
                                 auto const& vector_tuple = component_map.at(entity_info.key);
 
                                 components = std::make_tuple(
-                                    std::get<std::vector<Component_ts>>(vector_tuple)[entity_info.index_in_vector]...
+                                    std::get<std::pmr::vector<Component_ts>>(vector_tuple)[entity_info.index_in_vector]...
                                 );
                             }
                         }
@@ -281,7 +281,7 @@ namespace Maia::ECS
         {
             auto& component_groups = m_component_groups;
 
-            std::vector<Entity_info_location> const& entity_info_locations = m_entity_info_locations;
+            std::pmr::vector<Entity_info_location> const& entity_info_locations = m_entity_info_locations;
             Entity_info_location const& entity_info_location = entity_info_locations[entity.index];
 
             visit(m_entity_infos, entity_info_location.vector_index,
@@ -292,11 +292,11 @@ namespace Maia::ECS
                     visit(component_groups, entity_info.map_index,
                         [&] <typename T> (T& component_map) -> void
                         {
-                            if constexpr (contains<T, std::vector<Component_ts>...>())
+                            if constexpr (contains<T, std::pmr::vector<Component_ts>...>())
                             {
                                 auto& vector_tuple = component_map.at(entity_info.key);
 
-                                ((std::get<std::vector<Component_ts>>(vector_tuple)[entity_info.index_in_vector] = std::get<Component_ts>(components)), ...);
+                                ((std::get<std::pmr::vector<Component_ts>>(vector_tuple)[entity_info.index_in_vector] = std::get<Component_ts>(components)), ...);
                             }
                         }
                     );
@@ -332,7 +332,7 @@ namespace Maia::ECS
          * Indexed by Entity::index.
          * 
          */
-        std::vector<Entity_info_location> m_entity_info_locations;
+        std::pmr::vector<Entity_info_location> m_entity_info_locations;
 
         /**
          * @brief Location of each entity.

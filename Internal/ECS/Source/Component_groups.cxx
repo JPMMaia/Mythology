@@ -17,7 +17,7 @@ namespace Maia::ECS
      * 
      */
     export template <typename Key_t, typename Tuple>
-    using Component_group = std::unordered_map<Key_t, Tuple>;
+    using Component_group = std::pmr::unordered_map<Key_t, Tuple>;
 
     /**
      * @brief Get the number of entities in a component group that are associated with a certain \p key.
@@ -80,7 +80,7 @@ namespace Maia::ECS
 
         Component_group_t& component_group = std::get<Component_group_t>(component_groups);
 
-        auto const add_components = [number_of_entities]<typename T>(std::vector<T>& components, T const& component)
+        auto const add_components = [number_of_entities]<typename T>(std::pmr::vector<T>& components, T const& component)
         {
             components.insert(
                 components.end(),
@@ -93,7 +93,7 @@ namespace Maia::ECS
 
         std::size_t const first_entity_index = std::get<0>(vector_tuple).size();
 
-        ((add_components(std::get<std::vector<Component_ts>>(vector_tuple), std::get<Component_ts>(components))), ...);
+        ((add_components(std::get<std::pmr::vector<Component_ts>>(vector_tuple), std::get<Component_ts>(components))), ...);
 
         std::size_t const last_entity_index = std::get<0>(vector_tuple).size();
 

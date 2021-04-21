@@ -19,7 +19,7 @@ namespace Maia::ECS::Test
 {
     using Entity_manager_0 = Entity_manager<
         std::tuple<
-            std::vector<Entity_info<int>>
+            std::pmr::vector<Entity_info<int>>
         >,
         std::tuple<
             Component_group<int, Vector_tuple<int, float, Entity>>,
@@ -40,14 +40,14 @@ namespace Maia::ECS::Test
             auto const& group = map.at(0);
             
             {
-                std::vector<int> const& int_components = std::get<0>(group);
+                std::pmr::vector<int> const& int_components = std::get<0>(group);
                 REQUIRE(int_components.size() == 1);
                 
                 CHECK(int_components[0] == 1);
             }
             
             {
-                std::vector<float> const& float_components = std::get<1>(group);
+                std::pmr::vector<float> const& float_components = std::get<1>(group);
                 REQUIRE(float_components.size() == 1);
                 
                 CHECK(float_components[0] == 1.0f);

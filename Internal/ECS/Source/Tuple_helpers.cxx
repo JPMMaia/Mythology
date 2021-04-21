@@ -1,6 +1,8 @@
 module;
 
+#include <memory_resource>
 #include <tuple>
+#include <type_traits>
 #include <vector>
 
 export module maia.ecs.tuple_helpers;
@@ -37,5 +39,5 @@ namespace Maia::ECS
 
 
     export template <typename... Component_ts>
-    using Vector_tuple = std::tuple<std::vector<Component_ts>...>;
+    using Vector_tuple = std::tuple<std::pmr::vector<Component_ts>...>;
 }
