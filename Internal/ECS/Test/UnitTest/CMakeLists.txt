@@ -32,46 +32,4 @@ target_module (
     INTERFACE "Print_tuple.cxx"
 )
 
-# Unit tests
-
-add_executable (MaiaECSUnitTest)
-add_executable (Maia::ECS::UnitTest ALIAS MaiaECSUnitTest)
-
-target_compile_definitions (MaiaECSUnitTest PRIVATE CATCH_CONFIG_ENABLE_BENCHMARKING)
-
-target_compile_features (MaiaECSUnitTest PRIVATE cxx_std_20)
-
-
-add_module_compile_options (MaiaECSUnitTest)
-
-target_link_libraries (MaiaECSUnitTest PRIVATE Maia::ECS Maia::Test)
-
-target_sources (MaiaECSUnitTest 
-	PRIVATE
-		"main.cpp"
-		"Component_groups.test.cpp"
-		"Entity_manager.test.cpp"
-)
-
-include (Catch)
-catch_discover_tests (MaiaECSUnitTest)
-
-
-# Constexpr tests
-
-add_executable (MaiaECSConstexprTests)
-add_executable (Maia::ECS::ConstexprTests ALIAS MaiaECSConstexprTests)
-
-target_compile_features (MaiaECSConstexprTests PRIVATE cxx_std_20)
-
-
-add_module_compile_options (MaiaECSConstexprTests)
-
-target_link_libraries (MaiaECSConstexprTests PRIVATE Maia::ECS Maia::Test)
-
-target_sources (MaiaECSConstexprTests 
-	PRIVATE
-		"main.cpp"
-)
-
-catch_discover_tests (MaiaECSConstexprTests)
+add_subdirectory("Core")
