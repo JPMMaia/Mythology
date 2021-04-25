@@ -107,10 +107,10 @@ namespace Maia::ECS
      * @param function Function that will be called for each component group.
      */
     export template <typename Component_groups_t, typename Function_t>
-    void for_each(Component_groups_t const& component_groups, Function_t&& function) noexcept
+    void for_each(Component_groups_t& component_groups, Function_t&& function) noexcept
     {
         std::apply(
-            [&function] (auto const&... component_group) noexcept
+            [&function] (auto&... component_group) noexcept
             {
                 ((function(component_group)), ...);
             },
