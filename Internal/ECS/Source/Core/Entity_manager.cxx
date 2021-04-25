@@ -287,6 +287,48 @@ namespace Maia::ECS
         }
 
         /**
+         * @brief Get pointers to components associated with an entity.
+         * 
+         * @param entity The entity that identifies the components.
+         * @return Pointers to the value of the entity's components.
+         */
+        template <typename... Component_ts>
+        std::tuple<Component_ts*...> get_component_pointers(
+            Entity const entity
+        ) noexcept
+        {
+            auto& component_groups = m_component_groups;
+
+            std::pmr::vector<Entity_info_location> const& entity_info_locations = m_entity_info_locations;
+            Entity_info_location const& entity_info_location = entity_info_locations[entity.index];
+
+            std::tuple<Component_ts*...> components{};
+
+            visit(m_entity_infos, entity_info_location.vector_index,
+                [&](auto& entity_infos) -> void
+                {
+                    auto const entity_info = entity_infos[entity_info_location.index_in_vector];
+
+                    visit(component_groups, entity_info.map_index,
+                        [&] <typename T> (T& component_map) -> void
+                        {
+                            if constexpr (contains<T, std::pmr::vector<Component_ts>...>())
+                            {
+                                auto& vector_tuple = component_map.at(entity_info.key);
+
+                                components = std::make_tuple(
+                                    &std::get<std::pmr::vector<Component_ts>>(vector_tuple)[entity_info.index_in_vector]...
+                                );
+                            }
+                        }
+                    );
+                }
+            );
+
+            return components;
+        }
+
+        /**
          * @brief Set the components associated with an entity.
          * 
          * @param entity The entity that identifies the components.
