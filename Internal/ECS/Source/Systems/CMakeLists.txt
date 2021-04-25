@@ -1,0 +1,18 @@
+add_library(MaiaECSSystems)
+add_library(Maia::ECS::Systems ALIAS MaiaECSSystems)
+
+target_compile_features(MaiaECSSystems PRIVATE cxx_std_20)
+
+set_target_properties(MaiaECSSystems 
+	PROPERTIES 
+		LINKER_LANGUAGE CXX
+)
+
+target_link_libraries(MaiaECSSystems PUBLIC MaiaECS)
+
+target_module(
+    MaiaECSSystems
+    PUBLIC
+    "maia.ecs.systems.transform_system"
+    INTERFACE "Transform_system.cxx"
+)

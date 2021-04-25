@@ -6,6 +6,7 @@
         "docopt",
         "eigen3",
         "imgui",
+        "klein",
         "ms-gsl",
         "nlohmann-json",
         "sdl2",
