@@ -240,4 +240,42 @@ namespace Maia::ECS::Systems::Test
             CHECK(expected_transform == actual_transform);            
         }
     }
+
+    TEST_CASE("benchmark compute_world_transforms", "[benchmark]")
+    {
+        using World_motor = kln::motor;
+
+        using Entity_manager_0 = Entity_manager<
+            std::tuple<
+                std::pmr::vector<Entity_info<int>>
+            >,
+            std::tuple<
+                Component_group<int, Vector_tuple<kln::translator, kln::rotor, World_motor, Entity>>
+            >
+        >;
+
+        Entity_manager_0 entity_manager;
+
+        constexpr std::size_t number_of_entities = 4000000;
+        
+        std::pmr::vector<Entity> const root_entities = entity_manager.create_entities(
+            number_of_entities,
+            {},
+            0,
+            std::make_tuple(
+                kln::translator{2.0f, 1.0f, 0.0f, 0.0f},
+                kln::rotor{-0.5f, 0.0f, 0.0f, 1.0f},
+                World_motor{}
+            )
+        );
+
+        std::pmr::unordered_map<Entity, std::pmr::vector<Entity>, Entity_hash> const parent_to_children_map;
+
+        BENCHMARK("Root entities")
+        {
+            compute_world_transforms<kln::translator, kln::rotor, kln::motor>(
+                entity_manager, root_entities, parent_to_children_map
+            );
+        };
+    }
 }
