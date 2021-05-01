@@ -1,7 +1,16 @@
 if (MSVC)
 
-    set(_output_ifc_dir "${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/ifc")
-    file(MAKE_DIRECTORY "${_output_ifc_dir}")
+    get_property(_is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+
+    if (_is_multi_config)
+        set(_output_ifc_dir "${CMAKE_BINARY_DIR}/${CMAKE_CFG_INTDIR}/ifc")
+        file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Debug/ifc")
+        file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Release/ifc")
+    else ()
+        set(_output_ifc_dir "${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/ifc")
+        file(MAKE_DIRECTORY "${_output_ifc_dir}")
+    endif ()
+    
 
     find_program(
         msvc_compiler
