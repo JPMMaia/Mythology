@@ -35,7 +35,8 @@ namespace Maia::Scene
 	 * @param component_type A component type.
 	 * @return The size in bytes of \p component_type.
 	 */
-	std::uint8_t size_of(Component_type component_type) noexcept;
+	export std::uint8_t size_of(Component_type component_type) noexcept;
+
 
 	/**
 	 * @brief Vector of 3 float components.
@@ -166,7 +167,7 @@ namespace Maia::Scene
 	 * @param component_type An accessor type.
 	 * @return The size in bytes of \p accessor_type.
 	 */
-	std::uint8_t size_of(Accessor::Type accessor_type) noexcept;
+	export std::uint8_t size_of(Accessor::Type accessor_type) noexcept;
 
 
 	/**
@@ -362,6 +363,25 @@ namespace Maia::Scene
 	};
 
 	/**
+	 * @brief Returns true if the two attributes are equal.
+	 * 
+	 * @param lhs The left hand side attribute.
+	 * @param rhs The right hand side attribute.
+	 * @return True if the two attributes are equal.
+	 */
+	export bool operator==(Attribute lhs, Attribute rhs) noexcept;
+
+	/**
+	 * @brief Computes the hash of an attribute.
+	 * 
+	 */
+	export struct Attribute_hash
+	{
+		std::size_t operator()(Attribute attribute) const noexcept;
+	};
+
+
+	/**
 	 * @brief Geometry and material to be rendered.
 	 * 
 	 */
@@ -386,7 +406,7 @@ namespace Maia::Scene
 		 * @brief Vertex attributes of the primitive.
 		 * 
 		 */
-		std::pmr::unordered_map<Attribute, Index> attributes;
+		std::pmr::unordered_map<Attribute, Index, Attribute_hash> attributes;
 
 		/**
 		 * @brief The index of the accessor that contains the indices.

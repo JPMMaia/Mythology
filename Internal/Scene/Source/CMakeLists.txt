@@ -8,4 +8,5 @@ target_module (
     PUBLIC
     "maia.scene"
     INTERFACE "Scene.cxx"
+    IMPLEMENTATION "Scene.cpp"
 )
