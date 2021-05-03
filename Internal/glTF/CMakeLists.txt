@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.18)
+
+project(MaiaGlTF VERSION 0.0.1)
+
+add_subdirectory("Source")
+add_subdirectory("Test")
