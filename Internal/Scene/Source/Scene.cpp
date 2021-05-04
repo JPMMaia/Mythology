@@ -44,12 +44,6 @@ namespace Maia::Scene
 		}
     }
 
-
-    bool operator==(Attribute const lhs, Attribute const rhs) noexcept
-    {
-        return lhs.type == rhs.type && lhs.index == rhs.index;
-    }
-
     std::size_t Attribute_hash::operator() (Attribute const attribute) const noexcept
     {
         constexpr std::size_t maximum_index = 100;

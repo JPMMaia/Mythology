@@ -47,6 +47,8 @@ namespace Maia::Scene
 		float x{0.0f};
 		float y{0.0f};
 		float z{0.0f};
+
+		friend auto operator<=>(Vector3f const&, Vector3f const&) noexcept = default;
 	};
 
 	/**
@@ -59,6 +61,8 @@ namespace Maia::Scene
 		float y{0.0f};
 		float z{0.0f};
 		float w{0.0f};
+
+		friend auto operator<=>(Vector4f const&, Vector4f const&) noexcept = default;
 	};
 
 	/**
@@ -71,6 +75,8 @@ namespace Maia::Scene
 		float y{0.0f};
 		float z{0.0f};
 		float w{1.0f};
+
+		friend auto operator<=>(Quaternionf const&, Quaternionf const&) noexcept = default;
 	};
 
 	/**
@@ -80,6 +86,8 @@ namespace Maia::Scene
 	export struct Matrix4f
 	{
 		std::array<float, 16> values;
+
+		friend auto operator<=>(Matrix4f const&, Matrix4f const&) noexcept = default;
 	};
 
 	/**
@@ -159,6 +167,8 @@ namespace Maia::Scene
 		 * 
 		 */
 		std::optional<std::pmr::string> name;
+
+		friend auto operator<=>(Accessor const&, Accessor const&) noexcept = default;
 	};
 
 	/**
@@ -193,6 +203,8 @@ namespace Maia::Scene
 		 * 
 		 */
 		std::optional<std::pmr::string> name;
+
+		friend auto operator<=>(Buffer const&, Buffer const&) noexcept = default;
 	};
 
 	/**
@@ -224,6 +236,8 @@ namespace Maia::Scene
 		 * 
 		 */
 		std::optional<std::pmr::string> name;
+
+		friend auto operator<=>(Buffer_view const&, Buffer_view const&) noexcept = default;
 	};
 
 	/**
@@ -253,6 +267,8 @@ namespace Maia::Scene
 		 * 
 		 */
 		float roughness_factor{1.0f};
+
+		friend auto operator<=>(Pbr_metallic_roughness const&, Pbr_metallic_roughness const&) noexcept = default;
 	};
 
 	/**
@@ -326,6 +342,8 @@ namespace Maia::Scene
 		 */
 		std::optional<std::pmr::string> name;
 
+		friend auto operator<=>(Material const&, Material const&) noexcept = default;
+
 	};
 
 	/**
@@ -360,16 +378,9 @@ namespace Maia::Scene
 		 * 
 		 */
 		Index index;
-	};
 
-	/**
-	 * @brief Returns true if the two attributes are equal.
-	 * 
-	 * @param lhs The left hand side attribute.
-	 * @param rhs The right hand side attribute.
-	 * @return True if the two attributes are equal.
-	 */
-	export bool operator==(Attribute lhs, Attribute rhs) noexcept;
+		friend auto operator<=>(Attribute const&, Attribute const&) noexcept = default;
+	};
 
 	/**
 	 * @brief Computes the hash of an attribute.
@@ -425,6 +436,8 @@ namespace Maia::Scene
 		 * 
 		 */
 		std::optional<Index> material_index;
+
+		friend auto operator<=>(Primitive const&, Primitive const&) noexcept = default;
 	};
 
 	/**
@@ -444,6 +457,8 @@ namespace Maia::Scene
 		 * 
 		 */
 		std::optional<std::pmr::string> name;
+
+		friend auto operator<=>(Mesh const&, Mesh const&) noexcept = default;
 	};
 
 	/**
@@ -503,6 +518,8 @@ namespace Maia::Scene
 		 * 
 		 */
 		std::optional<std::pmr::string> name;
+
+		friend auto operator<=>(Camera const&, Camera const&) noexcept = default;
 	};
 
 	/**
@@ -552,6 +569,8 @@ namespace Maia::Scene
 		 * 
 		 */
 		std::optional<std::pmr::string> name;
+
+		friend auto operator<=>(Node const&, Node const&) noexcept = default;
 	};
 
 	/**
@@ -571,6 +590,8 @@ namespace Maia::Scene
 		 * 
 		 */
 		std::optional<std::pmr::string> name;
+
+		friend auto operator<=>(Scene const&, Scene const&) noexcept = default;
 	};
 
 	/**
@@ -588,5 +609,7 @@ namespace Maia::Scene
 		std::pmr::vector<Node> nodes;
 		std::optional<Index> scene_index;
 		std::pmr::vector<Scene> scenes;
+
+		friend auto operator<=>(World const&, World const&) noexcept = default;
 	};
 }
