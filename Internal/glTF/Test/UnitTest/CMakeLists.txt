@@ -9,11 +9,12 @@ add_module_dependency (MaiaGlTFUnitTest "catch2.catch")
 
 add_module_compile_options (MaiaGlTFUnitTest)
 
-target_link_libraries (MaiaGlTFUnitTest PRIVATE Maia::glTF Maia::Test)
+target_link_libraries (MaiaGlTFUnitTest PRIVATE Maia::glTF Maia::Scene Maia::Test)
 
 target_sources (MaiaGlTFUnitTest 
 	PRIVATE
 		"main.cpp"
+		"glTF.test.cpp"
 )
 
 include (Catch)
