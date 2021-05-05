@@ -17,11 +17,13 @@ namespace Maia::glTF
 	 * @brief Create an accessor from json.
 	 * 
 	 * @param json A JSON object that describes an accessor.
+	 * @param allocator Allocator for the dynamic memory required for creating the accessor.
 	 * @return The converted accessor.
 	 */
 	export Maia::Scene::Accessor accessor_from_json(
-		nlohmann::json const& json
-	) noexcept;
+		nlohmann::json const& json,
+		std::pmr::polymorphic_allocator<> const& allocator
+	);
 
 	/**
 	 * @brief Create a buffer from json.
@@ -33,7 +35,7 @@ namespace Maia::glTF
 	export Maia::Scene::Buffer buffer_from_json(
 		nlohmann::json const& json,
 		std::pmr::polymorphic_allocator<> const& allocator
-	) noexcept;
+	);
 
 	/**
 	 * @brief Read buffer data either from a file or by decoding the uri data.
@@ -47,17 +49,19 @@ namespace Maia::glTF
 		Maia::Scene::Buffer const& buffer,
 		std::filesystem::path const& prefix_path,
 		std::pmr::polymorphic_allocator<> const& allocator
-	) noexcept;
+	);
 
 	/**
 	 * @brief Create a buffer view from json.
 	 * 
 	 * @param json A JSON object that describes a buffer view.
+	 * @param allocator Allocator for the dynamic memory required for creating the buffer view.
 	 * @return The converted buffer view.
 	 */
 	export Maia::Scene::Buffer_view buffer_view_from_json(
-		nlohmann::json const& json
-	) noexcept;
+		nlohmann::json const& json,
+		std::pmr::polymorphic_allocator<> const& allocator
+	);
 
 	/**
 	 * @brief Read the PBR material parameters from json.
@@ -67,7 +71,7 @@ namespace Maia::glTF
 	 */
 	export Maia::Scene::Pbr_metallic_roughness pbr_metallic_roughness_from_json(
 		nlohmann::json const& json
-	) noexcept;
+	);
 
 	/**
 	 * @brief Create a material from json.
@@ -79,7 +83,7 @@ namespace Maia::glTF
 	export Maia::Scene::Material material_from_json(
 		nlohmann::json const& json,
 		std::pmr::polymorphic_allocator<> const& allocator
-	) noexcept;
+	);
 
 	/**
 	 * @brief Create a primitive from json.
@@ -91,7 +95,7 @@ namespace Maia::glTF
 	export Maia::Scene::Primitive primitive_from_json(
 		nlohmann::json const& json,
 		std::pmr::polymorphic_allocator<> const& allocator
-	) noexcept;
+	);
 
 	/**
 	 * @brief Create a mesh from json.
@@ -103,7 +107,7 @@ namespace Maia::glTF
 	export Maia::Scene::Mesh mesh_from_json(
 		nlohmann::json const& json,
 		std::pmr::polymorphic_allocator<> const& allocator
-	) noexcept;
+	);
 
 	/**
 	 * @brief Create a camera from json.
@@ -115,7 +119,7 @@ namespace Maia::glTF
 	export Maia::Scene::Camera camera_from_json(
 		nlohmann::json const& json,
 		std::pmr::polymorphic_allocator<> const& allocator
-	) noexcept;
+	);
 
 	/**
 	 * @brief Create a node from json.
@@ -127,7 +131,7 @@ namespace Maia::glTF
 	export Maia::Scene::Node node_from_json(
 		nlohmann::json const& json,
 		std::pmr::polymorphic_allocator<> const& allocator
-	) noexcept;
+	);
 
 	/**
 	 * @brief Create a scene from json.
@@ -139,7 +143,7 @@ namespace Maia::glTF
 	export Maia::Scene::Scene scene_from_json(
 		nlohmann::json const& json,
 		std::pmr::polymorphic_allocator<> const& allocator
-	) noexcept;
+	);
 
 	/**
 	 * @brief Create a world object from json.
@@ -151,5 +155,5 @@ namespace Maia::glTF
 	export Maia::Scene::World gltf_from_json(
 		nlohmann::json const& json,
 		std::pmr::polymorphic_allocator<> const& allocator
-	) noexcept;
+	);
 }
