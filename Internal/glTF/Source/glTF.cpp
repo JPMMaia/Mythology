@@ -5,12 +5,14 @@ module;
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <memory_resource>
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -170,8 +172,75 @@ namespace nlohmann
 
 		static void from_json(const json& j, Maia::Scene::Attribute& value)
 		{
-			// TODO
-			assert(false);
+			using namespace Maia::Scene;
+
+			std::string const& string_value = j.get<std::string>();
+
+			auto const underscore_location = std::find(string_value.begin(), string_value.end(), '_');
+
+			std::string_view semantic_name = [&]() -> std::string_view
+			{
+				if (underscore_location == string_value.end())
+				{
+					return {string_value.begin(), string_value.end()};
+				}
+				else
+				{
+					return {string_value.begin(), underscore_location};
+				}
+			}();
+
+			Attribute::Type const semantic_type = [semantic_name]() -> Attribute::Type
+			{
+				if (semantic_name == "POSITION")
+				{
+					return Attribute::Type::Position;
+				}
+				else if (semantic_name == "NORMAL")
+				{
+					return Attribute::Type::Normal;
+				}
+				else if (semantic_name == "TANGENT")
+				{
+					return Attribute::Type::Tangent;
+				}
+				else if (semantic_name == "TEXCOORD")
+				{
+					return Attribute::Type::Texture_coordinate;
+				}
+				else if (semantic_name == "COLOR")
+				{
+					return Attribute::Type::Color;
+				}
+				else if (semantic_name == "JOINTS")
+				{
+					return Attribute::Type::Joints;
+				}
+				else if (semantic_name == "WEIGHTS")
+				{
+					return Attribute::Type::Weights;
+				}
+				else
+				{
+					return Attribute::Type::Undefined;
+				}
+			}();
+
+			Index const semantic_index = [&]() -> Index
+			{
+				if (underscore_location == string_value.end())
+				{
+					return 0;
+				}
+				else
+				{					
+					auto const position = std::distance(string_value.begin(), underscore_location + 1);
+					char* end = nullptr;
+					return std::strtol(string_value.data() + position, &end, 10);
+				}
+			}();
+
+			value = {semantic_type, semantic_index};
 		}
 	};
 
@@ -185,8 +254,37 @@ namespace nlohmann
 
 		static void from_json(const json& j, Maia::Scene::Primitive::Mode& value)
 		{
-			// TODO
-			assert(false);
+			using namespace Maia::Scene;
+
+			unsigned int const mode = j.get<unsigned int>();
+
+			switch (mode)
+			{
+			case 0:
+				value = Primitive::Mode::Points;
+				break;
+			case 1:
+				value = Primitive::Mode::Lines;
+				break;
+			case 2:
+				value = Primitive::Mode::Line_loop;
+				break;
+			case 3:
+				value = Primitive::Mode::Line_strip;
+				break;
+			case 4:
+				value = Primitive::Mode::Triangles;
+				break;
+			case 5:
+				value = Primitive::Mode::Triangle_strip;
+				break;
+			case 6:
+				value = Primitive::Mode::Triangle_fan;
+				break;
+			default:
+				value = Primitive::Mode::Triangles;
+				break;
+			}
 		}
 	};
 
@@ -620,7 +718,91 @@ namespace Maia::glTF
 			Vector3f scale;
 		};
 
-		Transform decompose(Matrix4f const matrix)
+		Quaternionf to_rotation(std::array<float, 16> const& matrix) noexcept
+		{
+			using Trace = float;
+
+			auto const m = [&matrix] (std::size_t const row, std::size_t const column) -> float
+			{
+				return matrix[4*row+column];
+			};
+
+			std::pair<Quaternionf, Trace> const quaternion_and_trace = [&]() -> std::pair<Quaternionf, Trace>
+			{
+				if (m(2, 2) < 0)
+				{
+					if (m(0, 0) > m(1, 1))
+					{
+						float const trace = 1.0f + m(0, 0) -m(1, 1) - m(2, 2);
+						Quaternionf const quaternion
+						{
+							.x = trace,
+							.y = m(0, 1) + m(1, 0),
+							.z = m(2, 0) + m(0, 2),
+							.w = m(1, 2) - m(2, 1)
+						};
+
+						return {quaternion, trace};
+					}
+					else
+					{
+						float const trace = 1.0f - m(0, 0) + m(1, 1) - m(2, 2);
+						Quaternionf const quaternion
+						{
+							.x = m(0, 1) + m(1, 0),
+							.y = trace,
+							.z = m(1, 2) + m(2, 1),
+							.w = m(2, 0)-m(0, 2)
+						};
+
+						return {quaternion, trace};
+					}
+				}
+				else
+				{
+					if (m(0, 0) < -m(1, 1))
+					{
+						float const trace = 1.0f - m(0, 0) - m(1, 1) + m(2, 2);
+						Quaternionf const quaternion
+						{
+							.x = m(2, 0) + m(0, 2),
+							.y = m(1, 2) + m(2, 1),
+							.z = trace,
+							.w = m(0, 1) -m(1, 0)
+						};
+
+						return {quaternion, trace};
+					}
+					else
+					{
+						float const trace = 1.0f + m(0, 0) + m(1, 1) + m(2, 2);
+						Quaternionf const quaternion
+						{
+							.x = m(1, 2) - m(2, 1),
+							.y = m(2, 0) - m(0, 2),
+							.z = m(0, 1) - m(1, 0),
+							.w = trace
+						};
+
+						return {quaternion, trace};
+					}
+				}
+			}();
+			
+			Quaternionf const quaternion = quaternion_and_trace.first;
+			float const trace = quaternion_and_trace.second;
+			float const scalar = 0.5f / std::sqrt(trace);
+
+			return
+			{
+				.x = scalar * quaternion.x,
+				.y = scalar * quaternion.y,
+				.z = scalar * quaternion.z,
+				.w = scalar * quaternion.w,
+			};
+		}
+
+		Transform decompose(Matrix4f const& matrix) noexcept
 		{
 			std::array<float, 16> matrix_values = matrix.values;
 
@@ -648,14 +830,7 @@ namespace Maia::glTF
 			matrix_values[9] /= scale.z;
 			matrix_values[10] /= scale.z;
 
-			float const rotation_w = std::sqrt(1.0f + matrix_values[0] + matrix_values[5] + matrix_values[10]) / 2.0f;
-			Quaternionf const rotation
-			{
-				.x = (matrix_values[6] - matrix_values[9]) / (4.0f * rotation_w),
-				.y = (matrix_values[8] - matrix_values[2]) / (4.0f * rotation_w),
-				.z = (matrix_values[5] - matrix_values[4]) /(4.0f * rotation_w),
-				.w = rotation_w,
-			};
+			Quaternionf const rotation = to_rotation(matrix_values);
 
 			return
 			{
@@ -797,7 +972,7 @@ namespace Maia::glTF
 		return
 		{
 			.nodes = get_vector_from_json<Index>(json, "nodes", to_index, allocator),
-			.name = get_optional_value<std::pmr::string>(json, "names", to_string),
+			.name = get_optional_value<std::pmr::string>(json, "name", to_string),
 		};
 	}
 
