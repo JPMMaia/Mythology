@@ -364,7 +364,8 @@ namespace Maia::Scene
 			Texture_coordinate,
 			Color,
 			Joints,
-			Weights
+			Weights,
+			Undefined,
 		};
 
 		/**
