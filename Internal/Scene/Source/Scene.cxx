@@ -488,6 +488,8 @@ namespace Maia::Scene
 			float vertical_magnification{0.0f};
 			float near_z{0.0f};
 			float far_z{0.0f};
+
+			friend auto operator<=>(Orthographic const&, Orthographic const&) noexcept = default;
 		};
 
 		/**
@@ -500,6 +502,8 @@ namespace Maia::Scene
 			float vertical_field_of_view{0.0f};
 			float near_z{0.0f};
 			std::optional<float> far_z;
+
+			friend auto operator<=>(Perspective const&, Perspective const&) noexcept = default;
 		};
 
 		/**
@@ -522,6 +526,16 @@ namespace Maia::Scene
 
 		friend auto operator<=>(Camera const&, Camera const&) noexcept = default;
 	};
+
+	export bool operator==(
+		std::variant<Camera::Orthographic, Camera::Perspective> const& lhs,
+		std::variant<Camera::Orthographic, Camera::Perspective> const& rhs
+	) noexcept;
+
+	export bool operator!=(
+		std::variant<Camera::Orthographic, Camera::Perspective> const& lhs,
+		std::variant<Camera::Orthographic, Camera::Perspective> const& rhs
+	) noexcept;
 
 	/**
 	 * @brief A node that is part of a scene hierarchy.

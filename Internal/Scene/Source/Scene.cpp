@@ -2,7 +2,9 @@ module;
 
 #include <cassert>
 #include <cstddef>
+#include <optional>
 #include <memory_resource>
+#include <variant>
 
 module maia.scene;
 
@@ -54,4 +56,38 @@ namespace Maia::Scene
 
         return type*maximum_index + index;
     }
+
+	bool operator==(
+		std::variant<Camera::Orthographic, Camera::Perspective> const& lhs,
+		std::variant<Camera::Orthographic, Camera::Perspective> const& rhs
+	) noexcept
+	{
+		if (lhs.index() != rhs.index())
+		{
+			return false;
+		}
+
+		if (lhs.index() == 0)
+		{
+			Camera::Orthographic const& lhs_orthographic = std::get<Camera::Orthographic>(lhs);
+			Camera::Orthographic const& rhs_orthographic = std::get<Camera::Orthographic>(rhs);
+
+			return lhs_orthographic == rhs_orthographic;
+		}
+		else
+		{
+			Camera::Perspective const& lhs_perspective = std::get<Camera::Perspective>(lhs);
+			Camera::Perspective const& rhs_perspective = std::get<Camera::Perspective>(rhs);
+
+			return lhs_perspective == rhs_perspective;
+		}
+	}
+
+	bool operator!=(
+		std::variant<Camera::Orthographic, Camera::Perspective> const& lhs,
+		std::variant<Camera::Orthographic, Camera::Perspective> const& rhs
+	) noexcept
+	{
+		return !(lhs == rhs);
+	}
 }
