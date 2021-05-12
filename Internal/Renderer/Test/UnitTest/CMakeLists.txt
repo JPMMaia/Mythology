@@ -1,5 +1,3 @@
-project (MaiaRendererUnitTest)
-
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../../..//Utilities/CMake/Modules")
 
 add_executable (MaiaRendererUnitTest)
