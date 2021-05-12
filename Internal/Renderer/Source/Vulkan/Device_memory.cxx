@@ -1,14 +1,15 @@
+module;
+
+#include <vulkan/vulkan.h>
+
+#include <cstddef>
+#include <cstdint>
+#include <optional>
+#include <functional>
+#include <ostream>
+#include <span>
+
 export module maia.renderer.vulkan.device_memory;
-
-import <vulkan/vulkan.h>;
-
-import <cstddef>;
-import <cstdint>;
-import <optional>;
-import <functional>;
-import <ostream>;
-import <span>;
-
 namespace Maia::Renderer::Vulkan
 {
     export VkMemoryRequirements get_memory_requirements(

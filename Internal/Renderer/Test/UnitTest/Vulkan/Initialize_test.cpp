@@ -1,28 +1,19 @@
-import maia.renderer.vulkan.command_buffer;
-import maia.renderer.vulkan.command_pool;
-import maia.renderer.vulkan.device;
-import maia.renderer.vulkan.device_memory;
-import maia.renderer.vulkan.fence;
-import maia.renderer.vulkan.image;
-import maia.renderer.vulkan.instance;
-import maia.renderer.vulkan.physical_device;
-import maia.renderer.vulkan.queue;
-import maia.renderer.vulkan.render_pass;
+#include <catch2/catch.hpp>
+#include <vulkan/vulkan.h>
 
-import <catch2/catch.hpp>;
-import <vulkan/vulkan.h>;
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cstdint>
+#include <cstring>
+#include <fstream>
+#include <iostream>
+#include <memory_resource>
+#include <span>
+#include <unordered_map>
+#include <vector>
 
-import <algorithm>;
-import <array>;
-import <cassert>;
-import <cstdint>;
-import <cstring>;
-import <fstream>;
-import <iostream>;
-import <memory_resource>;
-import <span>;
-import <unordered_map>;
-import <vector>;
+import maia.renderer.vulkan;
 
 namespace Maia::Renderer::Vulkan::Unit_test
 {

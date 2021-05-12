@@ -1,13 +1,14 @@
+module;
+
+#include <vulkan/vulkan.h>
+
+#include <cstdint>
+#include <optional>
+#include <span>
+
 export module maia.renderer.vulkan.queue;
 
 import maia.renderer.vulkan.device;
-
-import <vulkan/vulkan.h>;
-
-import <cstdint>;
-import <optional>;
-import <span>;
-
 namespace Maia::Renderer::Vulkan
 {
     export VkQueue get_device_queue(

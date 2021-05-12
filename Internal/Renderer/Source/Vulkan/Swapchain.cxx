@@ -1,16 +1,17 @@
+module;
+
+#include <vulkan/vulkan.h>
+
+#include <cstdint>
+#include <memory_resource>
+#include <optional>
+#include <span>
+#include <vector>
+
 export module maia.renderer.vulkan.swapchain;
 
 import maia.renderer.vulkan.device;
 import maia.renderer.vulkan.image;
-
-import <vulkan/vulkan.h>;
-
-import <cstdint>;
-import <memory_resource>;
-import <optional>;
-import <span>;
-import <vector>;
-
 namespace Maia::Renderer::Vulkan
 {
     export struct Min_image_count

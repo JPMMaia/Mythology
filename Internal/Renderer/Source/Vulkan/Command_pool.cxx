@@ -1,6 +1,8 @@
-export module maia.renderer.vulkan.command_pool;
+module;
 
-import <vulkan/vulkan.h>;
+#include <vulkan/vulkan.h>
+
+export module maia.renderer.vulkan.command_pool;
 
 import maia.renderer.vulkan.device;
 

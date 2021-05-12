@@ -1,14 +1,15 @@
+module;
+
+#include <vulkan/vulkan.h>
+
+#include <algorithm>
+#include <cstdint>
+#include <memory_resource>
+#include <optional>
+#include <span>
+#include <vector>
+
 export module maia.renderer.vulkan.device;
-
-import <vulkan/vulkan.h>;
-
-import <algorithm>;
-import <cstdint>;
-import <memory_resource>;
-import <optional>;
-import <span>;
-import <vector>;
-
 namespace Maia::Renderer::Vulkan
 {
     export std::uint32_t get_physical_device_queue_family_count(VkPhysicalDevice physical_device) noexcept;

@@ -1,12 +1,14 @@
+module;
+
+#include <vulkan/vulkan.h>
+
+#include <cstdint>
+#include <optional>
+#include <span>
+
 module maia.renderer.vulkan.buffer;
 
 import maia.renderer.vulkan.check;
-
-import <vulkan/vulkan.h>;
-
-import <cstdint>;
-import <optional>;
-import <span>;
 
 namespace Maia::Renderer::Vulkan
 {

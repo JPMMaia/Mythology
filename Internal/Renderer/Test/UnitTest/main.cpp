@@ -1,6 +1,7 @@
-import catch2.runner;
+#define CATCH_CONFIG_RUNNER
+#include <catch2/catch.hpp>
 
 int main(int const argc, char const* const* const argv)
 {
-    return run_catch2(argc, argv);
+    return Catch::Session().run(argc, argv);
 }

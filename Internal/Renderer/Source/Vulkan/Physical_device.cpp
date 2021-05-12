@@ -1,15 +1,16 @@
+module;
+
+#include <vulkan/vulkan.h>
+
+#include <memory_resource>
+#include <optional>
+#include <ostream>
+#include <type_traits>
+#include <vector>
+
 module maia.renderer.vulkan.physical_device;
 
 import maia.renderer.vulkan.check;
-
-import <vulkan/vulkan.h>;
-
-import <memory_resource>;
-import <optional>;
-import <ostream>;
-import <type_traits>;
-import <vector>;
-
 namespace Maia::Renderer::Vulkan
 {
     std::ostream& operator<<(std::ostream& output_stream, VkPhysicalDeviceProperties const& physical_device_properties) noexcept

@@ -1,7 +1,8 @@
+module;
+
+#include <vulkan/vulkan.h>
+
 export module maia.renderer.vulkan.descriptor_pool;
-
-import <vulkan/vulkan.h>;
-
 namespace Maia::Renderer::Vulkan
 {
     export VkDescriptorPool create_descriptor_pool(

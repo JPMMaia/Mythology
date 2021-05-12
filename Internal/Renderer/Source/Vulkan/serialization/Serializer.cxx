@@ -1,14 +1,17 @@
+module;
+
+#include <nlohmann/json.hpp>
+#include <vulkan/vulkan.h>
+
+#include <cstddef>
+#include <filesystem>
+#include <memory_resource>
+#include <optional>
+#include <span>
+#include <vector>
+
+
 export module maia.renderer.vulkan.serializer;
-
-import <nlohmann/json.hpp>;
-import <vulkan/vulkan.h>;
-
-import <cstddef>;
-import <filesystem>;
-import <memory_resource>;
-import <optional>;
-import <span>;
-import <vector>;
 
 namespace Maia::Renderer::Vulkan
 {

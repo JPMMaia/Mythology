@@ -1,7 +1,8 @@
+module;
+
+#include <vulkan/vulkan.h>
+
 export module maia.renderer.vulkan.pipeline_layout;
-
-import <vulkan/vulkan.h>;
-
 namespace Maia::Renderer::Vulkan
 {
     export VkPipelineLayoutCreateInfo constexpr empty_pipeline_layout_create_info() noexcept

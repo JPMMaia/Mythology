@@ -1,7 +1,8 @@
+module;
+
+#include <vulkan/vulkan.h>
+
 export module maia.renderer.vulkan.sampler;
-
-import <vulkan/vulkan.h>;
-
 namespace Maia::Renderer::Vulkan
 {
     export VkSampler create_sampler(

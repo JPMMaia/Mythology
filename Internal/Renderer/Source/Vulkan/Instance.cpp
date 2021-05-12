@@ -1,15 +1,16 @@
+module;
+
+#include <vulkan/vulkan.h>
+
+#include <cassert>
+#include <ostream>
+#include <memory_resource>
+#include <optional>
+#include <span>
+
 module maia.renderer.vulkan.instance;
 
 import maia.renderer.vulkan.check;
-
-import <vulkan/vulkan.h>;
-
-import <cassert>;
-import <ostream>;
-import <memory_resource>;
-import <optional>;
-import <span>;
-
 namespace Maia::Renderer::Vulkan
 {
     std::ostream& operator<<(std::ostream& output_stream, VkLayerProperties const& layer_properties) noexcept

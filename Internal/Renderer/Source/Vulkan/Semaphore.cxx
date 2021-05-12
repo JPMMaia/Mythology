@@ -1,12 +1,13 @@
+module;
+
+#include <vulkan/vulkan.h>
+
+#include <memory_resource>
+#include <optional>
+#include <span>
+#include <vector>
+
 export module maia.renderer.vulkan.semaphore;
-
-import <vulkan/vulkan.h>;
-
-import <memory_resource>;
-import <optional>;
-import <span>;
-import <vector>;
-
 namespace Maia::Renderer::Vulkan
 {
     export struct Semaphore_value

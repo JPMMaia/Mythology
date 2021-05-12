@@ -1,14 +1,15 @@
+module;
+
+#include <vulkan/vulkan.h>
+
+#include <memory_resource>
+#include <optional>
+#include <span>
+#include <vector>
+
 module maia.renderer.vulkan.pipeline;
 
 import maia.renderer.vulkan.check;
-
-import <vulkan/vulkan.h>;
-
-import <memory_resource>;
-import <optional>;
-import <span>;
-import <vector>;
-
 namespace Maia::Renderer::Vulkan
 {
     VkPipeline create_compute_pipeline(

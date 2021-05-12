@@ -1,18 +1,20 @@
+module;
+
+#include <nlohmann/json.hpp>
+#include <vulkan/vulkan.h>
+
+#include <cstddef>
+#include <filesystem>
+#include <fstream>
+#include <memory_resource>
+#include <optional>
+#include <span>
+#include <string>
+#include <vector>
+
 module maia.renderer.vulkan.serializer;
 
-import maia.renderer.vulkan.check;
-
-import <nlohmann/json.hpp>;
-import <vulkan/vulkan.h>;
-
-import <cstddef>;
-import <filesystem>;
-import <fstream>;
-import <memory_resource>;
-import <optional>;
-import <span>;
-import <string>;
-import <vector>;
+import maia.renderer.vulkan;
 
 namespace Maia::Renderer::Vulkan
 {
@@ -1895,8 +1897,8 @@ namespace Maia::Renderer::Vulkan
 
             struct Dependent
             {
-                VkAccessFlagBits source_access_mask;
-                VkAccessFlagBits destination_access_mask;
+                VkAccessFlags source_access_mask;
+                VkAccessFlags destination_access_mask;
                 VkImageLayout old_layout;
                 VkImageLayout new_layout;
             };
@@ -1922,8 +1924,8 @@ namespace Maia::Renderer::Vulkan
 
             Image_memory_barrier::Dependent const dependent
             {
-                .source_access_mask = image_barrier_json.at("source_access_mask").get<VkAccessFlagBits>(),
-                .destination_access_mask = image_barrier_json.at("destination_access_mask").get<VkAccessFlagBits>(),
+                .source_access_mask = image_barrier_json.at("source_access_mask").get<VkAccessFlags>(),
+                .destination_access_mask = image_barrier_json.at("destination_access_mask").get<VkAccessFlags>(),
                 .old_layout = image_barrier_json.at("old_layout").get<VkImageLayout>(),
                 .new_layout = image_barrier_json.at("new_layout").get<VkImageLayout>(),
             };

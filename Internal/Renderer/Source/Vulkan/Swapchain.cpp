@@ -1,17 +1,18 @@
+module;
+
+#include <vulkan/vulkan.h>
+
+#include <cstdint>
+#include <memory_resource>
+#include <optional>
+#include <span>
+#include <vector>
+
 module maia.renderer.vulkan.swapchain;
 
 import maia.renderer.vulkan.check;
 import maia.renderer.vulkan.device;
 import maia.renderer.vulkan.image;
-
-import <vulkan/vulkan.h>;
-
-import <cstdint>;
-import <memory_resource>;
-import <optional>;
-import <span>;
-import <vector>;
-
 namespace Maia::Renderer::Vulkan
 {
     VkSwapchainKHR create_swapchain(

@@ -1,17 +1,18 @@
+module;
+
+#include <vulkan/vulkan.h>
+
+#include <cassert>
+#include <cmath>
+#include <optional>
+#include <memory_resource>
+#include <unordered_map>
+#include <utility>
+
 module maia.renderer.vulkan.memory_management;
 
 import maia.renderer.vulkan.buffer;
 import maia.renderer.vulkan.device_memory;
-
-import <vulkan/vulkan.h>;
-
-import <cassert>;
-import <cmath>;
-import <optional>;
-import <memory_resource>;
-import <unordered_map>;
-import <utility>;
-
 namespace Maia::Renderer::Vulkan
 {
     Monotonic_device_memory_resource::Monotonic_device_memory_resource(

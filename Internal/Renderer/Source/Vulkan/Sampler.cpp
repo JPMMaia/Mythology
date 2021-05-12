@@ -1,9 +1,10 @@
+module;
+
+#include <vulkan/vulkan.h>
+
 module maia.renderer.vulkan.sampler;
 
 import maia.renderer.vulkan.check;
-
-import <vulkan/vulkan.h>;
-
 namespace Maia::Renderer::Vulkan
 {
     VkSampler create_sampler(

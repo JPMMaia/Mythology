@@ -1,9 +1,10 @@
+module;
+
+#include <vulkan/vulkan.h>
+
 module maia.renderer.vulkan.descriptor_set_layout;
 
 import maia.renderer.vulkan.check;
-
-import <vulkan/vulkan.h>;
-
 namespace Maia::Renderer::Vulkan
 {
     VkDescriptorSetLayout create_descriptor_set_layout(

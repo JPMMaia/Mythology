@@ -1,11 +1,12 @@
+module;
+
+#include <vulkan/vulkan.h>
+
+#include <cstdint>
+#include <optional>
+#include <span>
+
 export module maia.renderer.vulkan.render_pass;
-
-import <vulkan/vulkan.h>;
-
-import <cstdint>;
-import <optional>;
-import <span>;
-
 namespace Maia::Renderer::Vulkan
 {
     export VkRenderPass create_render_pass(

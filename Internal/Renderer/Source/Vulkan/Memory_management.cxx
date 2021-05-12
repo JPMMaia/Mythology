@@ -1,14 +1,15 @@
+module;
+
+#include <vulkan/vulkan.h>
+
+#include <memory_resource>
+#include <optional>
+#include <unordered_map>
+#include <vector>
+
 export module maia.renderer.vulkan.memory_management;
 
 import maia.renderer.vulkan.device_memory;
-
-import <vulkan/vulkan.h>;
-
-import <memory_resource>;
-import <optional>;
-import <unordered_map>;
-import <vector>;
-
 namespace Maia::Renderer::Vulkan
 {
     export struct Device_memory_range

@@ -1,13 +1,14 @@
+module;
+
+#include <vulkan/vulkan.h>
+
+#include <cstdint>
+#include <memory_resource>
+#include <optional>
+#include <span>
+#include <vector>
+
 export module maia.renderer.vulkan.command_buffer;
-
-import <vulkan/vulkan.h>;
-
-import <cstdint>;
-import <memory_resource>;
-import <optional>;
-import <span>;
-import <vector>;
-
 namespace Maia::Renderer::Vulkan
 {
     export std::pmr::vector<VkCommandBuffer> allocate_command_buffers(

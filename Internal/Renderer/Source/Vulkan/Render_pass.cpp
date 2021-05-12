@@ -1,12 +1,13 @@
+module;
+
+#include <vulkan/vulkan.h>
+
+#include <optional>
+#include <span>
+
 module maia.renderer.vulkan.render_pass;
 
 import maia.renderer.vulkan.check;
-
-import <vulkan/vulkan.h>;
-
-import <optional>;
-import <span>;
-
 namespace Maia::Renderer::Vulkan
 {
     VkRenderPass create_render_pass(

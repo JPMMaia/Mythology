@@ -1,14 +1,15 @@
+module;
+
+#include <vulkan/vulkan.h>
+
+#include <array>
+#include <cassert>
+#include <cstddef>
+#include <memory_resource>
+#include <span>
+#include <vector>
+
 export module maia.renderer.vulkan.descriptor_set;
-
-import <vulkan/vulkan.h>;
-
-import <array>;
-import <cassert>;
-import <cstddef>;
-import <memory_resource>;
-import <span>;
-import <vector>;
-
 namespace Maia::Renderer::Vulkan
 {
     export VkDescriptorSet allocate_descriptor_set(

@@ -1,14 +1,16 @@
+module;
+
+#include <vulkan/vulkan.h>
+
+#include <cstdint>
+#include <memory_resource>
+#include <optional>
+#include <vector>
+
 module maia.renderer.vulkan.surface;
 
 import maia.renderer.vulkan.check;
 import maia.renderer.vulkan.device;
-
-import <vulkan/vulkan.h>;
-
-import <cstdint>;
-import <memory_resource>;
-import <optional>;
-import <vector>;
 
 namespace Maia::Renderer::Vulkan
 {

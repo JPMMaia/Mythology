@@ -1,11 +1,12 @@
+module;
+
+#include <vulkan/vulkan.h>
+
+#include <optional>
+
 module maia.renderer.vulkan.command_pool;
 
 import maia.renderer.vulkan.check;
-
-import <vulkan/vulkan.h>;
-
-import <optional>;
-
 namespace Maia::Renderer::Vulkan
 {
     VkCommandPool create_command_pool(
