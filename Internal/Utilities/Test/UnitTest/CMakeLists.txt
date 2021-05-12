@@ -1,5 +1,3 @@
-project (MaiaUtilitiesUnitTest)
-
 add_executable (MaiaUtilitiesUnitTest)
 add_executable (Maia::Utilities::UnitTest ALIAS MaiaUtilitiesUnitTest)
 

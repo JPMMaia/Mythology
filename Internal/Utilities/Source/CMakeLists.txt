@@ -1,5 +1,3 @@
-project (MaiaUtilities VERSION 0.0.1)
-
 add_library (MaiaUtilities)
 add_library (Maia::Utilities ALIAS MaiaUtilities)
 
