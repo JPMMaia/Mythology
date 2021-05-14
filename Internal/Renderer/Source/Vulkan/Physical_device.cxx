@@ -18,12 +18,7 @@ namespace Maia::Renderer::Vulkan
     export std::pmr::vector<VkPhysicalDevice> enumerate_physical_devices(VkInstance instance, std::pmr::polymorphic_allocator<VkPhysicalDevice> const& allocator = {}) noexcept;
 
 
-    export struct Physical_device_features
-    {
-        VkPhysicalDeviceFeatures value;
-    };
-
-    export Physical_device_features get_physical_device_properties(VkPhysicalDevice physical_device) noexcept;
+    export VkPhysicalDeviceFeatures get_physical_device_properties(VkPhysicalDevice physical_device) noexcept;
 
     export std::pmr::vector<VkExtensionProperties> enumerate_physical_device_extension_properties(
         VkPhysicalDevice physical_device,

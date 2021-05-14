@@ -27,7 +27,7 @@ namespace Maia::Renderer::Vulkan
         return output_stream;
     }
 
-    std::pmr::vector<VkLayerProperties> enumerate_instance_layer_properties(std::pmr::polymorphic_allocator<VkLayerProperties> const& allocator) noexcept
+    std::pmr::vector<VkLayerProperties> enumerate_instance_layer_properties(std::pmr::polymorphic_allocator<> const& allocator) noexcept
     {
         uint32_t layer_property_count = 0;
         check_result(

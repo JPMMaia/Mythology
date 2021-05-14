@@ -54,12 +54,11 @@ namespace Maia::Renderer::Vulkan
     }
 
 
-    Physical_device_features get_physical_device_properties(VkPhysicalDevice const physical_device) noexcept
+    VkPhysicalDeviceFeatures get_physical_device_properties(VkPhysicalDevice const physical_device) noexcept
     {
         VkPhysicalDeviceFeatures features = {};
         vkGetPhysicalDeviceFeatures(physical_device, &features);
-
-        return { features };
+        return features;
     }
 
     std::pmr::vector<VkExtensionProperties> enumerate_physical_device_extension_properties(

@@ -14,7 +14,7 @@ namespace Maia::Renderer::Vulkan
 {  
     export std::ostream& operator<<(std::ostream& output_stream, VkLayerProperties const& layer_properties) noexcept;
 
-    export std::pmr::vector<VkLayerProperties> enumerate_instance_layer_properties(std::pmr::polymorphic_allocator<VkLayerProperties> const& allocator = {}) noexcept;
+    export std::pmr::vector<VkLayerProperties> enumerate_instance_layer_properties(std::pmr::polymorphic_allocator<> const& allocator = {}) noexcept;
 
     export struct Application_description
     {

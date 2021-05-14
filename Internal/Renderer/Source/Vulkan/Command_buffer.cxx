@@ -17,7 +17,7 @@ namespace Maia::Renderer::Vulkan
         VkCommandBufferLevel level,
         std::uint32_t command_buffer_count,
         VkAllocationCallbacks const* vulkan_allocator,
-        std::pmr::polymorphic_allocator<VkCommandBuffer> const& pmr_allocator = {}
+        std::pmr::polymorphic_allocator<> const& pmr_allocator = {}
     ) noexcept;
 
     export void reset_command_buffer(

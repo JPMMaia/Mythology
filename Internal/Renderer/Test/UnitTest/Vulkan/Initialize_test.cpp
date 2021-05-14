@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
@@ -17,6 +18,8 @@ import maia.renderer.vulkan;
 
 namespace Maia::Renderer::Vulkan::Unit_test
 {
+	using namespace Maia::Renderer::Vulkan;
+
 	namespace
 	{
 		VkRenderPass create_render_pass(VkDevice const device, VkFormat const color_image_format) noexcept
@@ -65,7 +68,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 				.dependencyFlags = {}
 			};
 
-			return create_render_pass(
+			return Maia::Renderer::Vulkan::create_render_pass(
 				device,
 				{&color_attachment_description, 1},
 				{&subpass_description, 1},
@@ -77,7 +80,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 
 	SCENARIO("Initialize")
 	{
-		std::pmr::vector<VkLayerProperties> const layer_properties = enumerate_instance_layer_properties();
+		std::pmr::vector<VkLayerProperties> const layer_properties = enumerate_instance_layer_properties({});
 
 		std::cout << "Supported layers:\n\n";
 		std::for_each(std::begin(layer_properties), std::end(layer_properties), 
@@ -85,7 +88,9 @@ namespace Maia::Renderer::Vulkan::Unit_test
 		std::cout << '\n';
 
 		std::array<char const*, 1> const enabled_layers { "VK_LAYER_KHRONOS_validation" };
-		Instance const instance = create_instance(enabled_layers, {});
+		VkInstance const instance = create_instance(
+			{}, {}, make_api_version(1, 2, 0), enabled_layers, {}, nullptr
+		);
 
 		std::pmr::vector<VkPhysicalDevice> const physical_devices = enumerate_physical_devices(instance);
 
@@ -95,14 +100,9 @@ namespace Maia::Renderer::Vulkan::Unit_test
 		std::cout << '\n';
 
 		{
-			Physical_device_features const physical_device_features = get_physical_device_properties(physical_devices[0]);
-
-		}
-
-		{
 			VkPhysicalDevice const physical_device = physical_devices[0];
 
-			std::pmr::vector<VkQueueFamilyProperties> const queue_family_properties = get_physical_device_queue_family_properties(physical_device);
+			std::pmr::vector<VkQueueFamilyProperties> const queue_family_properties = get_physical_device_queue_family_properties(physical_device, {});
 
 			std::array<float, 1> const queue_priorities{ 1.0f };
 
@@ -126,7 +126,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 				return queue_create_infos;
 			}();
 
-			Device const device = create_device(physical_device, queue_create_infos, {});
+			VkDevice const device = create_device(physical_device, queue_create_infos, {});
 			
 			VkPhysicalDeviceMemoryProperties const physical_device_memory_properties =
 				get_phisical_device_memory_properties(physical_device);
@@ -138,7 +138,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 
 			VkFormat const color_image_format = VK_FORMAT_R8G8B8A8_UINT; 
 			VkExtent3D const color_image_extent {16, 16, 1};
-			Image const color_image = create_image(
+			VkImage const color_image = create_image(
 				device,
 				{},
 				VK_IMAGE_TYPE_2D,
@@ -155,16 +155,16 @@ namespace Maia::Renderer::Vulkan::Unit_test
 
 			VkMemoryRequirements const color_image_memory_requirements = get_memory_requirements(device, color_image);
 			Memory_type_bits const color_image_memory_type_bits = get_memory_type_bits(color_image_memory_requirements);
-			std::optional<Memory_type_index> const memory_type_index = find_memory_type(
+			std::optional<Memory_type_index_and_properties> const memory_type_index_and_properties = find_memory_type(
 				physical_device_memory_properties, 
 				color_image_memory_type_bits,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
 			);
 
-			REQUIRE(memory_type_index.has_value());
+			REQUIRE(memory_type_index_and_properties.has_value());
 
 			VkDeviceMemory const device_memory =
-				allocate_memory(device, color_image_memory_requirements.size, *memory_type_index, {});
+				allocate_memory(device, color_image_memory_requirements.size, memory_type_index_and_properties->type_index, {});
 
 			bind_memory(device, color_image, device_memory, 0);
 
@@ -184,7 +184,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 				color_image_format
 			);
 
-			Framebuffer const framebuffer = create_framebuffer(
+			VkFramebuffer const framebuffer = create_framebuffer(
 				device,
 				{},
 				render_pass,
@@ -303,7 +303,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 
 				VkFence const fence = create_fence(device, {}, {});
 
-				Queue const queue = get_device_queue(device, *queue_family_index, 0);
+				VkQueue const queue = get_device_queue(device, *queue_family_index, 0);
 				queue_submit(queue, {}, {}, {&command_buffer, 1}, {}, fence);
 
 				REQUIRE(
@@ -340,7 +340,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 										row_index * color_image_layout.rowPitch + 4 * column_index;
 									void const* const texel_data = static_cast<std::byte*>(data) + texel_data_offset;
 
-									std::array<char8_t, 4> color = {};
+									std::array<char, 4> color = {};
 									std::memcpy(color.data(), texel_data, sizeof(decltype(color)::value_type) * color.size());
 
 									output_stream << color[0] << ' ';
@@ -353,7 +353,7 @@ namespace Maia::Renderer::Vulkan::Unit_test
 
 						vkUnmapMemory(
 							device,
-							device_memory.value
+							device_memory
 						);
 					}
 				}
