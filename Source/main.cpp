@@ -1,12 +1,11 @@
-//#include <docopt.h>
+#include <docopt.h>
+#include <nlohmann/json.hpp>
 
-import mythology.sdl.application;
-import mythology.windowless;
+#include <filesystem>
+#include <fstream>
 
-import <nlohmann/json.hpp>;
-
-import <filesystem>;
-import <fstream>;
+import mythology.sdl.application_2;
+//import mythology.windowless;
 
 namespace
 {
@@ -32,7 +31,7 @@ R"(Mythology.
 
     Usage:
         mythology render --pipeline <pipeline_json_file> --output <output_file>
-        mythology window --pipeline <pipeline_json_file>
+        mythology window --pipeline <pipeline_json_file> --gltf <gltf_json_file>
         mythology [--help]
         mythology --version
 
@@ -45,12 +44,12 @@ R"(Mythology.
 
 int main(int const argc, const char* const* const argv) noexcept
 {
-    /*std::map<std::string, docopt::value> const args = docopt::docopt(
+    std::map<std::string, docopt::value> const args = docopt::docopt(
         c_usage,
         {argv + 1, argv + argc},
         true,
         "Mythology 0.1"
-    );*/
+    );
 
     //Mythology::Windowless::render_frame("output.ppm");
 
@@ -65,7 +64,8 @@ int main(int const argc, const char* const* const argv) noexcept
                     std::filesystem::path const pipeline_json_file_path = argv[3];
                     std::filesystem::path const gltf_file_path = argv[5];
 
-                    nlohmann::json const pipeline_json = read_json_from_file(pipeline_json_file_path);
+                    //nlohmann::json const pipeline_json = read_json_from_file(pipeline_json_file_path);
+                    nlohmann::json const pipeline_json = {};
                     Mythology::SDL::run(pipeline_json, pipeline_json_file_path.parent_path(), gltf_file_path);
                 }
             }

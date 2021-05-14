@@ -1,5 +1,3 @@
-project (MaiaMythology VERSION 0.0.1)
-
 add_executable (MaiaMythology)
 add_executable (Maia::Mythology ALIAS MaiaMythology)
 
@@ -11,7 +9,7 @@ set_target_properties (
 
 target_compile_features (MaiaMythology 
 	PRIVATE 
-		cxx_std_17
+		cxx_std_20
 )
 
 if (MSVC)
@@ -43,7 +41,7 @@ target_link_libraries (MaiaMythology PRIVATE Standard_library)
 target_link_libraries (MaiaMythology
 	PRIVATE
 		Maia::ECS
-		Maia::Renderer
+		#Maia::Renderer
 		#Maia::Resources
 		#Maia::Shaders
 		#Maia::Utilities
@@ -53,7 +51,7 @@ add_subdirectory ("Core")
 add_subdirectory ("ImGui")
 
 add_subdirectory ("Windowless")
-target_link_libraries (MaiaMythology PRIVATE Maia::Mythology::Windowless)
+#target_link_libraries (MaiaMythology PRIVATE Maia::Mythology::Windowless)
 
 add_subdirectory ("Image")
 
@@ -61,10 +59,11 @@ if (MaiaMythology_use_SDL)
 
 	add_subdirectory ("SDL")
 	target_link_libraries (MaiaMythology PRIVATE Maia::Mythology::SDL)
-	
+
 endif()
 
-target_link_libraries(MaiaMythology PRIVATE nlohmann_json_module)
+find_package(nlohmann_json REQUIRED)
+target_link_libraries(MaiaMythology PRIVATE nlohmann_json::nlohmann_json)
 
 target_sources (MaiaMythology PRIVATE "main.cpp")
 
