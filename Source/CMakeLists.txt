@@ -36,7 +36,7 @@ add_module_compile_options (MaiaMythology)
 find_package (docopt REQUIRED CONFIG)
 target_link_libraries (MaiaMythology PRIVATE docopt)
 
-target_link_libraries (MaiaMythology PRIVATE Standard_library)
+#target_link_libraries (MaiaMythology PRIVATE Standard_library)
 
 target_link_libraries (MaiaMythology
 	PRIVATE

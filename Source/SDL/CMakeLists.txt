@@ -4,6 +4,9 @@ add_library(Maia::Mythology::SDL ALIAS MaiaMythologySDL)
 find_package(nlohmann_json REQUIRED)
 target_link_libraries(MaiaMythologySDL PRIVATE nlohmann_json::nlohmann_json)
 
+find_package(SDL2 REQUIRED)
+target_link_libraries(MaiaMythologySDL PRIVATE SDL2::SDL2)
+
 target_link_libraries(MaiaMythologySDL PRIVATE Maia::Renderer::Vulkan)
 
 #target_link_libraries (MaiaMythologySDL PRIVATE Maia::Input)
@@ -45,24 +48,52 @@ target_module (
 )
 #]]
 
+target_module(
+    MaiaMythologySDL
+    PUBLIC
+    "mythology.sdl.sdl"
+    INTERFACE "SDL.cxx"
+    IMPLEMENTATION "SDL.cpp"
+)
+
 target_module (
+    MaiaMythologySDL
+    PUBLIC
+    "mythology.sdl.vulkan"
+    INTERFACE "Vulkan_SDL.cxx"
+    IMPLEMENTATION "Vulkan_SDL.cpp"
+)
+
+target_module(
+    MaiaMythologySDL
+    PUBLIC
+    "mythology.sdl.render_resources"
+    INTERFACE "Render_resources.cxx"
+    IMPLEMENTATION "Render_resources.cpp"
+)
+
+target_module(
     MaiaMythologySDL
     PUBLIC
     "mythology.sdl.state"
     INTERFACE "State.cxx"
 )
 
-target_module (
+target_module(
     MaiaMythologySDL
     PUBLIC
     "mythology.sdl.startup_state"
     INTERFACE "Startup_state.cxx"
     INTERFACE_DEPENDS "mythology.sdl.state"
     IMPLEMENTATION "Startup_state.cpp"
-    IMPLEMENTATION_DEPENDS "mythology.sdl.state"
+    IMPLEMENTATION_DEPENDS
+        "mythology.sdl.render_resources"
+        "mythology.sdl.sdl"
+        "mythology.sdl.state"
+        "mythology.sdl.vulkan"
 )
 
-target_module (
+target_module(
     MaiaMythologySDL
     PUBLIC
     "mythology.sdl.application_2"

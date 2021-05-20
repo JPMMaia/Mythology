@@ -1,18 +1,18 @@
-export module maia.sdl.vulkan;
+module;
 
-import <SDL2/SDL.h>;
+#include <SDL2/SDL.h>
+#include <vulkan/vulkan.h>
 
-import <vulkan/vulkan.h>;
+#include <memory_resource>
+#include <vector>
 
-import <memory_resource>;
-import <vector>;
+export module mythology.sdl.vulkan;
 
-namespace Maia::SDL::Vulkan
+namespace Mythology::SDL::Vulkan
 {
     export std::pmr::vector<char const*> get_sdl_required_instance_extensions(
-        SDL_Window& window,
-        std::pmr::polymorphic_allocator<char const*> allocator = {}
-    ) noexcept;
+        std::pmr::polymorphic_allocator<> allocator
+    );
 
     export struct Surface_extent
     {
@@ -23,7 +23,7 @@ namespace Maia::SDL::Vulkan
     export VkSurfaceKHR create_surface(
         SDL_Window& window,
         VkInstance const instance
-    ) noexcept;
+    );
 
     export Surface_extent get_surface_extent(
         SDL_Window& window

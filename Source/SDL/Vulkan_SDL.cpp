@@ -1,44 +1,45 @@
-module maia.sdl.vulkan;
+module;
 
-import <SDL2/SDL.h>;
-import <SDL2/SDL_vulkan.h>;
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_vulkan.h>
+#include <vulkan/vulkan.h>
 
-import <vulkan/vulkan.h>;
+#include <cassert>
+#include <iostream>
+#include <memory_resource>
+#include <stdexcept>
+#include <vector>
 
-import <cassert>;
-import <iostream>;
-import <memory_resource>;
-import <vector>;
+module mythology.sdl.vulkan;
 
-namespace Maia::SDL::Vulkan
+namespace Mythology::SDL::Vulkan
 {
     namespace
     {
-        void check(SDL_bool const status) noexcept
+        void check(SDL_bool const status)
         {
             if (status != SDL_TRUE)
             {
                 std::cerr << SDL_GetError() << '\n';
-            }
 
-            assert(status == SDL_TRUE);
+                throw std::runtime_error{SDL_GetError()};
+            }
         }
     }
 
     std::pmr::vector<char const*> get_sdl_required_instance_extensions(
-        SDL_Window& window,
-        std::pmr::polymorphic_allocator<char const*> allocator
-    ) noexcept
+        std::pmr::polymorphic_allocator<> allocator
+    )
     {
         unsigned int count = 0;
         check(
-            SDL_Vulkan_GetInstanceExtensions(&window, &count, nullptr));
+            SDL_Vulkan_GetInstanceExtensions(nullptr, &count, nullptr));
 
         std::pmr::vector<char const*> instance_extensions{allocator};
         instance_extensions.resize(count);
 
         check(
-            SDL_Vulkan_GetInstanceExtensions(&window, &count, instance_extensions.data()));
+            SDL_Vulkan_GetInstanceExtensions(nullptr, &count, instance_extensions.data()));
 
         return instance_extensions;
     }
@@ -46,7 +47,7 @@ namespace Maia::SDL::Vulkan
     VkSurfaceKHR create_surface(
         SDL_Window& window,
         VkInstance const instance
-    ) noexcept
+    )
     {
         VkSurfaceKHR surface = {};
         check(
