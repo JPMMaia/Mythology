@@ -9,7 +9,12 @@
         "klein",
         "ms-gsl",
         "nlohmann-json",
-        "sdl2",
+        {
+            "name": "sdl2",
+            "features": [
+                "vulkan"
+            ]
+        },
         "stb"
     ]
 }
