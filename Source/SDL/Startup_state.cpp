@@ -20,6 +20,7 @@ import mythology.sdl.render_resources;
 import mythology.sdl.sdl;
 import mythology.sdl.state;
 import mythology.sdl.vulkan;
+
 namespace Mythology::SDL
 {
     Startup_state::~Startup_state() noexcept
@@ -93,6 +94,10 @@ namespace Mythology::SDL
                             }
                         );
                     }
+                    else
+                    {
+                        throw std::runtime_error{"Display not found!"};
+                    }
                 }
                 else
                 {
@@ -119,6 +124,36 @@ namespace Mythology::SDL
         }
     }
 
+    struct Surface_configuration
+    {
+        std::uint8_t window_index = 0;
+    };
+
+    namespace
+    {
+        std::pmr::vector<SDL_Window*> select_surface_windows(
+            std::span<Surface_configuration const> const surface_configurations,
+            std::span<SDL_window const> windows,
+            std::pmr::polymorphic_allocator<> const& allocator
+        )
+        {
+            std::pmr::vector<SDL_Window*> surface_windows{allocator};
+            surface_windows.reserve(surface_configurations.size());
+
+            for (Surface_configuration const& configuration : surface_configurations)
+            {
+                SDL_Window* const window =
+                    configuration.window_index < windows.size() ?
+                    windows[configuration.window_index].get() :
+                    nullptr;
+
+                surface_windows.push_back(window);
+            }
+
+            return surface_windows;
+        }
+    }
+
     std::unique_ptr<State> Startup_state::run()
     {
         std::array<Window_configuration, 1> const window_configurations
@@ -135,6 +170,14 @@ namespace Mythology::SDL
             }
         };
 
+        std::array<Surface_configuration, 1> const surface_configurations
+        {
+            Surface_configuration
+            {
+                .window_index = 0,
+            },
+        };
+
         SDL_instance sdl{SDL_INIT_VIDEO};
 
         std::pmr::vector<SDL_window> const windows = create_windows(sdl, window_configurations);
@@ -146,6 +189,16 @@ namespace Mythology::SDL
         {
             Maia::Renderer::Vulkan::make_api_version(1, 2, 0),
             required_instance_extensions
+        };
+
+        std::pmr::vector<SDL_Window*> const surface_windows =
+            select_surface_windows(surface_configurations, windows, {});
+
+        Mythology::SDL::Vulkan::Surface_resources surface_resources
+        {
+            instance_resources.instance,
+            surface_windows,
+            {}
         };
 
         {

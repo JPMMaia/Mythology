@@ -7,6 +7,7 @@ module;
 #include <cassert>
 #include <iostream>
 #include <memory_resource>
+#include <span>
 #include <stdexcept>
 #include <vector>
 
@@ -65,5 +66,62 @@ namespace Mythology::SDL::Vulkan
         SDL_Vulkan_GetDrawableSize(&window, &width, &height);
 
         return {width, height};
+    }
+
+    namespace
+    {
+        std::pmr::vector<VkSurfaceKHR> create_surfaces(
+            VkInstance const instance,
+            std::span<SDL_Window* const> const windows,
+            std::pmr::polymorphic_allocator<> const& allocator
+        )
+        {
+            std::pmr::vector<VkSurfaceKHR> surfaces{allocator};
+            surfaces.reserve(windows.size());
+
+            for (SDL_Window* const window : windows)
+            {
+                VkSurfaceKHR const surface =
+                    window != nullptr ?
+                    create_surface(*window, instance) :
+                    VkSurfaceKHR{VK_NULL_HANDLE};
+
+                surfaces.push_back(surface);
+            }
+
+            return surfaces;
+        }
+    }
+
+    Surface_resources::Surface_resources(
+        VkInstance const instance,
+        std::span<SDL_Window* const> windows,
+        std::pmr::polymorphic_allocator<> const& allocator
+    ) :
+        instance{instance},
+        surfaces{create_surfaces(instance, windows, allocator)}
+    {
+    }
+
+    Surface_resources::Surface_resources(Surface_resources&& other) noexcept :
+        instance{std::exchange(other.instance, VkInstance{VK_NULL_HANDLE})},
+        surfaces{std::move(other.surfaces)}
+    {
+    }
+
+    Surface_resources::~Surface_resources() noexcept
+    {
+        for (VkSurfaceKHR const surface : this->surfaces)
+        {
+            vkDestroySurfaceKHR(this->instance, surface, nullptr);
+        }
+    }
+
+    Surface_resources& Surface_resources::operator=(Surface_resources&& other) noexcept
+    {
+        std::swap(this->instance, other.instance);
+        std::swap(this->surfaces, other.surfaces);
+
+        return *this;
     }
 }
