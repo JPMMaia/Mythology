@@ -12,13 +12,15 @@ namespace Maia::Renderer::Vulkan
 {
     export std::ostream& operator<<(std::ostream& output_stream, VkPhysicalDeviceProperties const& physical_device_properties) noexcept;
 
+    export VkPhysicalDeviceProperties get_physical_device_properties(VkPhysicalDevice physical_device) noexcept;
+
 
     export std::ostream& operator<<(std::ostream& output_stream, VkPhysicalDevice physical_device) noexcept;
 
     export std::pmr::vector<VkPhysicalDevice> enumerate_physical_devices(VkInstance instance, std::pmr::polymorphic_allocator<VkPhysicalDevice> const& allocator = {}) noexcept;
 
 
-    export VkPhysicalDeviceFeatures get_physical_device_properties(VkPhysicalDevice physical_device) noexcept;
+    export VkPhysicalDeviceFeatures get_physical_device_features(VkPhysicalDevice physical_device) noexcept;
 
     export std::pmr::vector<VkExtensionProperties> enumerate_physical_device_extension_properties(
         VkPhysicalDevice physical_device,

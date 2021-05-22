@@ -11,6 +11,7 @@ module;
 module maia.renderer.vulkan.physical_device;
 
 import maia.renderer.vulkan.check;
+
 namespace Maia::Renderer::Vulkan
 {
     std::ostream& operator<<(std::ostream& output_stream, VkPhysicalDeviceProperties const& physical_device_properties) noexcept
@@ -27,6 +28,13 @@ namespace Maia::Renderer::Vulkan
         output_stream << "Device type: " << physical_device_properties.deviceType << '\n';
         */
         return output_stream;
+    }
+
+    VkPhysicalDeviceProperties get_physical_device_properties(VkPhysicalDevice physical_device) noexcept
+    {
+        VkPhysicalDeviceProperties properties = {};
+        vkGetPhysicalDeviceProperties(physical_device, &properties);
+        return properties;
     }
 
 
@@ -54,7 +62,7 @@ namespace Maia::Renderer::Vulkan
     }
 
 
-    VkPhysicalDeviceFeatures get_physical_device_properties(VkPhysicalDevice const physical_device) noexcept
+    VkPhysicalDeviceFeatures get_physical_device_features(VkPhysicalDevice const physical_device) noexcept
     {
         VkPhysicalDeviceFeatures features = {};
         vkGetPhysicalDeviceFeatures(physical_device, &features);
