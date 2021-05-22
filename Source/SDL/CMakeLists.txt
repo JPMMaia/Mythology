@@ -75,6 +75,21 @@ target_module(
 target_module(
     MaiaMythologySDL
     PUBLIC
+    "mythology.sdl.configuration"
+    INTERFACE "Configuration.cxx"
+    INTERFACE_DEPENDS
+        "mythology.sdl.render_resources"
+        "mythology.sdl.sdl"
+    IMPLEMENTATION "Configuration.cpp"
+    IMPLEMENTATION_DEPENDS
+        "mythology.sdl.render_resources"
+        "mythology.sdl.sdl"
+        "mythology.sdl.vulkan"
+)
+
+target_module(
+    MaiaMythologySDL
+    PUBLIC
     "mythology.sdl.state"
     INTERFACE "State.cxx"
 )
@@ -87,6 +102,7 @@ target_module(
     INTERFACE_DEPENDS "mythology.sdl.state"
     IMPLEMENTATION "Startup_state.cpp"
     IMPLEMENTATION_DEPENDS
+        "mythology.sdl.configuration"
         "mythology.sdl.render_resources"
         "mythology.sdl.sdl"
         "mythology.sdl.state"

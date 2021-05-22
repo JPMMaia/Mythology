@@ -2,6 +2,7 @@ module;
 
 #define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
+#include <vulkan/vulkan.h>
 
 #include <array>
 #include <cassert>
@@ -16,6 +17,7 @@ module mythology.sdl.startup_state;
 
 import maia.renderer.vulkan;
 
+import mythology.sdl.configuration;
 import mythology.sdl.render_resources;
 import mythology.sdl.sdl;
 import mythology.sdl.state;
@@ -25,133 +27,6 @@ namespace Mythology::SDL
 {
     Startup_state::~Startup_state() noexcept
     {
-    }
-
-    struct Window_offset
-    {
-        int x = 0;
-        int y = 0;
-    };
-
-    struct Window_extent
-    {
-        int width = 0;
-        int height = 0;
-    };
-
-    struct Fullscreen_mode
-    {
-        unsigned int display_index;
-    };
-
-    struct Windowed_mode
-    {
-        Window_offset offset;
-        Window_extent extent;
-    };
-
-    struct Window_configuration
-    {
-        std::pmr::string title;
-        std::variant<Fullscreen_mode, Windowed_mode> mode;
-    };
-
-    namespace
-    {
-        std::pmr::vector<SDL_window> create_windows(
-            SDL_instance const& sdl,
-            std::span<Window_configuration const> const window_configurations
-        )
-        {
-            std::pmr::vector<SDL_window> windows;
-            windows.reserve(window_configurations.size());
-
-            constexpr Uint32 common_flags = SDL_WINDOW_VULKAN;
-
-            int const number_of_displays = SDL_GetNumVideoDisplays();
-
-            for (Window_configuration const& configuration : window_configurations)
-            {
-                if (configuration.mode.index() == 0)
-                {
-                    Fullscreen_mode const& fullscreen_mode = std::get<Fullscreen_mode>(configuration.mode);
-
-                    if (fullscreen_mode.display_index < number_of_displays)
-                    {
-                        SDL_Rect bounds = {};
-                        SDL_GetDisplayBounds(fullscreen_mode.display_index, &bounds);
-
-                        windows.push_back(
-                            SDL_window
-                            {
-                                sdl,
-                                configuration.title.c_str(),
-                                bounds.x,
-                                bounds.y,
-                                bounds.w,
-                                bounds.h,
-                                SDL_WINDOW_FULLSCREEN_DESKTOP | common_flags
-                            }
-                        );
-                    }
-                    else
-                    {
-                        throw std::runtime_error{"Display not found!"};
-                    }
-                }
-                else
-                {
-                    assert(configuration.mode.index() == 1);
-
-                    Windowed_mode const& windowed_mode = std::get<Windowed_mode>(configuration.mode);
-
-                    windows.push_back(
-                        SDL_window
-                        {
-                            sdl,
-                            configuration.title.c_str(),
-                            windowed_mode.offset.x,
-                            windowed_mode.offset.y,
-                            windowed_mode.extent.width,
-                            windowed_mode.extent.height,
-                            common_flags
-                        }
-                    );
-                }
-            }
-
-            return windows;
-        }
-    }
-
-    struct Surface_configuration
-    {
-        std::uint8_t window_index = 0;
-    };
-
-    namespace
-    {
-        std::pmr::vector<SDL_Window*> select_surface_windows(
-            std::span<Surface_configuration const> const surface_configurations,
-            std::span<SDL_window const> windows,
-            std::pmr::polymorphic_allocator<> const& allocator
-        )
-        {
-            std::pmr::vector<SDL_Window*> surface_windows{allocator};
-            surface_windows.reserve(surface_configurations.size());
-
-            for (Surface_configuration const& configuration : surface_configurations)
-            {
-                SDL_Window* const window =
-                    configuration.window_index < windows.size() ?
-                    windows[configuration.window_index].get() :
-                    nullptr;
-
-                surface_windows.push_back(window);
-            }
-
-            return surface_windows;
-        }
     }
 
     std::unique_ptr<State> Startup_state::run()
@@ -178,6 +53,15 @@ namespace Mythology::SDL
             },
         };
 
+        std::array<Physical_device_configuration, 1> const physical_device_configurations
+        {
+            Physical_device_configuration
+            {
+                .vendor_ID = 4318,
+                .device_ID = 7953,
+            }
+        };
+
         SDL_instance sdl{SDL_INIT_VIDEO};
 
         std::pmr::vector<SDL_window> const windows = create_windows(sdl, window_configurations);
@@ -200,6 +84,13 @@ namespace Mythology::SDL
             surface_windows,
             {}
         };
+
+        std::pmr::vector<VkPhysicalDevice> const physical_devices = get_physical_devices(
+            physical_device_configurations,
+            instance_resources.instance,
+            {},
+            {}
+        );
 
         {
             using namespace std::chrono_literals;
