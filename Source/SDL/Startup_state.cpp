@@ -62,6 +62,23 @@ namespace Mythology::SDL
             }
         };
 
+        std::array<Device_configuration, 1> const device_configurations
+        {
+            Device_configuration
+            {
+                .physical_device_index = 0,
+                .queues =
+                {
+                    Queue_configuration
+                    {
+                        .queue_family_index = 0,
+                        .priorities = {0.5f},
+                    }
+                },
+                .enabled_extensions = {},
+            }
+        };
+
         SDL_instance sdl{SDL_INIT_VIDEO};
 
         std::pmr::vector<SDL_window> const windows = create_windows(sdl, window_configurations);
@@ -91,6 +108,14 @@ namespace Mythology::SDL
             {},
             {}
         );
+
+        Mythology::SDL::Device_resources device_resources
+        {
+            device_configurations,
+            physical_devices,
+            {},
+            {}
+        };
 
         {
             using namespace std::chrono_literals;

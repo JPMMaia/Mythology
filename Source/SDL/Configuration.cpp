@@ -166,4 +166,100 @@ namespace Mythology::SDL
 
         return physical_devices;
     }
+
+    std::uint32_t Queue_configuration::count() const noexcept
+    {
+        return static_cast<std::uint32_t>(priorities.size());
+    }
+
+    namespace
+    {
+        std::pmr::vector<VkDeviceQueueCreateInfo> create_device_queue_create_infos(
+            std::span<Queue_configuration const> const configurations,
+            std::pmr::polymorphic_allocator<> const& allocator
+        )
+        {
+            std::pmr::vector<VkDeviceQueueCreateInfo> queue_create_infos{allocator};
+            queue_create_infos.reserve(configurations.size());
+
+            for (Queue_configuration const configuration : configurations)
+            {
+                VkDeviceQueueCreateInfo const create_info
+                {
+                    .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                    .pNext = nullptr,
+                    .flags = 0,
+                    .queueFamilyIndex = configuration.queue_family_index,
+                    .queueCount = configuration.count(),
+                    .pQueuePriorities = configuration.priorities.data(),
+                };
+
+                queue_create_infos.push_back(create_info);
+            }
+
+            return queue_create_infos;
+        }
+    }
+
+    std::pmr::vector<VkDevice> create_devices(
+        std::span<Device_configuration const> const configurations,
+        std::span<VkPhysicalDevice const> const physical_devices,
+        std::pmr::polymorphic_allocator<> const& allocator,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
+    )
+    {
+        using Maia::Renderer::Vulkan::create_device_queue_create_info;
+        using Maia::Renderer::Vulkan::create_device;
+
+        std::pmr::vector<VkDevice> devices{allocator};
+        devices.reserve(configurations.size());
+
+        for (Device_configuration const configuration : configurations)
+        {
+            VkPhysicalDevice const physical_device = physical_devices[configuration.physical_device_index];
+
+            std::pmr::vector<VkDeviceQueueCreateInfo> const queue_create_infos =
+                create_device_queue_create_infos(configuration.queues, temporaries_allocator);
+
+            VkDevice const device = create_device(
+                physical_device,
+                queue_create_infos,
+                configuration.enabled_extensions
+            );
+            
+            devices.push_back(device);
+        }
+
+        return devices;
+    }
+
+    Device_resources::Device_resources(
+        std::span<Device_configuration const> configurations,
+        std::span<VkPhysicalDevice const> physical_devices,
+        std::pmr::polymorphic_allocator<> const& allocator,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
+    ) :
+        devices{create_devices(configurations, physical_devices, allocator, temporaries_allocator)}
+    {
+    }
+    
+    Device_resources::Device_resources(Device_resources&& other) noexcept :
+        devices{std::move(other.devices)}
+    {
+    }
+    
+    Device_resources::~Device_resources() noexcept
+    {
+        for (VkDevice const device : this->devices)
+        {
+            vkDestroyDevice(device, nullptr);
+        }
+    }
+
+    Device_resources& Device_resources::operator=(Device_resources&& other) noexcept
+    {
+        std::swap(this->devices, other.devices);
+
+        return *this;
+    }
 }

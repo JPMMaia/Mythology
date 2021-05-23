@@ -74,4 +74,37 @@ namespace Mythology::SDL
         std::pmr::polymorphic_allocator<> const& allocator,
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     );
+
+    export struct Queue_configuration
+    {
+        std::uint32_t queue_family_index = 0;
+        std::pmr::vector<float> priorities;
+
+        std::uint32_t count() const noexcept;
+    };
+
+    export struct Device_configuration
+    {
+        std::uint32_t physical_device_index = 0;
+        std::pmr::vector<Queue_configuration> queues;
+        std::pmr::vector<char const*> enabled_extensions;
+    };
+
+    export struct Device_resources
+    {
+        Device_resources(
+            std::span<Device_configuration const> configurations,
+            std::span<VkPhysicalDevice const> physical_devices,
+            std::pmr::polymorphic_allocator<> const& allocator,
+            std::pmr::polymorphic_allocator<> const& temporaries_allocator
+        );
+        Device_resources(Device_resources const&) = delete;
+        Device_resources(Device_resources&& other) noexcept;
+        ~Device_resources() noexcept;
+
+        Device_resources& operator=(Device_resources const&) = delete;
+        Device_resources& operator=(Device_resources&& other) noexcept;
+
+        std::pmr::vector<VkDevice> devices;
+    };
 }
