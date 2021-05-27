@@ -75,7 +75,7 @@ namespace Mythology::SDL
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     );
 
-    export struct Queue_configuration
+    export struct Queue_create_info_configuration
     {
         std::uint32_t queue_family_index = 0;
         std::pmr::vector<float> priorities;
@@ -86,7 +86,7 @@ namespace Mythology::SDL
     export struct Device_configuration
     {
         std::uint32_t physical_device_index = 0;
-        std::pmr::vector<Queue_configuration> queues;
+        std::pmr::vector<Queue_create_info_configuration> queues;
         std::pmr::vector<char const*> enabled_extensions;
     };
 
@@ -107,4 +107,17 @@ namespace Mythology::SDL
 
         std::pmr::vector<VkDevice> devices;
     };
+
+    export struct Queue_configuration
+    {
+        std::uint32_t device_index = 0;
+        std::uint32_t queue_family_index = 0;
+        std::uint32_t queue_index = 0;
+    };
+
+    export std::pmr::vector<VkQueue> get_queues(
+        std::span<Queue_configuration const> const configurations,
+        std::span<VkDevice const> const devices,
+        std::pmr::polymorphic_allocator<> const& allocator
+    );
 }

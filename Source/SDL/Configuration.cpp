@@ -167,7 +167,7 @@ namespace Mythology::SDL
         return physical_devices;
     }
 
-    std::uint32_t Queue_configuration::count() const noexcept
+    std::uint32_t Queue_create_info_configuration::count() const noexcept
     {
         return static_cast<std::uint32_t>(priorities.size());
     }
@@ -175,14 +175,14 @@ namespace Mythology::SDL
     namespace
     {
         std::pmr::vector<VkDeviceQueueCreateInfo> create_device_queue_create_infos(
-            std::span<Queue_configuration const> const configurations,
+            std::span<Queue_create_info_configuration const> const configurations,
             std::pmr::polymorphic_allocator<> const& allocator
         )
         {
             std::pmr::vector<VkDeviceQueueCreateInfo> queue_create_infos{allocator};
             queue_create_infos.reserve(configurations.size());
 
-            for (Queue_configuration const configuration : configurations)
+            for (Queue_create_info_configuration const configuration : configurations)
             {
                 VkDeviceQueueCreateInfo const create_info
                 {
@@ -261,5 +261,32 @@ namespace Mythology::SDL
         std::swap(this->devices, other.devices);
 
         return *this;
+    }
+
+    std::pmr::vector<VkQueue> get_queues(
+        std::span<Queue_configuration const> const configurations,
+        std::span<VkDevice const> const devices,
+        std::pmr::polymorphic_allocator<> const& allocator
+    )
+    {
+        std::pmr::vector<VkQueue> queues{allocator};
+        queues.reserve(configurations.size());
+
+        for (Queue_configuration const& configuration : configurations)
+        {
+            VkDevice const device = devices[configuration.device_index];
+
+            VkQueue queue = VK_NULL_HANDLE;
+            vkGetDeviceQueue(
+                device,
+                configuration.queue_family_index,
+                configuration.queue_index,
+                &queue
+            );
+
+            queues.push_back(queue);
+        }
+
+        return queues;
     }
 }

@@ -69,13 +69,23 @@ namespace Mythology::SDL
                 .physical_device_index = 0,
                 .queues =
                 {
-                    Queue_configuration
+                    Queue_create_info_configuration
                     {
                         .queue_family_index = 0,
                         .priorities = {0.5f},
                     }
                 },
                 .enabled_extensions = {},
+            }
+        };
+
+        std::array<Queue_configuration, 1> const queue_configurations
+        {
+            Queue_configuration
+            {
+                .device_index = 0,
+                .queue_family_index = 0,
+                .queue_index = 0
             }
         };
 
@@ -116,6 +126,12 @@ namespace Mythology::SDL
             {},
             {}
         };
+
+        std::pmr::vector<VkQueue> const queues = get_queues(
+            queue_configurations,
+            device_resources.devices,
+            {}
+        );
 
         {
             using namespace std::chrono_literals;
