@@ -75,7 +75,10 @@ namespace Mythology::SDL
                         .priorities = {0.5f},
                     }
                 },
-                .enabled_extensions = {},
+                .enabled_extensions =
+                {
+                    "VK_KHR_swapchain",
+                },
             }
         };
 
@@ -86,6 +89,14 @@ namespace Mythology::SDL
                 .device_index = 0,
                 .queue_family_index = 0,
                 .queue_index = 0
+            }
+        };
+
+        std::array<Swapchain_configuration, 1> const swapchain_configurations
+        {
+            Swapchain_configuration
+            {
+                .image_format = VK_FORMAT_B8G8R8A8_SRGB,
             }
         };
 
@@ -132,6 +143,32 @@ namespace Mythology::SDL
             device_resources.devices,
             {}
         );
+
+        std::pmr::vector<VkDevice> const swapchain_devices = get_swapchain_devices(
+            swapchain_configurations,
+            device_resources.devices,
+            {}
+        );
+
+        std::pmr::vector<SDL_Window*> const window_raw_pointers = get_window_raw_pointers(
+            windows,
+            {}
+        );
+
+        std::pmr::vector<VkExtent2D> const surface_image_extents = get_image_extents(
+            surface_configurations,
+            window_raw_pointers,
+            {}
+        );
+
+        Mythology::SDL::Swapchain_resources const swapchain_resources
+        {
+            swapchain_configurations,
+            swapchain_devices,
+            surface_resources.surfaces,
+            surface_image_extents,
+            {}
+        };
 
         {
             using namespace std::chrono_literals;

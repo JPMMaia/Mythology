@@ -3,6 +3,10 @@ module;
 #define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
 
+#include <memory_resource>
+#include <span>
+#include <vector>
+
 export module mythology.sdl.sdl;
 
 namespace Mythology::SDL
@@ -52,4 +56,9 @@ namespace Mythology::SDL
         SDL_Window* m_window = nullptr;
 
     };
+
+    export std::pmr::vector<SDL_Window*> get_window_raw_pointers(
+        std::span<SDL_window const> windows,
+        std::pmr::polymorphic_allocator<> const& allocator
+    );
 }

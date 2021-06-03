@@ -1,6 +1,7 @@
 module;
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_vulkan.h>
 #include <vulkan/vulkan.hpp>
 
 #include <algorithm>
@@ -182,7 +183,7 @@ namespace Mythology::SDL
             std::pmr::vector<VkDeviceQueueCreateInfo> queue_create_infos{allocator};
             queue_create_infos.reserve(configurations.size());
 
-            for (Queue_create_info_configuration const configuration : configurations)
+            for (Queue_create_info_configuration const& configuration : configurations)
             {
                 VkDeviceQueueCreateInfo const create_info
                 {
@@ -288,5 +289,184 @@ namespace Mythology::SDL
         }
 
         return queues;
+    }
+
+    std::uint32_t Swapchain_configuration::queue_family_index_count() const noexcept
+    {
+        return static_cast<std::uint32_t>(queue_family_indices.size());
+    }
+
+    std::pmr::vector<VkDevice> get_swapchain_devices(
+        std::span<Swapchain_configuration const> configurations,
+        std::span<VkDevice const> devices,
+        std::pmr::polymorphic_allocator<> const& allocator
+    )
+    {
+        std::pmr::vector<VkDevice> swapchain_devices{allocator};
+        swapchain_devices.reserve(configurations.size());
+
+        for (Swapchain_configuration const configuration : configurations)
+        {
+            swapchain_devices.push_back(
+                devices[configuration.device_index]
+            );
+        }
+
+        return swapchain_devices;
+    }
+
+    std::pmr::vector<VkExtent2D> get_image_extents(
+        std::span<Surface_configuration const> configurations,
+        std::span<SDL_Window* const> windows,
+        std::pmr::polymorphic_allocator<> const& allocator
+    )
+    {
+        auto const get_drawable_size = [windows] (Surface_configuration const& configuration) -> VkExtent2D
+        {
+            SDL_Window* const window = windows[configuration.window_index];
+
+            int width = 0;
+            int height = 0;
+            SDL_Vulkan_GetDrawableSize(window, &width, &height);
+            assert(width >= 0 && height >= 0);
+
+            return
+            {
+                .width = static_cast<std::uint32_t>(width),
+                .height = static_cast<std::uint32_t>(height),
+            };
+        };
+
+        std::pmr::vector<VkExtent2D> image_extents{allocator};
+        image_extents.resize(configurations.size());
+
+        std::transform(
+            configurations.begin(),
+            configurations.end(),
+            image_extents.begin(),
+            get_drawable_size
+        );
+
+        return image_extents;
+    }
+
+    namespace
+    {
+        VkSwapchainKHR create_swapchain(
+            Swapchain_configuration const configuration,
+            VkDevice const device,
+            VkSurfaceKHR const surface,
+            VkExtent2D const image_extent
+        )
+        {
+            VkSwapchainCreateInfoKHR const create_info
+            {
+                .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+                .pNext = nullptr,
+                .flags = configuration.flags,
+                .surface = surface,
+                .minImageCount = configuration.minimum_image_count,
+                .imageFormat = configuration.image_format,
+                .imageColorSpace = configuration.image_color_space,
+                .imageExtent = image_extent,
+                .imageArrayLayers = configuration.image_array_layers,
+                .imageUsage = configuration.image_usage,
+                .imageSharingMode = configuration.image_sharing_mode,
+                .queueFamilyIndexCount = configuration.queue_family_index_count(),
+                .pQueueFamilyIndices = !configuration.queue_family_indices.empty() ? configuration.queue_family_indices.data() : nullptr,
+                .preTransform = configuration.pre_transform,
+                .compositeAlpha = configuration.composite_alpha,
+                .presentMode = configuration.present_mode,
+                .clipped = configuration.clipped,
+                .oldSwapchain = VK_NULL_HANDLE,
+            };
+
+            VkSwapchainKHR swapchain = VK_NULL_HANDLE;
+            
+            using Maia::Renderer::Vulkan::check_result;
+            check_result(
+                vkCreateSwapchainKHR(
+                    device,
+                    &create_info,
+                    nullptr,
+                    &swapchain
+                )
+            );
+
+            return swapchain;
+        }
+
+        std::pmr::vector<VkSwapchainKHR> create_swapchains(
+            std::span<Swapchain_configuration const> const configurations,
+            std::span<VkDevice const> const devices,
+            std::span<VkSurfaceKHR const> const surfaces,
+            std::span<VkExtent2D const> const image_extents,
+            std::pmr::polymorphic_allocator<> const& allocator
+        )
+        {
+            assert(surfaces.size() == image_extents.size());
+
+            std::pmr::vector<VkSwapchainKHR> swapchains{allocator};
+            swapchains.reserve(configurations.size());
+
+            for (Swapchain_configuration const configuration : configurations)
+            {
+                VkDevice const device = devices[configuration.device_index];
+                VkSurfaceKHR const surface = surfaces[configuration.surface_index];
+                VkExtent2D const image_extent = image_extents[configuration.surface_index];
+
+                VkSwapchainKHR const swapchain = create_swapchain(
+                    configuration,
+                    device,
+                    surface,
+                    image_extent
+                );
+
+                swapchains.push_back(swapchain);
+            }
+
+            return swapchains;
+        }
+    }
+
+    Swapchain_resources::Swapchain_resources(
+        std::span<Swapchain_configuration const> const configurations,
+        std::span<VkDevice const> const devices,
+        std::span<VkSurfaceKHR const> const surfaces,
+        std::span<VkExtent2D const> const image_extents,
+        std::pmr::polymorphic_allocator<> const& allocator
+    ) :
+        devices{devices.begin(), devices.end(), allocator},
+        swapchains{create_swapchains(configurations, devices, surfaces, image_extents, allocator)}
+    {
+        if (devices.size() != swapchains.size())
+        {
+            throw std::runtime_error{"For each swapchain, there must be one corresponding device!"};
+        }
+    }
+
+    Swapchain_resources::Swapchain_resources(Swapchain_resources&& other) noexcept :
+        devices{std::move(other.devices)},
+        swapchains{std::move(other.swapchains)}
+    {
+    }
+
+    Swapchain_resources::~Swapchain_resources() noexcept
+    {
+        for (std::size_t swapchain_index = 0; swapchain_index < this->swapchains.size(); ++swapchain_index)
+        {
+            VkDevice const device = this->devices[swapchain_index];
+            VkSwapchainKHR const swapchain = this->swapchains[swapchain_index];
+
+            vkDestroySwapchainKHR(device, swapchain, nullptr);
+        }
+    }
+
+    Swapchain_resources& Swapchain_resources::operator=(Swapchain_resources&& other) noexcept
+    {
+        std::swap(this->devices, other.devices);
+        std::swap(this->swapchains, other.swapchains);
+
+        return *this;
     }
 }

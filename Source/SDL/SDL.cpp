@@ -3,9 +3,13 @@ module;
 #define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
 
+#include <algorithm>
 #include <iostream>
+#include <memory_resource>
+#include <span>
 #include <stdexcept>
 #include <utility>
+#include <vector>
 
 module mythology.sdl.sdl;
 
@@ -78,5 +82,23 @@ namespace Mythology::SDL
     SDL_Window* SDL_window::get() const noexcept
     {
         return m_window;
+    }
+
+    std::pmr::vector<SDL_Window*> get_window_raw_pointers(
+        std::span<SDL_window const> const windows,
+        std::pmr::polymorphic_allocator<> const& allocator
+    )
+    {
+        std::pmr::vector<SDL_Window*> window_raw_pointers{allocator};
+        window_raw_pointers.resize(windows.size(), nullptr);
+
+        auto const to_raw_pointer = [] (SDL_window const& window) -> SDL_Window*
+        {
+            return window.get();
+        };
+
+        std::transform(windows.begin(), windows.end(), window_raw_pointers.begin(), to_raw_pointer);
+
+        return window_raw_pointers;
     }
 }
