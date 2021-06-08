@@ -161,12 +161,26 @@ namespace Mythology::SDL
             {}
         );
 
+        if (!validate_swapchain_queues(device_configurations, queue_configurations, swapchain_configurations, physical_devices, surface_resources.surfaces))
+        {
+            throw std::runtime_error{"Swapchain present queues are not compatible!"};
+        }
+
+        std::pmr::vector<VkSurfaceCapabilitiesKHR> const swapchain_surface_capabilities = get_swapchain_surface_capabilities(
+            swapchain_configurations,
+            device_configurations,
+            physical_devices,
+            surface_resources.surfaces,
+            {}
+        );
+
         Mythology::SDL::Swapchain_resources const swapchain_resources
         {
             swapchain_configurations,
             swapchain_devices,
             surface_resources.surfaces,
             surface_image_extents,
+            swapchain_surface_capabilities,
             {}
         };
 

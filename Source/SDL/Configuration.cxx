@@ -133,10 +133,10 @@ namespace Mythology::SDL
         VkImageUsageFlags image_usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
         VkSharingMode image_sharing_mode = VK_SHARING_MODE_EXCLUSIVE;
         std::pmr::vector<std::uint32_t> queue_family_indices = {};
-        VkSurfaceTransformFlagBitsKHR pre_transform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
         VkCompositeAlphaFlagBitsKHR composite_alpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
         VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
         bool clipped = true;
+        std::uint32_t queue_to_present_index = 0;
 
         std::uint32_t queue_family_index_count() const noexcept;
     };
@@ -153,6 +153,22 @@ namespace Mythology::SDL
         std::pmr::polymorphic_allocator<> const& allocator
     );
 
+    export bool validate_swapchain_queues(
+        std::span<Device_configuration const> device_configurations,
+        std::span<Queue_configuration const> queue_configurations,
+        std::span<Swapchain_configuration const> swapchain_configurations,
+        std::span<VkPhysicalDevice const> physical_devices,
+        std::span<VkSurfaceKHR const> surfaces
+    ) noexcept;
+
+    export std::pmr::vector<VkSurfaceCapabilitiesKHR> get_swapchain_surface_capabilities(
+        std::span<Swapchain_configuration const> swapchain_configurations,
+        std::span<Device_configuration const> device_configurations,
+        std::span<VkPhysicalDevice const> physical_devices,
+        std::span<VkSurfaceKHR const> surfaces,
+        std::pmr::polymorphic_allocator<> const& allocator
+    );
+
     export struct Swapchain_resources
     {
         Swapchain_resources(
@@ -160,6 +176,7 @@ namespace Mythology::SDL
             std::span<VkDevice const> devices,
             std::span<VkSurfaceKHR const> surfaces,
             std::span<VkExtent2D const> image_extents,
+            std::span<VkSurfaceCapabilitiesKHR const> swapchain_surface_capabilities,
             std::pmr::polymorphic_allocator<> const& allocator
         );
         Swapchain_resources(Swapchain_resources const&) = delete;
