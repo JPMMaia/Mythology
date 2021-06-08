@@ -31,6 +31,8 @@ namespace Mythology::SDL
 
     std::unique_ptr<State> Startup_state::run()
     {
+        std::size_t const number_of_frames_in_flight = 3;
+
         std::array<Window_configuration, 1> const window_configurations
         {
             Window_configuration
@@ -181,6 +183,13 @@ namespace Mythology::SDL
             surface_resources.surfaces,
             surface_image_extents,
             swapchain_surface_capabilities,
+            {}
+        };
+
+        Mythology::Render::Synchronization_resources const synchronization_resources
+        {
+            number_of_frames_in_flight,
+            swapchain_devices,
             {}
         };
 

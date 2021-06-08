@@ -29,35 +29,28 @@ namespace Mythology::Render
         VkInstance instance = VK_NULL_HANDLE;
     };
 
-    export struct Queue_familiy_indices
+    export struct Frame_synchronization_resources
     {
-        std::optional<Maia::Renderer::Vulkan::Queue_family_index> compute;
-        std::optional<Maia::Renderer::Vulkan::Queue_family_index> graphics;
-        std::optional<Maia::Renderer::Vulkan::Queue_family_index> present;
-        std::optional<Maia::Renderer::Vulkan::Queue_family_index> transfer;
+        std::pmr::vector<VkSemaphore> available_frame_semaphores;
+        std::pmr::vector<VkSemaphore> finished_frame_semaphores;
+        std::pmr::vector<VkFence> available_frame_fences;
     };
 
-    export struct Physical_device_resources
+    export struct Synchronization_resources
     {
-        VkPhysicalDevice phyisical_device;
-        Queue_familiy_indices queue_family_indices;
-    };
+        Synchronization_resources(
+            std::size_t number_of_frames,
+            std::span<VkDevice const> devices,
+            std::pmr::polymorphic_allocator<> const& allocator
+        );
+        Synchronization_resources(Synchronization_resources const&) = delete;
+        Synchronization_resources(Synchronization_resources&& other) noexcept;
+        ~Synchronization_resources() noexcept;
 
-    export struct Device_configuration
-    {
+        Synchronization_resources& operator=(Synchronization_resources const&) = delete;
+        Synchronization_resources& operator=(Synchronization_resources&& other) noexcept;
 
-    };
-
-    export struct Device_resources
-    {
-        Device_resources(Device_configuration const& configuration);
-        Device_resources(Device_resources const&) = delete;
-        Device_resources(Device_resources&& other) noexcept;
-        ~Device_resources() noexcept;
-
-        Device_resources& operator=(Device_resources const&) = delete;
-        Device_resources& operator=(Device_resources&& other) noexcept;
-
-        VkDevice device = VK_NULL_HANDLE;
+        std::pmr::vector<VkDevice> devices;
+        std::pmr::vector<Frame_synchronization_resources> frames;
     };
 }
