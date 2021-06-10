@@ -552,4 +552,52 @@ namespace Mythology::SDL
 
         return *this;
     }
+
+
+    std::pmr::vector<VkDevice> get_queue_devices(
+        std::span<Queue_configuration const> const configurations,
+        std::span<VkDevice const> const devices,
+        std::pmr::polymorphic_allocator<> const& allocator
+    )
+    {
+        auto const get_queue_device = [devices] (Queue_configuration const& configuration) -> VkDevice
+        {
+            return devices[configuration.device_index];
+        };
+
+        std::pmr::vector<VkDevice> queue_devices{allocator};
+        queue_devices.resize(configurations.size());
+
+        std::transform(
+            configurations.begin(),
+            configurations.end(),
+            queue_devices.begin(),
+            get_queue_device
+        );
+
+        return queue_devices;
+    }
+
+    std::pmr::vector<std::uint32_t> get_queue_family_indices(
+        std::span<Queue_configuration const> const configurations,
+        std::pmr::polymorphic_allocator<> const& allocator
+    )
+    {
+        auto const get_queue_family_index = [] (Queue_configuration const& configuration) -> std::uint32_t
+        {
+            return configuration.queue_family_index;
+        };
+
+        std::pmr::vector<std::uint32_t> queue_family_indices{allocator};
+        queue_family_indices.resize(configurations.size());
+
+        std::transform(
+            configurations.begin(),
+            configurations.end(),
+            queue_family_indices.begin(),
+            get_queue_family_index
+        );
+
+        return queue_family_indices;
+    }
 }

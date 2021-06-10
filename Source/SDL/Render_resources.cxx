@@ -53,4 +53,23 @@ namespace Mythology::Render
         std::pmr::vector<VkDevice> devices;
         std::pmr::vector<Frame_synchronization_resources> frames;
     };
+
+    export struct Command_pools_resources
+    {
+        Command_pools_resources(
+            std::span<VkDevice const> devices,
+            std::span<VkCommandPoolCreateFlags const> flags,
+            std::span<std::uint32_t> const queue_family_indices,
+            std::pmr::polymorphic_allocator<> const& allocator
+        ) noexcept;
+        Command_pools_resources(Command_pools_resources const&) = delete;
+        Command_pools_resources(Command_pools_resources&& other) noexcept;
+        ~Command_pools_resources() noexcept;
+
+        Command_pools_resources& operator=(Command_pools_resources const&) = delete;
+        Command_pools_resources& operator=(Command_pools_resources&& other) noexcept;
+
+        std::pmr::vector<VkDevice> devices;
+        std::pmr::vector<VkCommandPool> command_pools;
+    };
 }

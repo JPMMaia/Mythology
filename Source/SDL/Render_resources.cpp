@@ -165,4 +165,63 @@ namespace Mythology::Render
 
         return *this;
     }
+
+    namespace
+    {
+        std::pmr::vector<VkCommandPool> create_command_pools(
+            std::span<VkDevice const> devices,
+            std::span<VkCommandPoolCreateFlags const> flags,
+            std::span<std::uint32_t> const queue_family_indices,
+            std::pmr::polymorphic_allocator<> const& allocator
+        )
+        {
+            assert(devices.size() == flags.size());
+            assert(devices.size() == queue_family_indices.size());
+
+            std::pmr::vector<VkCommandPool> command_pools{allocator};
+            command_pools.reserve(queue_family_indices.size());
+
+            for (std::size_t index = 0; index < queue_family_indices.size(); ++index)
+            {
+                VkCommandPool const command_pool = create_command_pool(devices[index], flags[index], {queue_family_indices[index]}, {});
+
+                command_pools.push_back(command_pool);
+            }
+
+            return command_pools;
+        }
+    }
+
+    Command_pools_resources::Command_pools_resources(
+        std::span<VkDevice const> devices,
+        std::span<VkCommandPoolCreateFlags const> flags,
+        std::span<std::uint32_t> const queue_family_indices,
+        std::pmr::polymorphic_allocator<> const& allocator
+    ) noexcept :
+        devices{devices.begin(), devices.end(), allocator},
+        command_pools{create_command_pools(devices, flags, queue_family_indices, allocator)}
+    {
+    }
+
+    Command_pools_resources::Command_pools_resources(Command_pools_resources&& other) noexcept :
+        devices{std::move(other.devices)},
+        command_pools{std::move(other.command_pools)}
+    {
+    }
+
+    Command_pools_resources::~Command_pools_resources() noexcept
+    {
+        for (std::size_t index = 0; index < this->command_pools.size(); ++index)
+        {
+            destroy_command_pool(this->devices[index], this->command_pools[index], {});
+        }
+    }
+
+    Command_pools_resources& Command_pools_resources::operator=(Command_pools_resources&& other) noexcept
+    {
+        std::swap(this->devices, other.devices);
+        std::swap(this->command_pools, other.command_pools);
+
+        return *this;
+    }
 }

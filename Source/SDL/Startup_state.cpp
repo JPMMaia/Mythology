@@ -8,6 +8,8 @@ module;
 #include <cassert>
 #include <memory>
 #include <memory_resource>
+#include <optional>
+#include <ranges>
 #include <span>
 #include <string>
 #include <variant>
@@ -192,6 +194,67 @@ namespace Mythology::SDL
             swapchain_devices,
             {}
         };
+
+        std::pmr::vector<VkDevice> const queue_devices = get_queue_devices(queue_configurations, device_resources.devices, {});
+        std::pmr::vector<VkCommandPoolCreateFlags> const command_pool_flags(queue_configurations.size(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+        std::pmr::vector<std::uint32_t> command_pools_queue_family_indices = get_queue_family_indices(queue_configurations, {});
+
+        Mythology::Render::Command_pools_resources const command_pools_resources
+        {
+            queue_devices,
+            command_pool_flags,
+            command_pools_queue_family_indices,
+            {}
+        };
+
+        std::uint8_t frame_index = 0;
+
+        {
+            std::span<VkFence const> const available_frame_fences = synchronization_resources.frames[frame_index].available_frame_fences;
+            std::span<VkSemaphore const> const available_frame_semaphores = synchronization_resources.frames[frame_index].available_frame_semaphores;
+            std::span<VkSemaphore const> const finished_frame_semaphores = synchronization_resources.frames[frame_index].finished_frame_semaphores;
+
+            // Check if fence is signaled and then acquire next image.
+            // If acquire next image fails, then wait for everything, recreate swapchain and destroy old swapchain. If that also fails, don+t mark as supported. Continue.
+
+            // For each available swapchain
+            // - fill the command buffers needed to create the content that will be displayed in that swapchain
+            // - submit these in a queue submit that also signals the swapchains semaphore.
+
+            //std::pmr::vector<std::optional<Maia::Renderer::Vulkan::Swapchain_image_index>> swapchain_image_indices;
+
+            for (std::size_t swapchain_index = 0; swapchain_index < synchronization_resources.devices.size(); ++swapchain_index)
+            {
+                VkDevice const swapchain_device = synchronization_resources.devices[swapchain_index];
+                VkFence const available_frame_fence = available_frame_fences[swapchain_index];
+
+                if (Maia::Renderer::Vulkan::is_fence_signaled(swapchain_device, available_frame_fence))
+                {
+                    VkSwapchainKHR const swapchain = swapchain_resources.swapchains[swapchain_index];
+
+                    VkSemaphore const available_frame_semaphore = available_frame_semaphores[swapchain_index];
+                    std::optional<Maia::Renderer::Vulkan::Swapchain_image_index> const swapchain_image_index =
+                        Maia::Renderer::Vulkan::acquire_next_image(swapchain_device, swapchain, 0, available_frame_semaphore, {});
+
+                    if (swapchain_image_index)
+                    {
+                        // TODO Create command buffer and submit
+                        std::span<VkCommandBuffer const> const command_buffers = {};
+
+                        VkQueue const queue = queues[swapchain_configurations[swapchain_index].queue_to_present_index];
+
+                        VkSemaphore const finished_frame_semaphore = finished_frame_semaphores[swapchain_index];
+                        {
+                            std::array<VkPipelineStageFlags, 1> constexpr wait_destination_stage_masks = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+                            Maia::Renderer::Vulkan::reset_fences(swapchain_device, {&available_frame_fence, 1});
+                            Maia::Renderer::Vulkan::queue_submit(queue, {&available_frame_semaphore, 1}, wait_destination_stage_masks, command_buffers, {&finished_frame_semaphore, 1}, available_frame_fence);
+                        }
+
+                        Maia::Renderer::Vulkan::queue_present(queue, {&finished_frame_semaphore, 1}, swapchain, *swapchain_image_index);
+                    }
+                }
+            }
+        }
 
         {
             using namespace std::chrono_literals;

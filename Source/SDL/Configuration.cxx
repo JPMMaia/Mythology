@@ -189,4 +189,15 @@ namespace Mythology::SDL
         std::pmr::vector<VkDevice> devices;
         std::pmr::vector<VkSwapchainKHR> swapchains;
     };
+
+    export std::pmr::vector<VkDevice> get_queue_devices(
+        std::span<Queue_configuration const> configurations,
+        std::span<VkDevice const> devices,
+        std::pmr::polymorphic_allocator<> const& allocator
+    );
+
+    export std::pmr::vector<std::uint32_t> get_queue_family_indices(
+        std::span<Queue_configuration const> configurations,
+        std::pmr::polymorphic_allocator<> const& allocator
+    );
 }
