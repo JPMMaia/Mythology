@@ -224,4 +224,67 @@ namespace Mythology::Render
 
         return *this;
     }
+
+
+    std::pmr::vector<std::pmr::vector<VkCommandBuffer>> allocate_command_buffers(
+        std::span<VkDevice const> const devices,
+        std::span<VkCommandPool const> const command_pools,
+        VkCommandBufferLevel const level,
+        std::uint32_t const number_of_frames_in_flight,
+        VkAllocationCallbacks const* const vulkan_allocator,
+        std::pmr::polymorphic_allocator<> const& pmr_allocator
+    )
+    {
+        using Maia::Renderer::Vulkan::check_result;
+
+        assert(devices.size() == command_pools.size());
+
+        auto const create_command_buffer = [=] (std::size_t const index) -> VkCommandBuffer
+        {
+            VkDevice const device = devices[index];
+            VkCommandPool const command_pool = command_pools[index];
+
+            VkCommandBufferAllocateInfo const allocate_info
+            {
+                .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+                .pNext = nullptr,
+                .commandPool = command_pool,
+                .level = level,
+                .commandBufferCount = 1,
+            };
+
+            VkCommandBuffer command_buffer = VK_NULL_HANDLE;
+            check_result(
+                vkAllocateCommandBuffers(
+                    device,
+                    &allocate_info,
+                    &command_buffer
+                )
+            );
+
+            return command_buffer;
+        };
+
+        auto const create_frame_command_buffers = [=] () -> std::pmr::vector<VkCommandBuffer>
+        {
+            std::pmr::vector<VkCommandBuffer> frame_command_buffers{pmr_allocator};
+            frame_command_buffers.reserve(command_pools.size());
+
+            for (std::size_t index = 0; index < command_pools.size(); ++index)
+            {
+                VkCommandBuffer const command_buffer = create_command_buffer(index);
+
+                frame_command_buffers.push_back(command_buffer);
+            }
+
+            return frame_command_buffers;
+        };
+    
+        std::pmr::vector<std::pmr::vector<VkCommandBuffer>> command_buffers{pmr_allocator};
+        command_buffers.resize(number_of_frames_in_flight);
+
+        std::generate_n(command_buffers.begin(), number_of_frames_in_flight, create_frame_command_buffers);
+
+        return command_buffers;
+    }
 }

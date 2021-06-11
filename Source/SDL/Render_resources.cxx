@@ -72,4 +72,13 @@ namespace Mythology::Render
         std::pmr::vector<VkDevice> devices;
         std::pmr::vector<VkCommandPool> command_pools;
     };
+
+    export std::pmr::vector<std::pmr::vector<VkCommandBuffer>> allocate_command_buffers(
+        std::span<VkDevice const> devices,
+        std::span<VkCommandPool const> command_pools,
+        VkCommandBufferLevel level,
+        std::uint32_t number_of_frames_in_flight,
+        VkAllocationCallbacks const* vulkan_allocator,
+        std::pmr::polymorphic_allocator<> const& pmr_allocator
+    );
 }

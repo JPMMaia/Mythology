@@ -207,6 +207,16 @@ namespace Mythology::SDL
             {}
         };
 
+        std::pmr::vector<std::pmr::vector<VkCommandBuffer>> const frames_command_buffers = 
+            Mythology::Render::allocate_command_buffers(
+                queue_devices,
+                command_pools_resources.command_pools,
+                VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+                number_of_frames_in_flight,
+                nullptr,
+                {}
+            );
+
         std::uint8_t frame_index = 0;
 
         {
