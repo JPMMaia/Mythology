@@ -1,7 +1,7 @@
 module;
 
 #include <SDL2/SDL.h>
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan.hpp>
 
 #include <memory_resource>
 #include <span>
@@ -15,10 +15,12 @@ namespace Mythology::SDL::Vulkan
         std::pmr::polymorphic_allocator<> allocator
     );
 
+    export PFN_vkGetInstanceProcAddr get_instance_process_address() noexcept;
+
     export struct Surface_extent
     {
-        int width;
-        int height;
+        int width = 0;
+        int height = 0;
     };
 
     export VkSurfaceKHR create_surface(
@@ -33,7 +35,7 @@ namespace Mythology::SDL::Vulkan
     export struct Surface_resources
     {
         Surface_resources(
-            VkInstance instance,
+            vk::Instance instance,
             std::span<SDL_Window* const> windows,
             std::pmr::polymorphic_allocator<> const& allocator
         );
@@ -44,7 +46,7 @@ namespace Mythology::SDL::Vulkan
         Surface_resources& operator=(Surface_resources const&) = delete;
         Surface_resources& operator=(Surface_resources&& other) noexcept;
 
-        VkInstance instance = VK_NULL_HANDLE;
-        std::pmr::vector<VkSurfaceKHR> surfaces;
+        vk::Instance instance = {};
+        std::pmr::vector<vk::SurfaceKHR> surfaces;
     };
 }

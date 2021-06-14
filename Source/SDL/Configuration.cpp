@@ -14,8 +14,6 @@ module;
 
 module mythology.sdl.configuration;
 
-import maia.renderer.vulkan;
-
 import mythology.sdl.render_resources;
 import mythology.sdl.sdl;
 import mythology.sdl.vulkan;
@@ -109,30 +107,31 @@ namespace Mythology::SDL
         return surface_windows;
     }
 
-    std::pmr::vector<VkPhysicalDevice> get_physical_devices(
+    std::pmr::vector<vk::PhysicalDevice> get_physical_devices(
         std::span<Physical_device_configuration const> const configurations,
-        VkInstance const instance,
+        vk::Instance const instance,
         std::pmr::polymorphic_allocator<> const& allocator,
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     )
     {
-        using Maia::Renderer::Vulkan::enumerate_physical_devices;
-        using Maia::Renderer::Vulkan::get_physical_device_properties;
-
-        std::pmr::vector<VkPhysicalDevice> physical_devices{allocator};
+        std::pmr::vector<vk::PhysicalDevice> physical_devices{allocator};
         physical_devices.reserve(configurations.size());
 
-        std::pmr::vector<VkPhysicalDevice> const actual_physical_devices =
-            enumerate_physical_devices(instance, temporaries_allocator);
+        std::pmr::polymorphic_allocator<vk::PhysicalDevice> physical_device_allocator{temporaries_allocator};
+        std::pmr::vector<vk::PhysicalDevice> const actual_physical_devices =
+            instance.enumeratePhysicalDevices(physical_device_allocator);
 
-        std::pmr::vector<VkPhysicalDeviceProperties> const properties = [&]
+        std::pmr::vector<vk::PhysicalDeviceProperties> const properties = [&]
         {
-            std::pmr::vector<VkPhysicalDeviceProperties> properties{temporaries_allocator};
+            std::pmr::vector<vk::PhysicalDeviceProperties> properties{temporaries_allocator};
             properties.reserve(actual_physical_devices.size());
             
-            for (VkPhysicalDevice const physical_device : actual_physical_devices)
+            for (vk::PhysicalDevice const physical_device : actual_physical_devices)
             {
-                properties.push_back(get_physical_device_properties(physical_device));
+                vk::PhysicalDeviceProperties const physical_device_properties =
+                    physical_device.getProperties();
+
+                properties.push_back(physical_device_properties);
             }
 
             return properties;
@@ -140,22 +139,22 @@ namespace Mythology::SDL
 
         for (Physical_device_configuration const configuration : configurations)
         {
-            auto const is_same_physical_device = [configuration] (VkPhysicalDeviceProperties const& properties)
+            auto const is_same_physical_device = [configuration] (vk::PhysicalDeviceProperties const& properties)
             {
                 return configuration.vendor_ID == properties.vendorID && configuration.device_ID == properties.deviceID;
             };
 
             auto const location = std::find_if(properties.begin(), properties.end(), is_same_physical_device);
 
-            VkPhysicalDevice const physical_device = 
+            vk::PhysicalDevice const physical_device = 
                 location != properties.end() ?
                 actual_physical_devices[std::distance(properties.begin(), location)] :
-                VkPhysicalDevice{VK_NULL_HANDLE};
+                vk::PhysicalDevice{};
 
             physical_devices.push_back(physical_device);
         }
 
-        for (VkPhysicalDevice const physical_device : actual_physical_devices)
+        for (vk::PhysicalDevice const physical_device : actual_physical_devices)
         {
             auto const location = std::find(physical_devices.begin(), physical_devices.end(), physical_device);
 
@@ -175,21 +174,19 @@ namespace Mythology::SDL
 
     namespace
     {
-        std::pmr::vector<VkDeviceQueueCreateInfo> create_device_queue_create_infos(
+        std::pmr::vector<vk::DeviceQueueCreateInfo> create_device_queue_create_infos(
             std::span<Queue_create_info_configuration const> const configurations,
             std::pmr::polymorphic_allocator<> const& allocator
         )
         {
-            std::pmr::vector<VkDeviceQueueCreateInfo> queue_create_infos{allocator};
+            std::pmr::vector<vk::DeviceQueueCreateInfo> queue_create_infos{allocator};
             queue_create_infos.reserve(configurations.size());
 
             for (Queue_create_info_configuration const& configuration : configurations)
             {
-                VkDeviceQueueCreateInfo const create_info
+                vk::DeviceQueueCreateInfo const create_info
                 {
-                    .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-                    .pNext = nullptr,
-                    .flags = 0,
+                    .flags = {},
                     .queueFamilyIndex = configuration.queue_family_index,
                     .queueCount = configuration.count(),
                     .pQueuePriorities = configuration.priorities.data(),
@@ -202,30 +199,37 @@ namespace Mythology::SDL
         }
     }
 
-    std::pmr::vector<VkDevice> create_devices(
+    std::pmr::vector<vk::Device> create_devices(
         std::span<Device_configuration const> const configurations,
-        std::span<VkPhysicalDevice const> const physical_devices,
+        std::span<vk::PhysicalDevice const> const physical_devices,
         std::pmr::polymorphic_allocator<> const& allocator,
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     )
     {
-        using Maia::Renderer::Vulkan::create_device_queue_create_info;
-        using Maia::Renderer::Vulkan::create_device;
-
-        std::pmr::vector<VkDevice> devices{allocator};
+        std::pmr::vector<vk::Device> devices{allocator};
         devices.reserve(configurations.size());
 
         for (Device_configuration const configuration : configurations)
         {
-            VkPhysicalDevice const physical_device = physical_devices[configuration.physical_device_index];
+            vk::PhysicalDevice const physical_device = physical_devices[configuration.physical_device_index];
 
-            std::pmr::vector<VkDeviceQueueCreateInfo> const queue_create_infos =
+            std::pmr::vector<vk::DeviceQueueCreateInfo> const queue_create_infos =
                 create_device_queue_create_infos(configuration.queues, temporaries_allocator);
 
-            VkDevice const device = create_device(
-                physical_device,
-                queue_create_infos,
-                configuration.enabled_extensions
+            vk::DeviceCreateInfo const create_info
+            {
+                .flags = {},
+                .queueCreateInfoCount = static_cast<std::uint32_t>(queue_create_infos.size()),
+                .pQueueCreateInfos = queue_create_infos.data(),
+                .enabledLayerCount = {},
+                .ppEnabledLayerNames = {},
+                .enabledExtensionCount = static_cast<std::uint32_t>(configuration.enabled_extensions.size()),
+                .ppEnabledExtensionNames = configuration.enabled_extensions.data(),
+                .pEnabledFeatures = {},
+            };
+
+            vk::Device const device = physical_device.createDevice(
+                create_info
             );
             
             devices.push_back(device);
@@ -236,7 +240,7 @@ namespace Mythology::SDL
 
     Device_resources::Device_resources(
         std::span<Device_configuration const> configurations,
-        std::span<VkPhysicalDevice const> physical_devices,
+        std::span<vk::PhysicalDevice const> physical_devices,
         std::pmr::polymorphic_allocator<> const& allocator,
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     ) :
@@ -251,9 +255,9 @@ namespace Mythology::SDL
     
     Device_resources::~Device_resources() noexcept
     {
-        for (VkDevice const device : this->devices)
+        for (vk::Device const device : this->devices)
         {
-            vkDestroyDevice(device, nullptr);
+            device.destroy();
         }
     }
 
@@ -264,25 +268,22 @@ namespace Mythology::SDL
         return *this;
     }
 
-    std::pmr::vector<VkQueue> get_queues(
+    std::pmr::vector<vk::Queue> get_queues(
         std::span<Queue_configuration const> const configurations,
-        std::span<VkDevice const> const devices,
+        std::span<vk::Device const> const devices,
         std::pmr::polymorphic_allocator<> const& allocator
     )
     {
-        std::pmr::vector<VkQueue> queues{allocator};
+        std::pmr::vector<vk::Queue> queues{allocator};
         queues.reserve(configurations.size());
 
         for (Queue_configuration const& configuration : configurations)
         {
-            VkDevice const device = devices[configuration.device_index];
+            vk::Device const device = devices[configuration.device_index];
 
-            VkQueue queue = VK_NULL_HANDLE;
-            vkGetDeviceQueue(
-                device,
+            vk::Queue const queue = device.getQueue(
                 configuration.queue_family_index,
-                configuration.queue_index,
-                &queue
+                configuration.queue_index
             );
 
             queues.push_back(queue);
@@ -296,13 +297,13 @@ namespace Mythology::SDL
         return static_cast<std::uint32_t>(queue_family_indices.size());
     }
 
-    std::pmr::vector<VkDevice> get_swapchain_devices(
+    std::pmr::vector<vk::Device> get_swapchain_devices(
         std::span<Swapchain_configuration const> configurations,
-        std::span<VkDevice const> devices,
+        std::span<vk::Device const> devices,
         std::pmr::polymorphic_allocator<> const& allocator
     )
     {
-        std::pmr::vector<VkDevice> swapchain_devices{allocator};
+        std::pmr::vector<vk::Device> swapchain_devices{allocator};
         swapchain_devices.reserve(configurations.size());
 
         for (Swapchain_configuration const configuration : configurations)
@@ -315,13 +316,13 @@ namespace Mythology::SDL
         return swapchain_devices;
     }
 
-    std::pmr::vector<VkExtent2D> get_image_extents(
+    std::pmr::vector<vk::Extent2D> get_image_extents(
         std::span<Surface_configuration const> configurations,
         std::span<SDL_Window* const> windows,
         std::pmr::polymorphic_allocator<> const& allocator
     )
     {
-        auto const get_drawable_size = [windows] (Surface_configuration const& configuration) -> VkExtent2D
+        auto const get_drawable_size = [windows] (Surface_configuration const& configuration) -> vk::Extent2D
         {
             SDL_Window* const window = windows[configuration.window_index];
 
@@ -337,7 +338,7 @@ namespace Mythology::SDL
             };
         };
 
-        std::pmr::vector<VkExtent2D> image_extents{allocator};
+        std::pmr::vector<vk::Extent2D> image_extents{allocator};
         image_extents.resize(configurations.size());
 
         std::transform(
@@ -354,30 +355,23 @@ namespace Mythology::SDL
         std::span<Device_configuration const> const device_configurations,
         std::span<Queue_configuration const> const queue_configurations,
         std::span<Swapchain_configuration const> const swapchain_configurations,
-        std::span<VkPhysicalDevice const> const physical_devices,
-        std::span<VkSurfaceKHR const> const surfaces
+        std::span<vk::PhysicalDevice const> const physical_devices,
+        std::span<vk::SurfaceKHR const> const surfaces
     ) noexcept
     {
-        using Maia::Renderer::Vulkan::check_result;
-
         auto const queue_supports_physical_device_surface = [=] (Swapchain_configuration const& swapchain_configuration) -> bool
         {
             Queue_configuration const& queue_configuration = queue_configurations[swapchain_configuration.queue_to_present_index];
             Device_configuration const& device_configuration = device_configurations[queue_configuration.device_index];
-            VkPhysicalDevice const physical_device = physical_devices[device_configuration.physical_device_index];
-            VkSurfaceKHR const surface = surfaces[swapchain_configuration.surface_index];
+            vk::PhysicalDevice const physical_device = physical_devices[device_configuration.physical_device_index];
+            vk::SurfaceKHR const surface = surfaces[swapchain_configuration.surface_index];
 
-            VkBool32 supported = VK_FALSE;
-            check_result(
-                vkGetPhysicalDeviceSurfaceSupportKHR(
-                    physical_device,
-                    queue_configuration.queue_family_index,
-                    surface,
-                    &supported
-                )
+            vk::Bool32 const is_supported = physical_device.getSurfaceSupportKHR(
+                queue_configuration.queue_family_index,
+                surface
             );
 
-            return supported == VK_TRUE;
+            return is_supported == VK_TRUE;
         };
 
         return std::all_of(
@@ -387,34 +381,28 @@ namespace Mythology::SDL
         );
     }
 
-    std::pmr::vector<VkSurfaceCapabilitiesKHR> get_swapchain_surface_capabilities(
+    std::pmr::vector<vk::SurfaceCapabilitiesKHR> get_swapchain_surface_capabilities(
         std::span<Swapchain_configuration const> const swapchain_configurations,
         std::span<Device_configuration const> const device_configurations,
-        std::span<VkPhysicalDevice const> const physical_devices,
-        std::span<VkSurfaceKHR const> const surfaces,
+        std::span<vk::PhysicalDevice const> const physical_devices,
+        std::span<vk::SurfaceKHR const> const surfaces,
         std::pmr::polymorphic_allocator<> const& allocator
     )
     {
-        using Maia::Renderer::Vulkan::check_result;
-        
-        auto const get_surface_capabilities = [=] (Swapchain_configuration const& swapchain_configuration) -> VkSurfaceCapabilitiesKHR
+        auto const get_surface_capabilities = [=] (Swapchain_configuration const& swapchain_configuration) -> vk::SurfaceCapabilitiesKHR
         {
             Device_configuration const& device_configuration = device_configurations[swapchain_configuration.device_index];
-            VkPhysicalDevice const physical_device = physical_devices[device_configuration.physical_device_index];
-            VkSurfaceKHR const surface = surfaces[swapchain_configuration.surface_index];
+            vk::PhysicalDevice const physical_device = physical_devices[device_configuration.physical_device_index];
+            vk::SurfaceKHR const surface = surfaces[swapchain_configuration.surface_index];
 
-            VkSurfaceCapabilitiesKHR capabilities = {};
-            check_result(
-                vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
-                    physical_device,
-                    surface,
-                    &capabilities
-                )
+            vk::SurfaceCapabilitiesKHR const capabilities = physical_device.getSurfaceCapabilitiesKHR(
+                surface
             );
+
             return capabilities;
         };
 
-        std::pmr::vector<VkSurfaceCapabilitiesKHR> capabilities{allocator};
+        std::pmr::vector<vk::SurfaceCapabilitiesKHR> capabilities{allocator};
         capabilities.resize(swapchain_configurations.size());
 
         std::transform(
@@ -429,18 +417,16 @@ namespace Mythology::SDL
 
     namespace
     {
-        VkSwapchainKHR create_swapchain(
+        vk::SwapchainKHR create_swapchain(
             Swapchain_configuration const configuration,
-            VkDevice const device,
-            VkSurfaceKHR const surface,
-            VkExtent2D const image_extent,
-            VkSurfaceTransformFlagBitsKHR const pre_transfrm
+            vk::Device const device,
+            vk::SurfaceKHR const surface,
+            vk::Extent2D const image_extent,
+            vk::SurfaceTransformFlagBitsKHR const pre_transfrm
         )
         {
-            VkSwapchainCreateInfoKHR const create_info
+            vk::SwapchainCreateInfoKHR const create_info
             {
-                .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-                .pNext = nullptr,
                 .flags = configuration.flags,
                 .surface = surface,
                 .minImageCount = configuration.minimum_image_count,
@@ -456,47 +442,40 @@ namespace Mythology::SDL
                 .compositeAlpha = configuration.composite_alpha,
                 .presentMode = configuration.present_mode,
                 .clipped = configuration.clipped,
-                .oldSwapchain = VK_NULL_HANDLE,
+                .oldSwapchain = {},
             };
 
-            VkSwapchainKHR swapchain = VK_NULL_HANDLE;
-            
-            using Maia::Renderer::Vulkan::check_result;
-            check_result(
-                vkCreateSwapchainKHR(
-                    device,
-                    &create_info,
-                    nullptr,
-                    &swapchain
-                )
+            vk::SwapchainKHR const swapchain = device.createSwapchainKHR(
+                create_info,
+                nullptr
             );
 
             return swapchain;
         }
 
-        std::pmr::vector<VkSwapchainKHR> create_swapchains(
+        std::pmr::vector<vk::SwapchainKHR> create_swapchains(
             std::span<Swapchain_configuration const> const configurations,
-            std::span<VkDevice const> const devices,
-            std::span<VkSurfaceKHR const> const surfaces,
-            std::span<VkExtent2D const> const image_extents,
-            std::span<VkSurfaceCapabilitiesKHR const> const swapchain_surface_capabilities,
+            std::span<vk::Device const> const devices,
+            std::span<vk::SurfaceKHR const> const surfaces,
+            std::span<vk::Extent2D const> const image_extents,
+            std::span<vk::SurfaceCapabilitiesKHR const> const swapchain_surface_capabilities,
             std::pmr::polymorphic_allocator<> const& allocator
         )
         {
             assert(surfaces.size() == image_extents.size());
 
-            std::pmr::vector<VkSwapchainKHR> swapchains{allocator};
+            std::pmr::vector<vk::SwapchainKHR> swapchains{allocator};
             swapchains.reserve(configurations.size());
 
             for (std::size_t swapchain_index = 0; swapchain_index < configurations.size(); ++swapchain_index)
             {
                 Swapchain_configuration const& configuration = configurations[swapchain_index];
-                VkDevice const device = devices[configuration.device_index];
-                VkSurfaceKHR const surface = surfaces[configuration.surface_index];
-                VkExtent2D const image_extent = image_extents[configuration.surface_index];
-                VkSurfaceCapabilitiesKHR const& surface_capabilities = swapchain_surface_capabilities[swapchain_index];
+                vk::Device const device = devices[configuration.device_index];
+                vk::SurfaceKHR const surface = surfaces[configuration.surface_index];
+                vk::Extent2D const image_extent = image_extents[configuration.surface_index];
+                vk::SurfaceCapabilitiesKHR const& surface_capabilities = swapchain_surface_capabilities[swapchain_index];
 
-                VkSwapchainKHR const swapchain = create_swapchain(
+                vk::SwapchainKHR const swapchain = create_swapchain(
                     configuration,
                     device,
                     surface,
@@ -509,18 +488,52 @@ namespace Mythology::SDL
 
             return swapchains;
         }
+
+        std::pmr::vector<std::pmr::vector<vk::Image>> get_swapchain_images(
+            std::span<Swapchain_configuration const> const configurations,
+            std::span<vk::Device const> const devices,
+            std::span<vk::SwapchainKHR const> const swapchains,
+            std::pmr::polymorphic_allocator<> const& allocator
+        )
+        {
+            assert(configurations.size() == swapchains.size());
+
+            std::pmr::vector<std::pmr::vector<vk::Image>> swapchain_images{allocator};
+            swapchain_images.reserve(configurations.size());
+
+            for (std::size_t index = 0; index < configurations.size(); ++index)
+            {
+                Swapchain_configuration const& configuration = configurations[index];
+                vk::Device const device = devices[configuration.device_index];
+                vk::SwapchainKHR const swapchain = swapchains[index];
+
+                std::pmr::polymorphic_allocator<vk::Image> image_allocator{allocator};
+                std::pmr::vector<vk::Image> images = 
+                    device.getSwapchainImagesKHR(
+                        swapchain,
+                        image_allocator
+                    );
+                
+                swapchain_images.push_back(
+                    std::move(images)
+                );
+            }
+
+            return swapchain_images;
+        }
     }
 
     Swapchain_resources::Swapchain_resources(
         std::span<Swapchain_configuration const> const configurations,
-        std::span<VkDevice const> const devices,
-        std::span<VkSurfaceKHR const> const surfaces,
-        std::span<VkExtent2D const> const image_extents,
-        std::span<VkSurfaceCapabilitiesKHR const> const swapchain_surface_capabilities,
+        std::span<vk::Device const> const devices,
+        std::span<vk::SurfaceKHR const> const surfaces,
+        std::span<vk::Extent2D const> const image_extents,
+        std::span<vk::SurfaceCapabilitiesKHR const> const swapchain_surface_capabilities,
         std::pmr::polymorphic_allocator<> const& allocator
     ) :
         devices{devices.begin(), devices.end(), allocator},
-        swapchains{create_swapchains(configurations, devices, surfaces, image_extents, swapchain_surface_capabilities, allocator)}
+        swapchains{create_swapchains(configurations, devices, surfaces, image_extents, swapchain_surface_capabilities, allocator)},
+        images{get_swapchain_images(configurations, devices, swapchains, allocator)}
     {
         if (devices.size() != swapchains.size())
         {
@@ -530,7 +543,8 @@ namespace Mythology::SDL
 
     Swapchain_resources::Swapchain_resources(Swapchain_resources&& other) noexcept :
         devices{std::move(other.devices)},
-        swapchains{std::move(other.swapchains)}
+        swapchains{std::move(other.swapchains)},
+        images(std::move(other.images))
     {
     }
 
@@ -538,8 +552,8 @@ namespace Mythology::SDL
     {
         for (std::size_t swapchain_index = 0; swapchain_index < this->swapchains.size(); ++swapchain_index)
         {
-            VkDevice const device = this->devices[swapchain_index];
-            VkSwapchainKHR const swapchain = this->swapchains[swapchain_index];
+            vk::Device const device = this->devices[swapchain_index];
+            vk::SwapchainKHR const swapchain = this->swapchains[swapchain_index];
 
             vkDestroySwapchainKHR(device, swapchain, nullptr);
         }
@@ -549,23 +563,24 @@ namespace Mythology::SDL
     {
         std::swap(this->devices, other.devices);
         std::swap(this->swapchains, other.swapchains);
+        std::swap(this->images, other.images);
 
         return *this;
     }
 
 
-    std::pmr::vector<VkDevice> get_queue_devices(
+    std::pmr::vector<vk::Device> get_queue_devices(
         std::span<Queue_configuration const> const configurations,
-        std::span<VkDevice const> const devices,
+        std::span<vk::Device const> const devices,
         std::pmr::polymorphic_allocator<> const& allocator
     )
     {
-        auto const get_queue_device = [devices] (Queue_configuration const& configuration) -> VkDevice
+        auto const get_queue_device = [devices] (Queue_configuration const& configuration) -> vk::Device
         {
             return devices[configuration.device_index];
         };
 
-        std::pmr::vector<VkDevice> queue_devices{allocator};
+        std::pmr::vector<vk::Device> queue_devices{allocator};
         queue_devices.resize(configurations.size());
 
         std::transform(

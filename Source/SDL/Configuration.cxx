@@ -68,9 +68,9 @@ namespace Mythology::SDL
         std::uint32_t device_ID = 0;
     };
 
-    export std::pmr::vector<VkPhysicalDevice> get_physical_devices(
+    export std::pmr::vector<vk::PhysicalDevice> get_physical_devices(
         std::span<Physical_device_configuration const> const configurations,
-        VkInstance const instance,
+        vk::Instance const instance,
         std::pmr::polymorphic_allocator<> const& allocator,
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     );
@@ -94,7 +94,7 @@ namespace Mythology::SDL
     {
         Device_resources(
             std::span<Device_configuration const> configurations,
-            std::span<VkPhysicalDevice const> physical_devices,
+            std::span<vk::PhysicalDevice const> physical_devices,
             std::pmr::polymorphic_allocator<> const& allocator,
             std::pmr::polymorphic_allocator<> const& temporaries_allocator
         );
@@ -105,7 +105,7 @@ namespace Mythology::SDL
         Device_resources& operator=(Device_resources const&) = delete;
         Device_resources& operator=(Device_resources&& other) noexcept;
 
-        std::pmr::vector<VkDevice> devices;
+        std::pmr::vector<vk::Device> devices;
     };
 
     export struct Queue_configuration
@@ -115,9 +115,9 @@ namespace Mythology::SDL
         std::uint32_t queue_index = 0;
     };
 
-    export std::pmr::vector<VkQueue> get_queues(
+    export std::pmr::vector<vk::Queue> get_queues(
         std::span<Queue_configuration const> const configurations,
-        std::span<VkDevice const> const devices,
+        std::span<vk::Device const> const devices,
         std::pmr::polymorphic_allocator<> const& allocator
     );
 
@@ -125,29 +125,29 @@ namespace Mythology::SDL
     {
         std::uint32_t device_index = 0;
         std::uint32_t surface_index = 0;
-        VkSwapchainCreateFlagsKHR flags = {};
+        vk::SwapchainCreateFlagsKHR flags = {};
         std::uint32_t minimum_image_count = 3;
-        VkFormat image_format = VK_FORMAT_UNDEFINED;
-        VkColorSpaceKHR image_color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+        vk::Format image_format = vk::Format::eUndefined;
+        vk::ColorSpaceKHR image_color_space = vk::ColorSpaceKHR::eSrgbNonlinear;
         std::uint32_t image_array_layers = 1;
-        VkImageUsageFlags image_usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-        VkSharingMode image_sharing_mode = VK_SHARING_MODE_EXCLUSIVE;
+        vk::ImageUsageFlags image_usage = vk::ImageUsageFlagBits::eColorAttachment;
+        vk::SharingMode image_sharing_mode = vk::SharingMode::eExclusive;
         std::pmr::vector<std::uint32_t> queue_family_indices = {};
-        VkCompositeAlphaFlagBitsKHR composite_alpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-        VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
+        vk::CompositeAlphaFlagBitsKHR composite_alpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
+        vk::PresentModeKHR present_mode = vk::PresentModeKHR::eFifo;
         bool clipped = true;
         std::uint32_t queue_to_present_index = 0;
 
         std::uint32_t queue_family_index_count() const noexcept;
     };
 
-    export std::pmr::vector<VkDevice> get_swapchain_devices(
+    export std::pmr::vector<vk::Device> get_swapchain_devices(
         std::span<Swapchain_configuration const> configurations,
-        std::span<VkDevice const> devices,
+        std::span<vk::Device const> devices,
         std::pmr::polymorphic_allocator<> const& allocator
     );
 
-    export std::pmr::vector<VkExtent2D> get_image_extents(
+    export std::pmr::vector<vk::Extent2D> get_image_extents(
         std::span<Surface_configuration const> configurations,
         std::span<SDL_Window* const> windows,
         std::pmr::polymorphic_allocator<> const& allocator
@@ -157,15 +157,15 @@ namespace Mythology::SDL
         std::span<Device_configuration const> device_configurations,
         std::span<Queue_configuration const> queue_configurations,
         std::span<Swapchain_configuration const> swapchain_configurations,
-        std::span<VkPhysicalDevice const> physical_devices,
-        std::span<VkSurfaceKHR const> surfaces
+        std::span<vk::PhysicalDevice const> physical_devices,
+        std::span<vk::SurfaceKHR const> surfaces
     ) noexcept;
 
-    export std::pmr::vector<VkSurfaceCapabilitiesKHR> get_swapchain_surface_capabilities(
+    export std::pmr::vector<vk::SurfaceCapabilitiesKHR> get_swapchain_surface_capabilities(
         std::span<Swapchain_configuration const> swapchain_configurations,
         std::span<Device_configuration const> device_configurations,
-        std::span<VkPhysicalDevice const> physical_devices,
-        std::span<VkSurfaceKHR const> surfaces,
+        std::span<vk::PhysicalDevice const> physical_devices,
+        std::span<vk::SurfaceKHR const> surfaces,
         std::pmr::polymorphic_allocator<> const& allocator
     );
 
@@ -173,10 +173,10 @@ namespace Mythology::SDL
     {
         Swapchain_resources(
             std::span<Swapchain_configuration const> configurations,
-            std::span<VkDevice const> devices,
-            std::span<VkSurfaceKHR const> surfaces,
-            std::span<VkExtent2D const> image_extents,
-            std::span<VkSurfaceCapabilitiesKHR const> swapchain_surface_capabilities,
+            std::span<vk::Device const> devices,
+            std::span<vk::SurfaceKHR const> surfaces,
+            std::span<vk::Extent2D const> image_extents,
+            std::span<vk::SurfaceCapabilitiesKHR const> swapchain_surface_capabilities,
             std::pmr::polymorphic_allocator<> const& allocator
         );
         Swapchain_resources(Swapchain_resources const&) = delete;
@@ -186,13 +186,14 @@ namespace Mythology::SDL
         Swapchain_resources& operator=(Swapchain_resources const&) = delete;
         Swapchain_resources& operator=(Swapchain_resources&& other) noexcept;
 
-        std::pmr::vector<VkDevice> devices;
-        std::pmr::vector<VkSwapchainKHR> swapchains;
+        std::pmr::vector<vk::Device> devices;
+        std::pmr::vector<vk::SwapchainKHR> swapchains;
+        std::pmr::vector<std::pmr::vector<vk::Image>> images;
     };
 
-    export std::pmr::vector<VkDevice> get_queue_devices(
+    export std::pmr::vector<vk::Device> get_queue_devices(
         std::span<Queue_configuration const> configurations,
-        std::span<VkDevice const> devices,
+        std::span<vk::Device const> devices,
         std::pmr::polymorphic_allocator<> const& allocator
     );
 

@@ -2,7 +2,7 @@ module;
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_vulkan.h>
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan.hpp>
 
 #include <cassert>
 #include <iostream>
@@ -45,9 +45,14 @@ namespace Mythology::SDL::Vulkan
         return instance_extensions;
     }
 
-    VkSurfaceKHR create_surface(
+    PFN_vkGetInstanceProcAddr get_instance_process_address() noexcept
+    {
+        return static_cast<PFN_vkGetInstanceProcAddr>(SDL_Vulkan_GetVkGetInstanceProcAddr());
+    }
+
+    vk::SurfaceKHR create_surface(
         SDL_Window& window,
-        VkInstance const instance
+        vk::Instance const instance
     )
     {
         VkSurfaceKHR surface = {};
@@ -70,21 +75,21 @@ namespace Mythology::SDL::Vulkan
 
     namespace
     {
-        std::pmr::vector<VkSurfaceKHR> create_surfaces(
-            VkInstance const instance,
+        std::pmr::vector<vk::SurfaceKHR> create_surfaces(
+            vk::Instance const instance,
             std::span<SDL_Window* const> const windows,
             std::pmr::polymorphic_allocator<> const& allocator
         )
         {
-            std::pmr::vector<VkSurfaceKHR> surfaces{allocator};
+            std::pmr::vector<vk::SurfaceKHR> surfaces{allocator};
             surfaces.reserve(windows.size());
 
             for (SDL_Window* const window : windows)
             {
-                VkSurfaceKHR const surface =
+                vk::SurfaceKHR const surface =
                     window != nullptr ?
                     create_surface(*window, instance) :
-                    VkSurfaceKHR{VK_NULL_HANDLE};
+                    vk::SurfaceKHR{};
 
                 surfaces.push_back(surface);
             }
@@ -94,7 +99,7 @@ namespace Mythology::SDL::Vulkan
     }
 
     Surface_resources::Surface_resources(
-        VkInstance const instance,
+        vk::Instance const instance,
         std::span<SDL_Window* const> windows,
         std::pmr::polymorphic_allocator<> const& allocator
     ) :
@@ -104,16 +109,16 @@ namespace Mythology::SDL::Vulkan
     }
 
     Surface_resources::Surface_resources(Surface_resources&& other) noexcept :
-        instance{std::exchange(other.instance, VkInstance{VK_NULL_HANDLE})},
+        instance{std::exchange(other.instance, vk::Instance{})},
         surfaces{std::move(other.surfaces)}
     {
     }
 
     Surface_resources::~Surface_resources() noexcept
     {
-        for (VkSurfaceKHR const surface : this->surfaces)
+        for (vk::SurfaceKHR const surface : this->surfaces)
         {
-            vkDestroySurfaceKHR(this->instance, surface, nullptr);
+            this->instance.destroy(surface, nullptr);
         }
     }
 

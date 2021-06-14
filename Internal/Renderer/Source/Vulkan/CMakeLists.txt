@@ -3,8 +3,7 @@ add_library (Maia::Renderer::Vulkan ALIAS MaiaRendererVulkan)
 
 set_target_properties (MaiaRendererVulkan PROPERTIES LINKER_LANGUAGE CXX)
 
-find_package(Vulkan REQUIRED)
-target_link_libraries(MaiaRendererVulkan PUBLIC Vulkan::Vulkan)
+target_link_libraries(MaiaRendererVulkan PUBLIC Vulkan)
 
 target_module (
     MaiaRendererVulkan

@@ -2,7 +2,7 @@ module;
 
 #define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan.hpp>
 
 #include <array>
 #include <cassert>
@@ -16,8 +16,6 @@ module;
 #include <vector>
 
 module mythology.sdl.startup_state;
-
-import maia.renderer.vulkan;
 
 import mythology.sdl.configuration;
 import mythology.sdl.render_resources;
@@ -63,7 +61,11 @@ namespace Mythology::SDL
             {
                 .vendor_ID = 4318,
                 .device_ID = 7953,
-            }
+            },
+            /*{
+                .vendor_ID = 0x8086,
+                .device_ID = 0x3e9b,
+            }*/
         };
 
         std::array<Device_configuration, 1> const device_configurations
@@ -100,7 +102,7 @@ namespace Mythology::SDL
         {
             Swapchain_configuration
             {
-                .image_format = VK_FORMAT_B8G8R8A8_SRGB,
+                .image_format = vk::Format::eB8G8R8A8Srgb,
             }
         };
 
@@ -111,11 +113,16 @@ namespace Mythology::SDL
         std::pmr::vector<char const*> const required_instance_extensions =
             Mythology::SDL::Vulkan::get_sdl_required_instance_extensions({});
 
+        vk::DynamicLoader dynamic_loader;
+        PFN_vkGetInstanceProcAddr const get_instance_proccess_address = Mythology::SDL::Vulkan::get_instance_process_address();
+        VULKAN_HPP_DEFAULT_DISPATCHER.init(get_instance_proccess_address);
+
         Mythology::Render::Instance_resources instance_resources
         {
-            Maia::Renderer::Vulkan::make_api_version(1, 2, 0),
+            VK_MAKE_VERSION(1, 2, 0),
             required_instance_extensions
         };
+        VULKAN_HPP_DEFAULT_DISPATCHER.init(instance_resources.instance);
 
         std::pmr::vector<SDL_Window*> const surface_windows =
             select_surface_windows(surface_configurations, windows, {});
@@ -127,7 +134,7 @@ namespace Mythology::SDL
             {}
         };
 
-        std::pmr::vector<VkPhysicalDevice> const physical_devices = get_physical_devices(
+        std::pmr::vector<vk::PhysicalDevice> const physical_devices = get_physical_devices(
             physical_device_configurations,
             instance_resources.instance,
             {},
@@ -142,13 +149,13 @@ namespace Mythology::SDL
             {}
         };
 
-        std::pmr::vector<VkQueue> const queues = get_queues(
+        std::pmr::vector<vk::Queue> const queues = get_queues(
             queue_configurations,
             device_resources.devices,
             {}
         );
 
-        std::pmr::vector<VkDevice> const swapchain_devices = get_swapchain_devices(
+        std::pmr::vector<vk::Device> const swapchain_devices = get_swapchain_devices(
             swapchain_configurations,
             device_resources.devices,
             {}
@@ -159,7 +166,7 @@ namespace Mythology::SDL
             {}
         );
 
-        std::pmr::vector<VkExtent2D> const surface_image_extents = get_image_extents(
+        std::pmr::vector<vk::Extent2D> const surface_image_extents = get_image_extents(
             surface_configurations,
             window_raw_pointers,
             {}
@@ -170,7 +177,7 @@ namespace Mythology::SDL
             throw std::runtime_error{"Swapchain present queues are not compatible!"};
         }
 
-        std::pmr::vector<VkSurfaceCapabilitiesKHR> const swapchain_surface_capabilities = get_swapchain_surface_capabilities(
+        std::pmr::vector<vk::SurfaceCapabilitiesKHR> const swapchain_surface_capabilities = get_swapchain_surface_capabilities(
             swapchain_configurations,
             device_configurations,
             physical_devices,
@@ -195,8 +202,8 @@ namespace Mythology::SDL
             {}
         };
 
-        std::pmr::vector<VkDevice> const queue_devices = get_queue_devices(queue_configurations, device_resources.devices, {});
-        std::pmr::vector<VkCommandPoolCreateFlags> const command_pool_flags(queue_configurations.size(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+        std::pmr::vector<vk::Device> const queue_devices = get_queue_devices(queue_configurations, device_resources.devices, {});
+        std::pmr::vector<vk::CommandPoolCreateFlags> const command_pool_flags(queue_configurations.size(), vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
         std::pmr::vector<std::uint32_t> command_pools_queue_family_indices = get_queue_family_indices(queue_configurations, {});
 
         Mythology::Render::Command_pools_resources const command_pools_resources
@@ -207,11 +214,11 @@ namespace Mythology::SDL
             {}
         };
 
-        std::pmr::vector<std::pmr::vector<VkCommandBuffer>> const frames_command_buffers = 
+        std::pmr::vector<std::pmr::vector<vk::CommandBuffer>> const frames_command_buffers = 
             Mythology::Render::allocate_command_buffers(
                 queue_devices,
                 command_pools_resources.command_pools,
-                VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+                vk::CommandBufferLevel::ePrimary,
                 number_of_frames_in_flight,
                 nullptr,
                 {}
@@ -220,47 +227,121 @@ namespace Mythology::SDL
         std::uint8_t frame_index = 0;
 
         {
-            std::span<VkFence const> const available_frame_fences = synchronization_resources.frames[frame_index].available_frame_fences;
-            std::span<VkSemaphore const> const available_frame_semaphores = synchronization_resources.frames[frame_index].available_frame_semaphores;
-            std::span<VkSemaphore const> const finished_frame_semaphores = synchronization_resources.frames[frame_index].finished_frame_semaphores;
-
-            // Check if fence is signaled and then acquire next image.
-            // If acquire next image fails, then wait for everything, recreate swapchain and destroy old swapchain. If that also fails, don+t mark as supported. Continue.
-
-            // For each available swapchain
-            // - fill the command buffers needed to create the content that will be displayed in that swapchain
-            // - submit these in a queue submit that also signals the swapchains semaphore.
-
-            //std::pmr::vector<std::optional<Maia::Renderer::Vulkan::Swapchain_image_index>> swapchain_image_indices;
+            std::span<vk::Fence const> const available_frame_fences = synchronization_resources.frames[frame_index].available_frame_fences;
+            std::span<vk::Semaphore const> const available_frame_semaphores = synchronization_resources.frames[frame_index].available_frame_semaphores;
+            std::span<vk::Semaphore const> const finished_frame_semaphores = synchronization_resources.frames[frame_index].finished_frame_semaphores;
+            std::span<vk::CommandBuffer const> const frame_command_buffers = frames_command_buffers[frame_index];
 
             for (std::size_t swapchain_index = 0; swapchain_index < synchronization_resources.devices.size(); ++swapchain_index)
             {
-                VkDevice const swapchain_device = synchronization_resources.devices[swapchain_index];
-                VkFence const available_frame_fence = available_frame_fences[swapchain_index];
+                vk::Device const swapchain_device = synchronization_resources.devices[swapchain_index];
+                vk::Fence const available_frame_fence = available_frame_fences[swapchain_index];
 
-                if (Maia::Renderer::Vulkan::is_fence_signaled(swapchain_device, available_frame_fence))
+                bool const is_fence_signaled = swapchain_device.getFenceStatus(available_frame_fence) == vk::Result::eSuccess;
+                
+                if (is_fence_signaled)
                 {
-                    VkSwapchainKHR const swapchain = swapchain_resources.swapchains[swapchain_index];
+                    vk::SwapchainKHR const swapchain = swapchain_resources.swapchains[swapchain_index];
 
-                    VkSemaphore const available_frame_semaphore = available_frame_semaphores[swapchain_index];
-                    std::optional<Maia::Renderer::Vulkan::Swapchain_image_index> const swapchain_image_index =
-                        Maia::Renderer::Vulkan::acquire_next_image(swapchain_device, swapchain, 0, available_frame_semaphore, {});
+                    vk::Semaphore const available_frame_semaphore = available_frame_semaphores[swapchain_index];
 
-                    if (swapchain_image_index)
+                    vk::ResultValue<std::uint32_t> const acquire_next_image_result =
+                        swapchain_device.acquireNextImageKHR(swapchain, 0, available_frame_semaphore, {});
+
+                    if (acquire_next_image_result.result == vk::Result::eSuccess)
                     {
-                        // TODO Create command buffer and submit
-                        std::span<VkCommandBuffer const> const command_buffers = {};
+                        std::uint32_t const swapchain_image_index = acquire_next_image_result.value;
+                        vk::Image const swapchain_image = swapchain_resources.images[swapchain_index][swapchain_image_index];
 
-                        VkQueue const queue = queues[swapchain_configurations[swapchain_index].queue_to_present_index];
-
-                        VkSemaphore const finished_frame_semaphore = finished_frame_semaphores[swapchain_index];
+                        vk::CommandBuffer const command_buffer = frame_command_buffers[0];
+                        command_buffer.reset({});
                         {
-                            std::array<VkPipelineStageFlags, 1> constexpr wait_destination_stage_masks = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-                            Maia::Renderer::Vulkan::reset_fences(swapchain_device, {&available_frame_fence, 1});
-                            Maia::Renderer::Vulkan::queue_submit(queue, {&available_frame_semaphore, 1}, wait_destination_stage_masks, command_buffers, {&finished_frame_semaphore, 1}, available_frame_fence);
+                            vk::CommandBufferBeginInfo const begin_info
+                            {
+                                .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
+                                .pInheritanceInfo = nullptr,
+                            };
+
+                            command_buffer.begin(begin_info);
                         }
 
-                        Maia::Renderer::Vulkan::queue_present(queue, {&finished_frame_semaphore, 1}, swapchain, *swapchain_image_index);
+                        {
+                            vk::ImageSubresourceRange const output_image_subresource_range
+                            {
+                                .aspectMask = vk::ImageAspectFlagBits::eColor, 
+                                .baseMipLevel = 0,
+                                .levelCount = 1, 
+                                .baseArrayLayer = 0,
+                                .layerCount = 1,
+                            };
+
+                            vk::Rect2D const output_render_area
+                            {
+                                .offset = {0, 0},
+                                .extent = surface_image_extents[swapchain_configurations[swapchain_index].surface_index],
+                            };
+
+                            Maia::Renderer::Vulkan::draw(
+                                command_buffer,
+                                swapchain_image,
+                                output_image_subresource_range,
+                                swapchain_framebuffer,
+                                output_render_area,
+                                commands_data
+                            );
+                        }
+                        command_buffer.end();
+
+                        vk::Queue const queue = queues[swapchain_configurations[swapchain_index].queue_to_present_index];
+
+                        vk::Semaphore const finished_frame_semaphore = finished_frame_semaphores[swapchain_index];
+                        {
+                            std::array<vk::PipelineStageFlags, 1> constexpr wait_destination_stage_masks = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
+                            std::array<vk::Fence, 1> const fences_to_reset = {available_frame_fence};
+                            swapchain_device.resetFences(fences_to_reset);
+
+                            std::array<vk::SubmitInfo, 1> const submit_infos
+                            {
+                                vk::SubmitInfo
+                                {
+                                    .waitSemaphoreCount = 1,
+                                    .pWaitSemaphores = &available_frame_semaphore,
+                                    .pWaitDstStageMask = wait_destination_stage_masks.data(),
+                                    .commandBufferCount = static_cast<std::uint32_t>(frame_command_buffers.size()),
+                                    .pCommandBuffers = frame_command_buffers.data(),
+                                    .signalSemaphoreCount = 1,
+                                    .pSignalSemaphores = &finished_frame_semaphore,
+                                }
+                            };
+
+                            queue.submit(submit_infos, available_frame_fence);
+                        }
+
+                        {
+                            std::array<std::uint32_t, 1> const swapchain_image_indices = {swapchain_image_index};
+                            
+                            vk::PresentInfoKHR const present_info
+                            {
+                                .waitSemaphoreCount = 1,
+                                .pWaitSemaphores    = &finished_frame_semaphore,
+                                .swapchainCount     = 1,
+                                .pSwapchains        = &swapchain,
+                                .pImageIndices      = swapchain_image_indices.data(),
+                                .pResults           = nullptr,
+                            };
+
+                            vk::Result const result = queue.presentKHR(present_info);
+
+                            if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
+                            {
+                                // TODO recreate swapchain
+                            }
+                        }
+                    }
+                    else if (acquire_next_image_result.result == vk::Result::eErrorOutOfDateKHR
+                          || acquire_next_image_result.result == vk::Result::eSuboptimalKHR)
+                    {
+                        // TODO recreate swapchain
                     }
                 }
             }
@@ -271,19 +352,13 @@ namespace Mythology::SDL
             std::this_thread::sleep_for(5s);
         }
 
-        // Create surfaces
-        // Choose which physical devices and queue family indices to use
-        // Create devices
-        // Get queues
-        // Create swapchains
-        // Create swapchains image views
-        // Create semaphores
-        // Create fences
+        for (vk::Device const device : device_resources.devices)
+        {
+            device.waitIdle();
+        }
 
         // Load loading assets
         // Render black screen while loading assets
-
-        
 
         // Return next state
         return {};

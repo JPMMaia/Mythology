@@ -9,14 +9,12 @@ module;
 
 export module mythology.sdl.render_resources;
 
-import maia.renderer.vulkan;
-
 namespace Mythology::Render
 {
     export struct Instance_resources
     {
         Instance_resources(
-            Maia::Renderer::Vulkan::API_version api_version,
+            std::uint32_t api_version,
             std::span<char const* const> required_instance_extensions
         );
         Instance_resources(Instance_resources const&) = delete;
@@ -26,21 +24,21 @@ namespace Mythology::Render
         Instance_resources& operator=(Instance_resources const&) = delete;
         Instance_resources& operator=(Instance_resources&& other) noexcept;
 
-        VkInstance instance = VK_NULL_HANDLE;
+        vk::Instance instance = VK_NULL_HANDLE;
     };
 
     export struct Frame_synchronization_resources
     {
-        std::pmr::vector<VkSemaphore> available_frame_semaphores;
-        std::pmr::vector<VkSemaphore> finished_frame_semaphores;
-        std::pmr::vector<VkFence> available_frame_fences;
+        std::pmr::vector<vk::Semaphore> available_frame_semaphores;
+        std::pmr::vector<vk::Semaphore> finished_frame_semaphores;
+        std::pmr::vector<vk::Fence> available_frame_fences;
     };
 
     export struct Synchronization_resources
     {
         Synchronization_resources(
             std::size_t number_of_frames,
-            std::span<VkDevice const> devices,
+            std::span<vk::Device const> devices,
             std::pmr::polymorphic_allocator<> const& allocator
         );
         Synchronization_resources(Synchronization_resources const&) = delete;
@@ -50,15 +48,15 @@ namespace Mythology::Render
         Synchronization_resources& operator=(Synchronization_resources const&) = delete;
         Synchronization_resources& operator=(Synchronization_resources&& other) noexcept;
 
-        std::pmr::vector<VkDevice> devices;
+        std::pmr::vector<vk::Device> devices;
         std::pmr::vector<Frame_synchronization_resources> frames;
     };
 
     export struct Command_pools_resources
     {
         Command_pools_resources(
-            std::span<VkDevice const> devices,
-            std::span<VkCommandPoolCreateFlags const> flags,
+            std::span<vk::Device const> devices,
+            std::span<vk::CommandPoolCreateFlags const> flags,
             std::span<std::uint32_t> const queue_family_indices,
             std::pmr::polymorphic_allocator<> const& allocator
         ) noexcept;
@@ -69,16 +67,16 @@ namespace Mythology::Render
         Command_pools_resources& operator=(Command_pools_resources const&) = delete;
         Command_pools_resources& operator=(Command_pools_resources&& other) noexcept;
 
-        std::pmr::vector<VkDevice> devices;
-        std::pmr::vector<VkCommandPool> command_pools;
+        std::pmr::vector<vk::Device> devices;
+        std::pmr::vector<vk::CommandPool> command_pools;
     };
 
-    export std::pmr::vector<std::pmr::vector<VkCommandBuffer>> allocate_command_buffers(
-        std::span<VkDevice const> devices,
-        std::span<VkCommandPool const> command_pools,
-        VkCommandBufferLevel level,
+    export std::pmr::vector<std::pmr::vector<vk::CommandBuffer>> allocate_command_buffers(
+        std::span<vk::Device const> devices,
+        std::span<vk::CommandPool const> command_pools,
+        vk::CommandBufferLevel level,
         std::uint32_t number_of_frames_in_flight,
-        VkAllocationCallbacks const* vulkan_allocator,
+        vk::AllocationCallbacks const* vulkan_allocator,
         std::pmr::polymorphic_allocator<> const& pmr_allocator
     );
 }

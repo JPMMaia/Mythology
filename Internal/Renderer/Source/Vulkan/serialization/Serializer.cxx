@@ -1,7 +1,7 @@
 module;
 
 #include <nlohmann/json.hpp>
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan.hpp>
 
 #include <cstddef>
 #include <filesystem>
@@ -17,12 +17,12 @@ namespace Maia::Renderer::Vulkan
 {
     export struct Render_pass_create_info_resources
     {
-        std::pmr::vector<VkAttachmentDescription> attachments;
-        std::pmr::vector<VkAttachmentReference> attachment_references;
+        std::pmr::vector<vk::AttachmentDescription> attachments;
+        std::pmr::vector<vk::AttachmentReference> attachment_references;
         std::pmr::vector<std::uint32_t> preserve_attachments;
-        std::pmr::vector<VkSubpassDescription> subpasses;
-        std::pmr::vector<VkSubpassDependency> dependencies;
-        VkRenderPassCreateInfo create_info;
+        std::pmr::vector<vk::SubpassDescription> subpasses;
+        std::pmr::vector<vk::SubpassDependency> dependencies;
+        vk::RenderPassCreateInfo create_info;
     };
 
     export Render_pass_create_info_resources create_render_pass_create_info_resources(
@@ -31,18 +31,18 @@ namespace Maia::Renderer::Vulkan
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     ) noexcept;
 
-    export std::pmr::vector<VkRenderPass> create_render_passes(
-        VkDevice device,
-        VkAllocationCallbacks const* allocation_callbacks,
+    export std::pmr::vector<vk::RenderPass> create_render_passes(
+        vk::Device device,
+        vk::AllocationCallbacks const* allocation_callbacks,
         nlohmann::json const& render_passes_json,
         std::pmr::polymorphic_allocator<> const& output_allocator,
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     ) noexcept;
 
 
-    export std::pmr::vector<VkShaderModule> create_shader_modules(
-        VkDevice const device,
-        VkAllocationCallbacks const* const allocation_callbacks,
+    export std::pmr::vector<vk::ShaderModule> create_shader_modules(
+        vk::Device const device,
+        vk::AllocationCallbacks const* const allocation_callbacks,
         nlohmann::json const& shader_modules_json,
         std::filesystem::path const& shaders_path,
         std::pmr::polymorphic_allocator<> const& output_allocator,
@@ -50,40 +50,40 @@ namespace Maia::Renderer::Vulkan
     ) noexcept;
 
 
-    export std::pmr::vector<VkSampler> create_samplers(
-        VkDevice device,
-        VkAllocationCallbacks const* allocation_callbacks,
+    export std::pmr::vector<vk::Sampler> create_samplers(
+        vk::Device device,
+        vk::AllocationCallbacks const* allocation_callbacks,
         nlohmann::json const& samplers_json,
         std::pmr::polymorphic_allocator<> const& output_allocator
     ) noexcept;
 
 
-    export std::pmr::vector<VkDescriptorSetLayout> create_descriptor_set_layouts(
-        VkDevice device,
-        VkAllocationCallbacks const* allocation_callbacks,
-        std::span<VkSampler const> samplers,
+    export std::pmr::vector<vk::DescriptorSetLayout> create_descriptor_set_layouts(
+        vk::Device device,
+        vk::AllocationCallbacks const* allocation_callbacks,
+        std::span<vk::Sampler const> samplers,
         nlohmann::json const& descriptor_set_layouts_json,
         std::pmr::polymorphic_allocator<> const& output_allocator,
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     ) noexcept;
 
 
-    export std::pmr::vector<VkPipelineLayout> create_pipeline_layouts(
-        VkDevice device,
-        VkAllocationCallbacks const* allocation_callbacks,
-        std::span<VkDescriptorSetLayout const> descriptor_set_layouts,
+    export std::pmr::vector<vk::PipelineLayout> create_pipeline_layouts(
+        vk::Device device,
+        vk::AllocationCallbacks const* allocation_callbacks,
+        std::span<vk::DescriptorSetLayout const> descriptor_set_layouts,
         nlohmann::json const& pipeline_layouts_json,
         std::pmr::polymorphic_allocator<> const& output_allocator,
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     ) noexcept;
 
 
-    export std::pmr::vector<VkPipeline> create_pipeline_states(
-        VkDevice device,
-        VkAllocationCallbacks const* allocation_callbacks,
-        std::span<VkShaderModule const> shader_modules,
-        std::span<VkPipelineLayout const> pipeline_layouts,
-        std::span<VkRenderPass const> render_passes,
+    export std::pmr::vector<vk::Pipeline> create_pipeline_states(
+        vk::Device device,
+        vk::AllocationCallbacks const* allocation_callbacks,
+        std::span<vk::ShaderModule const> shader_modules,
+        std::span<vk::PipelineLayout const> pipeline_layouts,
+        std::span<vk::RenderPass const> render_passes,
         nlohmann::json const& pipeline_states_json,
         std::pmr::polymorphic_allocator<> const& output_allocator,
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
@@ -93,8 +93,8 @@ namespace Maia::Renderer::Vulkan
     export struct Pipeline_resources
     {
         Pipeline_resources(
-            VkDevice device,
-            VkAllocationCallbacks const* allocation_callbacks,
+            vk::Device device,
+            vk::AllocationCallbacks const* allocation_callbacks,
             nlohmann::json const& pipeline_json,
             std::filesystem::path const& pipeline_json_parent_path,
             std::pmr::polymorphic_allocator<> const& output_allocator,
@@ -109,14 +109,14 @@ namespace Maia::Renderer::Vulkan
         Pipeline_resources& operator=(Pipeline_resources const&) noexcept = delete;
         Pipeline_resources& operator=(Pipeline_resources&& other) noexcept;
 
-        VkDevice device;
-        VkAllocationCallbacks const* allocation_callbacks;
-        std::pmr::vector<VkRenderPass> render_passes;
-        std::pmr::vector<VkShaderModule> shader_modules;
-        std::pmr::vector<VkSampler> samplers;
-        std::pmr::vector<VkDescriptorSetLayout> descriptor_set_layouts;
-        std::pmr::vector<VkPipelineLayout> pipeline_layouts;
-        std::pmr::vector<VkPipeline> pipeline_states;
+        vk::Device device;
+        vk::AllocationCallbacks const* allocation_callbacks;
+        std::pmr::vector<vk::RenderPass> render_passes;
+        std::pmr::vector<vk::ShaderModule> shader_modules;
+        std::pmr::vector<vk::Sampler> samplers;
+        std::pmr::vector<vk::DescriptorSetLayout> descriptor_set_layouts;
+        std::pmr::vector<vk::PipelineLayout> pipeline_layouts;
+        std::pmr::vector<vk::Pipeline> pipeline_states;
     };
 
 
@@ -127,18 +127,18 @@ namespace Maia::Renderer::Vulkan
 
     export Commands_data create_commands_data(
         nlohmann::json const& commands_json,
-        std::span<VkPipeline const> pipelines,
-        std::span<VkRenderPass const> render_passes,
+        std::span<vk::Pipeline const> pipelines,
+        std::span<vk::RenderPass const> render_passes,
         std::pmr::polymorphic_allocator<std::byte> const& output_allocator,
         std::pmr::polymorphic_allocator<std::byte> const& temporaries_allocator
     ) noexcept;
 
     export void draw(
-        VkCommandBuffer command_buffer,
-        VkImage output_image,
-        VkImageSubresourceRange const& output_image_subresource_range,
-        std::optional<VkFramebuffer> output_framebuffer,
-        VkRect2D output_render_area,
+        vk::CommandBuffer command_buffer,
+        vk::Image output_image,
+        vk::ImageSubresourceRange const& output_image_subresource_range,
+        std::optional<vk::Framebuffer> output_framebuffer,
+        vk::Rect2D output_render_area,
         Commands_data const& commands_data,
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     ) noexcept;
