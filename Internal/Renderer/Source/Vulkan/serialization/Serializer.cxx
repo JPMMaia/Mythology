@@ -135,10 +135,12 @@ namespace Maia::Renderer::Vulkan
 
     export void draw(
         vk::CommandBuffer command_buffer,
-        vk::Image output_image,
-        vk::ImageSubresourceRange const& output_image_subresource_range,
-        std::optional<vk::Framebuffer> output_framebuffer,
-        vk::Rect2D output_render_area,
+        std::span<vk::Buffer const> output_buffers,
+        std::span<vk::Image const> output_images,
+        std::span<vk::ImageView const> output_image_views,
+        std::span<vk::ImageSubresourceRange const> output_image_subresource_ranges,
+        std::span<vk::Framebuffer const> output_framebuffers,
+        std::span<vk::Rect2D const> output_render_areas,
         Commands_data const& commands_data,
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     ) noexcept;

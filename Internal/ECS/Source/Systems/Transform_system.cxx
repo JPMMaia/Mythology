@@ -3,6 +3,7 @@ module;
 #include <memory_resource>
 #include <span>
 #include <unordered_map>
+#include <thread>
 #include <vector>
 
 export module maia.ecs.systems.transform_system;
@@ -128,20 +129,53 @@ namespace Maia::ECS::Systems
                     // Can be threaded
                     for (auto& pair : component_group)
                     {
-                        std::pmr::vector<Translator_t> const& translators =
+                        std::span<Translator_t const> const translators =
                             std::get<std::pmr::vector<Translator_t>>(pair.second);
 
-                        std::pmr::vector<Rotor_t> const& rotors =
+                        std::span<Rotor_t const> const rotors =
                             std::get<std::pmr::vector<Rotor_t>>(pair.second);
 
-                        std::pmr::vector<Motor_t>& motors =
+                        std::span<Motor_t> const motors =
                             std::get<std::pmr::vector<Motor_t>>(pair.second);
 
-                        // Can be threaded
+                        constexpr std::size_t number_of_threads = 12;
+                        constexpr std::size_t minimum_amount_per_thread = 200;
+
+                        auto do_task = [] (
+                            std::span<Translator_t const> const translators,
+                            std::span<Rotor_t const> const rotors,
+                            std::span<Motor_t> const motors,
+                            std::pair<std::size_t, std::size_t> const range
+                        ) noexcept -> void
+                        {
+                            for (std::size_t index = range.first; index < range.second; ++index)
+                            {
+                                motors[index] = compute_transform(translators[index], rotors[index]);
+                            }
+                        };
+
+                        std::pmr::vector<std::jthread> threads;
+                        threads.reserve(number_of_threads);
+
+                        for (std::size_t thread_index = 0; thread_index < number_of_threads; ++thread_index)
+                        {
+                            std::size_t const begin = thread_index * motors.size() / number_of_threads;
+                            std::size_t const end = (thread_index + 1) * motors.size() / number_of_threads;
+
+                            threads.emplace_back(
+                                do_task,
+                                translators,
+                                rotors,
+                                motors,
+                                std::make_pair(begin, end)
+                            );
+                        }
+
+                        /*// Can be threaded
                         for (std::size_t index = 0; index < motors.size(); ++index)
                         {
                             motors[index] = compute_transform(translators[index], rotors[index]);
-                        }
+                        }*/
                     }
                 }
             }

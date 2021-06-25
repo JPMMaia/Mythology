@@ -2129,12 +2129,15 @@ namespace Maia::Renderer::Vulkan
 
         Commands_data_offset add_begin_render_pass_command(
             vk::CommandBuffer const command_buffer,
-            vk::Framebuffer const framebuffer,
-            vk::Rect2D const framebuffer_render_area,
+            std::span<vk::Framebuffer const> const framebuffers,
+            std::span<vk::Rect2D const> const framebuffer_render_areas,
             std::span<std::byte const> const bytes
         ) noexcept
         {
             Commands_data_offset commands_data_offset = 0;
+
+            vk::Framebuffer const framebuffer = framebuffers[0]; // TODO
+            vk::Rect2D const& framebuffer_render_area = framebuffer_render_areas[0]; // TODO
 
             Begin_render_pass::Type const subtype = read<Begin_render_pass::Type>(bytes.data() + commands_data_offset);
             commands_data_offset += sizeof(subtype);
@@ -2171,7 +2174,7 @@ namespace Maia::Renderer::Vulkan
             Bind_pipeline const command = read<Bind_pipeline>(bytes.data() + commands_data_offset);
             commands_data_offset += sizeof(command);
 
-            command_buffer.bind_pipeline(
+            command_buffer.bindPipeline(
                 command.bind_point,
                 command.pipeline
             );
@@ -2181,12 +2184,15 @@ namespace Maia::Renderer::Vulkan
 
         Commands_data_offset add_clear_color_image_command(
             vk::CommandBuffer const command_buffer,
-            vk::Image const image,
-            vk::ImageSubresourceRange const& image_subresource_range,
+            std::span<vk::Image const> const images,
+            std::span<vk::ImageSubresourceRange const> const image_subresource_ranges,
             std::span<std::byte const> const bytes
         ) noexcept
         {
             Commands_data_offset commands_data_offset = 0;
+
+            vk::Image const image = images[0]; // TODO
+            vk::ImageSubresourceRange const& image_subresource_range = image_subresource_ranges[0]; // TODO
 
             Clear_color_image::Type const clear_subtype = read<Clear_color_image::Type>(bytes.data() + commands_data_offset);
             commands_data_offset += sizeof(Clear_color_image::Type);
@@ -2239,12 +2245,15 @@ namespace Maia::Renderer::Vulkan
         std::pair<Commands_data_offset, std::pmr::vector<vk::ImageMemoryBarrier>> create_image_memory_barriers(
             std::span<std::byte const> const bytes,
             std::uint8_t const barrier_count,
-            vk::Image const image,
-            vk::ImageSubresourceRange const& image_subresource_range,
+            std::span<vk::Image const> const images,
+            std::span<vk::ImageSubresourceRange const> const image_subresource_ranges,
             std::pmr::polymorphic_allocator<> const& output_allocator
         ) noexcept
         {
             Commands_data_offset commands_data_offset = 0;
+
+            vk::Image const image = images[0]; // TODO
+            vk::ImageSubresourceRange const& image_subresource_range = image_subresource_ranges[0]; // TODO
 
             std::pmr::vector<vk::ImageMemoryBarrier> barriers{output_allocator};
             barriers.reserve(barrier_count);
@@ -2276,13 +2285,16 @@ namespace Maia::Renderer::Vulkan
 
         Commands_data_offset add_pipeline_barrier_command(
             vk::CommandBuffer const command_buffer,
-            vk::Image const image,
-            vk::ImageSubresourceRange const& image_subresource_range,
+            std::span<vk::Image const> const images,
+            std::span<vk::ImageSubresourceRange const> const image_subresource_ranges,
             std::span<std::byte const> const bytes,
             std::pmr::polymorphic_allocator<> const& temporaries_allocator
         ) noexcept
         {
             Commands_data_offset commands_data_offset = 0;
+
+            vk::Image const image = images[0]; // TODO
+            vk::ImageSubresourceRange const& image_subresource_range = image_subresource_ranges[0]; // TODO
 
             Pipeline_barrier const command = read<Pipeline_barrier>(bytes.data() + commands_data_offset);
             commands_data_offset += sizeof(Pipeline_barrier);
@@ -2294,8 +2306,8 @@ namespace Maia::Renderer::Vulkan
                 create_image_memory_barriers(
                     {bytes.data() + commands_data_offset, bytes.size() - commands_data_offset},
                     command.image_barrier_count,
-                    image,
-                    image_subresource_range,
+                    images,
+                    image_subresource_ranges,
                     temporaries_allocator
                 );
             commands_data_offset += image_barriers.first;
@@ -2318,9 +2330,11 @@ namespace Maia::Renderer::Vulkan
 
         Commands_data_offset add_set_screen_viewport_and_scissors_commands(
             vk::CommandBuffer const command_buffer,
-            vk::Rect2D const render_area
+            std::span<vk::Rect2D const> const render_areas
         ) noexcept
         {
+            vk::Rect2D const& render_area = render_areas[0]; // TODO
+
             {
                 std::array<vk::Viewport, 1> const viewports
                 {
@@ -2348,7 +2362,7 @@ namespace Maia::Renderer::Vulkan
                     }
                 };
                 
-                command_buffer.setScissors(0, scissors);
+                command_buffer.setScissor(0, scissors);
             }
 
             return 0;
@@ -2357,10 +2371,12 @@ namespace Maia::Renderer::Vulkan
 
     void draw(
         vk::CommandBuffer const command_buffer,
-        vk::Image const output_image,
-        vk::ImageSubresourceRange const& output_image_subresource_range,
-        std::optional<vk::Framebuffer> const output_framebuffer,
-        vk::Rect2D const output_render_area,
+        std::span<vk::Buffer const> const output_buffers,
+        std::span<vk::Image const> const output_images,
+        std::span<vk::ImageView const> const output_image_views,
+        std::span<vk::ImageSubresourceRange const> const output_image_subresource_ranges,
+        std::span<vk::Framebuffer const> const output_framebuffers,
+        std::span<vk::Rect2D const> const output_render_areas,
         Commands_data const& commands_data,
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     ) noexcept
@@ -2379,8 +2395,7 @@ namespace Maia::Renderer::Vulkan
             switch (command_type)
             {
             case Command_type::Begin_render_pass:
-                assert(output_framebuffer.has_value());
-                offset_in_bytes += add_begin_render_pass_command(command_buffer, *output_framebuffer, output_render_area, next_command_bytes);
+                offset_in_bytes += add_begin_render_pass_command(command_buffer, output_framebuffers, output_render_areas, next_command_bytes);
                 break;
 
             case Command_type::Bind_pipeline:
@@ -2392,7 +2407,7 @@ namespace Maia::Renderer::Vulkan
                 break;
 
             case Command_type::Clear_color_image:
-                offset_in_bytes += add_clear_color_image_command(command_buffer, output_image, output_image_subresource_range, next_command_bytes);
+                offset_in_bytes += add_clear_color_image_command(command_buffer, output_images, output_image_subresource_ranges, next_command_bytes);
                 break;
 
             case Command_type::End_render_pass:
@@ -2400,11 +2415,11 @@ namespace Maia::Renderer::Vulkan
                 break;
 
             case Command_type::Pipeline_barrier:
-                offset_in_bytes += add_pipeline_barrier_command(command_buffer, output_image, output_image_subresource_range, next_command_bytes, temporaries_allocator);
+                offset_in_bytes += add_pipeline_barrier_command(command_buffer, output_images, output_image_subresource_ranges, next_command_bytes, temporaries_allocator);
                 break;
 
             case Command_type::Set_screen_viewport_and_scissors:
-                offset_in_bytes += add_set_screen_viewport_and_scissors_commands(command_buffer, output_render_area);
+                offset_in_bytes += add_set_screen_viewport_and_scissors_commands(command_buffer, output_render_areas);
                 break;
 
             default:

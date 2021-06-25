@@ -3,6 +3,8 @@
 
 #include <filesystem>
 #include <fstream>
+#include <string>
+#include <unordered_map>
 
 import mythology.sdl.application_2;
 //import mythology.windowless;
@@ -24,52 +26,87 @@ namespace
 
         return json;
     }
+
+    std::pmr::unordered_map<std::pmr::string, std::filesystem::path> parse_render_pipelines(
+        std::map<std::string, docopt::value> const& arguments
+    )
+    {
+        auto const parse_pipeline_argument = [] (std::string const& argument) -> std::pair<std::pmr::string, std::filesystem::path>
+        {
+            auto const equal_location = std::find(argument.begin(), argument.end(), '=');
+
+            if (equal_location != argument.end())
+            {
+                std::pmr::string const name{argument.begin(), equal_location};
+                std::pmr::string const path_string{equal_location + 1, argument.end()};
+                std::filesystem::path const path{path_string};
+
+                return std::make_pair(name, path);
+            }
+            else
+            {
+                return {};
+            }
+        };
+
+        docopt::value const& pipelines_argument_value = arguments.at("--pipeline");
+
+        if (pipelines_argument_value.isStringList())
+        {
+            std::vector<std::string> const& pipelines_arguments = pipelines_argument_value.asStringList();
+
+            std::pmr::unordered_map<std::pmr::string, std::filesystem::path> pipeline_paths;
+
+            for (std::string const& pipeline_argument : pipelines_arguments)
+            {
+                pipeline_paths.insert(
+                    parse_pipeline_argument(pipeline_argument)
+                );
+            }
+
+            return pipeline_paths;
+        }
+        else
+        {
+            return {};
+        }
+    }
 }
 
 constexpr const char* c_usage = 
 R"(Mythology.
 
     Usage:
-        mythology render --pipeline <pipeline_json_file> --output <output_file>
-        mythology window --pipeline <pipeline_json_file> --gltf <gltf_json_file>
+        mythology render --pipeline=<pipeline_json_file>... [--gltf=<gltf_json_file>] --output=<output_file>
+        mythology window --pipeline=<pipeline_json_file>... [--gltf=<gltf_json_file>]
         mythology [--help]
         mythology --version
 
     Options:
         -h --help       Print this message.
-        -o --output     Specify output image file which will contain the render result.
         --version       Print version.
 
 )";
 
 int main(int const argc, const char* const* const argv) noexcept
 {
-    std::map<std::string, docopt::value> const args = docopt::docopt(
+    std::map<std::string, docopt::value> const arguments = docopt::docopt(
         c_usage,
         {argv + 1, argv + argc},
         true,
         "Mythology 0.1"
     );
 
-    //Mythology::Windowless::render_frame("output.ppm");
+    std::pmr::unordered_map<std::pmr::string, std::filesystem::path> const render_pipelines =
+        parse_render_pipelines(arguments);
 
-    if (argc >= 6)
+    if (arguments.at("render").asBool())
     {
-        if (matches(argv[1], "window"))
-        {
-            if (matches(argv[2], "--pipeline"))
-            {
-                if (matches(argv[4], "--gltf"))
-                {
-                    std::filesystem::path const pipeline_json_file_path = argv[3];
-                    std::filesystem::path const gltf_file_path = argv[5];
-
-                    //nlohmann::json const pipeline_json = read_json_from_file(pipeline_json_file_path);
-                    nlohmann::json const pipeline_json = {};
-                    Mythology::SDL::run(pipeline_json, pipeline_json_file_path.parent_path(), gltf_file_path);
-                }
-            }
-        }
+        //Mythology::Windowless::render_frame("output.ppm");
+    }
+    else if (arguments.at("window").asBool())
+    {
+        Mythology::SDL::run(render_pipelines, {});
     }
 
     return 0;

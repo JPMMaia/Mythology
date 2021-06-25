@@ -615,4 +615,91 @@ namespace Mythology::SDL
 
         return queue_family_indices;
     }
+
+    
+    std::pmr::vector<vk::Image> get_input_images(
+        std::span<Render_pipeline_input_configuration const> const inputs,
+        std::span<std::pmr::vector<vk::Image> const> const swapchain_images,
+        std::span<std::uint32_t const> const swapchain_image_indices,
+        std::pmr::polymorphic_allocator<> const& allocator
+    )
+    {
+        assert(swapchain_images.size() == swapchain_image_indices.size());
+
+        auto const get_input_image = [=] (Render_pipeline_input_configuration const& input) -> vk::Image
+        {
+            std::uint32_t const swapchain_image_index = swapchain_image_indices[input.swapchain_index];
+            return swapchain_images[input.swapchain_index][swapchain_image_index];
+        };
+
+        std::pmr::vector<vk::Image> input_images{allocator};
+        input_images.resize(inputs.size());
+
+        std::transform(
+            inputs.begin(),
+            inputs.end(),
+            input_images.begin(),
+            get_input_image
+        );
+
+        return input_images;
+    }
+
+    std::pmr::vector<vk::ImageSubresourceRange> get_image_subresource_ranges(
+        std::span<Render_pipeline_input_configuration const> const inputs,
+        std::pmr::polymorphic_allocator<> const& allocator
+    )
+    {
+        auto const generate_image_subresource_range = [] () -> vk::ImageSubresourceRange
+        {
+            return
+            {
+                .aspectMask = vk::ImageAspectFlagBits::eColor, 
+                .baseMipLevel = 0,
+                .levelCount = 1, 
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            };
+        };
+
+        std::pmr::vector<vk::ImageSubresourceRange> image_subresource_ranges{allocator};
+        image_subresource_ranges.resize(inputs.size());
+
+        std::generate(
+            image_subresource_ranges.begin(),
+            image_subresource_ranges.end(),
+            generate_image_subresource_range
+        );
+
+        return image_subresource_ranges;
+    }
+
+    std::pmr::vector<vk::Rect2D> get_render_areas(
+        std::span<Render_pipeline_input_configuration const> const inputs,
+        std::span<Swapchain_configuration const> const swapchain_configurations,
+        std::span<vk::Extent2D const> const surface_image_extents,
+        std::pmr::polymorphic_allocator<> const& allocator
+    )
+    {
+        auto const get_output_area = [=] (Render_pipeline_input_configuration const& input) -> vk::Rect2D
+        {
+            return
+            {
+                .offset = {0, 0},
+                .extent = surface_image_extents[swapchain_configurations[input.swapchain_index].surface_index],
+            };
+        };
+
+        std::pmr::vector<vk::Rect2D> render_areas{allocator};
+        render_areas.resize(inputs.size());
+
+        std::transform(
+            inputs.begin(),
+            inputs.end(),
+            render_areas.begin(),
+            get_output_area
+        );
+
+        return render_areas;
+    }
 }

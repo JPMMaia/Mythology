@@ -7,6 +7,7 @@ module;
 #include <memory_resource>
 #include <span>
 #include <string>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -199,6 +200,37 @@ namespace Mythology::SDL
 
     export std::pmr::vector<std::uint32_t> get_queue_family_indices(
         std::span<Queue_configuration const> configurations,
+        std::pmr::polymorphic_allocator<> const& allocator
+    );
+
+    export struct Render_pipeline_input_configuration
+    {
+        std::uint32_t swapchain_index = 0;
+    };
+
+    export struct Render_pipeline_configuration
+    {
+        std::pmr::string name;
+        std::uint32_t command_list_index = 0;
+        std::pmr::vector<Render_pipeline_input_configuration> inputs;
+    };
+
+    export std::pmr::vector<vk::Image> get_input_images(
+        std::span<Render_pipeline_input_configuration const> inputs,
+        std::span<std::pmr::vector<vk::Image> const> swapchain_images,
+        std::span<std::uint32_t const> const swapchain_image_indices,
+        std::pmr::polymorphic_allocator<> const& allocator
+    );
+
+    export std::pmr::vector<vk::ImageSubresourceRange> get_image_subresource_ranges(
+        std::span<Render_pipeline_input_configuration const> inputs,
+        std::pmr::polymorphic_allocator<> const& allocator
+    );
+
+    export std::pmr::vector<vk::Rect2D> get_render_areas(
+        std::span<Render_pipeline_input_configuration const> inputs,
+        std::span<Swapchain_configuration const> swapchain_configurations,
+        std::span<vk::Extent2D const> surface_image_extents,
         std::pmr::polymorphic_allocator<> const& allocator
     );
 }

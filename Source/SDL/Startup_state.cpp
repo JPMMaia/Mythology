@@ -17,6 +17,8 @@ module;
 
 module mythology.sdl.startup_state;
 
+import maia.renderer.vulkan.serializer;
+
 import mythology.sdl.configuration;
 import mythology.sdl.render_resources;
 import mythology.sdl.sdl;
@@ -25,6 +27,13 @@ import mythology.sdl.vulkan;
 
 namespace Mythology::SDL
 {
+    Startup_state::Startup_state(
+        std::pmr::unordered_map<std::pmr::string, std::filesystem::path> render_pipelines
+    ) noexcept :
+        m_render_pipelines{std::move(render_pipelines)}
+    {
+    }
+
     Startup_state::~Startup_state() noexcept
     {
     }
@@ -103,6 +112,22 @@ namespace Mythology::SDL
             Swapchain_configuration
             {
                 .image_format = vk::Format::eB8G8R8A8Srgb,
+            }
+        };
+
+        std::array<Render_pipeline_configuration, 1> const render_pipeline_configurations
+        {
+            Render_pipeline_configuration
+            {
+                .name = "default",
+                .command_list_index = 0,
+                .inputs
+                {
+                    Render_pipeline_input_configuration
+                    {
+                        .swapchain_index = 0
+                    }
+                },
             }
         };
 
@@ -224,6 +249,8 @@ namespace Mythology::SDL
                 {}
             );
 
+        std::size_t const render_pipeline_index = 0;
+
         std::uint8_t frame_index = 0;
 
         {
@@ -232,8 +259,10 @@ namespace Mythology::SDL
             std::span<vk::Semaphore const> const finished_frame_semaphores = synchronization_resources.frames[frame_index].finished_frame_semaphores;
             std::span<vk::CommandBuffer const> const frame_command_buffers = frames_command_buffers[frame_index];
 
-            for (std::size_t swapchain_index = 0; swapchain_index < synchronization_resources.devices.size(); ++swapchain_index)
             {
+                Render_pipeline_configuration const& render_pipeline_configuration = render_pipeline_configurations[render_pipeline_index];
+                std::size_t const swapchain_index = render_pipeline_configuration.inputs[0].swapchain_index; // TODO
+
                 vk::Device const swapchain_device = synchronization_resources.devices[swapchain_index];
                 vk::Fence const available_frame_fence = available_frame_fences[swapchain_index];
 
@@ -251,7 +280,6 @@ namespace Mythology::SDL
                     if (acquire_next_image_result.result == vk::Result::eSuccess)
                     {
                         std::uint32_t const swapchain_image_index = acquire_next_image_result.value;
-                        vk::Image const swapchain_image = swapchain_resources.images[swapchain_index][swapchain_image_index];
 
                         vk::CommandBuffer const command_buffer = frame_command_buffers[0];
                         command_buffer.reset({});
@@ -266,28 +294,49 @@ namespace Mythology::SDL
                         }
 
                         {
-                            vk::ImageSubresourceRange const output_image_subresource_range
-                            {
-                                .aspectMask = vk::ImageAspectFlagBits::eColor, 
-                                .baseMipLevel = 0,
-                                .levelCount = 1, 
-                                .baseArrayLayer = 0,
-                                .layerCount = 1,
-                            };
+                            // TODO
+                            std::span<vk::Buffer const> const output_buffers;
+                            
+                            // TODO
+                            std::array<std::uint32_t, 1> const swapchain_image_indices = {swapchain_image_index};
+                            std::pmr::vector<vk::Image> const output_images =
+                                get_input_images(
+                                    render_pipeline_configuration.inputs,
+                                    swapchain_resources.images,
+                                    swapchain_image_indices,
+                                    {}
+                                );
+                            
+                            std::span<vk::ImageView const> const output_image_views;
+                            
+                            std::pmr::vector<vk::ImageSubresourceRange> const output_image_subresource_ranges =
+                                get_image_subresource_ranges(
+                                    render_pipeline_configuration.inputs,
+                                    {}
+                                );
+                            
+                            std::span<vk::Framebuffer const> const output_framebuffers;
+                            
+                            std::pmr::vector<vk::Rect2D> const output_render_areas =
+                                get_render_areas(
+                                    render_pipeline_configuration.inputs,
+                                    swapchain_configurations,
+                                    surface_image_extents,
+                                    {}
+                                );
 
-                            vk::Rect2D const output_render_area
-                            {
-                                .offset = {0, 0},
-                                .extent = surface_image_extents[swapchain_configurations[swapchain_index].surface_index],
-                            };
+                            Maia::Renderer::Vulkan::Commands_data commands_data; // TODO
 
                             Maia::Renderer::Vulkan::draw(
                                 command_buffer,
-                                swapchain_image,
-                                output_image_subresource_range,
-                                swapchain_framebuffer,
-                                output_render_area,
-                                commands_data
+                                output_buffers,
+                                output_images,
+                                output_image_views,
+                                output_image_subresource_ranges,
+                                output_framebuffers,
+                                output_render_areas,
+                                commands_data,
+                                {}
                             );
                         }
                         command_buffer.end();

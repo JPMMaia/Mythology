@@ -3,14 +3,15 @@ module;
 #include <nlohmann/json.hpp>
 
 #include <filesystem>
+#include <string>
+#include <unordered_map>
 
 export module mythology.sdl.application_2;
 
 namespace Mythology::SDL
 {
     export void run(
-        nlohmann::json const& pipeline_json,
-        std::filesystem::path const& pipeline_json_parent_path,
+        std::pmr::unordered_map<std::pmr::string, std::filesystem::path> const& render_pipelines_configurations,
         std::filesystem::path const& gltf_file_path
-    ) noexcept;
+    );
 }
