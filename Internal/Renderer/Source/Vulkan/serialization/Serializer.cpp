@@ -2110,14 +2110,11 @@ namespace Maia::Renderer::Vulkan
     {
         std::pmr::vector<std::byte> commands_data{output_allocator};
 
-        for (nlohmann::json const& draw_list_json : commands_json)
+        for (nlohmann::json const& command_json : commands_json)
         {
-            for (nlohmann::json const& command_json : draw_list_json)
-            {
-                std::pmr::vector<std::byte> const command_data = create_command_data(command_json, pipelines, render_passes, temporaries_allocator, temporaries_allocator);
+            std::pmr::vector<std::byte> const command_data = create_command_data(command_json, pipelines, render_passes, temporaries_allocator, temporaries_allocator);
 
-                commands_data.insert(commands_data.end(), command_data.begin(), command_data.end());
-            }
+            commands_data.insert(commands_data.end(), command_data.begin(), command_data.end());
         }
 
         return {commands_data};

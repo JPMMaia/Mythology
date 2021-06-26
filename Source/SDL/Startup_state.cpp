@@ -1,11 +1,14 @@
 module;
 
+#include <nlohmann/json.hpp>
 #define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
 #include <vulkan/vulkan.hpp>
 
 #include <array>
 #include <cassert>
+#include <filesystem>
+#include <fstream>
 #include <memory>
 #include <memory_resource>
 #include <optional>
@@ -36,6 +39,20 @@ namespace Mythology::SDL
 
     Startup_state::~Startup_state() noexcept
     {
+    }
+
+    namespace
+    {
+        nlohmann::json read_json_from_file(std::filesystem::path const& path)
+        {
+            std::ifstream input_stream{path};
+            assert(input_stream.good());
+
+            nlohmann::json json{};
+            input_stream >> json;
+
+            return json;
+        }
     }
 
     std::unique_ptr<State> Startup_state::run()
@@ -250,6 +267,36 @@ namespace Mythology::SDL
             );
 
         std::size_t const render_pipeline_index = 0;
+        Render_pipeline_configuration const& render_pipeline_configuration = render_pipeline_configurations[render_pipeline_index];
+        
+        std::filesystem::path const render_pipeline_configuration_file_path = 
+            m_render_pipelines.at(render_pipeline_configuration.name);
+
+        nlohmann::json const render_pipeline_json = read_json_from_file(render_pipeline_configuration_file_path);
+        
+        vk::Device const render_pipeline_device = device_resources.devices[render_pipeline_configuration.device_index];
+
+        Maia::Renderer::Vulkan::Pipeline_resources const render_pipeline_resources
+        {
+            render_pipeline_device,
+            nullptr,
+            render_pipeline_json,
+            render_pipeline_configuration_file_path.parent_path(),
+            {},
+            {}
+        };
+
+        nlohmann::json const& command_lists_json = render_pipeline_json.at("frame_commands");
+        nlohmann::json const& command_list_json = command_lists_json[render_pipeline_configuration.command_list_index];
+
+        Maia::Renderer::Vulkan::Commands_data const commands_data =
+            Maia::Renderer::Vulkan::create_commands_data(
+                command_list_json,
+                render_pipeline_resources.pipeline_states,
+                render_pipeline_resources.render_passes,
+                {},
+                {}
+            );
 
         std::uint8_t frame_index = 0;
 
@@ -324,8 +371,6 @@ namespace Mythology::SDL
                                     surface_image_extents,
                                     {}
                                 );
-
-                            Maia::Renderer::Vulkan::Commands_data commands_data; // TODO
 
                             Maia::Renderer::Vulkan::draw(
                                 command_buffer,
