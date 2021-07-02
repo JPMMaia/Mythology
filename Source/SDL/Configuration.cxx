@@ -192,6 +192,11 @@ namespace Mythology::SDL
         std::pmr::vector<std::pmr::vector<vk::Image>> images;
     };
 
+    export std::pmr::vector<vk::Format> get_swapchain_image_formats(
+        std::span<Swapchain_configuration const> configurations,
+        std::pmr::polymorphic_allocator<> const& allocator
+    );
+
     export std::pmr::vector<vk::Device> get_queue_devices(
         std::span<Queue_configuration const> configurations,
         std::span<vk::Device const> devices,
@@ -206,19 +211,35 @@ namespace Mythology::SDL
     export struct Render_pipeline_input_configuration
     {
         std::uint32_t swapchain_index = 0;
+        std::uint32_t framebuffer_render_pass_index = 0;
     };
 
     export struct Render_pipeline_configuration
     {
         std::pmr::string name;
         std::uint32_t command_list_index = 0;
+        std::uint32_t device_index = 0;
         std::pmr::vector<Render_pipeline_input_configuration> inputs;
     };
 
     export std::pmr::vector<vk::Image> get_input_images(
         std::span<Render_pipeline_input_configuration const> inputs,
         std::span<std::pmr::vector<vk::Image> const> swapchain_images,
-        std::span<std::uint32_t const> const swapchain_image_indices,
+        std::span<std::uint32_t const> swapchain_image_indices,
+        std::pmr::polymorphic_allocator<> const& allocator
+    );
+
+    export std::pmr::vector<vk::ImageView> get_input_image_views(
+        std::span<Render_pipeline_input_configuration const> inputs,
+        std::span<std::pmr::vector<vk::ImageView> const> swapchain_image_views,
+        std::span<std::uint32_t const> swapchain_image_indices,
+        std::pmr::polymorphic_allocator<> const& allocator
+    );
+
+    export std::pmr::vector<vk::Framebuffer> get_input_framebuffers(
+        std::span<Render_pipeline_input_configuration const> inputs,
+        std::span<std::pmr::vector<vk::Framebuffer> const> swapchain_framebuffers,
+        std::span<std::uint32_t const> swapchain_image_indices,
         std::pmr::polymorphic_allocator<> const& allocator
     );
 
@@ -233,4 +254,29 @@ namespace Mythology::SDL
         std::span<vk::Extent2D const> surface_image_extents,
         std::pmr::polymorphic_allocator<> const& allocator
     );
+
+    export struct Render_pipeline_input_resources
+    {
+        Render_pipeline_input_resources(
+            std::span<Render_pipeline_input_configuration const> const inputs,
+            std::span<vk::Device const> const swapchain_devices,
+            std::span<std::pmr::vector<vk::Image> const> swapchain_images,
+            std::span<vk::Format const> swapchain_image_formats,
+            std::span<vk::ImageSubresourceRange const> swapchain_image_subresource_ranges,
+            std::span<vk::Rect2D const> const swapchain_render_areas,
+            std::span<vk::RenderPass const> const render_pipeline_render_passes,
+            std::pmr::polymorphic_allocator<> const& allocator
+        );
+        
+        Render_pipeline_input_resources(Render_pipeline_input_resources const&) = delete;
+        Render_pipeline_input_resources(Render_pipeline_input_resources&& other) noexcept = default;
+        ~Render_pipeline_input_resources() noexcept;
+
+        Render_pipeline_input_resources& operator=(Render_pipeline_input_resources const&) = delete;
+        Render_pipeline_input_resources& operator=(Render_pipeline_input_resources&&) noexcept = default;
+
+        std::pmr::vector<vk::Device> swapchain_devices;
+        std::pmr::vector<std::pmr::vector<vk::ImageView>> image_views;
+        std::pmr::vector<std::pmr::vector<vk::Framebuffer>> framebuffers;
+    };
 }

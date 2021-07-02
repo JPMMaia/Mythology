@@ -286,6 +286,34 @@ namespace Mythology::SDL
             {}
         };
 
+        std::pmr::vector<vk::ImageSubresourceRange> const swapchain_image_subresource_ranges =
+            get_image_subresource_ranges(
+                render_pipeline_configuration.inputs,
+                {}
+            );
+
+        std::pmr::vector<vk::Rect2D> const swapchain_render_areas =
+            get_render_areas(
+                render_pipeline_configuration.inputs,
+                swapchain_configurations,
+                surface_image_extents,
+                {}
+            );
+
+        std::pmr::vector<vk::Format> const swapchain_formats = get_swapchain_image_formats(swapchain_configurations, {});
+
+        Mythology::SDL::Render_pipeline_input_resources const pipeline_input_resources
+        {
+            render_pipeline_configuration.inputs,
+            swapchain_devices,
+            swapchain_resources.images,
+            swapchain_formats,
+            swapchain_image_subresource_ranges,
+            swapchain_render_areas,
+            render_pipeline_resources.render_passes,
+            {}
+        };
+
         nlohmann::json const& command_lists_json = render_pipeline_json.at("frame_commands");
         nlohmann::json const& command_list_json = command_lists_json[render_pipeline_configuration.command_list_index];
 
@@ -300,6 +328,7 @@ namespace Mythology::SDL
 
         std::uint8_t frame_index = 0;
 
+        while (true)
         {
             std::span<vk::Fence const> const available_frame_fences = synchronization_resources.frames[frame_index].available_frame_fences;
             std::span<vk::Semaphore const> const available_frame_semaphores = synchronization_resources.frames[frame_index].available_frame_semaphores;
@@ -341,10 +370,8 @@ namespace Mythology::SDL
                         }
 
                         {
-                            // TODO
-                            std::span<vk::Buffer const> const output_buffers;
+                            std::span<vk::Buffer const> const output_buffers; // TODO
                             
-                            // TODO
                             std::array<std::uint32_t, 1> const swapchain_image_indices = {swapchain_image_index};
                             std::pmr::vector<vk::Image> const output_images =
                                 get_input_images(
@@ -354,23 +381,26 @@ namespace Mythology::SDL
                                     {}
                                 );
                             
-                            std::span<vk::ImageView const> const output_image_views;
-                            
-                            std::pmr::vector<vk::ImageSubresourceRange> const output_image_subresource_ranges =
-                                get_image_subresource_ranges(
+                            std::pmr::vector<vk::ImageView> const output_image_views =
+                                get_input_image_views(
                                     render_pipeline_configuration.inputs,
+                                    pipeline_input_resources.image_views,
+                                    swapchain_image_indices,
                                     {}
                                 );
                             
-                            std::span<vk::Framebuffer const> const output_framebuffers;
+                            std::span<vk::ImageSubresourceRange const> const output_image_subresource_ranges =
+                                swapchain_image_subresource_ranges;
                             
-                            std::pmr::vector<vk::Rect2D> const output_render_areas =
-                                get_render_areas(
+                            std::pmr::vector<vk::Framebuffer> const output_framebuffers =
+                                get_input_framebuffers(
                                     render_pipeline_configuration.inputs,
-                                    swapchain_configurations,
-                                    surface_image_extents,
+                                    pipeline_input_resources.framebuffers,
+                                    swapchain_image_indices,
                                     {}
                                 );
+                            
+                            std::span<vk::Rect2D const> const output_render_areas = swapchain_render_areas;
 
                             Maia::Renderer::Vulkan::draw(
                                 command_buffer,

@@ -569,6 +569,29 @@ namespace Mythology::SDL
     }
 
 
+    std::pmr::vector<vk::Format> get_swapchain_image_formats(
+        std::span<Swapchain_configuration const> const configurations,
+        std::pmr::polymorphic_allocator<> const& allocator
+    )
+    {
+        auto const get_format = [] (Swapchain_configuration const& configuration) -> vk::Format
+        {
+            return configuration.image_format;
+        };
+
+        std::pmr::vector<vk::Format> formats{allocator};
+        formats.resize(configurations.size());
+
+        std::transform(
+            configurations.begin(),
+            configurations.end(),
+            formats.begin(),
+            get_format
+        );
+
+        return formats;
+    }
+
     std::pmr::vector<vk::Device> get_queue_devices(
         std::span<Queue_configuration const> const configurations,
         std::span<vk::Device const> const devices,
@@ -645,6 +668,62 @@ namespace Mythology::SDL
         return input_images;
     }
 
+    std::pmr::vector<vk::ImageView> get_input_image_views(
+        std::span<Render_pipeline_input_configuration const> const inputs,
+        std::span<std::pmr::vector<vk::ImageView> const> const swapchain_image_views,
+        std::span<std::uint32_t const> const swapchain_image_indices,
+        std::pmr::polymorphic_allocator<> const& allocator
+    )
+    {
+        assert(swapchain_image_views.size() == swapchain_image_indices.size());
+
+        auto const get_input_image_view = [=] (Render_pipeline_input_configuration const& input) -> vk::ImageView
+        {
+            std::uint32_t const swapchain_image_index = swapchain_image_indices[input.swapchain_index];
+            return swapchain_image_views[input.swapchain_index][swapchain_image_index];
+        };
+
+        std::pmr::vector<vk::ImageView> input_image_views{allocator};
+        input_image_views.resize(inputs.size());
+
+        std::transform(
+            inputs.begin(),
+            inputs.end(),
+            input_image_views.begin(),
+            get_input_image_view
+        );
+
+        return input_image_views;
+    }
+
+    std::pmr::vector<vk::Framebuffer> get_input_framebuffers(
+        std::span<Render_pipeline_input_configuration const> inputs,
+        std::span<std::pmr::vector<vk::Framebuffer> const> swapchain_framebuffers,
+        std::span<std::uint32_t const> swapchain_image_indices,
+        std::pmr::polymorphic_allocator<> const& allocator
+    )
+    {
+        assert(swapchain_framebuffers.size() == swapchain_image_indices.size());
+
+        auto const get_input_framebuffer = [=] (Render_pipeline_input_configuration const& input) -> vk::Framebuffer
+        {
+            std::uint32_t const swapchain_image_index = swapchain_image_indices[input.swapchain_index];
+            return swapchain_framebuffers[input.swapchain_index][swapchain_image_index];
+        };
+
+        std::pmr::vector<vk::Framebuffer> input_framebuffers{allocator};
+        input_framebuffers.resize(inputs.size());
+
+        std::transform(
+            inputs.begin(),
+            inputs.end(),
+            input_framebuffers.begin(),
+            get_input_framebuffer
+        );
+
+        return input_framebuffers;
+    }
+
     std::pmr::vector<vk::ImageSubresourceRange> get_image_subresource_ranges(
         std::span<Render_pipeline_input_configuration const> const inputs,
         std::pmr::polymorphic_allocator<> const& allocator
@@ -701,5 +780,152 @@ namespace Mythology::SDL
         );
 
         return render_areas;
+    }
+
+    namespace
+    {
+        std::pmr::vector<std::pmr::vector<vk::ImageView>> create_render_pipeline_input_image_views(
+            std::span<Render_pipeline_input_configuration const> const inputs,
+            std::span<vk::Device const> const swapchain_devices,
+            std::span<std::pmr::vector<vk::Image> const> swapchain_images,
+            std::span<vk::Format const> swapchain_image_formats,
+            std::span<vk::ImageSubresourceRange const> swapchain_image_subresource_ranges,
+            std::pmr::polymorphic_allocator<> const& allocator
+        )
+        {
+            auto const create_image_views = [=] (Render_pipeline_input_configuration const& input) -> std::pmr::vector<vk::ImageView>
+            {
+                vk::Device const device = swapchain_devices[input.swapchain_index];
+                std::span<vk::Image const> const images = swapchain_images[input.swapchain_index];
+                vk::Format const format = swapchain_image_formats[input.swapchain_index];
+                vk::ImageSubresourceRange const subresource_range = swapchain_image_subresource_ranges[input.swapchain_index];
+
+                std::pmr::vector<vk::ImageView> image_views{allocator};
+                image_views.resize(images.size());
+
+                for (std::size_t image_index = 0; image_index < images.size(); ++image_index)
+                {
+                    vk::ImageViewCreateInfo const create_info
+                    {
+                        .flags = {},
+                        .image = images[image_index],
+                        .viewType = vk::ImageViewType::e2D,
+                        .format = format,
+                        .components = {
+                            .r = vk::ComponentSwizzle::eR,
+                            .g = vk::ComponentSwizzle::eG,
+                            .b = vk::ComponentSwizzle::eB,
+                            .a = vk::ComponentSwizzle::eA,
+                        },
+                        .subresourceRange = subresource_range,
+                    };
+
+                    image_views[image_index] = device.createImageView(create_info);
+                }
+
+                return image_views;
+            };
+
+            std::pmr::vector<std::pmr::vector<vk::ImageView>> image_views{allocator};
+            image_views.resize(inputs.size());
+
+            std::transform(
+                inputs.begin(),
+                inputs.end(),
+                image_views.begin(),
+                create_image_views
+            );
+
+            return image_views;
+        }
+
+        std::pmr::vector<std::pmr::vector<vk::Framebuffer>> create_render_pipeline_input_framebuffers(
+            std::span<Render_pipeline_input_configuration const> const inputs,
+            std::span<vk::Device const> const swapchain_devices,
+            std::span<std::pmr::vector<vk::ImageView> const> const swapchain_image_views,
+            std::span<vk::Rect2D const> const swapchain_render_areas,
+            std::span<vk::RenderPass const> const render_pipeline_render_passes,
+            std::pmr::polymorphic_allocator<> const& allocator
+        )
+        {
+            auto const create_framebuffers = [=] (Render_pipeline_input_configuration const& input) -> std::pmr::vector<vk::Framebuffer>
+            {
+                vk::Device const device = swapchain_devices[input.swapchain_index];
+                std::span<vk::ImageView const> const image_views = swapchain_image_views[input.swapchain_index];
+                vk::Extent2D const image_extent = swapchain_render_areas[input.swapchain_index].extent;
+
+                std::pmr::vector<vk::Framebuffer> framebuffers{allocator};
+                framebuffers.resize(image_views.size());
+
+                for (std::size_t image_view_index = 0; image_view_index < image_views.size(); ++image_view_index)
+                {
+                    vk::FramebufferCreateInfo const create_info
+                    {
+                        .flags = {},
+                        .renderPass = render_pipeline_render_passes[input.framebuffer_render_pass_index],
+                        .attachmentCount = 1,
+                        .pAttachments = &image_views[image_view_index],
+                        .width = image_extent.width,
+                        .height = image_extent.height,
+                        .layers = 1,
+                    };
+
+                    framebuffers[image_view_index] = device.createFramebuffer(create_info);
+                }
+
+                return framebuffers;
+            };
+
+            std::pmr::vector<std::pmr::vector<vk::Framebuffer>> framebuffers{allocator};
+            framebuffers.resize(inputs.size());
+
+            std::transform(
+                inputs.begin(),
+                inputs.end(),
+                framebuffers.begin(),
+                create_framebuffers
+            );
+
+            return framebuffers;
+        }
+    }
+
+    Render_pipeline_input_resources::Render_pipeline_input_resources(
+        std::span<Render_pipeline_input_configuration const> const inputs,
+        std::span<vk::Device const> const swapchain_devices,
+        std::span<std::pmr::vector<vk::Image> const> swapchain_images,
+        std::span<vk::Format const> swapchain_image_formats,
+        std::span<vk::ImageSubresourceRange const> swapchain_image_subresource_ranges,
+        std::span<vk::Rect2D const> const swapchain_render_areas,
+        std::span<vk::RenderPass const> const render_pipeline_render_passes,
+        std::pmr::polymorphic_allocator<> const& allocator
+    ) :
+        swapchain_devices{swapchain_devices.begin(), swapchain_devices.end(), allocator},
+        image_views{create_render_pipeline_input_image_views(inputs, swapchain_devices, swapchain_images, swapchain_image_formats, swapchain_image_subresource_ranges, allocator)},
+        framebuffers{create_render_pipeline_input_framebuffers(inputs, swapchain_devices, this->image_views, swapchain_render_areas, render_pipeline_render_passes, allocator)}
+    {
+    }
+
+    Render_pipeline_input_resources::~Render_pipeline_input_resources() noexcept
+    {
+        for (std::size_t device_index = 0; device_index < this->swapchain_devices.size(); ++device_index)
+        {
+            vk::Device const device = this->swapchain_devices[device_index];
+
+            for (vk::Framebuffer const framebuffer : this->framebuffers[device_index])
+            {
+                device.destroy(framebuffer);
+            }
+        }
+
+        for (std::size_t device_index = 0; device_index < this->swapchain_devices.size(); ++device_index)
+        {
+            vk::Device const device = this->swapchain_devices[device_index];
+
+            for (vk::ImageView const image_view : this->image_views[device_index])
+            {
+                device.destroy(image_view);
+            }
+        }
     }
 }
