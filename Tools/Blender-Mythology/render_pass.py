@@ -3,6 +3,7 @@ import typing
 
 from bpy.types import NodeTree, Node, NodeSocket
 
+from .common import get_enum_property_int_value
 from .render_node_tree import RenderTreeNode
 from .vulkan_enums import *
 
@@ -21,7 +22,7 @@ class AccessFlagsNodeSocket(bpy.types.NodeSocket):
     )
 
     def get_value(self) -> typing.Union[int, str]:
-        return self.get('default_value', 0)
+        return get_enum_property_int_value(self.enum_values, self.default_value, 0)
 
     def draw(self, context, layout, node, text):
         if self.is_output or self.is_linked:
@@ -66,7 +67,7 @@ class DependencyFlagsNodeSocket(bpy.types.NodeSocket):
     )
 
     def get_value(self) -> typing.Union[int, str]:
-        return self.get('default_value', 0)
+        return get_enum_property_int_value(self.enum_values, self.default_value, 0)
 
     def draw(self, context, layout, node, text):
         if self.is_output or self.is_linked:
@@ -89,7 +90,7 @@ class FormatNodeSocket(bpy.types.NodeSocket):
     )
 
     def get_value(self) -> typing.Union[int, str]:
-        return self.get('default_value', 0)
+        return get_enum_property_int_value(format_values, self.default_value, 0)
 
     def draw(self, context, layout, node, text):
         if self.is_output or self.is_linked:
@@ -123,7 +124,7 @@ class SampleCountNodeSocket(bpy.types.NodeSocket):
     )
 
     def get_value(self) -> typing.Union[int, str]:
-        return self.get('default_value', 1)
+        return get_enum_property_int_value(self.enum_values, self.default_value, 1)
 
     def draw(self, context, layout, node, text):
         if self.is_output or self.is_linked:
@@ -152,7 +153,7 @@ class LoadOperationNodeSocket(bpy.types.NodeSocket):
     )
 
     def get_value(self) -> typing.Union[int, str]:
-        return self.get('default_value', 2)
+        return get_enum_property_int_value(self.enum_values, self.default_value, 2)
 
     def draw(self, context, layout, node, text):
         if self.is_output or self.is_linked:
@@ -168,10 +169,10 @@ class StoreOperationNodeSocket(bpy.types.NodeSocket):
     
     bl_label = "Store operation Socket"
 
-    enum_values = (
+    enum_values = [
         ("STORE", "Store", "", 0),
         ("DONT_CARE", "Don't care", "", 1),
-    )
+    ]
 
     default_value: bpy.props.EnumProperty(
         name="Store operation",
@@ -181,7 +182,7 @@ class StoreOperationNodeSocket(bpy.types.NodeSocket):
     )
 
     def get_value(self) -> typing.Union[int, str]:
-        return self.get('default_value', 1)
+        return get_enum_property_int_value(self.enum_values, self.default_value, 0)
 
     def draw(self, context, layout, node, text):
         if self.is_output or self.is_linked:
@@ -206,23 +207,7 @@ class ImageLayoutNodeSocket(bpy.types.NodeSocket):
     
     bl_label = "Image layout Socket"
 
-    enum_values = (
-        ("UNDEFINED", "UNDEFINED", "", 0),
-        ("GENERAL", "GENERAL", "", 1),
-        ("COLOR_ATTACHMENT_OPTIMAL", "COLOR_ATTACHMENT_OPTIMAL", "", 2),
-        ("DEPTH_STENCIL_ATTACHMENT_OPTIMAL", "DEPTH_STENCIL_ATTACHMENT_OPTIMAL", "", 3),
-        ("DEPTH_STENCIL_READ_ONLY_OPTIMAL", "DEPTH_STENCIL_READ_ONLY_OPTIMAL", "", 4),
-        ("SHADER_READ_ONLY_OPTIMAL", "SHADER_READ_ONLY_OPTIMAL", "", 5),
-        ("TRANSFER_SRC_OPTIMAL", "TRANSFER_SRC_OPTIMAL", "", 6),
-        ("TRANSFER_DST_OPTIMAL", "TRANSFER_DST_OPTIMAL", "", 7),
-        ("PREINITIALIZED", "PREINITIALIZED", "", 8),
-        ("DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL", "DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL", "", 1000117000),
-        ("DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL", "DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL", "", 1000117001),
-        ("DEPTH_ATTACHMENT_OPTIMAL", "DEPTH_ATTACHMENT_OPTIMAL", "", 1000241000),
-        ("DEPTH_READ_ONLY_OPTIMAL", "DEPTH_READ_ONLY_OPTIMAL", "", 1000241001),
-        ("STENCIL_ATTACHMENT_OPTIMAL", "STENCIL_ATTACHMENT_OPTIMAL", "", 1000241002),
-        ("STENCIL_READ_ONLY_OPTIMAL", "STENCIL_READ_ONLY_OPTIMAL", "", 1000241003),
-    )
+    enum_values = image_layout_values
 
     default_value: bpy.props.EnumProperty(
         name="Image layout",
@@ -231,8 +216,8 @@ class ImageLayoutNodeSocket(bpy.types.NodeSocket):
         default="UNDEFINED",
     )
 
-    def get_value(self) -> typing.Union[int, str]:
-        return self.get('default_value', 0)
+    def get_value(self) -> int:
+        return image_layout_values_to_int[self.default_value]
 
     def draw(self, context, layout, node, text):
         if self.is_output or self.is_linked:
@@ -261,7 +246,7 @@ class PipelineBindPointNodeSocket(bpy.types.NodeSocket):
     )
 
     def get_value(self) -> typing.Union[int, str]:
-        return self.get('default_value', 0)
+        return get_enum_property_int_value(self.enum_values, self.default_value, 0)
 
     def draw(self, context, layout, node, text):
         if self.is_output or self.is_linked:
@@ -287,7 +272,7 @@ class PipelineStageFlagsNodeSocket(bpy.types.NodeSocket):
     )
 
     def get_value(self) -> typing.Union[int, str]:
-        return self.get('default_value', 1)
+        return get_enum_property_int_value(self.enum_values, self.default_value, 1)
 
     def draw(self, context, layout, node, text):
         if self.is_output or self.is_linked:

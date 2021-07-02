@@ -1,4 +1,5 @@
 import bpy
+import typing
 
 from .render_node_tree import RenderTreeNode
 
@@ -12,6 +13,14 @@ def ignore_reroutes(node: bpy.types.Node) -> bpy.types.Node:
 
     assert current_node.bl_idname != "NodeReroute"
     return current_node
+
+def get_enum_property_int_value(
+    enum_values: typing.Tuple[typing.Any, typing.Any, typing.Any, int],
+    actual_value: typing.Any,
+    default_value: int
+) -> int:
+    
+    return next((enum[3] for enum in enum_values if enum[0] == actual_value), default_value)
 
 
 class Extent2DNodeSocket(bpy.types.NodeSocket):
