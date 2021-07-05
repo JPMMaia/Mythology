@@ -109,6 +109,9 @@ namespace Mythology::SDL
                 },
                 .enabled_extensions =
                 {
+                    "VK_KHR_acceleration_structure",
+                    "VK_KHR_deferred_host_operations",
+                    "VK_KHR_ray_tracing_pipeline",
                     "VK_KHR_swapchain",
                 },
             }
@@ -402,6 +405,9 @@ namespace Mythology::SDL
                             
                             std::span<vk::Rect2D const> const output_render_areas = swapchain_render_areas;
 
+                            // TODO
+                            std::span<Maia::Renderer::Vulkan::Shader_binding_tables const> const shader_binding_tables;
+
                             Maia::Renderer::Vulkan::draw(
                                 command_buffer,
                                 output_buffers,
@@ -410,6 +416,7 @@ namespace Mythology::SDL
                                 output_image_subresource_ranges,
                                 output_framebuffers,
                                 output_render_areas,
+                                shader_binding_tables,
                                 commands_data,
                                 {}
                             );

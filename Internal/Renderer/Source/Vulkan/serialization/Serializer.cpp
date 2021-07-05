@@ -1740,6 +1740,7 @@ namespace Maia::Renderer::Vulkan
             Draw,
             End_render_pass,
             Pipeline_barrier,
+            Trace_rays,
             Set_screen_viewport_and_scissors
         };
 
@@ -2043,6 +2044,37 @@ namespace Maia::Renderer::Vulkan
             return data;
         }
 
+        struct Trace_rays
+        {
+            std::uint32_t width = 0;
+            std::uint32_t height = 0;
+            std::uint32_t depth = 0;
+            std::uint8_t binding_tables_index = 0;
+        };
+
+        std::pmr::vector<std::byte> create_trace_rays_data(
+            nlohmann::json const& command_json,
+            std::pmr::polymorphic_allocator<> const& output_allocator
+        )
+        {
+            assert(command_json.at("type").get<std::string>() == "Trace_rays");
+
+            Trace_rays const trace_rays
+            {
+                .width = command_json.at("width").get<std::uint32_t>(),
+                .height = command_json.at("height").get<std::uint32_t>(),
+                .depth = command_json.at("depth").get<std::uint32_t>(),
+                .binding_tables_index = command_json.at("binding_tables_index").get<std::uint8_t>(),
+            };
+
+            Command_type constexpr command_type = Command_type::Trace_rays;
+
+            std::pmr::vector<std::byte> data{output_allocator};
+            data.resize(sizeof(command_type) + sizeof(Trace_rays));
+            std::memcpy(data.data(), &command_type, sizeof(command_type));
+            std::memcpy(data.data() + sizeof(command_type), &trace_rays, sizeof(trace_rays));
+            return data;
+        }
 
         std::pmr::vector<std::byte> create_command_data(
             nlohmann::json const& command_json,
@@ -2078,6 +2110,10 @@ namespace Maia::Renderer::Vulkan
             else if (type == "Pipeline_barrier")
             {
                 return create_pipeline_barrier(command_json, output_allocator, temporaries_allocator);
+            }
+            else if (type == "Trace_rays")
+            {
+                return create_trace_rays_data(command_json, output_allocator);
             }
             else if (type == "Set_screen_viewport_and_scissors")
             {
@@ -2364,6 +2400,32 @@ namespace Maia::Renderer::Vulkan
 
             return 0;
         }
+
+        Commands_data_offset add_trace_rays_command(
+            vk::CommandBuffer const command_buffer,
+            std::span<Shader_binding_tables const> const shader_binding_tables,
+            std::span<std::byte const> const bytes
+        ) noexcept
+        {
+            Commands_data_offset commands_data_offset = 0;
+
+            Trace_rays const command = read<Trace_rays>(bytes.data() + commands_data_offset);
+            commands_data_offset += sizeof(Trace_rays);
+
+            Shader_binding_tables const& shader_binding_table = shader_binding_tables[command.binding_tables_index];
+
+            command_buffer.traceRaysKHR(
+                shader_binding_table.raygen,
+                shader_binding_table.miss,
+                shader_binding_table.hit,
+                shader_binding_table.callable,
+                command.width,
+                command.height,
+                command.depth
+            );
+
+            return commands_data_offset;
+        }
     }
 
     void draw(
@@ -2374,6 +2436,7 @@ namespace Maia::Renderer::Vulkan
         std::span<vk::ImageSubresourceRange const> const output_image_subresource_ranges,
         std::span<vk::Framebuffer const> const output_framebuffers,
         std::span<vk::Rect2D const> const output_render_areas,
+        std::span<Shader_binding_tables const> const shader_binding_tables,
         Commands_data const& commands_data,
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     ) noexcept
@@ -2413,6 +2476,10 @@ namespace Maia::Renderer::Vulkan
 
             case Command_type::Pipeline_barrier:
                 offset_in_bytes += add_pipeline_barrier_command(command_buffer, output_images, output_image_subresource_ranges, next_command_bytes, temporaries_allocator);
+                break;
+
+            case Command_type::Trace_rays:
+                offset_in_bytes += add_trace_rays_command(command_buffer, shader_binding_tables, next_command_bytes);
                 break;
 
             case Command_type::Set_screen_viewport_and_scissors:

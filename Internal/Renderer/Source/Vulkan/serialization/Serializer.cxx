@@ -133,6 +133,14 @@ namespace Maia::Renderer::Vulkan
         std::pmr::polymorphic_allocator<std::byte> const& temporaries_allocator
     ) noexcept;
 
+    export struct Shader_binding_tables
+    {
+        vk::StridedDeviceAddressRegionKHR raygen = {};
+        vk::StridedDeviceAddressRegionKHR miss = {};
+        vk::StridedDeviceAddressRegionKHR hit = {};
+        vk::StridedDeviceAddressRegionKHR callable = {};
+    };
+
     export void draw(
         vk::CommandBuffer command_buffer,
         std::span<vk::Buffer const> output_buffers,
@@ -141,6 +149,7 @@ namespace Maia::Renderer::Vulkan
         std::span<vk::ImageSubresourceRange const> output_image_subresource_ranges,
         std::span<vk::Framebuffer const> output_framebuffers,
         std::span<vk::Rect2D const> output_render_areas,
+        std::span<Shader_binding_tables const> const shader_binding_tables,
         Commands_data const& commands_data,
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     ) noexcept;
