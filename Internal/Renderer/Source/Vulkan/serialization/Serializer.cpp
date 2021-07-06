@@ -1425,8 +1425,9 @@ namespace Maia::Renderer::Vulkan
 
     }
 
-    std::pmr::vector<vk::Pipeline> create_pipeline_states(
+    std::pmr::vector<vk::Pipeline> create_graphics_pipeline_states(
         vk::Device const device,
+        vk::PipelineCache const pipeline_cache,
         vk::AllocationCallbacks const* const allocation_callbacks,
         std::span<vk::ShaderModule const> const shader_modules,
         std::span<vk::PipelineLayout const> const pipeline_layouts,
@@ -1434,7 +1435,7 @@ namespace Maia::Renderer::Vulkan
         nlohmann::json const& pipeline_states_json,
         std::pmr::polymorphic_allocator<> const& output_allocator,
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
-    ) noexcept
+    )
     {
         std::pmr::vector<std::pmr::string> const shader_stage_names = 
             create_pipeline_shader_stage_names(
@@ -1540,7 +1541,7 @@ namespace Maia::Renderer::Vulkan
 
         {
             std::size_t pipeline_state_index = 0;
-            std::size_t start_stage_index = 0; 
+            std::size_t start_stage_index = 0;
 
             for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
             {
@@ -1578,7 +1579,7 @@ namespace Maia::Renderer::Vulkan
         {   
             std::pmr::polymorphic_allocator<vk::Pipeline> pipelines_vector_allocator{output_allocator};
             std::pmr::vector<vk::Pipeline> pipelines =
-                device.createGraphicsPipelines({}, create_infos, allocation_callbacks, pipelines_vector_allocator);
+                device.createGraphicsPipelines(pipeline_cache, create_infos, allocation_callbacks, pipelines_vector_allocator);
 
             return pipelines;
         }
@@ -1588,8 +1589,253 @@ namespace Maia::Renderer::Vulkan
         }
     }
 
+    std::pmr::vector<vk::RayTracingShaderGroupCreateInfoKHR> create_ray_tracing_shader_group_create_infos(
+        nlohmann::json const& pipeline_states_json,
+        std::pmr::polymorphic_allocator<> const& output_allocator
+    )
+    {
+        std::pmr::vector<vk::RayTracingShaderGroupCreateInfoKHR> create_infos{output_allocator};
+
+        for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
+        {
+            for (nlohmann::json const& group_json : pipeline_state_json.at("groups"))
+            {
+                vk::RayTracingShaderGroupCreateInfoKHR const create_info
+                {
+                    .type = group_json.at("type").get<vk::RayTracingShaderGroupTypeKHR>(),
+                    .generalShader = group_json.at("general_shader").get<std::uint32_t>(),
+                    .closestHitShader = group_json.at("closest_hit_shader").get<std::uint32_t>(),
+                    .anyHitShader = group_json.at("any_hit_shader").get<std::uint32_t>(),
+                    .intersectionShader = group_json.at("intersection_shader").get<std::uint32_t>(),
+                    .pShaderGroupCaptureReplayHandle = nullptr,
+                };
+
+                create_infos.push_back(create_info);
+            }
+        }
+
+        return create_infos;
+    }
+
+    std::pmr::vector<vk::Pipeline> gather_pipeline_libraries(
+        nlohmann::json const& pipeline_state_json,
+        std::span<vk::Pipeline const> const pipelines,
+        std::pmr::polymorphic_allocator<> const& output_allocator
+    )
+    {
+        auto const get_pipeline_library = [=] (nlohmann::json const& library_index_json) -> vk::Pipeline
+        {
+            std::size_t const index = library_index_json.get<std::size_t>();
+
+            return pipelines[index];
+        };
+
+        nlohmann::json const& library_info_json = pipeline_state_json.at("library_info");
+        
+        std::pmr::vector<vk::Pipeline> pipeline_libraries{output_allocator};
+        pipeline_libraries.resize(library_info_json.size());
+
+
+        std::transform(
+            library_info_json.begin(),
+            library_info_json.end(),
+            pipeline_libraries.begin(),
+            get_pipeline_library
+        );
+
+        return pipeline_libraries;
+    }
+
+    std::pmr::vector<vk::RayTracingPipelineInterfaceCreateInfoKHR> create_ray_tracing_pipeline_interface_create_infos(
+        nlohmann::json const& pipeline_states_json,
+        std::pmr::polymorphic_allocator<> const& output_allocator
+    )
+    {
+        auto const get_create_info = [] (nlohmann::json const& pipeline_state_json) -> vk::RayTracingPipelineInterfaceCreateInfoKHR
+        {
+            nlohmann::json const& library_interface_json = pipeline_state_json.at("library_interface");
+
+            vk::RayTracingPipelineInterfaceCreateInfoKHR const create_info
+            {
+                .maxPipelineRayPayloadSize = library_interface_json.at("max_pipeline_ray_payload_size").get<std::uint32_t>(),
+                .maxPipelineRayHitAttributeSize = library_interface_json.at("max_pipeline_ray_hit_attribute_size").get<std::uint32_t>(),
+            };
+
+            return create_info;
+        };
+
+        std::pmr::vector<vk::RayTracingPipelineInterfaceCreateInfoKHR> create_infos{output_allocator};
+        create_infos.resize(pipeline_states_json.size());
+
+
+        std::transform(
+            pipeline_states_json.begin(),
+            pipeline_states_json.end(),
+            create_infos.begin(),
+            get_create_info
+        );
+
+        return create_infos;
+    }
+
+    std::pmr::vector<vk::Pipeline> create_ray_tracing_pipeline_states(
+        vk::Device const device,
+        vk::PipelineCache const pipeline_cache,
+        vk::AllocationCallbacks const* const allocation_callbacks,
+        std::span<vk::ShaderModule const> const shader_modules,
+        std::span<vk::PipelineLayout const> const pipeline_layouts,
+        nlohmann::json const& pipeline_states_json,
+        std::pmr::polymorphic_allocator<> const& output_allocator,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
+    )
+    {
+        std::pmr::vector<std::pmr::string> const shader_stage_names = 
+            create_pipeline_shader_stage_names(
+                pipeline_states_json,
+                temporaries_allocator
+            );
+
+        std::pmr::vector<vk::PipelineShaderStageCreateInfo> const shader_stages = 
+            create_pipeline_shader_stage_create_infos(
+                pipeline_states_json,
+                shader_modules,
+                shader_stage_names,
+                temporaries_allocator
+        );
+
+        std::pmr::vector<vk::RayTracingShaderGroupCreateInfoKHR> const groups =
+            create_ray_tracing_shader_group_create_infos(
+                pipeline_states_json,
+                temporaries_allocator
+            );
+        
+        std::pmr::vector<vk::RayTracingPipelineInterfaceCreateInfoKHR> const library_interfaces = 
+            create_ray_tracing_pipeline_interface_create_infos(
+                pipeline_states_json,
+                temporaries_allocator
+            );
+        
+        std::pmr::vector<vk::DynamicState> const dynamic_states = create_dynamic_states(pipeline_states_json, temporaries_allocator);
+
+        std::pmr::vector<vk::PipelineDynamicStateCreateInfo> const pipeline_dynamic_states = 
+            create_pipeline_dynamic_state_create_infos(
+                pipeline_states_json,
+                dynamic_states,
+                temporaries_allocator
+            );
+
+        std::pmr::vector<vk::Pipeline> pipelines{output_allocator};
+        pipelines.resize(pipeline_states_json.size());
+
+        {
+            std::size_t start_stage_index = 0;
+            std::size_t start_group_index = 0;
+
+            for (std::size_t index = 0; index < pipeline_states_json.size(); ++index)
+            {
+                nlohmann::json const& pipeline_state_json = pipeline_states_json[index];
+
+                std::uint32_t const shader_stage_count = static_cast<std::uint32_t>(pipeline_state_json.at("stages").size());
+                std::uint32_t const group_count = static_cast<std::uint32_t>(pipeline_state_json.at("groups").size());
+
+                std::pmr::vector<vk::Pipeline> const pipeline_libraries =
+                    gather_pipeline_libraries(
+                        pipeline_state_json,
+                        pipelines,
+                        temporaries_allocator
+                    );
+
+                vk::PipelineLibraryCreateInfoKHR const library_info
+                {
+                    .libraryCount = static_cast<std::uint32_t>(pipeline_libraries.size()),
+                    .pLibraries = pipeline_libraries.data()
+                };
+
+                std::array<vk::RayTracingPipelineCreateInfoKHR, 1> const create_info
+                {
+                    vk::RayTracingPipelineCreateInfoKHR
+                    {
+                        .flags = pipeline_state_json.at("flags").get<vk::PipelineCreateFlagBits>(),
+                        .stageCount = shader_stage_count,
+                        .pStages = shader_stages.data() + start_stage_index,
+                        .groupCount = group_count,
+                        .pGroups = groups.data() + start_group_index,
+                        .maxPipelineRayRecursionDepth = pipeline_state_json.at("max_pipeline_ray_recursion_depth").get<std::uint32_t>(),
+                        .pLibraryInfo = &library_info,
+                        .pLibraryInterface = &library_interfaces[index],
+                        .pDynamicState = &pipeline_dynamic_states[index],
+                        .layout = pipeline_layouts[pipeline_state_json.at("pipeline_layout").get<std::size_t>()],
+                        .basePipelineHandle = {},
+                        .basePipelineIndex = {},
+                    }
+                };
+
+                std::pmr::polymorphic_allocator<vk::Pipeline> allocator{temporaries_allocator};
+                std::pmr::vector<vk::Pipeline> const pipeline = device.createRayTracingPipelinesKHR(
+                    {},
+                    pipeline_cache,
+                    create_info,
+                    allocation_callbacks,
+                    allocator
+                );
+
+                pipelines[index] = pipeline[0];
+
+                start_stage_index += shader_stage_count;
+                start_group_index += group_count;
+            }
+        }
+
+        return pipelines;
+    }
+
+    std::pmr::vector<vk::Pipeline> gather_pipeline_states(
+        std::span<vk::Pipeline const> const compute_pipeline_states,
+        std::span<vk::Pipeline const> const graphics_pipeline_states,
+        std::span<vk::Pipeline const> const raytracing_pipeline_states,
+        nlohmann::json const& pipeline_states_json,
+        std::pmr::polymorphic_allocator<> const& output_allocator
+    )
+    {
+        auto const get_pipeline_state = [=] (nlohmann::json const& pipeline_state_json) -> vk::Pipeline
+        {
+            std::string const& type = pipeline_state_json.at("type").get<std::string>();
+            std::size_t const index = pipeline_state_json.at("index").get<std::size_t>();
+
+            if (type == "compute")
+            {
+                return compute_pipeline_states[index];
+            }
+            else if (type == "graphics")
+            {
+                return graphics_pipeline_states[index];
+            }
+            else if (type == "ray_tracing")
+            {
+                return raytracing_pipeline_states[index];
+            }
+            else
+            {
+                throw std::runtime_error{"Pipeline type is not recognized!"};
+            }
+        };
+
+        std::pmr::vector<vk::Pipeline> pipeline_states{output_allocator};
+        pipeline_states.resize(pipeline_states_json.size());
+
+        std::transform(
+            pipeline_states_json.begin(),
+            pipeline_states_json.end(),
+            pipeline_states.begin(),
+            get_pipeline_state
+        );
+
+        return pipeline_states;
+    }
+
     Pipeline_resources::Pipeline_resources(
         vk::Device const device,
+        vk::PipelineCache const pipeline_cache,
         vk::AllocationCallbacks const* const allocation_callbacks,
         nlohmann::json const& pipeline_json,
         std::filesystem::path const& pipeline_json_parent_path,
@@ -1656,19 +1902,47 @@ namespace Maia::Renderer::Vulkan
             ) :
             std::pmr::vector<vk::PipelineLayout>{output_allocator};
 
-        this->pipeline_states = 
-            pipeline_json.contains("pipeline_states") ?
-            create_pipeline_states(
-                device,
-                allocation_callbacks,
-                shader_modules,
-                pipeline_layouts,
-                render_passes,
+        if (pipeline_json.contains("pipeline_states"))
+        {
+            std::pmr::vector<vk::Pipeline> const compute_pipelines; // TODO
+
+            std::pmr::vector<vk::Pipeline> const graphics_pipelines =
+                pipeline_json.contains("graphics_pipeline_states") ?
+                create_graphics_pipeline_states(
+                    device,
+                    pipeline_cache,
+                    allocation_callbacks,
+                    shader_modules,
+                    pipeline_layouts,
+                    render_passes,
+                    pipeline_json.at("graphics_pipeline_states"),
+                    temporaries_allocator,
+                    temporaries_allocator
+                ) :
+                std::pmr::vector<vk::Pipeline>{temporaries_allocator};
+
+            std::pmr::vector<vk::Pipeline> const ray_tracing_pipelines =
+                pipeline_json.contains("graphics_pipeline_states") ?
+                create_ray_tracing_pipeline_states(
+                    device,
+                    pipeline_cache,
+                    allocation_callbacks,
+                    shader_modules,
+                    pipeline_layouts,
+                    pipeline_json.at("ray_tracing_pipeline_states"),
+                    temporaries_allocator,
+                    temporaries_allocator
+                ) :
+                std::pmr::vector<vk::Pipeline>{temporaries_allocator};
+                
+            this->pipeline_states = gather_pipeline_states(
+                compute_pipelines,
+                graphics_pipelines,
+                ray_tracing_pipelines,
                 pipeline_json.at("pipeline_states"),
-                output_allocator,
-                temporaries_allocator
-            ) :
-            std::pmr::vector<vk::Pipeline>{output_allocator};
+                output_allocator
+            );
+        }
     }
 
     Pipeline_resources::Pipeline_resources(Pipeline_resources&& other) noexcept :

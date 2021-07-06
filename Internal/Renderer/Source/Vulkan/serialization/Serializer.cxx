@@ -94,6 +94,7 @@ namespace Maia::Renderer::Vulkan
     {
         Pipeline_resources(
             vk::Device device,
+            vk::PipelineCache const pipeline_cache,
             vk::AllocationCallbacks const* allocation_callbacks,
             nlohmann::json const& pipeline_json,
             std::filesystem::path const& pipeline_json_parent_path,
