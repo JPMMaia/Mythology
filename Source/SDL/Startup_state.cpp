@@ -282,6 +282,7 @@ namespace Mythology::SDL
         Maia::Renderer::Vulkan::Pipeline_resources const render_pipeline_resources
         {
             render_pipeline_device,
+            {},
             nullptr,
             render_pipeline_json,
             render_pipeline_configuration_file_path.parent_path(),
