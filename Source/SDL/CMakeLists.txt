@@ -51,6 +51,14 @@ target_module (
 target_module(
     MaiaMythologySDL
     PUBLIC
+    "mythology.geometry"
+    INTERFACE "Geometry.cxx"
+    IMPLEMENTATION "Geometry.cpp"
+)
+
+target_module(
+    MaiaMythologySDL
+    PUBLIC
     "mythology.sdl.sdl"
     INTERFACE "SDL.cxx"
     IMPLEMENTATION "SDL.cpp"
