@@ -26,7 +26,7 @@ namespace nlohmann
 
         static void from_json(const json& j, vk::AttachmentDescriptionFlags& value)
         {
-            value = static_cast<vk::AttachmentDescriptionFlags>(j.get<std::uint64_t>());
+            value = static_cast<vk::AttachmentDescriptionFlags>(j.get<std::uint32_t>());
         }
     };
 
@@ -40,7 +40,7 @@ namespace nlohmann
 
         static void from_json(const json& j, vk::PipelineStageFlags& value)
         {
-            value = static_cast<vk::PipelineStageFlags>(j.get<std::uint64_t>());
+            value = static_cast<vk::PipelineStageFlags>(j.get<std::uint32_t>());
         }
     };
 
@@ -54,7 +54,7 @@ namespace nlohmann
 
         static void from_json(const json& j, vk::AccessFlags& value)
         {
-            value = static_cast<vk::AccessFlags>(j.get<std::uint64_t>());
+            value = static_cast<vk::AccessFlags>(j.get<std::uint32_t>());
         }
     };
 
@@ -68,7 +68,7 @@ namespace nlohmann
 
         static void from_json(const json& j, vk::DependencyFlags& value)
         {
-            value = static_cast<vk::DependencyFlags>(j.get<std::uint64_t>());
+            value = static_cast<vk::DependencyFlags>(j.get<std::uint32_t>());
         }
     };
 
@@ -82,7 +82,7 @@ namespace nlohmann
 
         static void from_json(const json& j, vk::ShaderStageFlags& value)
         {
-            value = static_cast<vk::ShaderStageFlags>(j.get<std::uint64_t>());
+            value = static_cast<vk::ShaderStageFlags>(j.get<std::uint32_t>());
         }
     };
 
@@ -96,7 +96,7 @@ namespace nlohmann
 
         static void from_json(const json& j, vk::CullModeFlags& value)
         {
-            value = static_cast<vk::CullModeFlags>(j.get<std::uint64_t>());
+            value = static_cast<vk::CullModeFlags>(j.get<std::uint32_t>());
         }
     };
 
@@ -110,7 +110,7 @@ namespace nlohmann
 
         static void from_json(const json& j, vk::BlendFactor& value)
         {
-            value = static_cast<vk::BlendFactor>(j.get<std::uint64_t>());
+            value = static_cast<vk::BlendFactor>(j.get<std::uint32_t>());
         }
     };
 
@@ -124,7 +124,7 @@ namespace nlohmann
 
         static void from_json(const json& j, vk::ColorComponentFlags& value)
         {
-            value = static_cast<vk::ColorComponentFlags>(j.get<std::uint64_t>());
+            value = static_cast<vk::ColorComponentFlags>(j.get<std::uint32_t>());
         }
     };
 }
@@ -575,7 +575,7 @@ namespace Maia::Renderer::Vulkan
         {
             std::pmr::vector<vk::DescriptorSetLayoutBinding> bindings{output_allocator};
 
-            std::uint32_t start_sampler_index = 0;
+            std::size_t start_sampler_index = 0;
 
             for (nlohmann::json const& descriptor_set_layout_json : descriptor_set_layouts_json)       
             {
@@ -1579,7 +1579,7 @@ namespace Maia::Renderer::Vulkan
         {   
             std::pmr::polymorphic_allocator<vk::Pipeline> pipelines_vector_allocator{output_allocator};
             std::pmr::vector<vk::Pipeline> pipelines =
-                device.createGraphicsPipelines(pipeline_cache, create_infos, allocation_callbacks, pipelines_vector_allocator);
+                device.createGraphicsPipelines(pipeline_cache, create_infos, allocation_callbacks, pipelines_vector_allocator).value;
 
             return pipelines;
         }
@@ -1777,7 +1777,7 @@ namespace Maia::Renderer::Vulkan
                     create_info,
                     allocation_callbacks,
                     allocator
-                );
+                ).value;
 
                 pipelines[index] = pipeline[0];
 
@@ -2627,7 +2627,7 @@ namespace Maia::Renderer::Vulkan
                 nullptr,
                 0,
                 nullptr,
-                image_barriers.second.size(),
+                static_cast<std::uint32_t>(image_barriers.second.size()),
                 image_barriers.second.data()
             );
             // TODO use synchronization_2

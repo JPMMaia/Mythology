@@ -289,7 +289,7 @@ add_library (Maia::Renderer::Vulkan::Serialization ALIAS MaiaRendererVulkanSeria
 
 set_target_properties (MaiaRendererVulkanSerialization PROPERTIES LINKER_LANGUAGE CXX)
 
-target_link_libraries (MaiaRendererVulkanSerialization PUBLIC MaiaRendererVulkan)
+target_link_libraries(MaiaRendererVulkanSerialization PUBLIC Vulkan)
 
 find_package(nlohmann_json REQUIRED)
 target_link_libraries (MaiaRendererVulkanSerialization PUBLIC nlohmann_json::nlohmann_json)
