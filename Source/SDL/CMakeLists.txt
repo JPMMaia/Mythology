@@ -7,7 +7,7 @@ target_link_libraries(MaiaMythologySDL PRIVATE nlohmann_json::nlohmann_json)
 find_package(SDL2 REQUIRED)
 target_link_libraries(MaiaMythologySDL PRIVATE SDL2::SDL2)
 
-target_link_libraries(MaiaMythologySDL PRIVATE Vulkan Maia::Renderer::Vulkan::Serialization)
+target_link_libraries(MaiaMythologySDL PRIVATE Vulkan Maia::Renderer::Vulkan)
 
 #target_link_libraries (MaiaMythologySDL PRIVATE Maia::Input)
 #target_link_libraries (MaiaMythologySDL PRIVATE Maia::Renderer::Vulkan::Serialization)

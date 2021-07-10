@@ -2,7 +2,6 @@ add_library (MaiaMythologyWindowless)
 add_library (Maia::Mythology::Windowless ALIAS MaiaMythologyWindowless)
 
 target_link_libraries (MaiaMythologyWindowless PRIVATE Maia::Renderer::Vulkan)
-target_link_libraries (MaiaMythologyWindowless PRIVATE Maia::Renderer::Vulkan::Serialization)
 target_link_libraries (MaiaMythologyWindowless PRIVATE Maia::Mythology::Core)
 
 target_link_libraries (MaiaMythologyWindowless PRIVATE nlohmann_json_module)
