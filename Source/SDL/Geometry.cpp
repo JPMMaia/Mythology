@@ -91,7 +91,6 @@ namespace Mythology
     std::pmr::vector<std::pmr::vector<Geometry_buffer_views>> create_geometry_buffers(
         Maia::Renderer::Vulkan::Buffer_resources& buffer_resources,
         World const& world,
-        std::filesystem::path const& prefix_path,
         std::pmr::polymorphic_allocator<> const& output_allocator
     )
     {
@@ -125,7 +124,7 @@ namespace Mythology
                 Maia::Renderer::Vulkan::Buffer_view const position_buffer_view = create_buffer(buffer_resources, position_accessor);
 
                 Accessor const& index_accessor = get_index_accessor(world, primitive);
-                Maia::Renderer::Vulkan::Buffer_view const index_buffer_view = create_buffer(buffer_resources, position_accessor);
+                Maia::Renderer::Vulkan::Buffer_view const index_buffer_view = create_buffer(buffer_resources, index_accessor);
 
                 return
                 {
@@ -160,10 +159,251 @@ namespace Mythology
         return geometry_buffer_views;
     }
 
+    namespace
+    {
+        void map_memory_and_copy_data(
+            vk::Device const device,
+            Maia::Renderer::Vulkan::Buffer_view const& destination,
+            std::span<std::byte const> const data
+        ) noexcept
+        {
+            void* const mapped_data = device.mapMemory(
+                destination.memory,
+                destination.offset,
+                destination.size,
+                vk::MemoryMapFlags{}
+            );
+
+            std::memcpy(
+                mapped_data,
+                data.data(),
+                data.size()
+            );
+
+            device.unmapMemory(
+                destination.memory
+            );
+        }
+
+        void read_data_and_copy_data(
+            vk::Device const device,
+            World const& world,
+            Accessor const& accessor,
+            std::filesystem::path const& prefix_path,
+            Maia::Renderer::Vulkan::Buffer_view const& destination,
+            std::pmr::polymorphic_allocator<> const& temporaries_allocator
+        )
+        {
+            std::pmr::vector<std::byte> const accessor_data =
+                read_accessor_data(
+                    accessor,
+                    world.buffer_views,
+                    world.buffers,
+                    prefix_path,
+                    temporaries_allocator
+                );
+
+            map_memory_and_copy_data(
+                device,
+                destination,
+                accessor_data
+            );
+        }
+
+        vk::CommandBuffer create_one_time_submit_command_buffer(
+            vk::Device const device,
+            vk::CommandPool const command_pool
+        ) noexcept
+        {
+            vk::CommandBufferAllocateInfo const allocate_info
+            {
+                .commandPool = command_pool,
+                .level = vk::CommandBufferLevel::ePrimary,
+                .commandBufferCount = 1,
+            };
+
+            std::array<std::byte, sizeof(vk::CommandBuffer)> local_storage;
+            std::pmr::monotonic_buffer_resource local_storage_buffer_resource{ &local_storage, local_storage.size() };
+            std::pmr::polymorphic_allocator<vk::CommandBuffer> local_storage_allocator{ &local_storage_buffer_resource };
+            std::pmr::vector<vk::CommandBuffer> const command_buffers = device.allocateCommandBuffers(allocate_info, local_storage_allocator);
+            vk::CommandBuffer const command_buffer = command_buffers[0];
+
+            {
+                vk::CommandBufferBeginInfo const begin_info
+                {
+                };
+
+                command_buffer.begin(begin_info);
+            }
+
+            return command_buffer;
+        }
+
+        void submit_and_wait(
+            vk::Device const device,
+            vk::Queue const queue,
+            vk::CommandPool const command_pool,
+            vk::CommandBuffer const command_buffer,
+            vk::AllocationCallbacks const* const allocation_callbacks
+        ) noexcept
+        {
+            command_buffer.end();
+
+            vk::Fence const fence = device.createFence({}, allocation_callbacks);
+
+            vk::SubmitInfo const submit_info
+            {
+                .commandBufferCount = 1,
+                .pCommandBuffers = &command_buffer,
+            };
+
+            queue.submit(1, &submit_info, fence);
+
+            device.waitForFences(1, &fence, true, std::numeric_limits<std::uint64_t>::max());
+
+            device.destroy(fence, allocation_callbacks);
+
+            device.freeCommandBuffers(command_pool, 1, &command_buffer);
+        }
+    }
+
+    void upload_geometry_data(
+        vk::PhysicalDeviceType const physical_device_type,
+        vk::Device const device,
+        vk::Queue const queue,
+        vk::CommandPool const command_pool,
+        Maia::Renderer::Vulkan::Buffer_resources& upload_buffer_resources,
+        World const& world,
+        std::span<std::pmr::vector<Geometry_buffer_views> const> const geometry_buffer_views,
+        std::filesystem::path const& prefix_path,
+        vk::AllocationCallbacks const* const allocation_callbacks,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
+    )
+    {
+        if (physical_device_type == vk::PhysicalDeviceType::eIntegratedGpu)
+        {
+            for (std::size_t mesh_index = 0; mesh_index < world.meshes.size(); ++mesh_index)
+            {
+                Mesh const& mesh = world.meshes[mesh_index];
+
+                for (std::size_t primitive_index = 0; primitive_index < world.meshes.size(); ++primitive_index)
+                {
+                    Primitive const& primitive = mesh.primitives[primitive_index];
+
+                    Maia::Renderer::Vulkan::Buffer_view const& geometry_buffer_view =
+                        geometry_buffer_views[mesh_index][primitive_index];
+
+                    {
+                        Accessor const& position_accessor = get_position_accessor(world, primitive);
+
+                        read_data_and_copy_data(
+                            device,
+                            world,
+                            position_accessor,
+                            prefix_path,
+                            geometry_buffer_view.position,
+                            temporaries_allocator
+                        );
+                    }
+
+                    {
+                        Accessor const& index_accessor = get_index_accessor(world, primitive);
+
+                        read_data_and_copy_data(
+                            device,
+                            world,
+                            index_accessor,
+                            prefix_path,
+                            geometry_buffer_view.index,
+                            temporaries_allocator
+                        );
+                    }
+                }
+            }
+
+        }
+        else
+        {
+            Upload_buffer const upload_buffer
+            {
+                device,
+                upload_buffer_resources,
+                256 * 1024 * 1024 // TODO get maximum size from data to upload
+            };
+
+            Buffer_view const upload_buffer_view = upload_buffer.buffer_view();
+
+            for (std::size_t mesh_index = 0; mesh_index < world.meshes.size(); ++mesh_index)
+            {
+                Mesh const& mesh = world.meshes[mesh_index];
+
+                for (std::size_t primitive_index = 0; primitive_index < world.meshes.size(); ++primitive_index)
+                {
+                    Primitive const& primitive = mesh.primitives[primitive_index];
+
+                    Maia::Renderer::Vulkan::Buffer_view const& geometry_buffer_view =
+                        geometry_buffer_views[mesh_index][primitive_index];
+
+                    {
+                        Accessor const& position_accessor = get_position_accessor(world, primitive);
+
+                        std::pmr::vector<std::byte> const accessor_data =
+                            read_accessor_data(
+                                position_accessor,
+                                world.buffer_views,
+                                world.buffers,
+                                prefix_path,
+                                temporaries_allocator
+                            );
+
+                        if (accessor_data.size() > upload_buffer_view.size)
+                        {
+                            throw std::out_of_range{ "Size of data to upload is bigger than the upload buffer size!" };
+                        }
+
+                        std::memcpy(
+                            upload_buffer.mapped_data(),
+                            accessor_data.data(),
+                            accessor_data.size()
+                        );
+
+                        {
+                            vk::CommandBuffer const command_buffer = create_one_time_submit_command_buffer(device, command_pool);
+
+                            {
+                                vk::BufferCopy const buffer_copy
+                                {
+                                    .srcOffset = upload_buffer_view.offset,
+                                    .dstOffset = buffer_view.offset,
+                                    .size = data.size(),
+                                };
+
+                                command_buffer.copyBuffer(
+                                    upload_buffer_view.buffer,
+                                    buffer_view.buffer,
+                                    1,
+                                    &buffer_copy
+                                );
+                            }
+
+                            submit_and_wait(device, queue, command_pool, command_buffer, allocation_callbacks);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     void create_bottom_level_acceleration_structures(
+        vk::PhysicalDeviceType const physical_device_type,
+        vk::Device const device,
+        vk::Queue const queue,
+        vk::CommandPool const command_pool,
         Maia::Renderer::Vulkan::Buffer_resources& geometry_buffer_resources,
+        Maia::Renderer::Vulkan::Buffer_resources& upload_buffer_resources,
         World const& world,
         std::filesystem::path const& prefix_path,
+        vk::AllocationCallbacks const* const allocation_callbacks,
         std::pmr::polymorphic_allocator<> const& output_allocator,
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     )
@@ -172,15 +412,25 @@ namespace Mythology
             create_geometry_buffers(
                 geometry_buffer_resources,
                 world,
-                prefix_path,
                 output_allocator
             );
-    }
 
-    // Create vertex buffers and index buffers
-    // Upload data
-    // Create bottom level acceleration structures
-    // Build bottom level accelearation structures
+        upload_geometry_data(
+            physical_device_type,
+            device,
+            queue,
+            command_pool,
+            upload_buffer_resources,
+            world,
+            geometry_buffer_views,
+            prefix_path,
+            allocation_callbacks,
+            temporaries_allocator
+        );
+
+        // TODO Create bottom level acceleration structures
+        // TODO Build bottom level accelearation structures
+    }
 
     // Create instance buffers
     // Upload data
