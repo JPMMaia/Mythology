@@ -158,6 +158,12 @@ namespace Maia::Scene
 		std::size_t byte_length{ 0 };
 
 		/**
+		 * @brief The stride in bytes between each vertex.
+		 *
+		 */
+		std::optional<std::size_t> byte_stride{ 0 };
+
+		/**
 		 * @brief The name of the buffer view.
 		 *
 		 */
@@ -182,7 +188,53 @@ namespace Maia::Scene
 		std::pmr::polymorphic_allocator<> const& allocator
 	);
 
+	/**
+	 * @brief Sparce data description.
+	 *
+	 */
+	export struct Sparce
+	{
 		/**
+		 * @brief Sparce indices array.
+		 *
+		 */
+		struct Indices
+		{
+			std::size_t buffer_view_index = 0;
+			std::size_t byte_offset = 0;
+			Component_type component_type = {};
+		};
+
+		/**
+		 * @brief Sparce values array.
+		 *
+		 */
+		struct Values
+		{
+			std::size_t buffer_view_index = 0;
+			std::size_t byte_offset = 0;
+		};
+
+		/**
+		 * @brief Number of elements in sparce indices and values arrays.
+		 *
+		 */
+		std::size_t count = 0;
+
+		/**
+		 * @brief The sparce indices array.
+		 *
+		 */
+		Indices indices = {};
+
+		/**
+		 * @brief The sparce values array.
+		 *
+		 */
+		Values values = {};
+	};
+
+	/**
 	 * @brief A typed view into a buffer view.
 	 *
 	 */
@@ -243,16 +295,22 @@ namespace Maia::Scene
 		Type type{ Type::Scalar };
 
 		/**
-		 * @brief The maximum value of the components in this attributes.
+		 * @brief The maximum value of the components in this attribute.
 		 *
 		 */
 		std::optional<Vector3f> max;
 
 		/**
-		 * @brief The minimum value of the components in this attributes.
+		 * @brief The minimum value of the components in this attribute.
 		 *
 		 */
 		std::optional<Vector3f> min;
+
+		/**
+		 * @brief Sparce way to describe the accessor data.
+		 *
+		 */
+		std::optional<Sparce> sparce;
 
 		/**
 		 * @brief The name of the accessor.
