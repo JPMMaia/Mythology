@@ -3,6 +3,7 @@ module;
 #include <cassert>
 #include <cstddef>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <optional>
 #include <memory_resource>
@@ -32,6 +33,34 @@ namespace Maia::Scene
 			assert(false);
 			return 1;
 		}
+	}
+
+	std::ostream& operator<<(std::ostream& output_stream, Vector2f const value)
+	{
+		output_stream << std::format("{{{}, {}}}", value.x, value.y);
+
+		return output_stream;
+	}
+
+	std::ostream& operator<<(std::ostream& output_stream, Vector3f const value)
+	{
+		output_stream << std::format("{{{}, {}, {}}}", value.x, value.y, value.z);
+
+		return output_stream;
+	}
+
+	std::ostream& operator<<(std::ostream& output_stream, Vector4f const value)
+	{
+		output_stream << std::format("{{{}, {}, {}, {}}}", value.x, value.y, value.z, value.w);
+
+		return output_stream;
+	}
+
+	std::ostream& operator<<(std::ostream& output_stream, Quaternionf const value)
+	{
+		output_stream << std::format("{{{}, {}, {}, {}}}", value.x, value.y, value.z, value.w);
+
+		return output_stream;
 	}
 
 	namespace
@@ -136,54 +165,6 @@ namespace Maia::Scene
 		return generate_byte_data(*buffer.uri, prefix_path, buffer.byte_length, allocator);
 	}
 
-	std::pmr::vector<std::byte> read_buffer_view_data(
-		Buffer_view const& buffer_view,
-		std::size_t const single_element_byte_length,
-		std::span<std::pmr::vector<std::byte> const> const buffers_data,
-		std::pmr::polymorphic_allocator<> const& allocator
-	)
-	{
-		std::span<std::byte const> const buffer_data = buffers_data[buffer_view.buffer_index];
-
-		std::pmr::vector<std::byte> buffer_view_data{ allocator };
-		buffer_view_data.resize(buffer_view.byte_length);
-
-		if (buffer_view.byte_stride.has_value())
-		{
-			std::size_t copied_bytes = 0;
-			std::size_t source_byte_stride = 0;
-
-			while (copied_bytes < buffer_view_data.size())
-			{
-				void* const destination = buffer_view_data.data() + copied_bytes;
-				void const* const source = buffer_data.data() + buffer_view.byte_offset + source_byte_stride;
-
-				std::memcpy(
-					destination,
-					source,
-					single_element_byte_length
-				);
-
-				copied_bytes += single_element_byte_length;
-				source_byte_stride += *buffer_view.byte_stride;
-			}
-
-			assert(copied_bytes == buffer_view_data.size());
-		}
-		else
-		{
-			assert((buffer_view_data.size() % single_element_byte_length) == 0);
-
-			std::memcpy(
-				buffer_view_data.data(),
-				buffer_data.data() + buffer_view.byte_offset,
-				buffer_view_data.size()
-			);
-		}
-
-		return buffer_view_data;
-	}
-
 	std::uint8_t size_of(Accessor::Type const accessor_type) noexcept
 	{
 		switch (accessor_type)
@@ -201,93 +182,168 @@ namespace Maia::Scene
 		}
 	}
 
-	std::pmr::vector<std::byte> read_accessor_data(
-		Accessor const& accessor,
-		std::span<std::pmr::vector<std::byte> const> const buffer_views_data,
-		std::pmr::polymorphic_allocator<> const& allocator
-	)
-	{
-		if (accessor.sparse)
-		{
-			if (accessor.buffer_view_index.has_value())
-			{
-
-			}
-			else
-			{
-				std::size_t const size_in_bytes = accessor.count * size_of(accessor.type) * size_of(accessor.component_type);
-
-				std::pmr::vector<std::byte> accessor_data{ allocator };
-				accessor_data.resize(size_in_bytes, std::byte{ 0 });
-
-				return accessor_data;
-			}
-		}
-		else if (accessor.buffer_view_index.has_value())
-		{
-			std::span<std::byte const> const buffer_view_data
-			{
-				buffer_views_data[*accessor.buffer_view_index] + accessor.byte_offset,
-				accessor.count * size_of(accessor.type) * size_of(accessor.component_type)
-			};
-
-			std::pmr::vector<std::byte> accessor_data{ allocator };
-			accessor_data.resize(buffer_view_data.size_bytes());
-
-			std::memcpy(
-				accessor_data.data(),
-				buffer_view_data.data(),
-				accessor_data.size()
-			);
-
-			return accessor_data;
-		}
-		else
-		{
-			return { allocator };
-		}
-	}
-
-	template <class Data_type> read_accessor_data(
+	template <typename Data_type>
+	std::pmr::vector<Data_type> read_accessor_buffer_view_data(
 		Accessor const& accessor,
 		std::span<Buffer_view const> const buffer_views,
 		std::span<std::pmr::vector<std::byte> const> const buffers_data,
 		std::pmr::polymorphic_allocator<> const& allocator
 	)
 	{
-		if (accessor.sparse.has_value())
+		assert(accessor.buffer_view_index.has_value());
+		assert((size_of(accessor.type) * size_of(accessor.component_type)) == sizeof(Data_type));
+
+		Buffer_view const& buffer_view = buffer_views[*accessor.buffer_view_index];
+		std::span<std::byte const> const buffer_data = buffers_data[buffer_view.buffer_index];
+
+		std::pmr::vector<Data_type> accessor_data{ allocator };
+		accessor_data.resize(accessor.count);
+
+		if (buffer_view.byte_stride.has_value())
+		{
+			std::byte const* const buffer_data_start = buffer_data.data() + buffer_view.byte_offset + accessor.byte_offset;
+
+			for (std::size_t element_index = 0; element_index < accessor_data.size(); ++element_index)
+			{
+				std::byte const* const source = buffer_data_start + element_index * *buffer_view.byte_stride;
+
+				std::memcpy(
+					&accessor_data[element_index],
+					source,
+					sizeof(Data_type)
+				);
+			}
+		}
+		else
+		{
+			std::memcpy(
+				accessor_data.data(),
+				buffer_data.data() + buffer_view.byte_offset + accessor.byte_offset,
+				accessor_data.size() * sizeof(Data_type)
+			);
+		}
+
+		return accessor_data;
+	}
+
+	template <class Data_type>
+	std::pmr::vector<Data_type> read_sparse_accessor_data(
+		Accessor const& accessor,
+		std::span<Buffer_view const> const buffer_views,
+		std::span<std::pmr::vector<std::byte> const> const buffers_data,
+		std::pmr::polymorphic_allocator<> const& allocator,
+		std::pmr::polymorphic_allocator<> const& temporaries_allocator
+	)
+	{
+		assert(accessor.sparse.has_value());
+
+		std::pmr::vector<Data_type> accessor_data = [&]() -> std::pmr::vector<Data_type>
 		{
 			if (accessor.buffer_view_index.has_value())
 			{
-				throw std::runtime_error{ "Not implemented!" };
+				return read_accessor_buffer_view_data<Data_type>(
+					accessor,
+					buffer_views,
+					buffers_data,
+					temporaries_allocator
+					);
 			}
 			else
 			{
-				std::pmr::vector<Vector3f> accessor_data{ allocator };
+				std::pmr::vector<Data_type> accessor_data{ allocator };
 				accessor_data.resize(accessor.count, Data_type{});
 				return accessor_data;
 			}
-		}
-		else if (accessor.buffer_view_index.has_value())
-		{
-			std::pmr::vector<std::byte> const buffer_view_data =
-				read_buffer_view_data(
-					buffer_views[*accessor.buffer_view_index],
-					size_of(accessor.type) * size_of(accessor.component_type),
-					buffers_data,
-					temporaries_allocator
-				);
+		}();
 
-			std::pmr::vector<Data_type> accessor_data{ allocator };
-			accessor_data.resize(accessor.count);
+		Sparse::Indices const& sparse_indices = accessor.sparse->indices;
 
-			std::memcpy(
-				accessor_data.data(),
-				buffer_view_data.data() + accessor.byte_offset,
-				accessor_data.size() * sizeof(decltype(accessor_data)::value_type)
+		std::pmr::vector<std::uint32_t> const sparse_indices_data = read_indices_32_accessor_data(
+			Accessor
+			{
+				.buffer_view_index = sparse_indices.buffer_view_index,
+				.byte_offset = sparse_indices.byte_offset,
+				.component_type = sparse_indices.component_type,
+				.count = accessor.sparse->count,
+				.type = Accessor::Type::Scalar,
+			},
+			buffer_views,
+			buffers_data,
+			temporaries_allocator,
+			temporaries_allocator
 			);
 
-			return accessor_data;
+		Sparse::Values const& sparse_values = accessor.sparse->values;
+
+		std::pmr::vector<Data_type> const sparse_values_data = read_accessor_buffer_view_data<Data_type>(
+			Accessor
+			{
+				.buffer_view_index = sparse_values.buffer_view_index,
+				.byte_offset = sparse_values.byte_offset,
+				.component_type = accessor.component_type,
+				.count = accessor.sparse->count,
+				.type = accessor.type,
+			},
+			buffer_views,
+			buffers_data,
+			temporaries_allocator
+			);
+
+		for (std::size_t index = 0; index < accessor.sparse->count; ++index)
+		{
+			std::uint32_t const sparse_index = sparse_indices_data[index];
+			Data_type const& sparse_value = sparse_values_data[index];
+
+			accessor_data[sparse_index] = sparse_value;
+		}
+
+		return accessor_data;
+	}
+
+	template <class Data_type>
+	std::pmr::vector<Data_type> read_accessor_data(
+		Accessor const& accessor,
+		std::span<Buffer_view const> const buffer_views,
+		std::span<std::pmr::vector<std::byte> const> const buffers_data,
+		std::pmr::polymorphic_allocator<> const& allocator,
+		std::pmr::polymorphic_allocator<> const& temporaries_allocator
+	)
+	{
+		assert(accessor.sparse.has_value() || accessor.buffer_view_index.has_value());
+
+		if (!accessor.sparse.has_value() && !accessor.buffer_view_index.has_value())
+		{
+			throw std::runtime_error{ "Accessor without buffer view and sparse data is not supported!" };
+		}
+
+		if (accessor.buffer_view_index.has_value())
+		{
+			Buffer_view const& buffer_view = buffer_views[*accessor.buffer_view_index];
+			std::size_t const single_element_byte_length = size_of(accessor.type) * size_of(accessor.component_type);
+
+			assert((accessor.byte_offset + buffer_view.byte_stride.value_or(0) * (accessor.count - 1) + single_element_byte_length) <= buffer_view.byte_length);
+		}
+
+		if (accessor.sparse.has_value())
+		{
+			return read_sparse_accessor_data<Data_type>(
+				accessor,
+				buffer_views,
+				buffers_data,
+				allocator,
+				temporaries_allocator
+				);
+		}
+		else
+		{
+			assert(accessor.buffer_view_index.has_value());
+
+			return read_accessor_buffer_view_data<Data_type>(
+				accessor,
+				buffer_views,
+				buffers_data,
+				allocator
+				);
 		}
 	}
 
@@ -299,7 +355,7 @@ namespace Maia::Scene
 		std::pmr::polymorphic_allocator<> const& temporaries_allocator
 	)
 	{
-		assert(accessor.sparce || accessor.buffer_view_index.has_value());
+		assert(accessor.sparse || accessor.buffer_view_index.has_value());
 		assert(accessor.component_type == Component_type::Float);
 		assert(accessor.type == Accessor::Type::Vector3);
 
@@ -320,7 +376,7 @@ namespace Maia::Scene
 		std::pmr::polymorphic_allocator<> const& temporaries_allocator
 	)
 	{
-		return read_vector_3_float_accessor_data(accessor, buffer_views, buffers_data, allocator);
+		return read_vector_3_float_accessor_data(accessor, buffer_views, buffers_data, allocator, temporaries_allocator);
 	}
 
 	std::pmr::vector<std::uint8_t> read_indices_8_accessor_data(
@@ -331,7 +387,7 @@ namespace Maia::Scene
 		std::pmr::polymorphic_allocator<> const& temporaries_allocator
 	)
 	{
-		assert(accessor.sparce || accessor.buffer_view_index.has_value());
+		assert(accessor.sparse || accessor.buffer_view_index.has_value());
 		assert(accessor.component_type == Component_type::Unsigned_byte);
 		assert(accessor.type == Accessor::Type::Scalar);
 
@@ -352,7 +408,7 @@ namespace Maia::Scene
 		std::pmr::polymorphic_allocator<> const& temporaries_allocator
 	)
 	{
-		assert(accessor.sparce || accessor.buffer_view_index.has_value());
+		assert(accessor.sparse || accessor.buffer_view_index.has_value());
 		assert(accessor.component_type == Component_type::Unsigned_byte || accessor.component_type == Component_type::Unsigned_short);
 		assert(accessor.type == Accessor::Type::Scalar);
 
@@ -362,6 +418,7 @@ namespace Maia::Scene
 				accessor,
 				buffer_views,
 				buffers_data,
+				temporaries_allocator,
 				temporaries_allocator
 			);
 
@@ -398,7 +455,7 @@ namespace Maia::Scene
 		std::pmr::polymorphic_allocator<> const& temporaries_allocator
 	)
 	{
-		assert(accessor.sparce || accessor.buffer_view_index.has_value());
+		assert(accessor.sparse || accessor.buffer_view_index.has_value());
 		assert((accessor.component_type == Component_type::Unsigned_byte) || (accessor.component_type == Component_type::Unsigned_short) || (accessor.component_type == Component_type::Unsigned_int));
 		assert(accessor.type == Accessor::Type::Scalar);
 
@@ -408,6 +465,7 @@ namespace Maia::Scene
 				accessor,
 				buffer_views,
 				buffers_data,
+				temporaries_allocator,
 				temporaries_allocator
 			);
 
@@ -428,11 +486,12 @@ namespace Maia::Scene
 				accessor,
 				buffer_views,
 				buffers_data,
+				temporaries_allocator,
 				temporaries_allocator
 			);
 
 			std::pmr::vector<std::uint32_t> indices_32{ allocator };
-			indices_16.resize(accessor.count);
+			indices_32.resize(accessor.count);
 
 			std::copy(
 				indices_16.begin(),

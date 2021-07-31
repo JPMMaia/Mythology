@@ -14,6 +14,7 @@ target_link_libraries (MaiaSceneUnitTest PRIVATE Maia::Scene Maia::Test)
 target_sources (MaiaSceneUnitTest 
 	PRIVATE
 		"main.cpp"
+		"Scene.test.cpp"
 )
 
 include (Catch)

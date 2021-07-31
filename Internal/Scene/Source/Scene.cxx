@@ -5,6 +5,7 @@ module;
 #include <filesystem>
 #include <memory_resource>
 #include <optional>
+#include <ostream>
 #include <span>
 #include <string>
 #include <unordered_map>
@@ -41,6 +42,20 @@ namespace Maia::Scene
 
 
 	/**
+	 * @brief Vector of 2 float components.
+	 *
+	 */
+	export struct Vector2f
+	{
+		float x{ 0.0f };
+		float y{ 0.0f };
+
+		friend auto operator<=>(Vector2f const&, Vector2f const&) noexcept = default;
+	};
+
+	export std::ostream& operator<<(std::ostream& output_stream, Vector2f value);
+
+	/**
 	 * @brief Vector of 3 float components.
 	 *
 	 */
@@ -52,6 +67,8 @@ namespace Maia::Scene
 
 		friend auto operator<=>(Vector3f const&, Vector3f const&) noexcept = default;
 	};
+
+	export std::ostream& operator<<(std::ostream& output_stream, Vector3f value);
 
 	/**
 	 * @brief A vector of 4 float components.
@@ -67,6 +84,8 @@ namespace Maia::Scene
 		friend auto operator<=>(Vector4f const&, Vector4f const&) noexcept = default;
 	};
 
+	export std::ostream& operator<<(std::ostream& output_stream, Vector4f value);
+
 	/**
 	 * @brief A quaternion that can be used to represent 3D orientations and rotations.
 	 *
@@ -80,6 +99,8 @@ namespace Maia::Scene
 
 		friend auto operator<=>(Quaternionf const&, Quaternionf const&) noexcept = default;
 	};
+
+	export std::ostream& operator<<(std::ostream& output_stream, Quaternionf value);
 
 	/**
 	 * @brief A 4x4 matrix of floats.
@@ -161,7 +182,7 @@ namespace Maia::Scene
 		 * @brief The stride in bytes between each vertex.
 		 *
 		 */
-		std::optional<std::size_t> byte_stride{ 0 };
+		std::optional<std::size_t> byte_stride = std::nullopt;
 
 		/**
 		 * @brief The name of the buffer view.
@@ -189,13 +210,13 @@ namespace Maia::Scene
 	);
 
 	/**
-	 * @brief Sparce data description.
+	 * @brief Sparse data description.
 	 *
 	 */
-	export struct Sparce
+	export struct Sparse
 	{
 		/**
-		 * @brief Sparce indices array.
+		 * @brief Sparse indices array.
 		 *
 		 */
 		struct Indices
@@ -206,7 +227,7 @@ namespace Maia::Scene
 		};
 
 		/**
-		 * @brief Sparce values array.
+		 * @brief Sparse values array.
 		 *
 		 */
 		struct Values
@@ -216,19 +237,19 @@ namespace Maia::Scene
 		};
 
 		/**
-		 * @brief Number of elements in sparce indices and values arrays.
+		 * @brief Number of elements in sparse indices and values arrays.
 		 *
 		 */
 		std::size_t count = 0;
 
 		/**
-		 * @brief The sparce indices array.
+		 * @brief The sparse indices array.
 		 *
 		 */
 		Indices indices = {};
 
 		/**
-		 * @brief The sparce values array.
+		 * @brief The sparse values array.
 		 *
 		 */
 		Values values = {};
@@ -307,10 +328,10 @@ namespace Maia::Scene
 		std::optional<Vector3f> min;
 
 		/**
-		 * @brief Sparce way to describe the accessor data.
+		 * @brief Sparse way to describe the accessor data.
 		 *
 		 */
-		std::optional<Sparce> sparce;
+		std::optional<Sparse> sparse;
 
 		/**
 		 * @brief The name of the accessor.
@@ -330,21 +351,79 @@ namespace Maia::Scene
 	export std::uint8_t size_of(Accessor::Type accessor_type) noexcept;
 
 	/**
-	 * @brief Read or create accessor data.
+	 * @brief Read positions from accessor data.
 	 *
 	 * @param accessor The accessor to read data from.
 	 * @param buffer_views A range of buffer views that the accessor might reference.
-	 * @param buffers A range of buffers that the accessor's buffer view might reference.
-	 * @param prefix_path The prefix path to which a buffer uri is relative to in case it specifies a file.
+	 * @param buffers_data A range of buffers data that the accessor's buffer view might reference.
 	 * @param allocator The allocator used for allocating the output data.
-	 * @return The accessor data as a vector of bytes.
+	 * @param temporaries_allocator The allocator used for allocating the temporary data.
+	 * @return The position data.
 	 */
-	export std::pmr::vector<std::byte> read_accessor_data(
+	export std::pmr::vector<Vector3f> read_position_accessor_data(
 		Accessor const& accessor,
-		std::span<Buffer_view const> buffer_views,
-		std::span<Buffer const> buffers,
-		std::filesystem::path const& prefix_path,
-		std::pmr::polymorphic_allocator<> const& allocator
+		std::span<Buffer_view const> const buffer_views,
+		std::span<std::pmr::vector<std::byte> const> const buffers_data,
+		std::pmr::polymorphic_allocator<> const& allocator,
+		std::pmr::polymorphic_allocator<> const& temporaries_allocator
+	);
+
+	/**
+	 * @brief Read 8-bit indices from accessor data.
+	 *
+	 * @param accessor The accessor to read data from.
+	 * @param buffer_views A range of buffer views that the accessor might reference.
+	 * @param buffers_data A range of buffers data that the accessor's buffer view might reference.
+	 * @param allocator The allocator used for allocating the output data.
+	 * @param temporaries_allocator The allocator used for allocating the temporary data.
+	 * @return The indices data.
+	 */
+	export std::pmr::vector<std::uint8_t> read_indices_8_accessor_data(
+		Accessor const& accessor,
+		std::span<Buffer_view const> const buffer_views,
+		std::span<std::pmr::vector<std::byte> const> const buffers_data,
+		std::pmr::polymorphic_allocator<> const& allocator,
+		std::pmr::polymorphic_allocator<> const& temporaries_allocator
+	);
+
+	/**
+	 * @brief Read 16-bit indices from accessor data.
+	 *
+	 * In case the accessor references 8-bit indices, these are converted to 16-bit indices.
+	 *
+	 * @param accessor The accessor to read data from.
+	 * @param buffer_views A range of buffer views that the accessor might reference.
+	 * @param buffers_data A range of buffers data that the accessor's buffer view might reference.
+	 * @param allocator The allocator used for allocating the output data.
+	 * @param temporaries_allocator The allocator used for allocating the temporary data.
+	 * @return The indices data.
+	 */
+	export std::pmr::vector<std::uint16_t> read_indices_16_accessor_data(
+		Accessor const& accessor,
+		std::span<Buffer_view const> const buffer_views,
+		std::span<std::pmr::vector<std::byte> const> const buffers_data,
+		std::pmr::polymorphic_allocator<> const& allocator,
+		std::pmr::polymorphic_allocator<> const& temporaries_allocator
+	);
+
+	/**
+	 * @brief Read 32-bit indices from accessor data.
+	 *
+	 * In case the accessor references 8-bit or 16-bit indices, these are converted to 32-bit indices.
+	 *
+	 * @param accessor The accessor to read data from.
+	 * @param buffer_views A range of buffer views that the accessor might reference.
+	 * @param buffers_data A range of buffers data that the accessor's buffer view might reference.
+	 * @param allocator The allocator used for allocating the output data.
+	 * @param temporaries_allocator The allocator used for allocating the temporary data.
+	 * @return The indices data.
+	 */
+	export std::pmr::vector<std::uint32_t> read_indices_32_accessor_data(
+		Accessor const& accessor,
+		std::span<Buffer_view const> const buffer_views,
+		std::span<std::pmr::vector<std::byte> const> const buffers_data,
+		std::pmr::polymorphic_allocator<> const& allocator,
+		std::pmr::polymorphic_allocator<> const& temporaries_allocator
 	);
 
 	/**
