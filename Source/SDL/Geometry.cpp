@@ -512,23 +512,20 @@ namespace Mythology
             vk::IndexType::eUint16;
     }
 
-    std::pmr::vector<Acceleration_structure> create_bottom_level_acceleration_structures(
+    std::pmr::vector<std::pmr::vector<vk::AccelerationStructureGeometryKHR>> create_acceleration_structure_geometries(
         vk::Device const device,
-        Maia::Renderer::Vulkan::Buffer_resources& acceleration_structure_storage_buffer_resources,
-        World const& world,
         std::span<std::pmr::vector<Geometry_buffer_views> const> const geometry_buffer_views,
-        vk::AllocationCallbacks const* const allocation_callbacks,
-        std::pmr::polymorphic_allocator<> const& allocator,
-        std::pmr::polymorphic_allocator<> const& temporaries_allocator
+        World const& world,
+        std::pmr::polymorphic_allocator<> const& output_allocator
     )
     {
-        std::pmr::vector<std::pmr::vector<vk::AccelerationStructureGeometryKHR>> mesh_acceleration_structure_geometries{ temporaries_allocator };
+        std::pmr::vector<std::pmr::vector<vk::AccelerationStructureGeometryKHR>> mesh_acceleration_structure_geometries{ output_allocator };
 
         for (std::size_t mesh_index = 0; mesh_index < world.meshes.size(); ++mesh_index)
         {
             Mesh const& mesh = world.meshes[mesh_index];
 
-            std::pmr::vector<vk::AccelerationStructureGeometryKHR> acceleration_structure_geometries{ temporaries_allocator };
+            std::pmr::vector<vk::AccelerationStructureGeometryKHR> acceleration_structure_geometries{ output_allocator };
             acceleration_structure_geometries.reserve(mesh.primitives.size());
 
             for (std::size_t primitive_index = 0; primitive_index < mesh.primitives.size(); ++primitive_index)
@@ -581,12 +578,25 @@ namespace Mythology
             mesh_acceleration_structure_geometries.push_back(std::move(acceleration_structure_geometries));
         }
 
-        std::pmr::vector<Acceleration_structure> acceleration_structures{ allocator };
-        acceleration_structures.reserve(world.meshes.size());
+        return mesh_acceleration_structure_geometries;
+    }
+
+    std::pmr::vector<vk::AccelerationStructureBuildSizesInfoKHR> create_acceleration_structure_build_sizes_infos(
+        vk::Device const device,
+        std::span<std::pmr::vector<vk::AccelerationStructureGeometryKHR> const> const acceleration_structure_geometries,
+        World const& world,
+        std::pmr::polymorphic_allocator<> const& output_allocator
+    )
+    {
+        std::pmr::vector<vk::AccelerationStructureBuildSizesInfoKHR> build_sizes_infos{ output_allocator };
+        build_sizes_infos.reserve(mesh_index);
 
         for (std::size_t mesh_index = 0; mesh_index < world.meshes.size(); ++mesh_index)
         {
-            std::pmr::vector<vk::AccelerationStructureGeometryKHR> const& acceleration_structure_geometries = mesh_acceleration_structure_geometries[mesh_index];
+            Mesh const& mesh = world.meshes[mesh_index];
+
+            std::pmr::vector<vk::AccelerationStructureGeometryKHR> const& acceleration_structure_geometries =
+                acceleration_structure_geometries[mesh_index];
 
             vk::AccelerationStructureBuildGeometryInfoKHR const acceleration_structure_build_geometry_info
             {
@@ -596,15 +606,53 @@ namespace Mythology
                 .pGeometries = acceleration_structure_geometries.data(),
             };
 
-            // TODO this is the number of triangles
-            std::uint32_t const primitive_count = 1;
+            std::pmr::vector<std::uint32_t> max_triangle_counts{ temporaries_allocator };
+            max_triangle_counts.resize(mesh.primitives.size(), 0);
+            for (std::size_t primitive_index = 0; primitive_index < mesh.primitives.size(); ++primitive_index)
+            {
+                Primitive const& primitive = mesh.primitives[primitive_index];
+                Accessor const& indices_accessor = world.accessors[primitive.indices_index];
+                max_triangle_counts[primitive_index] = indices_accessor.count;
+            }
 
             vk::AccelerationStructureBuildSizesInfoKHR const acceleration_structure_build_sizes_info =
                 device.getAccelerationStructureBuildSizesKHR(
                     vk::AccelerationStructureBuildTypeKHR::eDevice,
                     acceleration_structure_build_geometry_info,
-                    primitive_count
+                    max_triangle_counts.data()
                 );
+
+            build_sizes_infos.push_back(
+                acceleration_structure_build_sizes_info
+            );
+        }
+
+        return build_sizes_infos;
+    }
+
+    std::pmr::vector<Acceleration_structure> create_bottom_level_acceleration_structures(
+        vk::Device const device,
+        Maia::Renderer::Vulkan::Buffer_resources& acceleration_structure_storage_buffer_resources,
+        std::span<std::pmr::vector<vk::AccelerationStructureGeometryKHR> const> const mesh_acceleration_structure_geometries,
+        std::span<vk::AccelerationStructureBuildSizesInfoKHR const> const acceleration_structure_build_sizes_infos,
+        World const& world,
+        std::span<std::pmr::vector<Geometry_buffer_views> const> const geometry_buffer_views,
+        vk::AllocationCallbacks const* const allocation_callbacks,
+        std::pmr::polymorphic_allocator<> const& allocator,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
+    )
+    {
+        std::pmr::vector<Acceleration_structure> acceleration_structures{ allocator };
+        acceleration_structures.reserve(world.meshes.size());
+
+        for (std::size_t mesh_index = 0; mesh_index < world.meshes.size(); ++mesh_index)
+        {
+            Mesh const& mesh = world.meshes[mesh_index];
+
+            std::pmr::vector<vk::AccelerationStructureGeometryKHR> const& acceleration_structure_geometries = mesh_acceleration_structure_geometries[mesh_index];
+
+            vk::AccelerationStructureBuildSizesInfoKHR const& acceleration_structure_build_sizes_info =
+                acceleration_structure_build_sizes_infos[mesh_info];
 
             Maia::Renderer::Vulkan::Buffer_view const bottom_level_acceleration_structure_buffer_view =
                 acceleration_structure_storage_buffer_resources.allocate_buffer(
@@ -640,6 +688,79 @@ namespace Mythology
         return acceleration_structures;
     }
 
+    void build_bottom_level_acceleration_strucutres(
+        vk::Device const device,
+        vk::CommandBuffer const command_buffer,
+        Maia::Renderer::Vulkan::Buffer_resources& scratch_buffer_resources,
+        std::span<Acceleration_structure const> const acceleration_structures,
+        std::span<std::pmr::vector<vk::AccelerationStructureGeometryKHR> const> const acceleration_structure_geometries,
+        std::span<vk::AccelerationStructureBuildSizesInfoKHR const> const acceleration_structure_build_sizes_infos,
+        World const& world,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
+    )
+    {
+        assert(world.meshes.size() == acceleration_structures.size());
+        assert(acceleration_structures.size() == acceleration_structure_build_sizes_infos.size());
+
+        for (std::size_t mesh_index = 0; mesh_index < world.meshes.size(); ++mesh_index)
+        {
+            Mesh const& mesh = world.meshes[mesh_index];
+            Acceleration_structure const& acceleration_structure = acceleration_structures[mesh_index];
+            vk::AccelerationStructureBuildSizesInfoKHR const& acceleration_structure_build_sizes_info =
+                acceleration_structure_build_sizes_infos[mesh_index];
+
+            Maia::Renderer::Vulkan::Buffer_view const scratch_buffer_view =
+                scratch_buffer_resources.allocate_buffer(
+                    acceleration_structure_build_sizes_info.buildScratchSize,
+                    vk::MemoryPropertyFlagBits::eDeviceLocal
+                );
+
+            vk::DeviceAddress const scratch_buffer_device_address = device.getBufferAddressKHR(
+                { .buffer = scratch_buffer_view.buffer }
+            ) + scratch_buffer_view.offset;
+
+            vk::AccelerationStructureBuildGeometryInfoKHR const acceleration_build_geometry_info
+            {
+                .type = vk::AccelerationStructureTypeKHR::eBottomLevel,
+                .flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace,
+                .mode = vk::BuildAccelerationStructureModeKHR::eBuild,
+                .dstAccelerationStructure = acceleration_structure.handle,
+                .geometryCount = acceleration_structure_geometries[mesh_index].size(),
+                .pGeometries = acceleration_structure_geometries[mesh_index].data(),
+                .scratchData =
+                {
+                    .deviceAddress = scratch_buffer_device_address,
+                },
+            };
+
+            std::pmr::vector<vk::AccelerationStructureBuildRangeInfoKHR> acceleration_structure_build_range_info{ temporaries_allocator };
+            for (std::size_t primitive_index = 0; primitive_index < mesh.primitives.size(); ++primitive_index)
+            {
+                Primitive const& primitive = mesh.primitives[primitive_index];
+                Accessor const& indices_accessor = world.accessors[primitive.indices_index];
+
+                acceleration_structure_build_range_info[primitive_index] =
+                {
+                    .primitiveCount = indices_accessor.count,
+                    .primitiveOffset = 0,
+                    .firstVertex = 0,
+                    .transformOffset = 0,
+                };
+            }
+
+            std::array<vk::AccelerationStructureBuildRangeInfoKHR*, 1> const acceleration_build_structure_range_infos =
+            {
+                acceleration_structure_build_range_info.data()
+            };
+
+            command_buffer.buildAccelerationStructuresKHR(
+                1,
+                &acceleration_build_geometry_info,
+                acceleration_build_structure_range_infos.data()
+            );
+        }
+    }
+
     void create_bottom_level_acceleration_structures(
         vk::PhysicalDeviceType const physical_device_type,
         vk::Device const device,
@@ -648,6 +769,7 @@ namespace Mythology
         Maia::Renderer::Vulkan::Buffer_resources& acceleration_structure_storage_buffer_resources,
         Maia::Renderer::Vulkan::Buffer_resources& geometry_buffer_resources,
         Maia::Renderer::Vulkan::Buffer_resources& upload_buffer_resources,
+        Maia::Renderer::Vulkan::Buffer_resources& scratch_buffer_resources,
         World const& world,
         std::span<std::pmr::vector<std::byte> const> const buffers_data,
         vk::AllocationCallbacks const* const allocation_callbacks,
@@ -675,10 +797,28 @@ namespace Mythology
             temporaries_allocator
         );
 
+        std::pmr::vector<std::pmr::vector<vk::AccelerationStructureGeometryKHR>> const acceleration_structure_geometries =
+            create_acceleration_structure_geometries(
+                device,
+                geometry_buffer_views,
+                world,
+                temporaries_allocator
+            );
+
+        std::pmr::vector<vk::AccelerationStructureBuildSizesInfoKHR> const acceleration_structure_build_sizes_infos =
+            create_acceleration_structure_build_sizes_infos(
+                device,
+                acceleration_structure_geometries,
+                world,
+                output_allocator
+            );
+
         std::pmr::vector<Acceleration_structure> const acceleration_structures =
             create_bottom_level_acceleration_structures(
                 device,
                 acceleration_structure_storage_buffer_resources,
+                acceleration_structure_geometries,
+                acceleration_structure_build_sizes_infos,
                 world,
                 geometry_buffer_views,
                 allocation_callbacks,
@@ -686,7 +826,18 @@ namespace Mythology
                 temporaries_allocator
             );
 
-        // TODO Build bottom level accelearation structures
+        vk::CommandBuffer const command_buffer = {}; // TODO
+
+        build_bottom_level_acceleration_strucutres(
+            device,
+            command_buffer,
+            scratch_buffer_resources,
+            acceleration_structures,
+            acceleration_structure_geometries,
+            acceleration_structure_build_sizes_infos,
+            world,
+            temporaries_allocator
+        );
     }
 
     // Create instance buffers
