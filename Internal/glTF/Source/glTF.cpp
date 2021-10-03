@@ -613,17 +613,6 @@ namespace Maia::glTF
 		}
 	}
 
-	std::pmr::vector<std::byte> read_buffer_data(
-		Buffer const& buffer,
-		std::filesystem::path const& prefix_path,
-		std::pmr::polymorphic_allocator<> const& allocator
-	)
-	{
-		assert(buffer.uri.has_value());
-
-		return generate_byte_data(*buffer.uri, prefix_path, buffer.byte_length, allocator);
-	}
-
 
 	Buffer_view buffer_view_from_json(
 		nlohmann::json const& json,

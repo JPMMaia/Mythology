@@ -38,20 +38,6 @@ namespace Maia::glTF
 	);
 
 	/**
-	 * @brief Read buffer data either from a file or by decoding the uri data.
-	 * 
-	 * @param buffer The buffer to read data from.
-	 * @param prefix_path The prefix path to which the buffer uri is relative to in case it specifies a file.
-	 * @param allocator The allocator used for allocating the buffer data.
-	 * @return The buffer data as a vector of bytes.
-	 */
-	std::pmr::vector<std::byte> read_buffer_data(
-		Maia::Scene::Buffer const& buffer,
-		std::filesystem::path const& prefix_path,
-		std::pmr::polymorphic_allocator<> const& allocator
-	);
-
-	/**
 	 * @brief Create a buffer view from json.
 	 * 
 	 * @param json A JSON object that describes a buffer view.
