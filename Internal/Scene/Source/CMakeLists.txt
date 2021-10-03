@@ -7,6 +7,6 @@ target_module (
     MaiaScene
     PUBLIC
     "maia.scene"
-    INTERFACE "Scene.cxx"
+    INTERFACE "Scene.cppm"
     IMPLEMENTATION "Scene.cpp"
 )
