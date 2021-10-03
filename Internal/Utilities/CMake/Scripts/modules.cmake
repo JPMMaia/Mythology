@@ -155,6 +155,15 @@ function (target_header _target _visibility _module_name _header)
 
     if (MSVC)
 
+        target_sources(${_target} PRIVATE "${_header}")
+
+        set_source_files_properties(
+            "${_header}"
+                PROPERTIES
+                    COMPILE_OPTIONS "/exportHeader"
+                    LANGUAGE "CXX"
+        )
+#[[
         get_filename_component(_filename "${_header}" NAME)
         set(_ifc_output "${_output_ifc_dir}/${_module_name}.ifc")
 
@@ -179,6 +188,7 @@ function (target_header _target _visibility _module_name _header)
         if (_visibility STREQUAL "PUBLIC")
             target_compile_options("${_target}" INTERFACE "SHELL:/headerUnit \"${_header}=${_ifc_output}\"")
         endif ()
+        #]]
 
     else ()
 
@@ -286,6 +296,13 @@ function (target_module _target _visibility _module_name)
 
     if (MSVC)
 
+        target_sources("${_target}" PRIVATE "${_module_interface_unit}" "${_module_implementation_unit}")
+
+        set_source_files_properties("${_module_interface_unit}"
+                PROPERTIES
+                    COMPILE_OPTIONS "/interface"
+        )
+#[[
         add_build_interface_target(
             "${_target}"
             "${_visibility}"
@@ -302,7 +319,7 @@ function (target_module _target _visibility _module_name)
                 "${_module_implementation_unit_dependencies}"
             )
         endif ()
-
+#]]
     else ()
 
         create_module_options (_module_interface_options "${_module_interface_unit_dependencies}" "${_prebuilt_module_path}")
@@ -359,6 +376,7 @@ function (target_module _target _visibility _module_name)
         endif ()
 
     endif ()
+
 
 endfunction ()
 

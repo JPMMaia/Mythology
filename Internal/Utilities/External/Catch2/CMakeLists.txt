@@ -23,6 +23,6 @@ set_target_properties (Catch2_runner PROPERTIES LINKER_LANGUAGE CXX)
 target_module(Catch2_runner 
     PUBLIC
     "catch2.runner"
-    INTERFACE "runner.cxx"
+    INTERFACE "runner.cppm"
     IMPLEMENTATION "runner.cpp"
 )
