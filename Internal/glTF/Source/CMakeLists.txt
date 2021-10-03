@@ -12,6 +12,6 @@ target_module (
     MaiaGlTF
     PUBLIC
     "maia.glTF"
-    INTERFACE "glTF.cxx"
+    INTERFACE "glTF.cppm"
     IMPLEMENTATION "glTF.cpp"
 )

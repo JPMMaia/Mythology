@@ -15,7 +15,7 @@ namespace Maia::glTF
 {
 	/**
 	 * @brief Create an accessor from json.
-	 * 
+	 *
 	 * @param json A JSON object that describes an accessor.
 	 * @param allocator Allocator for the dynamic memory required for creating the accessor.
 	 * @return The converted accessor.
@@ -27,7 +27,7 @@ namespace Maia::glTF
 
 	/**
 	 * @brief Create a buffer from json.
-	 * 
+	 *
 	 * @param json A JSON object that describes a buffer.
 	 * @param allocator Allocator for the dynamic memory required for creating the buffer.
 	 * @return The converted buffer.
@@ -39,7 +39,7 @@ namespace Maia::glTF
 
 	/**
 	 * @brief Create a buffer view from json.
-	 * 
+	 *
 	 * @param json A JSON object that describes a buffer view.
 	 * @param allocator Allocator for the dynamic memory required for creating the buffer view.
 	 * @return The converted buffer view.
@@ -51,7 +51,7 @@ namespace Maia::glTF
 
 	/**
 	 * @brief Read the PBR material parameters from json.
-	 * 
+	 *
 	 * @param json A JSON object that describes the PBR material parameters.
 	 * @return The converted PBR metallic roughness parameters.
 	 */
@@ -61,7 +61,7 @@ namespace Maia::glTF
 
 	/**
 	 * @brief Create a material from json.
-	 * 
+	 *
 	 * @param json A JSON object that describes a material.
 	 * @param allocator Allocator for the dynamic memory required for creating the material.
 	 * @return The converted material.
@@ -73,7 +73,7 @@ namespace Maia::glTF
 
 	/**
 	 * @brief Create a primitive from json.
-	 * 
+	 *
 	 * @param json A JSON object that describes a primitive.
 	 * @param allocator Allocator for the dynamic memory required for creating the primitive.
 	 * @return The converted primitive.
@@ -85,7 +85,7 @@ namespace Maia::glTF
 
 	/**
 	 * @brief Create a mesh from json.
-	 * 
+	 *
 	 * @param json A JSON object that describes a mesh.
 	 * @param allocator Allocator for the dynamic memory required for creating the mesh.
 	 * @return The converted mesh.
@@ -97,7 +97,7 @@ namespace Maia::glTF
 
 	/**
 	 * @brief Create a camera from json.
-	 * 
+	 *
 	 * @param json A JSON object that describes a camera.
 	 * @param allocator Allocator for the dynamic memory required for creating the camera.
 	 * @return The converted camera.
@@ -109,7 +109,7 @@ namespace Maia::glTF
 
 	/**
 	 * @brief Create a node from json.
-	 * 
+	 *
 	 * @param json A JSON object that describes a node.
 	 * @param allocator Allocator for the dynamic memory required for creating the node.
 	 * @return The converted node.
@@ -121,7 +121,7 @@ namespace Maia::glTF
 
 	/**
 	 * @brief Create a scene from json.
-	 * 
+	 *
 	 * @param json A JSON object that describes a scene.
 	 * @param allocator Allocator for the dynamic memory required for creating the scene.
 	 * @return The converted scene.
@@ -133,7 +133,7 @@ namespace Maia::glTF
 
 	/**
 	 * @brief Create a world object from json.
-	 * 
+	 *
 	 * @param json A JSON object that describes the GLTF scene.
 	 * @param allocator Allocator for the dynamic memory required for creating the world object.
 	 * @return The converted world object.
