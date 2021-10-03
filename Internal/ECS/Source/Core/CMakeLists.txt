@@ -10,14 +10,14 @@ target_module(
     MaiaECS
     PUBLIC
     "maia.ecs.tuple_helpers"
-    INTERFACE "Tuple_helpers.cxx"
+    INTERFACE "Tuple_helpers.cppm"
 )
 
 target_module(
     MaiaECS
     PUBLIC
     "maia.ecs.component_groups"
-    INTERFACE "Component_groups.cxx"
+    INTERFACE "Component_groups.cppm"
     INTERFACE_DEPENDS
         "maia.ecs.tuple_helpers"
 )
@@ -26,7 +26,7 @@ target_module(
     MaiaECS
     PUBLIC
     "maia.ecs.entity"
-    INTERFACE "Entity.cxx"
+    INTERFACE "Entity.cppm"
     IMPLEMENTATION "Entity.cpp"
 )
 
@@ -34,7 +34,7 @@ target_module(
     MaiaECS
     PUBLIC
     "maia.ecs.entity_manager"
-    INTERFACE "Entity_manager.cxx"
+    INTERFACE "Entity_manager.cppm"
     INTERFACE_DEPENDS
         "maia.ecs.component_groups"
         "maia.ecs.entity"

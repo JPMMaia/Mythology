@@ -3,9 +3,6 @@ add_executable (Maia::ECS::UnitTest ALIAS MaiaECSUnitTest)
 
 target_compile_definitions (MaiaECSUnitTest PRIVATE CATCH_CONFIG_ENABLE_BENCHMARKING)
 
-target_compile_features (MaiaECSUnitTest PRIVATE cxx_std_20)
-
-
 add_module_compile_options (MaiaECSUnitTest)
 
 target_link_libraries (MaiaECSUnitTest PRIVATE Maia::ECS Maia::Test)

@@ -15,19 +15,19 @@ set_target_properties(MaiaTest
 target_module (
     MaiaTest
     PUBLIC "maia.test.debug_object"
-    INTERFACE "Debug_object.cxx"
+    INTERFACE "Debug_object.cppm"
 )
 
 target_module (
     MaiaTest
     PUBLIC "maia.test.debug_resource"
-    INTERFACE "Debug_resource.cxx"
+    INTERFACE "Debug_resource.cppm"
 )
 
 target_module (
     MaiaTest
     PUBLIC "maia.test.print_tuple"
-    INTERFACE "Print_tuple.cxx"
+    INTERFACE "Print_tuple.cppm"
 )
 
 add_subdirectory("Core")
