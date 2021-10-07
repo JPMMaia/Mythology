@@ -583,20 +583,21 @@ namespace Mythology
 
     std::pmr::vector<vk::AccelerationStructureBuildSizesInfoKHR> create_acceleration_structure_build_sizes_infos(
         vk::Device const device,
-        std::span<std::pmr::vector<vk::AccelerationStructureGeometryKHR> const> const acceleration_structure_geometries,
+        std::span<std::pmr::vector<vk::AccelerationStructureGeometryKHR> const> const acceleration_structure_geometries_per_mesh,
         World const& world,
-        std::pmr::polymorphic_allocator<> const& output_allocator
+        std::pmr::polymorphic_allocator<> const& output_allocator,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
     )
     {
         std::pmr::vector<vk::AccelerationStructureBuildSizesInfoKHR> build_sizes_infos{ output_allocator };
-        build_sizes_infos.reserve(mesh_index);
+        build_sizes_infos.reserve(world.meshes.size());
 
         for (std::size_t mesh_index = 0; mesh_index < world.meshes.size(); ++mesh_index)
         {
             Mesh const& mesh = world.meshes[mesh_index];
 
             std::pmr::vector<vk::AccelerationStructureGeometryKHR> const& acceleration_structure_geometries =
-                acceleration_structure_geometries[mesh_index];
+                acceleration_structure_geometries_per_mesh[mesh_index];
 
             vk::AccelerationStructureBuildGeometryInfoKHR const acceleration_structure_build_geometry_info
             {
@@ -611,15 +612,16 @@ namespace Mythology
             for (std::size_t primitive_index = 0; primitive_index < mesh.primitives.size(); ++primitive_index)
             {
                 Primitive const& primitive = mesh.primitives[primitive_index];
-                Accessor const& indices_accessor = world.accessors[primitive.indices_index];
-                max_triangle_counts[primitive_index] = indices_accessor.count;
+                Accessor const& indices_accessor = world.accessors[*primitive.indices_index];
+                assert(indices_accessor.count <= std::numeric_limits<std::uint32_t>::max());
+                max_triangle_counts[primitive_index] = static_cast<std::uint32_t>(indices_accessor.count);
             }
 
             vk::AccelerationStructureBuildSizesInfoKHR const acceleration_structure_build_sizes_info =
                 device.getAccelerationStructureBuildSizesKHR(
                     vk::AccelerationStructureBuildTypeKHR::eDevice,
                     acceleration_structure_build_geometry_info,
-                    max_triangle_counts.data()
+                    max_triangle_counts
                 );
 
             build_sizes_infos.push_back(
@@ -652,7 +654,7 @@ namespace Mythology
             std::pmr::vector<vk::AccelerationStructureGeometryKHR> const& acceleration_structure_geometries = mesh_acceleration_structure_geometries[mesh_index];
 
             vk::AccelerationStructureBuildSizesInfoKHR const& acceleration_structure_build_sizes_info =
-                acceleration_structure_build_sizes_infos[mesh_info];
+                acceleration_structure_build_sizes_infos[mesh_index];
 
             Maia::Renderer::Vulkan::Buffer_view const bottom_level_acceleration_structure_buffer_view =
                 acceleration_structure_storage_buffer_resources.allocate_buffer(
@@ -725,23 +727,20 @@ namespace Mythology
                 .flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace,
                 .mode = vk::BuildAccelerationStructureModeKHR::eBuild,
                 .dstAccelerationStructure = acceleration_structure.handle,
-                .geometryCount = acceleration_structure_geometries[mesh_index].size(),
+                .geometryCount = static_cast<std::uint32_t>(acceleration_structure_geometries[mesh_index].size()),
                 .pGeometries = acceleration_structure_geometries[mesh_index].data(),
-                .scratchData =
-                {
-                    .deviceAddress = scratch_buffer_device_address,
-                },
+                .scratchData = scratch_buffer_device_address
             };
 
             std::pmr::vector<vk::AccelerationStructureBuildRangeInfoKHR> acceleration_structure_build_range_info{ temporaries_allocator };
             for (std::size_t primitive_index = 0; primitive_index < mesh.primitives.size(); ++primitive_index)
             {
                 Primitive const& primitive = mesh.primitives[primitive_index];
-                Accessor const& indices_accessor = world.accessors[primitive.indices_index];
+                Accessor const& indices_accessor = world.accessors[*primitive.indices_index];
 
-                acceleration_structure_build_range_info[primitive_index] =
+                acceleration_structure_build_range_info[primitive_index] = vk::AccelerationStructureBuildRangeInfoKHR
                 {
-                    .primitiveCount = indices_accessor.count,
+                    .primitiveCount = static_cast<std::uint32_t>(indices_accessor.count),
                     .primitiveOffset = 0,
                     .firstVertex = 0,
                     .transformOffset = 0,
@@ -810,7 +809,8 @@ namespace Mythology
                 device,
                 acceleration_structure_geometries,
                 world,
-                output_allocator
+                temporaries_allocator,
+                temporaries_allocator
             );
 
         std::pmr::vector<Acceleration_structure> const acceleration_structures =
