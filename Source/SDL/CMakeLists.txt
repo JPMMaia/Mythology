@@ -30,7 +30,7 @@ if (MaiaRenderer_build_vulkan)
         MaiaMythologySDL
         PUBLIC
         "maia.sdl.vulkan"
-        INTERFACE "Vulkan_SDL.cxx"
+        INTERFACE "Vulkan_SDL.cppm"
         INTERFACE_DEPENDS "ImGui" "SDL" "Standard_library" "Vulkan"
         IMPLEMENTATION "Vulkan_SDL.cpp"
         IMPLEMENTATION_DEPENDS "ImGui" "SDL" "SDL_vulkan" "Standard_library" "Vulkan"
@@ -42,7 +42,7 @@ target_module (
     MaiaMythologySDL
     PUBLIC
     "mythology.sdl.application"
-    INTERFACE "Application.cxx"
+    INTERFACE "Application.cppm"
     INTERFACE_DEPENDS "Standard_library" "nlohmann_json_module"
     IMPLEMENTATION "Application.cpp"
     IMPLEMENTATION_DEPENDS "maia.input" "maia.sdl.vulkan" "mythology.core.vulkan" "mythology.core.utilities" "SDL" "SDL_vulkan" "Standard_library" "nlohmann_json_module" "maia.renderer.vulkan.serializer"
@@ -53,7 +53,7 @@ target_module(
     MaiaMythologySDL
     PUBLIC
     "mythology.geometry"
-    INTERFACE "Geometry.cxx"
+    INTERFACE "Geometry.cppm"
     IMPLEMENTATION "Geometry.cpp"
 )
 
@@ -61,7 +61,7 @@ target_module(
     MaiaMythologySDL
     PUBLIC
     "mythology.sdl.sdl"
-    INTERFACE "SDL.cxx"
+    INTERFACE "SDL.cppm"
     IMPLEMENTATION "SDL.cpp"
 )
 
@@ -69,7 +69,7 @@ target_module (
     MaiaMythologySDL
     PUBLIC
     "mythology.sdl.vulkan"
-    INTERFACE "Vulkan_SDL.cxx"
+    INTERFACE "Vulkan_SDL.cppm"
     IMPLEMENTATION "Vulkan_SDL.cpp"
 )
 
@@ -77,7 +77,7 @@ target_module(
     MaiaMythologySDL
     PUBLIC
     "mythology.sdl.render_resources"
-    INTERFACE "Render_resources.cxx"
+    INTERFACE "Render_resources.cppm"
     IMPLEMENTATION "Render_resources.cpp"
 )
 
@@ -85,7 +85,7 @@ target_module(
     MaiaMythologySDL
     PUBLIC
     "mythology.sdl.configuration"
-    INTERFACE "Configuration.cxx"
+    INTERFACE "Configuration.cppm"
     INTERFACE_DEPENDS
         "mythology.sdl.render_resources"
         "mythology.sdl.sdl"
@@ -100,14 +100,14 @@ target_module(
     MaiaMythologySDL
     PUBLIC
     "mythology.sdl.state"
-    INTERFACE "State.cxx"
+    INTERFACE "State.cppm"
 )
 
 target_module(
     MaiaMythologySDL
     PUBLIC
     "mythology.sdl.startup_state"
-    INTERFACE "Startup_state.cxx"
+    INTERFACE "Startup_state.cppm"
     INTERFACE_DEPENDS "mythology.sdl.state"
     IMPLEMENTATION "Startup_state.cpp"
     IMPLEMENTATION_DEPENDS
@@ -122,7 +122,7 @@ target_module(
     MaiaMythologySDL
     PUBLIC
     "mythology.sdl.application_2"
-    INTERFACE "Application_2.cxx"
+    INTERFACE "Application_2.cppm"
     IMPLEMENTATION "Application_2.cpp"
     IMPLEMENTATION_DEPENDS "mythology.sdl.state" "mythology.sdl.startup_state"
 )

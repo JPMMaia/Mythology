@@ -12,7 +12,7 @@ target_module (
     MaiaMythologyWindowless
     PUBLIC
     "mythology.windowless"
-    INTERFACE "Windowless.cxx"
+    INTERFACE "Windowless.cppm"
     INTERFACE_DEPENDS "nlohmann_json_module" "Standard_library" "Vulkan"
     IMPLEMENTATION "Windowless.cpp"
     IMPLEMENTATION_DEPENDS "nlohmann_json_module" "Standard_library" "Vulkan"

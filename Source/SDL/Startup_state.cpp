@@ -33,7 +33,7 @@ namespace Mythology::SDL
     Startup_state::Startup_state(
         std::pmr::unordered_map<std::pmr::string, std::filesystem::path> render_pipelines
     ) noexcept :
-        m_render_pipelines{std::move(render_pipelines)}
+        m_render_pipelines{ std::move(render_pipelines) }
     {
     }
 
@@ -45,13 +45,18 @@ namespace Mythology::SDL
     {
         nlohmann::json read_json_from_file(std::filesystem::path const& path)
         {
-            std::ifstream input_stream{path};
+            std::ifstream input_stream{ path };
             assert(input_stream.good());
 
             nlohmann::json json{};
             input_stream >> json;
 
             return json;
+        }
+
+        void load_scene()
+        {
+
         }
     }
 
@@ -151,7 +156,7 @@ namespace Mythology::SDL
             }
         };
 
-        SDL_instance sdl{SDL_INIT_VIDEO};
+        SDL_instance sdl{ SDL_INIT_VIDEO };
 
         std::pmr::vector<SDL_window> const windows = create_windows(sdl, window_configurations);
 
@@ -219,7 +224,7 @@ namespace Mythology::SDL
 
         if (!validate_swapchain_queues(device_configurations, queue_configurations, swapchain_configurations, physical_devices, surface_resources.surfaces))
         {
-            throw std::runtime_error{"Swapchain present queues are not compatible!"};
+            throw std::runtime_error{ "Swapchain present queues are not compatible!" };
         }
 
         std::pmr::vector<vk::SurfaceCapabilitiesKHR> const swapchain_surface_capabilities = get_swapchain_surface_capabilities(
@@ -259,7 +264,7 @@ namespace Mythology::SDL
             {}
         };
 
-        std::pmr::vector<std::pmr::vector<vk::CommandBuffer>> const frames_command_buffers = 
+        std::pmr::vector<std::pmr::vector<vk::CommandBuffer>> const frames_command_buffers =
             Mythology::Render::allocate_command_buffers(
                 queue_devices,
                 command_pools_resources.command_pools,
@@ -267,16 +272,16 @@ namespace Mythology::SDL
                 number_of_frames_in_flight,
                 nullptr,
                 {}
-            );
+        );
 
         std::size_t const render_pipeline_index = 0;
         Render_pipeline_configuration const& render_pipeline_configuration = render_pipeline_configurations[render_pipeline_index];
-        
-        std::filesystem::path const render_pipeline_configuration_file_path = 
+
+        std::filesystem::path const render_pipeline_configuration_file_path =
             m_render_pipelines.at(render_pipeline_configuration.name);
 
         nlohmann::json const render_pipeline_json = read_json_from_file(render_pipeline_configuration_file_path);
-        
+
         vk::Device const render_pipeline_device = device_resources.devices[render_pipeline_configuration.device_index];
 
         Maia::Renderer::Vulkan::Pipeline_resources const render_pipeline_resources
@@ -294,7 +299,7 @@ namespace Mythology::SDL
             get_image_subresource_ranges(
                 render_pipeline_configuration.inputs,
                 {}
-            );
+        );
 
         std::pmr::vector<vk::Rect2D> const swapchain_render_areas =
             get_render_areas(
@@ -302,7 +307,7 @@ namespace Mythology::SDL
                 swapchain_configurations,
                 surface_image_extents,
                 {}
-            );
+        );
 
         std::pmr::vector<vk::Format> const swapchain_formats = get_swapchain_image_formats(swapchain_configurations, {});
 
@@ -328,7 +333,7 @@ namespace Mythology::SDL
                 render_pipeline_resources.render_passes,
                 {},
                 {}
-            );
+        );
 
         std::uint8_t frame_index = 0;
 
@@ -347,7 +352,7 @@ namespace Mythology::SDL
                 vk::Fence const available_frame_fence = available_frame_fences[swapchain_index];
 
                 bool const is_fence_signaled = swapchain_device.getFenceStatus(available_frame_fence) == vk::Result::eSuccess;
-                
+
                 if (is_fence_signaled)
                 {
                     vk::SwapchainKHR const swapchain = swapchain_resources.swapchains[swapchain_index];
@@ -375,35 +380,35 @@ namespace Mythology::SDL
 
                         {
                             std::span<vk::Buffer const> const output_buffers; // TODO
-                            
-                            std::array<std::uint32_t, 1> const swapchain_image_indices = {swapchain_image_index};
+
+                            std::array<std::uint32_t, 1> const swapchain_image_indices = { swapchain_image_index };
                             std::pmr::vector<vk::Image> const output_images =
                                 get_input_images(
                                     render_pipeline_configuration.inputs,
                                     swapchain_resources.images,
                                     swapchain_image_indices,
                                     {}
-                                );
-                            
+                            );
+
                             std::pmr::vector<vk::ImageView> const output_image_views =
                                 get_input_image_views(
                                     render_pipeline_configuration.inputs,
                                     pipeline_input_resources.image_views,
                                     swapchain_image_indices,
                                     {}
-                                );
-                            
+                            );
+
                             std::span<vk::ImageSubresourceRange const> const output_image_subresource_ranges =
                                 swapchain_image_subresource_ranges;
-                            
+
                             std::pmr::vector<vk::Framebuffer> const output_framebuffers =
                                 get_input_framebuffers(
                                     render_pipeline_configuration.inputs,
                                     pipeline_input_resources.framebuffers,
                                     swapchain_image_indices,
                                     {}
-                                );
-                            
+                            );
+
                             std::span<vk::Rect2D const> const output_render_areas = swapchain_render_areas;
 
                             // TODO
@@ -428,8 +433,8 @@ namespace Mythology::SDL
 
                         vk::Semaphore const finished_frame_semaphore = finished_frame_semaphores[swapchain_index];
                         {
-                            std::array<vk::PipelineStageFlags, 1> constexpr wait_destination_stage_masks = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
-                            std::array<vk::Fence, 1> const fences_to_reset = {available_frame_fence};
+                            std::array<vk::PipelineStageFlags, 1> constexpr wait_destination_stage_masks = { vk::PipelineStageFlagBits::eColorAttachmentOutput };
+                            std::array<vk::Fence, 1> const fences_to_reset = { available_frame_fence };
                             swapchain_device.resetFences(fences_to_reset);
 
                             std::array<vk::SubmitInfo, 1> const submit_infos
@@ -450,16 +455,16 @@ namespace Mythology::SDL
                         }
 
                         {
-                            std::array<std::uint32_t, 1> const swapchain_image_indices = {swapchain_image_index};
-                            
+                            std::array<std::uint32_t, 1> const swapchain_image_indices = { swapchain_image_index };
+
                             vk::PresentInfoKHR const present_info
                             {
                                 .waitSemaphoreCount = 1,
-                                .pWaitSemaphores    = &finished_frame_semaphore,
-                                .swapchainCount     = 1,
-                                .pSwapchains        = &swapchain,
-                                .pImageIndices      = swapchain_image_indices.data(),
-                                .pResults           = nullptr,
+                                .pWaitSemaphores = &finished_frame_semaphore,
+                                .swapchainCount = 1,
+                                .pSwapchains = &swapchain,
+                                .pImageIndices = swapchain_image_indices.data(),
+                                .pResults = nullptr,
                             };
 
                             vk::Result const result = queue.presentKHR(present_info);
@@ -471,7 +476,7 @@ namespace Mythology::SDL
                         }
                     }
                     else if (acquire_next_image_result.result == vk::Result::eErrorOutOfDateKHR
-                          || acquire_next_image_result.result == vk::Result::eSuboptimalKHR)
+                        || acquire_next_image_result.result == vk::Result::eSuboptimalKHR)
                     {
                         // TODO recreate swapchain
                     }
