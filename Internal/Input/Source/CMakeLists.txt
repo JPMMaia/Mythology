@@ -18,7 +18,7 @@ target_module (
     MaiaInput
     PUBLIC
     "maia.input.game_controller_state"
-    INTERFACE "Game_controller_state.cxx"
+    INTERFACE "Game_controller_state.cppm"
     INTERFACE_DEPENDS "Standard_library"
 )
 
@@ -26,20 +26,19 @@ target_module (
     MaiaInput
     PUBLIC
     "maia.input.input_mapping"
-    INTERFACE "Input_mapping.cxx"
+    INTERFACE "Input_mapping.cppm"
     INTERFACE_DEPENDS
         "maia.input.game_controller_state"
         "maia.input.input_state"
         "maia.input.keyboard_state"
         "maia.input.mouse_state"
-        "Standard_library"
 )
 
 target_module (
     MaiaInput
     PUBLIC
     "maia.input.input_state"
-    INTERFACE "Input_state.cxx"
+    INTERFACE "Input_state.cppm"
     INTERFACE_DEPENDS "Standard_library"
 )
 
@@ -47,7 +46,7 @@ target_module (
     MaiaInput
     PUBLIC
     "maia.input.keyboard_state"
-    INTERFACE "Keyboard_state.cxx"
+    INTERFACE "Keyboard_state.cppm"
     INTERFACE_DEPENDS "Standard_library"
 )
 
@@ -55,7 +54,7 @@ target_module (
     MaiaInput
     PUBLIC
     "maia.input.mouse_state"
-    INTERFACE "Mouse_state.cxx"
+    INTERFACE "Mouse_state.cppm"
     INTERFACE_DEPENDS "Standard_library"
 )
 
@@ -63,7 +62,7 @@ target_module (
     MaiaInput
     PUBLIC
     "maia.input"
-    INTERFACE "Module.cxx"
+    INTERFACE "Module.cppm"
     INTERFACE_DEPENDS    
         "maia.input.game_controller_state"
         "maia.input.input_mapping"
