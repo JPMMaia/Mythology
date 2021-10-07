@@ -12,7 +12,7 @@ target_module (
     MaiaRendererVulkan
     PUBLIC
     "maia.renderer.vulkan.buffer_resources"
-    INTERFACE "Buffer_resources.cxx"
+    INTERFACE "Buffer_resources.cppm"
     IMPLEMENTATION "Buffer_resources.cpp"
 )
 
@@ -20,7 +20,7 @@ target_module (
     MaiaRendererVulkan
     PUBLIC
     "maia.renderer.vulkan.serializer"
-    INTERFACE "Serializer.cxx"
+    INTERFACE "Serializer.cppm"
     IMPLEMENTATION "Serializer.cpp"
 )
 
@@ -28,7 +28,7 @@ target_module (
     MaiaRendererVulkan
     PUBLIC
     "maia.renderer.vulkan.upload"
-    INTERFACE "Upload.cxx"
+    INTERFACE "Upload.cppm"
     INTERFACE_DEPENDS "maia.renderer.vulkan.buffer_resources"
     IMPLEMENTATION "Upload.cpp"
     IMPLEMENTATION_DEPENDS "maia.renderer.vulkan.buffer_resources"
