@@ -10,7 +10,7 @@ target_module (
     MaiaUtilitiesGLTF
     PUBLIC
     "maia.utilities.gltf"
-    INTERFACE "gltf.cxx"
+    INTERFACE "gltf.cppm"
     INTERFACE_DEPENDS "Standard_library" "nlohmann_json_module"
     IMPLEMENTATION "gltf.cpp"
     IMPLEMENTATION_DEPENDS "Standard_library" "nlohmann_json_module"
