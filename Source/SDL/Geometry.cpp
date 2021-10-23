@@ -1,5 +1,6 @@
 module;
 
+#include <klein/klein.hpp>
 #include <vulkan/vulkan.hpp>
 
 #include <algorithm>
@@ -41,11 +42,36 @@ namespace Mythology
     // Node that contains mesh -> Transform buffer
     // Node that contains mesh -> Mesh*
 
+    template<typename T>
+    struct To_vector
+    {
+        std::pmr::polymorphic_allocator<> const& allocator;
+
+        std::pmr::vector<T> operator()(std::ranges::view auto view) const
+        {
+            return std::pmr::vector<T> { view.begin(), view.end(), this->allocator };
+        }
+    };
+
+    template<typename T>
+    To_vector<T> to_vector(std::pmr::polymorphic_allocator<> const& allocator)
+    {
+        return To_vector<T>{allocator};
+    }
+
+    template<typename T>
+    auto operator|(std::ranges::view auto view, To_vector<T> const& to_vector)
+    {
+        return to_vector(view);
+    }
+
     struct Geometry_buffer_views
     {
         Maia::Renderer::Vulkan::Buffer_view position = {};
         Maia::Renderer::Vulkan::Buffer_view index = {};
     };
+
+    using Instance_buffer_view = Maia::Renderer::Vulkan::Buffer_view;
 
     namespace
     {
@@ -581,6 +607,42 @@ namespace Mythology
         return mesh_acceleration_structure_geometries;
     }
 
+    vk::AccelerationStructureBuildSizesInfoKHR create_acceleration_structure_build_sizes_info(
+        vk::Device const device,
+        std::span<vk::AccelerationStructureGeometryKHR const> const acceleration_structure_geometries,
+        World const& world,
+        Mesh const& mesh,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
+    )
+    {
+        vk::AccelerationStructureBuildGeometryInfoKHR const acceleration_structure_build_geometry_info
+        {
+            .type = vk::AccelerationStructureTypeKHR::eBottomLevel,
+            .flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace,
+            .geometryCount = static_cast<std::uint32_t>(acceleration_structure_geometries.size()),
+            .pGeometries = acceleration_structure_geometries.data(),
+        };
+
+        std::pmr::vector<std::uint32_t> max_triangle_counts{ temporaries_allocator };
+        max_triangle_counts.resize(mesh.primitives.size(), 0);
+        for (std::size_t primitive_index = 0; primitive_index < mesh.primitives.size(); ++primitive_index)
+        {
+            Primitive const& primitive = mesh.primitives[primitive_index];
+            Accessor const& indices_accessor = world.accessors[*primitive.indices_index];
+            assert(indices_accessor.count <= std::numeric_limits<std::uint32_t>::max());
+            max_triangle_counts[primitive_index] = static_cast<std::uint32_t>(indices_accessor.count);
+        }
+
+        vk::AccelerationStructureBuildSizesInfoKHR const acceleration_structure_build_sizes_info =
+            device.getAccelerationStructureBuildSizesKHR(
+                vk::AccelerationStructureBuildTypeKHR::eDevice,
+                acceleration_structure_build_geometry_info,
+                max_triangle_counts
+            );
+
+        return acceleration_structure_build_sizes_info;
+    }
+
     std::pmr::vector<vk::AccelerationStructureBuildSizesInfoKHR> create_acceleration_structure_build_sizes_infos(
         vk::Device const device,
         std::span<std::pmr::vector<vk::AccelerationStructureGeometryKHR> const> const acceleration_structure_geometries_per_mesh,
@@ -589,47 +651,57 @@ namespace Mythology
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     )
     {
-        std::pmr::vector<vk::AccelerationStructureBuildSizesInfoKHR> build_sizes_infos{ output_allocator };
-        build_sizes_infos.reserve(world.meshes.size());
-
-        for (std::size_t mesh_index = 0; mesh_index < world.meshes.size(); ++mesh_index)
+        auto const to_acceleration_structure_build_size = [&](std::size_t const mesh_index) -> vk::AccelerationStructureBuildSizesInfoKHR
         {
-            Mesh const& mesh = world.meshes[mesh_index];
-
-            std::pmr::vector<vk::AccelerationStructureGeometryKHR> const& acceleration_structure_geometries =
-                acceleration_structure_geometries_per_mesh[mesh_index];
-
-            vk::AccelerationStructureBuildGeometryInfoKHR const acceleration_structure_build_geometry_info
-            {
-                .type = vk::AccelerationStructureTypeKHR::eBottomLevel,
-                .flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace,
-                .geometryCount = static_cast<std::uint32_t>(acceleration_structure_geometries.size()),
-                .pGeometries = acceleration_structure_geometries.data(),
-            };
-
-            std::pmr::vector<std::uint32_t> max_triangle_counts{ temporaries_allocator };
-            max_triangle_counts.resize(mesh.primitives.size(), 0);
-            for (std::size_t primitive_index = 0; primitive_index < mesh.primitives.size(); ++primitive_index)
-            {
-                Primitive const& primitive = mesh.primitives[primitive_index];
-                Accessor const& indices_accessor = world.accessors[*primitive.indices_index];
-                assert(indices_accessor.count <= std::numeric_limits<std::uint32_t>::max());
-                max_triangle_counts[primitive_index] = static_cast<std::uint32_t>(indices_accessor.count);
-            }
-
-            vk::AccelerationStructureBuildSizesInfoKHR const acceleration_structure_build_sizes_info =
-                device.getAccelerationStructureBuildSizesKHR(
-                    vk::AccelerationStructureBuildTypeKHR::eDevice,
-                    acceleration_structure_build_geometry_info,
-                    max_triangle_counts
-                );
-
-            build_sizes_infos.push_back(
-                acceleration_structure_build_sizes_info
+            return create_acceleration_structure_build_sizes_info(
+                device,
+                acceleration_structure_geometries_per_mesh[mesh_index],
+                world,
+                world.meshes[mesh_index],
+                temporaries_allocator
             );
-        }
+        };
 
-        return build_sizes_infos;
+        return
+            std::views::iota(std::size_t{ 0 }, world.meshes.size()) |
+            std::views::transform(to_acceleration_structure_build_size) |
+            to_vector<vk::AccelerationStructureBuildSizesInfoKHR>(output_allocator);
+    }
+
+    Acceleration_structure create_bottom_level_acceleration_structure(
+        vk::Device const device,
+        Maia::Renderer::Vulkan::Buffer_resources& acceleration_structure_storage_buffer_resources,
+        vk::AccelerationStructureBuildSizesInfoKHR const& acceleration_structure_build_sizes_info,
+        vk::AllocationCallbacks const* const allocation_callbacks
+    )
+    {
+        Maia::Renderer::Vulkan::Buffer_view const bottom_level_acceleration_structure_buffer_view =
+            acceleration_structure_storage_buffer_resources.allocate_buffer(
+                acceleration_structure_build_sizes_info.accelerationStructureSize,
+                vk::MemoryPropertyFlagBits::eDeviceLocal
+            );
+
+        vk::AccelerationStructureCreateInfoKHR const acceleration_structure_create_info
+        {
+            .buffer = bottom_level_acceleration_structure_buffer_view.buffer,
+            .offset = bottom_level_acceleration_structure_buffer_view.offset,
+            .size = bottom_level_acceleration_structure_buffer_view.size,
+            .type = vk::AccelerationStructureTypeKHR::eBottomLevel,
+        };
+
+        vk::AccelerationStructureKHR const bottom_level_acceleration_structure = device.createAccelerationStructureKHR(
+            acceleration_structure_create_info,
+            allocation_callbacks
+        );
+
+        vk::DeviceAddress const device_address = device.getAccelerationStructureAddressKHR({ .accelerationStructure = bottom_level_acceleration_structure });
+
+        return Acceleration_structure
+        {
+            .handle = bottom_level_acceleration_structure,
+            .device_address = device_address,
+            .buffer_view = bottom_level_acceleration_structure_buffer_view,
+        };
     }
 
     std::pmr::vector<Acceleration_structure> create_bottom_level_acceleration_structures(
@@ -640,54 +712,23 @@ namespace Mythology
         World const& world,
         std::span<std::pmr::vector<Geometry_buffer_views> const> const geometry_buffer_views,
         vk::AllocationCallbacks const* const allocation_callbacks,
-        std::pmr::polymorphic_allocator<> const& allocator,
-        std::pmr::polymorphic_allocator<> const& temporaries_allocator
+        std::pmr::polymorphic_allocator<> const& output_allocator
     )
     {
-        std::pmr::vector<Acceleration_structure> acceleration_structures{ allocator };
-        acceleration_structures.reserve(world.meshes.size());
-
-        for (std::size_t mesh_index = 0; mesh_index < world.meshes.size(); ++mesh_index)
+        auto const to_bottom_level_acceleration_structure = [&](std::size_t const mesh_index) -> Acceleration_structure
         {
-            Mesh const& mesh = world.meshes[mesh_index];
-
-            std::pmr::vector<vk::AccelerationStructureGeometryKHR> const& acceleration_structure_geometries = mesh_acceleration_structure_geometries[mesh_index];
-
-            vk::AccelerationStructureBuildSizesInfoKHR const& acceleration_structure_build_sizes_info =
-                acceleration_structure_build_sizes_infos[mesh_index];
-
-            Maia::Renderer::Vulkan::Buffer_view const bottom_level_acceleration_structure_buffer_view =
-                acceleration_structure_storage_buffer_resources.allocate_buffer(
-                    acceleration_structure_build_sizes_info.accelerationStructureSize,
-                    vk::MemoryPropertyFlagBits::eDeviceLocal
-                );
-
-            vk::AccelerationStructureCreateInfoKHR const acceleration_structure_create_info
-            {
-                .buffer = bottom_level_acceleration_structure_buffer_view.buffer,
-                .offset = bottom_level_acceleration_structure_buffer_view.offset,
-                .size = bottom_level_acceleration_structure_buffer_view.size,
-                .type = vk::AccelerationStructureTypeKHR::eBottomLevel,
-            };
-
-            vk::AccelerationStructureKHR const bottom_level_acceleration_structure = device.createAccelerationStructureKHR(
-                acceleration_structure_create_info,
+            return create_bottom_level_acceleration_structure(
+                device,
+                acceleration_structure_storage_buffer_resources,
+                acceleration_structure_build_sizes_infos[mesh_index],
                 allocation_callbacks
             );
+        };
 
-            vk::DeviceAddress const device_address = device.getAccelerationStructureAddressKHR({ .accelerationStructure = bottom_level_acceleration_structure });
-
-            acceleration_structures.push_back(
-                Acceleration_structure
-                {
-                    .handle = bottom_level_acceleration_structure,
-                    .device_address = device_address,
-                    .buffer_view = bottom_level_acceleration_structure_buffer_view,
-                }
-            );
-        }
-
-        return acceleration_structures;
+        return
+            std::views::iota(std::size_t{ 0 }, world.meshes.size()) |
+            std::views::transform(to_bottom_level_acceleration_structure) |
+            to_vector<Acceleration_structure>(output_allocator);
     }
 
     void build_bottom_level_acceleration_strucutres(
@@ -822,8 +863,7 @@ namespace Mythology
                 world,
                 geometry_buffer_views,
                 allocation_callbacks,
-                output_allocator,
-                temporaries_allocator
+                output_allocator
             );
 
         vk::CommandBuffer const command_buffer = {}; // TODO
@@ -838,6 +878,287 @@ namespace Mythology
             world,
             temporaries_allocator
         );
+    }
+
+    kln::translation to_translation(Vector3f const& vector) noexcept
+    {
+        return kln::translation{ vector.x, vector.y, vector.z };
+    }
+
+    kln::rotor to_rotor(Quaternionf const& quaternion) noexcept
+    {
+        // TODO assert that quarternion is normalized
+
+        std::array<float, 4> const quaternion_coefficients{ quaternion.w, quaternion.x, quaternion.y, quaternion.z };
+
+        kln::rotor rotor{};
+        rotor.load_normalized(quaternion_coefficients.data());;
+        return rotor;
+    }
+
+    kln::motor calculate_motor(Node const& node) noexcept
+    {
+        kln::rotor const rotation = to_rotor(node.rotation);
+        kln::translation const translation = to_translation(node.translation);
+        return translation * rotation;
+    }
+
+    // TODO from node transform matrix to math matrix
+    // TODO from math matrix to vk::TransformMatrixKHR
+    kln::motor calculate_world_motor(kln::motor const& parent_world_motor, Node const& node) noexcept
+    {
+        kln::motor const local_motor = calculate_motor(node);
+        return local_motor * parent_world_motor;
+    }
+
+    vk::TransformMatrixKHR to_transform_matrix(kln::motor const& motor)
+    {
+        kln::motor const normalized_motor = motor.normalized();
+        kln::mat3x4 const column_major_matrix = normalized_motor.as_mat3x4();
+
+        // Column major 3x4
+        // 0 3 6 9
+        // 1 4 7 10
+        // 2 5 8 11
+
+        // Row major 3x4
+        // 0 1 2 3
+        // 4 5 6 7
+        // 8 9 10 11
+
+        vk::TransformMatrixKHR row_major_matrix;
+
+        row_major_matrix[0][0] = column_major_matrix.data[0 * 3 + 0];
+        row_major_matrix[0][1] = column_major_matrix.data[1 * 3 + 0];
+        row_major_matrix[0][2] = column_major_matrix.data[2 * 3 + 0];
+        row_major_matrix[0][3] = column_major_matrix.data[3 * 3 + 0];
+
+        row_major_matrix[1][0] = column_major_matrix.data[0 * 3 + 1];
+        row_major_matrix[1][1] = column_major_matrix.data[1 * 3 + 1];
+        row_major_matrix[1][2] = column_major_matrix.data[2 * 3 + 1];
+        row_major_matrix[1][3] = column_major_matrix.data[3 * 3 + 1];
+
+        row_major_matrix[2][0] = column_major_matrix.data[0 * 3 + 2];
+        row_major_matrix[2][1] = column_major_matrix.data[1 * 3 + 2];
+        row_major_matrix[2][2] = column_major_matrix.data[2 * 3 + 2];
+        row_major_matrix[2][3] = column_major_matrix.data[3 * 3 + 2];
+
+        return row_major_matrix;
+    }
+
+    std::pmr::vector<vk::TransformMatrixKHR> create_instances_transforms(
+        Maia::Scene::World const& world,
+        Maia::Scene::Scene const& scene,
+        std::pmr::polymorphic_allocator<> const& output_allocator
+    )
+    {
+        if (scene.nodes)
+        {
+            auto const calculate_root_node_world_matrix = [&](std::size_t const node_index) -> std::tuple<std::size_t, kln::motor>
+            {
+                kln::motor const world_matrix = calculate_world_motor(kln::motor{}, world.nodes[node_index]);
+                return std::make_tuple(node_index, world_matrix);
+            };
+
+            auto const calculate_world_matrices_recursively = [&](std::tuple<std::size_t, kln::motor> const& pair) -> void
+            {
+                std::size_t const node_index = std::get<0>(pair);
+                kln::motor const& world_matrix = std::get<1>(pair);
+
+                world_matrices[node_index] = to_transform_matrix(world_matrix);
+
+                Node const& node = world.nodes[node_index];
+
+                auto const calculate_child_node_world_matrix = [&](std::size_t const child_node_index) -> std::tuple<std::size_t, World_matrix>
+                {
+                    World_matrix const& parent_world_matrix = world_matrix;
+                    World_matrix const child_world_matrix = calculate_world_matrix(world_matrix, world.nodes[child_node_index]);
+                    return std::make_tuple(node_index, child_world_matrix);
+                };
+
+                auto const child_world_matrices =
+                    node.child_indices |
+                    std::views::transform(calculate_child_node_world_matrix);
+
+                std::for_each(std::execution::parallel_unsequenced_policy, child_world_matrices.begin(), child_world_matrices.end(), calculate_world_matrices_recursively);
+                //std::ranges::for_each(child_world_matrices, calculate_world_matrices_recursively);
+            };
+
+            auto const root_nodes_world_matrices =
+                *scene.nodes |
+                std::views::transform(calculate_root_node_world_matrix);
+
+            std::for_each(std::execution::parallel_unsequenced_policy, root_nodes_world_matrices.begin(), root_nodes_world_matrices.end(), calculate_world_matrices_recursively);
+            //std::ranges::for_each(root_nodes_world_matrices, calculate_world_matrices_recursively);
+        }
+        else
+        {
+            return { output_allocator };
+        }
+    }
+
+    Instance_buffer_view create_instances_buffer(
+        Maia::Renderer::Vulkan::Buffer_resources& instances_buffer_resources,
+        std::size_t const instance_count
+    )
+    {
+        Maia::Renderer::Vulkan::Buffer_view const instances_buffer_view =
+            instances_buffer_resources.allocate_buffer(
+                instance_count * sizeof(vk::AccelerationStructureInstanceKHR),
+                vk::MemoryPropertyFlagBits::eDeviceLocal
+            );
+
+        return instances_buffer_view;
+    }
+
+    Acceleration_structure create_top_level_acceleration_structure(
+        vk::Device const device,
+        vk::CommandBuffer const command_buffer,
+        Acceleration_structure const bottom_level_acceleration_structure,
+        Maia::Renderer::Vulkan::Buffer_resources& acceleration_structure_build_input_buffer_resources, // vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddressKHR
+        Maia::Renderer::Vulkan::Buffer_resources& acceleration_structure_storage_buffer_resources, // vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR
+        Maia::Renderer::Vulkan::Buffer_resources& scratch_buffer_resources, // vk::BufferUsage::eStorageBuffer | vk::BufferUsage::eShaderDeviceAddressKHR
+        vk::AllocationCallbacks const* const allocation_callbacks
+    )
+    {
+        // 1. Create instance buffer views
+        // 2. (Fill instance buffer views with data)?
+        // 3. Create vk::AccelerationStructureGeometryKHR
+        // 4. Create vk::AccelerationStructureBuildSizesInfoKHR
+        // 5. Create Acceleration_structure
+        // 6. Build
+
+        vk::TransformMatrixKHR const transform_matrix =
+        {
+            1.0f, 0.0f, 0.0f, 0.0f,
+            0.0f, 1.0f, 0.0f, 0.0f,
+            0.0f, 0.0f, 1.0f, 0.0f
+        };
+
+        vk::AccelerationStructureInstanceKHR const acceleration_structure_instance
+        {
+            .transform = transform_matrix,
+            .instanceCustomIndex = 0,
+            .mask = 0xFF,
+            .instanceShaderBindingTableRecordOffset = 0,
+            .flags = vk::GeometryInstanceFlagBitsKHR::eTriangleFacingCullDisable,
+            .accelerationStructureReference = bottom_level_acceleration_structure.device_address,
+        };
+
+        Maia::Renderer::Vulkan::Buffer_view const instances_buffer_view =
+            acceleration_structure_build_input_buffer_resources.allocate_buffer(
+                sizeof(VkAccelerationStructureInstanceKHR),
+                vk::MemoryPropertyFlagBits::eDeviceLocal
+            );
+        instances_buffer_view->update(&acceleration_structure_instance, sizeof(VkAccelerationStructureInstanceKHR)); // TODO
+
+        vk::DeviceOrHostAddressConstKHR const instance_data_device_address
+        {
+            .deviceAddress = device.getBufferAddressKHR({.buffer = instances_buffer_view.buffer}) + instances_buffer_view.offset,
+        };
+
+        // The top level acceleration structure contains (bottom level) instance as the input geometry
+        vk::AccelerationStructureGeometryKHR const acceleration_structure_geometry
+        {
+            .geometryType = vk::GeometryTypeKHR::eInstances,
+            .flags = vk::GeometryFlagBitsKHR::eOpaque,
+            .geometry =
+            {
+                .instances =
+                {
+                    .arrayOfPointers = false,
+                    .data = instance_data_device_address,
+                },
+            },
+        };
+
+        // Get the size requirements for buffers involved in the acceleration structure build process
+        vk::AccelerationStructureBuildGeometryInfoKHR const acceleration_structure_build_geometry_info
+        {
+            .type = vk::AccelerationStructureTypeKHR::eTopLevel,
+            .flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace,
+            .geometryCount = 1,
+            .pGeometries = &acceleration_structure_geometry,
+        };
+
+        std::uint32_t const primitive_count = 1;
+
+        vk::AccelerationStructureBuildSizesInfoKHR const acceleration_structure_build_sizes_info =
+            device.getAccelerationStructureBuildSizesKHR(
+                vk::AccelerationStructureBuildTypeKHR::eDevice,
+                acceleration_structure_build_geometry_info,
+                primitive_count,
+                acceleration_structure_build_sizes_info
+            );
+
+        // Create a buffer to hold the acceleration structure
+        Maia::Renderer::Vulkan::Bufer_view const top_level_acceleration_structure_buffer_view =
+            acceleration_structure_storage_buffer_resources.allocate_buffer(
+                acceleration_structure_build_sizes_info.accelerationStructureSize,
+                vk::MemoryPropertyFlagBits::eDeviceLocal
+            );
+
+        // Create the acceleration structure
+        vk::AccelerationStructureCreateInfoKHR const acceleration_structure_create_info
+        {
+            .buffer = top_level_acceleration_structure_buffer_view.buffer,
+            .offset = top_level_acceleration_structure_buffer_view.offset,
+            .size = acceleration_structure_build_sizes_info.accelerationStructureSize,
+            .type = vk::AccelerationStructureTypeKHR::eTopLevel,
+        };
+        vk::AccelerationStructureKHR const top_level_acceleration_structure = device.createAccelerationStructureKHR(acceleration_structure_create_info, allocation_callbacks);
+
+        // The actual build process starts here
+
+        // Create a scratch buffer as a temporary storage for the acceleration structure build
+        Maia::Renderer::Vulkan::Buffer_view const scratch_buffer_view =
+            scratch_buffer_resources.allocate_buffer(
+                acceleration_structure_build_sizes_info.buildScratchSize,
+                vk::MemoryPropertyFlagBits::eDeviceLocal
+            );
+        vk::DeviceAddress const scratch_buffer_device_address = device.getBufferAddressKHR({ .buffer = scratch_buffer_view.buffer }) + scratch_buffer_view.offset;
+
+        vk::AccelerationStructureBuildGeometryInfoKHR const acceleration_build_geometry_info
+        {
+            .type = vk::AccelerationStructureTypeKHR::eTopLevel,
+            .flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace,
+            .mode = vk::BuildAccelerationStructureModeKHR::eBuild,
+            .dstAccelerationStructure = top_level_acceleration_structure,
+            .geometryCount = 1,
+            .pGeometries = &acceleration_structure_geometry,
+            .scratchData =
+            {
+                .deviceAddress = scratch_buffer_device_address,
+            },
+        };
+
+        vk::AccelerationStructureBuildRangeInfoKHR const acceleration_structure_build_range_info
+        {
+            .primitiveCount = 1,
+            .primitiveOffset = 0,
+            .firstVertex = 0,
+            .transformOffset = 0,
+        };
+        std::array<vk::AccelerationStructureBuildRangeInfoKHR*, 1> const acceleration_build_structure_range_infos = { &acceleration_structure_build_range_info };
+
+        // Build the acceleration structure on the device via a one-time command buffer submission
+        // Some implementations may support acceleration structure building on the host (VkPhysicalDeviceAccelerationStructureFeaturesKHR->accelerationStructureHostCommands), but we prefer device builds
+
+        command_buffer.buildAccelerationStructuresKHR(
+            1,
+            &acceleration_build_geometry_info,
+            acceleration_build_structure_range_infos.data()
+        );
+
+        // Get the top acceleration structure's handle, which will be used to setup it's descriptor
+        vk::DeviceAddress const device_address = device.getAccelerationStructureDeviceAddressKHR({ .accelerationStructure = top_level_acceleration_structure });
+
+        return
+        {
+            .handle = top_level_acceleration_structure,
+            .device_address = device_address,
+            .buffer_view = top_level_acceleration_structure_buffer_view,
+        };
     }
 
     // Create instance buffers
