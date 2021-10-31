@@ -89,6 +89,7 @@ namespace Mythology::SDL
         std::uint32_t physical_device_index = 0;
         std::pmr::vector<Queue_create_info_configuration> queues;
         std::pmr::vector<char const*> enabled_extensions;
+        std::uint32_t upload_queue_index = 0;
     };
 
     export struct Device_resources

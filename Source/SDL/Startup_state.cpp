@@ -119,6 +119,7 @@ namespace Mythology::SDL
                     "VK_KHR_ray_tracing_pipeline",
                     "VK_KHR_swapchain",
                 },
+                .upload_queue_index = 0,
             }
         };
 
