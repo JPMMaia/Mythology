@@ -1,5 +1,6 @@
 module;
 
+#include <array>
 #include <cassert>
 #include <cstddef>
 #include <filesystem>
