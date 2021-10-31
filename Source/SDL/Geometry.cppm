@@ -2,9 +2,14 @@ module;
 
 #include <vulkan/vulkan.hpp>
 
+#include <memory_resource>
+#include <span>
+#include <vector>
+
 export module mythology.geometry;
 
 import maia.renderer.vulkan.buffer_resources;
+import maia.scene;
 
 namespace Mythology
 {
@@ -15,22 +20,38 @@ namespace Mythology
         Maia::Renderer::Vulkan::Buffer_view buffer_view = {};
     };
 
-    export Acceleration_structure create_bottom_level_acceleration_structure(
+    export std::pmr::vector<Acceleration_structure> create_bottom_level_acceleration_structures(
+        vk::PhysicalDeviceType physical_device_type,
         vk::Device device,
+        vk::Queue queue,
+        vk::CommandPool command_pool,
         vk::CommandBuffer command_buffer,
-        Maia::Renderer::Vulkan::Buffer_resources& acceleration_structure_build_input_buffer_resources,
         Maia::Renderer::Vulkan::Buffer_resources& acceleration_structure_storage_buffer_resources,
+        Maia::Renderer::Vulkan::Buffer_resources& geometry_buffer_resources,
+        Maia::Renderer::Vulkan::Buffer_resources& upload_buffer_resources,
         Maia::Renderer::Vulkan::Buffer_resources& scratch_buffer_resources,
-        vk::AllocationCallbacks const* allocation_callbacks
+        Maia::Scene::World const& world,
+        std::span<std::pmr::vector<std::byte> const> buffers_data,
+        vk::AllocationCallbacks const* allocation_callbacks,
+        std::pmr::polymorphic_allocator<> const& output_allocator,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
     );
 
-    export Acceleration_structure create_top_level_acceleration_structure(
-        vk::Device const device,
-        vk::CommandBuffer const command_buffer,
-        Acceleration_structure const bottom_level_acceleration_structure,
-        Maia::Renderer::Vulkan::Buffer_resources& acceleration_structure_build_input_buffer_resources,
-        Maia::Renderer::Vulkan::Buffer_resources& acceleration_structure_storage_buffer_resources,
-        Maia::Renderer::Vulkan::Buffer_resources& scratch_buffer_resources,
-        vk::AllocationCallbacks const* allocation_callbacks
+    export std::pmr::vector<Acceleration_structure> create_top_level_acceleration_structures(
+        vk::PhysicalDeviceType physical_device_type,
+        vk::Device device,
+        vk::Queue queue,
+        vk::CommandPool command_pool,
+        vk::CommandBuffer command_buffer,
+        Maia::Scene::World const& world,
+        Maia::Scene::Scene const& scene,
+        std::span<Acceleration_structure const> bottom_level_acceleration_structures,
+        Maia::Renderer::Vulkan::Buffer_resources& acceleration_structure_build_input_buffer_resources, // vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddressKHR
+        Maia::Renderer::Vulkan::Buffer_resources& acceleration_structure_storage_buffer_resources, // vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR
+        Maia::Renderer::Vulkan::Buffer_resources& scratch_buffer_resources, // vk::BufferUsage::eStorageBuffer | vk::BufferUsage::eShaderDeviceAddressKHR
+        Maia::Renderer::Vulkan::Buffer_resources& upload_buffer_resources,
+        vk::AllocationCallbacks const* allocation_callbacks,
+        std::pmr::polymorphic_allocator<> const& output_allocator,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
     );
 }
