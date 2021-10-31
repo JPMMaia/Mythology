@@ -813,4 +813,18 @@ namespace Maia::Scene
 
 		friend auto operator<=>(World const&, World const&) noexcept = default;
 	};
+
+	/**
+	 * @brief Read all buffers data referenced by \p world.
+	 *
+	 * @param world The world object.
+	 * @param prefix_path The prefix path to which all buffer uris is relative to in case it specifies a file.
+	 * @param allocator The allocator used for allocating the buffers data.
+	 * @return A vector with the same size as world.buffers. Each entry contains the corresponding buffer data.
+	 */
+	export std::pmr::vector<std::pmr::vector<std::byte>> read_buffers_data(
+		World const& world,
+		std::filesystem::path const& prefix_path,
+		std::pmr::polymorphic_allocator<> const& allocator
+	);
 }

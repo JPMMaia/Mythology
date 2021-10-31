@@ -560,4 +560,23 @@ namespace Maia::Scene
 	{
 		return !(lhs == rhs);
 	}
+
+	std::pmr::vector<std::pmr::vector<std::byte>> read_buffers_data(
+		World const& world,
+		std::filesystem::path const& prefix_path,
+		std::pmr::polymorphic_allocator<> const& allocator
+	)
+	{
+		auto const read_buffer_data_lambda = [&prefix_path, &allocator](Buffer const& buffer) -> std::pmr::vector<std::byte>
+		{
+			return read_buffer_data(buffer, prefix_path, allocator);
+		};
+
+		std::pmr::vector<std::pmr::vector<std::byte>> buffers_data{ allocator };
+		buffers_data.resize(world.buffers.size());
+
+		std::transform(world.buffers.begin(), world.buffers.end(), buffers_data.begin(), read_buffer_data_lambda);
+
+		return buffers_data;
+	}
 }
