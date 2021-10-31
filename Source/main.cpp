@@ -18,7 +18,7 @@ namespace
 
     nlohmann::json read_json_from_file(std::filesystem::path const& path) noexcept
     {
-        std::ifstream input_stream{path};
+        std::ifstream input_stream{ path };
         assert(input_stream.good());
 
         nlohmann::json json{};
@@ -31,15 +31,15 @@ namespace
         std::map<std::string, docopt::value> const& arguments
     )
     {
-        auto const parse_pipeline_argument = [] (std::string const& argument) -> std::pair<std::pmr::string, std::filesystem::path>
+        auto const parse_pipeline_argument = [](std::string const& argument) -> std::pair<std::pmr::string, std::filesystem::path>
         {
             auto const equal_location = std::find(argument.begin(), argument.end(), '=');
 
             if (equal_location != argument.end())
             {
-                std::pmr::string const name{argument.begin(), equal_location};
-                std::pmr::string const path_string{equal_location + 1, argument.end()};
-                std::filesystem::path const path{path_string};
+                std::pmr::string const name{ argument.begin(), equal_location };
+                std::pmr::string const path_string{ equal_location + 1, argument.end() };
+                std::filesystem::path const path{ path_string };
 
                 return std::make_pair(name, path);
             }
@@ -71,14 +71,28 @@ namespace
             return {};
         }
     }
+
+    std::filesystem::path parse_gltf_argument(
+        std::map<std::string, docopt::value> const& arguments
+    )
+    {
+        if (arguments.contains("gltf"))
+        {
+            return std::filesystem::path{ arguments.at("gltf").asString() };
+        }
+        else
+        {
+            return {};
+        }
+    }
 }
 
-constexpr const char* c_usage = 
+constexpr const char* c_usage =
 R"(Mythology.
 
     Usage:
-        mythology render --pipeline=<pipeline_json_file>... [--gltf=<gltf_json_file>] --output=<output_file>
-        mythology window --pipeline=<pipeline_json_file>... [--gltf=<gltf_json_file>]
+        mythology render --pipeline=<pipeline_name>=<pipeline_json_file>... [--gltf=<gltf_json_file>] --output=<output_file>
+        mythology window --pipeline=<pipeline_name>=<pipeline_json_file>... [--gltf=<gltf_json_file>]
         mythology [--help]
         mythology --version
 
@@ -92,7 +106,7 @@ int main(int const argc, const char* const* const argv) noexcept
 {
     std::map<std::string, docopt::value> const arguments = docopt::docopt(
         c_usage,
-        {argv + 1, argv + argc},
+        { argv + 1, argv + argc },
         true,
         "Mythology 0.1"
     );
@@ -106,7 +120,8 @@ int main(int const argc, const char* const* const argv) noexcept
     }
     else if (arguments.at("window").asBool())
     {
-        Mythology::SDL::run(render_pipelines, {});
+        std::filesystem::path const gltf_path = parse_gltf_argument(arguments);
+        Mythology::SDL::run(render_pipelines, gltf_path);
     }
 
     return 0;

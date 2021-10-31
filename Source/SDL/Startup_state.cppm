@@ -17,7 +17,8 @@ namespace Mythology::SDL
     public:
 
         explicit Startup_state(
-            std::pmr::unordered_map<std::pmr::string, std::filesystem::path> render_pipelines
+            std::pmr::unordered_map<std::pmr::string, std::filesystem::path> render_pipelines,
+            std::filesystem::path gltf_path
         ) noexcept;
         ~Startup_state() noexcept final;
 
@@ -27,5 +28,6 @@ namespace Mythology::SDL
     private:
 
         std::pmr::unordered_map<std::pmr::string, std::filesystem::path> m_render_pipelines;
+        std::filesystem::path m_gltf_path;
     };
 }

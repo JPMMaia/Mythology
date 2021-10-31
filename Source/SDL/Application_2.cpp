@@ -20,7 +20,7 @@ namespace Mythology::SDL
         std::filesystem::path const& gltf_file_path
     )
     {
-        std::unique_ptr<State> state{std::make_unique<Startup_state>(render_pipelines_configurations)};
+        std::unique_ptr<State> state{ std::make_unique<Startup_state>(render_pipelines_configurations, gltf_file_path) };
 
         while (state != nullptr)
         {

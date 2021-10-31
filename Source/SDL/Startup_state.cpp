@@ -7,6 +7,7 @@ module;
 
 #include <array>
 #include <cassert>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <memory>
@@ -20,8 +21,11 @@ module;
 
 module mythology.sdl.startup_state;
 
+import maia.glTF;
 import maia.renderer.vulkan.serializer;
+import maia.scene;
 
+import mythology.geometry;
 import mythology.sdl.configuration;
 import mythology.sdl.render_resources;
 import mythology.sdl.sdl;
@@ -31,9 +35,11 @@ import mythology.sdl.vulkan;
 namespace Mythology::SDL
 {
     Startup_state::Startup_state(
-        std::pmr::unordered_map<std::pmr::string, std::filesystem::path> render_pipelines
+        std::pmr::unordered_map<std::pmr::string, std::filesystem::path> render_pipelines,
+        std::filesystem::path gltf_path
     ) noexcept :
-        m_render_pipelines{ std::move(render_pipelines) }
+        m_render_pipelines{ std::move(render_pipelines) },
+        m_gltf_path{ std::move(gltf_path) }
     {
     }
 
@@ -54,9 +60,162 @@ namespace Mythology::SDL
             return json;
         }
 
-        void load_scene()
+        struct Scene_resources
         {
+            Maia::Scene::World world;
+            std::pmr::vector<std::pmr::vector<std::byte>> buffers_data;
+            std::pmr::vector<Mythology::Acceleration_structure> bottom_level_acceleration_structures;
+            std::pmr::vector<Mythology::Acceleration_structure> top_level_acceleration_structures;
+        };
 
+        struct Buffer_resources
+        {
+            Maia::Renderer::Vulkan::Buffer_resources acceleration_structure_storage;
+            Maia::Renderer::Vulkan::Buffer_resources geometry;
+            Maia::Renderer::Vulkan::Buffer_resources instance;
+            Maia::Renderer::Vulkan::Buffer_resources upload;
+            Maia::Renderer::Vulkan::Buffer_resources scratch;
+        };
+
+        Buffer_resources create_buffer_resources(
+            vk::PhysicalDevice const physical_device,
+            vk::PhysicalDeviceType const physical_device_type,
+            vk::Device const device
+        )
+        {
+            return Buffer_resources
+            {
+                .acceleration_structure_storage =
+                {
+                    physical_device,
+                    device,
+                    physical_device_type,
+                    {},
+                    64 * 1024 * 1024,
+                    vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR,
+                    {},
+                    {},
+                    nullptr,
+                    {}
+                },
+                .geometry =
+                {
+                    physical_device,
+                    device,
+                    physical_device_type,
+                    {},
+                    64 * 1024 * 1024,
+                    vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddressKHR,
+                    {},
+                    {},
+                    nullptr,
+                    {}
+                },
+                .instance =
+                {
+                    physical_device,
+                    device,
+                    physical_device_type,
+                    {},
+                    64 * 1024 * 1024,
+                    vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddressKHR,
+                    {},
+                    {},
+                    nullptr,
+                    {}
+                },
+                .upload =
+                {
+                    physical_device,
+                    device,
+                    physical_device_type,
+                    {},
+                    64 * 1024 * 1024,
+                    vk::BufferUsageFlagBits::eTransferSrc,
+                    {},
+                    {},
+                    nullptr,
+                    {}
+                },
+                .scratch
+                {
+                    physical_device,
+                    device,
+                    physical_device_type,
+                    {},
+                    64 * 1024 * 1024,
+                    vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddressKHR,
+                    {},
+                    {},
+                    nullptr,
+                    {}
+                },
+            };
+        }
+
+        std::optional<Scene_resources> load_scene(
+            std::filesystem::path const& gltf_path,
+            vk::PhysicalDeviceType physical_device_type,
+            vk::Device device,
+            vk::Queue queue,
+            vk::CommandPool command_pool,
+            Buffer_resources& buffer_resources,
+            vk::AllocationCallbacks const* allocation_callbacks,
+            std::pmr::polymorphic_allocator<> const& output_allocator,
+            std::pmr::polymorphic_allocator<> const& temporaries_allocator
+        )
+        {
+            nlohmann::json const gltf_json = read_json_from_file(gltf_path);
+            Maia::Scene::World world = Maia::glTF::gltf_from_json(gltf_json, output_allocator);
+
+            if (!world.scene_index.has_value())
+            {
+                return {};
+            }
+
+            Maia::Scene::Scene const& scene = world.scenes[*world.scene_index];
+            std::pmr::vector<std::pmr::vector<std::byte>> buffers_data = Maia::Scene::read_buffers_data(world, gltf_path.parent_path(), output_allocator);
+
+            std::pmr::vector<Mythology::Acceleration_structure> bottom_level_acceleration_structures = create_bottom_level_acceleration_structures(
+                physical_device_type,
+                device,
+                queue,
+                command_pool,
+                buffer_resources.acceleration_structure_storage,
+                buffer_resources.geometry,
+                buffer_resources.upload,
+                buffer_resources.scratch,
+                world,
+                buffers_data,
+                allocation_callbacks,
+                output_allocator,
+                temporaries_allocator
+            );
+
+            std::pmr::vector<Mythology::Acceleration_structure> top_level_acceleration_structures = create_top_level_acceleration_structures(
+                physical_device_type,
+                device,
+                queue,
+                command_pool,
+                bottom_level_acceleration_structures,
+                buffer_resources.acceleration_structure_storage,
+                buffer_resources.instance,
+                buffer_resources.upload,
+                buffer_resources.scratch,
+                world,
+                scene,
+                allocation_callbacks,
+                output_allocator,
+                temporaries_allocator
+            );
+
+            return Scene_resources
+            {
+                .world = std::move(world),
+                .buffers_data = std::move(buffers_data),
+                .bottom_level_acceleration_structures = std::move(bottom_level_acceleration_structures),
+                .top_level_acceleration_structures = std::move(top_level_acceleration_structures)
+            };
         }
     }
 
@@ -335,6 +494,34 @@ namespace Mythology::SDL
                 {},
                 {}
         );
+
+        vk::PhysicalDevice const render_pipeline_physical_device = physical_devices[device_configurations[render_pipeline_configuration.device_index].physical_device_index];
+        vk::PhysicalDeviceType const render_pipeline_physical_device_type = render_pipeline_physical_device.getProperties().deviceType;
+        vk::Queue const render_pipeline_upload_queue = queues[device_configurations[render_pipeline_configuration.device_index].upload_queue_index];
+        vk::CommandPool const render_pipeline_command_pool = command_pools_resources.command_pools[device_configurations[render_pipeline_configuration.device_index].upload_queue_index];
+
+        Buffer_resources buffer_resources = create_buffer_resources(
+            render_pipeline_physical_device,
+            render_pipeline_physical_device_type,
+            render_pipeline_device
+        );
+
+        std::optional<Scene_resources> const scene_resources = load_scene(
+            m_gltf_path,
+            render_pipeline_physical_device_type,
+            render_pipeline_device,
+            render_pipeline_upload_queue,
+            render_pipeline_command_pool,
+            buffer_resources,
+            nullptr,
+            {},
+            {}
+        );
+
+        if (!scene_resources)
+        {
+            return {};
+        }
 
         std::uint8_t frame_index = 0;
 
