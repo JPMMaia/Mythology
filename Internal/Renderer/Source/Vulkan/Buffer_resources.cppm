@@ -2,6 +2,7 @@ module;
 
 #include <vulkan/vulkan.hpp>
 
+#include <cstdint>
 #include <memory_resource>
 #include <span>
 #include <vector>
