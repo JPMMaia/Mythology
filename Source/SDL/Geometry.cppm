@@ -25,7 +25,6 @@ namespace Mythology
         vk::Device device,
         vk::Queue queue,
         vk::CommandPool command_pool,
-        vk::CommandBuffer command_buffer,
         Maia::Renderer::Vulkan::Buffer_resources& acceleration_structure_storage_buffer_resources,
         Maia::Renderer::Vulkan::Buffer_resources& geometry_buffer_resources,
         Maia::Renderer::Vulkan::Buffer_resources& upload_buffer_resources,
@@ -42,14 +41,13 @@ namespace Mythology
         vk::Device device,
         vk::Queue queue,
         vk::CommandPool command_pool,
-        vk::CommandBuffer command_buffer,
+        std::span<Acceleration_structure const> bottom_level_acceleration_structures,
+        Maia::Renderer::Vulkan::Buffer_resources& acceleration_structure_storage_buffer_resources, // vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR
+        Maia::Renderer::Vulkan::Buffer_resources& instance_buffer_resources, // vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddressKHR
+        Maia::Renderer::Vulkan::Buffer_resources& upload_buffer_resources,
+        Maia::Renderer::Vulkan::Buffer_resources& scratch_buffer_resources, // vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddressKHR
         Maia::Scene::World const& world,
         Maia::Scene::Scene const& scene,
-        std::span<Acceleration_structure const> bottom_level_acceleration_structures,
-        Maia::Renderer::Vulkan::Buffer_resources& acceleration_structure_build_input_buffer_resources, // vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddressKHR
-        Maia::Renderer::Vulkan::Buffer_resources& acceleration_structure_storage_buffer_resources, // vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR
-        Maia::Renderer::Vulkan::Buffer_resources& scratch_buffer_resources, // vk::BufferUsage::eStorageBuffer | vk::BufferUsage::eShaderDeviceAddressKHR
-        Maia::Renderer::Vulkan::Buffer_resources& upload_buffer_resources,
         vk::AllocationCallbacks const* allocation_callbacks,
         std::pmr::polymorphic_allocator<> const& output_allocator,
         std::pmr::polymorphic_allocator<> const& temporaries_allocator

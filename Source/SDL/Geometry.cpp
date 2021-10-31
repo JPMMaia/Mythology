@@ -793,7 +793,6 @@ namespace Mythology
         vk::Device const device,
         vk::Queue const queue,
         vk::CommandPool const command_pool,
-        vk::CommandBuffer const command_buffer,
         Maia::Renderer::Vulkan::Buffer_resources& acceleration_structure_storage_buffer_resources,
         Maia::Renderer::Vulkan::Buffer_resources& geometry_buffer_resources,
         Maia::Renderer::Vulkan::Buffer_resources& upload_buffer_resources,
@@ -854,6 +853,8 @@ namespace Mythology
                 output_allocator
             );
 
+        vk::CommandBuffer const command_buffer = create_one_time_submit_command_buffer(device, command_pool);
+
         build_bottom_level_acceleration_structures(
             device,
             command_buffer,
@@ -864,6 +865,8 @@ namespace Mythology
             world,
             temporaries_allocator
         );
+
+        submit_and_wait(device, queue, command_pool, command_buffer, allocation_callbacks);
 
         return acceleration_structures;
     }
@@ -1156,14 +1159,13 @@ namespace Mythology
         vk::Device const device,
         vk::Queue const queue,
         vk::CommandPool const command_pool,
-        vk::CommandBuffer const command_buffer,
+        std::span<Acceleration_structure const> const bottom_level_acceleration_structures,
+        Maia::Renderer::Vulkan::Buffer_resources& acceleration_structure_storage_buffer_resources,
+        Maia::Renderer::Vulkan::Buffer_resources& instance_buffer_resources,
+        Maia::Renderer::Vulkan::Buffer_resources& upload_buffer_resources,
+        Maia::Renderer::Vulkan::Buffer_resources& scratch_buffer_resources,
         Maia::Scene::World const& world,
         Maia::Scene::Scene const& scene,
-        std::span<Acceleration_structure const> const bottom_level_acceleration_structures,
-        Maia::Renderer::Vulkan::Buffer_resources& acceleration_structure_build_input_buffer_resources,
-        Maia::Renderer::Vulkan::Buffer_resources& acceleration_structure_storage_buffer_resources,
-        Maia::Renderer::Vulkan::Buffer_resources& scratch_buffer_resources,
-        Maia::Renderer::Vulkan::Buffer_resources& upload_buffer_resources,
         vk::AllocationCallbacks const* const allocation_callbacks,
         std::pmr::polymorphic_allocator<> const& output_allocator,
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
@@ -1206,7 +1208,7 @@ namespace Mythology
         auto const create_instance_buffer_view = [&](vk::AccelerationStructureInstanceKHR const acceleration_structure_instance) -> Maia::Renderer::Vulkan::Buffer_view
         {
             Maia::Renderer::Vulkan::Buffer_view const instance_buffer_view =
-                acceleration_structure_build_input_buffer_resources.allocate_buffer(
+                instance_buffer_resources.allocate_buffer(
                     sizeof(VkAccelerationStructureInstanceKHR),
                     vk::MemoryPropertyFlagBits::eDeviceLocal
                 );
@@ -1261,6 +1263,8 @@ namespace Mythology
                 temporaries_allocator
                 );
 
+        vk::CommandBuffer const command_buffer = create_one_time_submit_command_buffer(device, command_pool);
+
         auto const build_top_level_acceleration_structure_lambda = [&](std::size_t const acceleration_structure_index) -> void
         {
             build_top_level_acceleration_structure(
@@ -1275,6 +1279,8 @@ namespace Mythology
 
         auto mesh_nodes_copy = mesh_nodes;
         std::ranges::for_each(mesh_nodes_copy, build_top_level_acceleration_structure_lambda);
+
+        submit_and_wait(device, queue, command_pool, command_buffer, allocation_callbacks);
 
         return acceleration_structures;
     }
