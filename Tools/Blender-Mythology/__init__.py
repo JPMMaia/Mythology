@@ -11,6 +11,7 @@ from .common import *
 from .draw import *
 from .export import *
 from .pipeline_state import *
+from .ray_tracing import *
 from .render_node_tree import *
 from .render_pass import *
 from .resources import *
@@ -86,6 +87,10 @@ classes = (
     pipeline_state.VertexInputStateNode,
     pipeline_state.ViewportNode,
     pipeline_state.ViewportStateNode,
+    ray_tracing.RayTracingPipelineStateNode,
+    ray_tracing.RayTracingPipelineStateNodeSocket,
+    ray_tracing.RayTracingShaderGroupNode,
+    ray_tracing.RayTracingShaderGroupNodeSocket,
     render_pass.AccessFlagsNodeSocket,
     render_pass.AttachmentNodeSocket,
     render_pass.AttachmentReferenceNodeSocket,
@@ -124,6 +129,7 @@ def register():
 
     nodeitems_utils.register_node_categories("COMMON", common_node_categories)
     nodeitems_utils.register_node_categories("COMMANDS", draw_node_categories)
+    nodeitems_utils.register_node_categories("RAY_TRACING", ray_tracing_node_categories)
     nodeitems_utils.register_node_categories("RENDER_PASS", render_pass_node_categories)
     nodeitems_utils.register_node_categories(
         "PIPELINE_STATE", pipeline_state_node_categories
@@ -143,6 +149,7 @@ def unregister():
     nodeitems_utils.unregister_node_categories("COMMON")
     nodeitems_utils.unregister_node_categories("COMMANDS")
     nodeitems_utils.unregister_node_categories("PIPELINE_STATE")
+    nodeitems_utils.unregister_node_categories("RAY_TRACING")
     nodeitems_utils.unregister_node_categories("RENDER_PASS")
 
     from bpy.utils import unregister_class
