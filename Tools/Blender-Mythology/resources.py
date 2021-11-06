@@ -1,7 +1,8 @@
 import bpy
 
+
 class ImageNodeSocket(bpy.types.NodeSocket):
-    
+
     bl_label = "Image node socket"
 
     def draw(self, context, layout, node, text):
@@ -10,8 +11,9 @@ class ImageNodeSocket(bpy.types.NodeSocket):
     def draw_color(self, context, node):
         return (0.0, 0.0, 1.0, 1.0)
 
+
 class ImageSubresourceRangeNodeSocket(bpy.types.NodeSocket):
-    
+
     bl_label = "Image Subresource Range node socket"
 
     def draw(self, context, layout, node, text):

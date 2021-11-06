@@ -17,15 +17,12 @@ from .resources import *
 
 classes = (
     render_node_tree.RenderNodeTree,
-
     common.Extent2DNodeSocket,
     common.Offset2DNodeSocket,
     common.Rect2DNodeSocket,
-
     common.Extent2DNode,
     common.Offset2DNode,
     common.Rect2DNode,
-
     draw.ClearColorValueNodeSocket,
     draw.ClearDepthStencilValueNodeSocket,
     draw.ClearSubpassNodeSocket,
@@ -33,7 +30,6 @@ classes = (
     draw.ExecutionNodeSocket,
     draw.FramebufferNodeSocket,
     draw.ImageMemoryBarrierNodeSocket,
-
     draw.BeginFrameNode,
     draw.BeginRenderPassNode,
     draw.BindPipelineNode,
@@ -48,7 +44,6 @@ classes = (
     draw.ImageMemoryBarrierNode,
     draw.PipelineBarrierNode,
     draw.SetScreenViewportAndScissorsNode,
-
     pipeline_state.ColorBlendAttachmentStateNodeSocket,
     pipeline_state.ColorBlendStateNodeSocket,
     pipeline_state.DepthStencilStateNodeSocket,
@@ -70,7 +65,6 @@ classes = (
     pipeline_state.VertexInputStateNodeSocket,
     pipeline_state.ViewportNodeSocket,
     pipeline_state.ViewportStateNodeSocket,
-    
     pipeline_state.ColorBlendAttachmentStateNode,
     pipeline_state.ColorBlendStateNode,
     pipeline_state.DepthStencilStateNode,
@@ -92,7 +86,6 @@ classes = (
     pipeline_state.VertexInputStateNode,
     pipeline_state.ViewportNode,
     pipeline_state.ViewportStateNode,
-
     render_pass.AccessFlagsNodeSocket,
     render_pass.AttachmentNodeSocket,
     render_pass.AttachmentReferenceNodeSocket,
@@ -107,49 +100,52 @@ classes = (
     render_pass.StoreOperationNodeSocket,
     render_pass.SubpassDependencyNodeSocket,
     render_pass.SubpassNodeSocket,
-
     render_pass.AccessFlagsNode,
     render_pass.AttachmentNode,
     render_pass.AttachmentReferenceNode,
     render_pass.RenderPassNode,
     render_pass.SubpassDependencyNode,
     render_pass.SubpassNode,
-
     resources.ImageNodeSocket,
     resources.ImageSubresourceRangeNodeSocket,
-
-
     export.MythologyExportProperties,
     export.MythologyAddonPreferences,
     export.MythologyExportOperator,
     export.MythologyExportPanel,
 )
 
+
 def register():
 
     from bpy.utils import register_class
+
     for cls in classes:
         register_class(cls)
 
-    nodeitems_utils.register_node_categories('COMMON', common_node_categories)
-    nodeitems_utils.register_node_categories('COMMANDS', draw_node_categories)
-    nodeitems_utils.register_node_categories('RENDER_PASS', render_pass_node_categories)
-    nodeitems_utils.register_node_categories('PIPELINE_STATE', pipeline_state_node_categories)
+    nodeitems_utils.register_node_categories("COMMON", common_node_categories)
+    nodeitems_utils.register_node_categories("COMMANDS", draw_node_categories)
+    nodeitems_utils.register_node_categories("RENDER_PASS", render_pass_node_categories)
+    nodeitems_utils.register_node_categories(
+        "PIPELINE_STATE", pipeline_state_node_categories
+    )
 
     bpy.types.NODE_MT_node.append(export.mythology_export_menu)
 
-    bpy.types.Scene.mythology_export_settings = bpy.props.PointerProperty(type=export.MythologyExportProperties)
+    bpy.types.Scene.mythology_export_settings = bpy.props.PointerProperty(
+        type=export.MythologyExportProperties
+    )
 
 
 def unregister():
 
     bpy.types.NODE_MT_node.remove(export.mythology_export_menu)
 
-    nodeitems_utils.unregister_node_categories('COMMON')
-    nodeitems_utils.unregister_node_categories('COMMANDS')
-    nodeitems_utils.unregister_node_categories('PIPELINE_STATE')
-    nodeitems_utils.unregister_node_categories('RENDER_PASS')
+    nodeitems_utils.unregister_node_categories("COMMON")
+    nodeitems_utils.unregister_node_categories("COMMANDS")
+    nodeitems_utils.unregister_node_categories("PIPELINE_STATE")
+    nodeitems_utils.unregister_node_categories("RENDER_PASS")
 
     from bpy.utils import unregister_class
+
     for cls in reversed(classes):
         unregister_class(cls)

@@ -9,7 +9,7 @@ from .vulkan_enums import *
 
 
 class AccessFlagsNodeSocket(bpy.types.NodeSocket):
-    
+
     bl_label = "Access Flags Socket"
 
     enum_values = access_flag_values
@@ -18,7 +18,7 @@ class AccessFlagsNodeSocket(bpy.types.NodeSocket):
         name="Access Flags",
         description="Access Flags",
         items=enum_values,
-        options={"ANIMATABLE", "ENUM_FLAG"}
+        options={"ANIMATABLE", "ENUM_FLAG"},
     )
 
     def get_value(self) -> typing.Union[int, str]:
@@ -33,8 +33,9 @@ class AccessFlagsNodeSocket(bpy.types.NodeSocket):
     def draw_color(self, context, node):
         return (1.0, 0.0, 0.0, 1.0)
 
+
 class AttachmentNodeSocket(bpy.types.NodeSocket):
-    
+
     bl_label = "Attachment Node Socket"
 
     def draw(self, context, layout, node, text):
@@ -43,8 +44,9 @@ class AttachmentNodeSocket(bpy.types.NodeSocket):
     def draw_color(self, context, node):
         return (0.0, 1.0, 0.0, 1.0)
 
+
 class AttachmentReferenceNodeSocket(bpy.types.NodeSocket):
-    
+
     bl_label = "Attachment Reference Node Socket"
 
     def draw(self, context, layout, node, text):
@@ -53,8 +55,9 @@ class AttachmentReferenceNodeSocket(bpy.types.NodeSocket):
     def draw_color(self, context, node):
         return (0.0, 0.0, 1.0, 1.0)
 
+
 class DependencyFlagsNodeSocket(bpy.types.NodeSocket):
-    
+
     bl_label = "Dependency Flags Socket"
 
     enum_values = dependency_flag_values
@@ -78,15 +81,16 @@ class DependencyFlagsNodeSocket(bpy.types.NodeSocket):
     def draw_color(self, context, node):
         return (1.0, 0.5, 0.0, 1.0)
 
+
 class FormatNodeSocket(bpy.types.NodeSocket):
-    
+
     bl_label = "Format Node Socket"
 
     default_value: bpy.props.EnumProperty(
         name="Format",
         description="Format",
         items=format_values,
-        default='UNDEFINED',
+        default="UNDEFINED",
     )
 
     def get_value(self) -> typing.Union[int, str]:
@@ -103,7 +107,7 @@ class FormatNodeSocket(bpy.types.NodeSocket):
 
 
 class SampleCountNodeSocket(bpy.types.NodeSocket):
-    
+
     bl_label = "Format Node Socket"
 
     enum_values = (
@@ -135,8 +139,9 @@ class SampleCountNodeSocket(bpy.types.NodeSocket):
     def draw_color(self, context, node):
         return (0.0, 0.5, 1.0, 1.0)
 
+
 class LoadOperationNodeSocket(bpy.types.NodeSocket):
-    
+
     bl_label = "Load operation Socket"
 
     enum_values = (
@@ -166,7 +171,7 @@ class LoadOperationNodeSocket(bpy.types.NodeSocket):
 
 
 class StoreOperationNodeSocket(bpy.types.NodeSocket):
-    
+
     bl_label = "Store operation Socket"
 
     enum_values = [
@@ -193,8 +198,9 @@ class StoreOperationNodeSocket(bpy.types.NodeSocket):
     def draw_color(self, context, node):
         return (1.0, 1.0, 0.5, 1.0)
 
+
 class SubpassNodeSocket(bpy.types.NodeSocket):
-    
+
     bl_label = "Subpass Node Socket"
 
     def draw(self, context, layout, node, text):
@@ -203,8 +209,9 @@ class SubpassNodeSocket(bpy.types.NodeSocket):
     def draw_color(self, context, node):
         return (1.0, 0.25, 0.40, 1.0)
 
+
 class ImageLayoutNodeSocket(bpy.types.NodeSocket):
-    
+
     bl_label = "Image layout Socket"
 
     enum_values = image_layout_values
@@ -230,7 +237,7 @@ class ImageLayoutNodeSocket(bpy.types.NodeSocket):
 
 
 class PipelineBindPointNodeSocket(bpy.types.NodeSocket):
-    
+
     bl_label = "Pipeline Bind Point Node Socket"
 
     enum_values = (
@@ -259,7 +266,7 @@ class PipelineBindPointNodeSocket(bpy.types.NodeSocket):
 
 
 class PipelineStageFlagsNodeSocket(bpy.types.NodeSocket):
-    
+
     bl_label = "Pipeline Stage Flags Node Socket"
 
     enum_values = pipeline_stage_flag_values
@@ -283,8 +290,9 @@ class PipelineStageFlagsNodeSocket(bpy.types.NodeSocket):
     def draw_color(self, context, node):
         return (0.5, 0.75, 0.75, 1.0)
 
+
 class RenderPassNodeSocket(bpy.types.NodeSocket):
-    
+
     bl_label = "Render Pass Node Socket"
 
     def draw(self, context, layout, node, text):
@@ -293,8 +301,9 @@ class RenderPassNodeSocket(bpy.types.NodeSocket):
     def draw_color(self, context, node):
         return (1.0, 0.75, 0.75, 1.0)
 
+
 class SubpassDependencyNodeSocket(bpy.types.NodeSocket):
-    
+
     bl_label = "Subpass Dependency Node Socket"
 
     def draw(self, context, layout, node, text):
@@ -304,20 +313,19 @@ class SubpassDependencyNodeSocket(bpy.types.NodeSocket):
         return (0.0, 0.25, 0.75, 1.0)
 
 
-
 class AccessFlagsNode(bpy.types.Node, RenderTreeNode):
 
-    bl_label = 'Access Flags node'
+    bl_label = "Access Flags node"
 
     def init(self, context):
         self.inputs.new("AccessFlagsNodeSocket", "Flags")
-        
-        self.outputs.new('AccessFlagsNodeSocket', "Flags")
+
+        self.outputs.new("AccessFlagsNodeSocket", "Flags")
 
 
 class AttachmentNode(bpy.types.Node, RenderTreeNode):
 
-    bl_label = 'Attachment node'
+    bl_label = "Attachment node"
 
     def init(self, context):
         self.inputs.new("FormatNodeSocket", "Format")
@@ -329,12 +337,12 @@ class AttachmentNode(bpy.types.Node, RenderTreeNode):
         self.inputs.new("ImageLayoutNodeSocket", "Initial Layout")
         self.inputs.new("ImageLayoutNodeSocket", "Final Layout")
 
-        self.outputs.new('AttachmentNodeSocket', "Attachment")
+        self.outputs.new("AttachmentNodeSocket", "Attachment")
 
 
 class AttachmentReferenceNode(bpy.types.Node, RenderTreeNode):
 
-    bl_label = 'Attachment Reference node'
+    bl_label = "Attachment Reference node"
 
     def init(self, context):
         self.inputs.new("AttachmentNodeSocket", "Attachment")
@@ -342,15 +350,15 @@ class AttachmentReferenceNode(bpy.types.Node, RenderTreeNode):
         self.inputs.new("ImageLayoutNodeSocket", "Layout")
         self.inputs["Layout"].link_limit = 1
 
-        self.outputs.new('AttachmentReferenceNodeSocket', "Attachment Reference")
+        self.outputs.new("AttachmentReferenceNodeSocket", "Attachment Reference")
 
 
 # Derived from the Node base type.
 class RenderPassNode(bpy.types.Node, RenderTreeNode):
-    
-    bl_idname = 'RenderPassNode'
+
+    bl_idname = "RenderPassNode"
     bl_label = "Render pass node"
-    bl_icon = 'SOUND'
+    bl_icon = "SOUND"
 
     # === Custom Properties ===
     # These work just like custom properties in ID data blocks
@@ -366,18 +374,19 @@ class RenderPassNode(bpy.types.Node, RenderTreeNode):
     #       a purely internal Python method and unknown to the node system!
     def init(self, context):
         self.inputs.new("NodeSocketString", "Name")
-        self.inputs.new('AttachmentNodeSocket', "Attachments")
+        self.inputs.new("AttachmentNodeSocket", "Attachments")
         self.inputs["Attachments"].link_limit = 0
-        self.inputs.new('SubpassNodeSocket', "Subpasses")
+        self.inputs.new("SubpassNodeSocket", "Subpasses")
         self.inputs["Subpasses"].link_limit = 0
-        self.inputs.new('SubpassDependencyNodeSocket', "Dependencies")
+        self.inputs.new("SubpassDependencyNodeSocket", "Dependencies")
         self.inputs["Dependencies"].link_limit = 0
 
-        self.outputs.new('RenderPassNodeSocket', "Render Pass")
+        self.outputs.new("RenderPassNodeSocket", "Render Pass")
+
 
 class SubpassDependencyNode(bpy.types.Node, RenderTreeNode):
 
-    bl_label = 'Subpass Dependency node'
+    bl_label = "Subpass Dependency node"
 
     def init(self, context):
         self.inputs.new("SubpassNodeSocket", "Source Subpass")
@@ -389,11 +398,12 @@ class SubpassDependencyNode(bpy.types.Node, RenderTreeNode):
         self.inputs.new("AccessFlagsNodeSocket", "Destination Access Mask")
         self.inputs.new("DependencyFlagsNodeSocket", "Dependency Flags")
 
-        self.outputs.new('SubpassDependencyNodeSocket', "Subpass Dependency")
+        self.outputs.new("SubpassDependencyNodeSocket", "Subpass Dependency")
+
 
 class SubpassNode(bpy.types.Node, RenderTreeNode):
 
-    bl_label = 'Subpass node'
+    bl_label = "Subpass node"
 
     def init(self, context):
         self.inputs.new("PipelineBindPointNodeSocket", "Pipeline Bind Point")
@@ -405,36 +415,45 @@ class SubpassNode(bpy.types.Node, RenderTreeNode):
         self.inputs["Depth Stencil Attachment"].link_limit = 1
         self.inputs.new("AttachmentNodeSocket", "Preserve Attachments")
 
-        self.outputs.new('SubpassNodeSocket', "Subpass")
+        self.outputs.new("SubpassNodeSocket", "Subpass")
 
 
 import nodeitems_utils
 
+
 class RenderPassNodeCategory(nodeitems_utils.NodeCategory):
-    
     @classmethod
     def poll(cls, context):
-        return context.space_data.tree_type == 'RenderNodeTree'
+        return context.space_data.tree_type == "RenderNodeTree"
 
 
 render_pass_node_categories = [
-    RenderPassNodeCategory('RENDER_PASS', "Render pass", items=[
-        nodeitems_utils.NodeItem("AccessFlagsNode"),
-        nodeitems_utils.NodeItem("AttachmentNode"),
-        nodeitems_utils.NodeItem("AttachmentReferenceNode"),
-        nodeitems_utils.NodeItem("RenderPassNode"),
-        nodeitems_utils.NodeItem("SubpassDependencyNode"),
-        nodeitems_utils.NodeItem("SubpassNode"),
-    ]),
+    RenderPassNodeCategory(
+        "RENDER_PASS",
+        "Render pass",
+        items=[
+            nodeitems_utils.NodeItem("AccessFlagsNode"),
+            nodeitems_utils.NodeItem("AttachmentNode"),
+            nodeitems_utils.NodeItem("AttachmentReferenceNode"),
+            nodeitems_utils.NodeItem("RenderPassNode"),
+            nodeitems_utils.NodeItem("SubpassDependencyNode"),
+            nodeitems_utils.NodeItem("SubpassNode"),
+        ],
+    ),
 ]
 
 import functools
 import operator
 import typing
 
-JSONType = typing.Union[str, int, float, bool, None, typing.Dict[str, typing.Any], typing.List[typing.Any]]
+JSONType = typing.Union[
+    str, int, float, bool, None, typing.Dict[str, typing.Any], typing.List[typing.Any]
+]
 
-def get_attachment_input(attachment_node: AttachmentNode, input_name: str) -> typing.Any:
+
+def get_attachment_input(
+    attachment_node: AttachmentNode, input_name: str
+) -> typing.Any:
 
     assert len(attachment_node.inputs[input_name].links) == 0
 
@@ -442,76 +461,118 @@ def get_attachment_input(attachment_node: AttachmentNode, input_name: str) -> ty
 
 
 def attachment_to_json(attachment_node: AttachmentNode) -> JSONType:
-    
+
     return {
-        "flags": 0, # TODO
+        "flags": 0,  # TODO
         "format": get_attachment_input(attachment_node, "Format"),
         "samples": get_attachment_input(attachment_node, "Sample Count"),
         "load_operation": get_attachment_input(attachment_node, "Load Op"),
         "store_operation": get_attachment_input(attachment_node, "Store Op"),
-        "stencil_load_operation": get_attachment_input(attachment_node, "Stencil Load Op"),
-        "stencil_store_operation": get_attachment_input(attachment_node, "Stencil Store Op"),
+        "stencil_load_operation": get_attachment_input(
+            attachment_node, "Stencil Load Op"
+        ),
+        "stencil_store_operation": get_attachment_input(
+            attachment_node, "Stencil Store Op"
+        ),
         "initial_layout": get_attachment_input(attachment_node, "Initial Layout"),
         "final_layout": get_attachment_input(attachment_node, "Final Layout"),
     }
 
 
-def get_attachment_reference_input(attachment_reference_node: AttachmentReferenceNode, input_name: str) -> typing.Any:
-    
+def get_attachment_reference_input(
+    attachment_reference_node: AttachmentReferenceNode, input_name: str
+) -> typing.Any:
+
     assert len(attachment_reference_node.inputs[input_name].links) == 0
 
     return attachment_reference_node.inputs[input_name].get_value()
 
+
 def get_subpass_input(subpass_node: SubpassNode, input_name: str) -> typing.Any:
-    
+
     assert len(subpass_node.inputs[input_name].links) == 0
 
     return subpass_node.inputs[input_name].get_value()
 
-def get_attachment_references(subpass_node: SubpassNode, input_name: str, attachments: typing.List[AttachmentNode]) -> JSONType:
 
-    attachment_reference_nodes = [link.from_node
-                                  for link in subpass_node.inputs[input_name].links]
+def get_attachment_references(
+    subpass_node: SubpassNode, input_name: str, attachments: typing.List[AttachmentNode]
+) -> JSONType:
 
-    assert functools.reduce(operator.and_, [node.bl_idname == "AttachmentReferenceNode" and len(node.inputs["Attachment"].links) == 1
-                                            for node in attachment_reference_nodes], True)
+    attachment_reference_nodes = [
+        link.from_node for link in subpass_node.inputs[input_name].links
+    ]
 
-    attachment_indices = [attachments.index(node.inputs["Attachment"].links[0].from_node)
-                          for node in attachment_reference_nodes]
+    assert functools.reduce(
+        operator.and_,
+        [
+            node.bl_idname == "AttachmentReferenceNode"
+            and len(node.inputs["Attachment"].links) == 1
+            for node in attachment_reference_nodes
+        ],
+        True,
+    )
 
-    layouts = [get_attachment_reference_input(node, "Layout")
-               for node in attachment_reference_nodes]
+    attachment_indices = [
+        attachments.index(node.inputs["Attachment"].links[0].from_node)
+        for node in attachment_reference_nodes
+    ]
 
-    return [{"attachment": attachment_index, "layout": layout}
-            for (attachment_index, layout) in zip(attachment_indices, layouts)]
+    layouts = [
+        get_attachment_reference_input(node, "Layout")
+        for node in attachment_reference_nodes
+    ]
 
-def subpass_to_json(subpass_node: SubpassNode, attachments: typing.List[AttachmentNode]) -> JSONType:
+    return [
+        {"attachment": attachment_index, "layout": layout}
+        for (attachment_index, layout) in zip(attachment_indices, layouts)
+    ]
+
+
+def subpass_to_json(
+    subpass_node: SubpassNode, attachments: typing.List[AttachmentNode]
+) -> JSONType:
 
     # TODO implement
     assert len(subpass_node.inputs["Resolve Attachments"].links) == 0
 
-    depth_stencil_attachments = get_attachment_references(subpass_node, "Depth Stencil Attachment", attachments)
+    depth_stencil_attachments = get_attachment_references(
+        subpass_node, "Depth Stencil Attachment", attachments
+    )
     assert len(depth_stencil_attachments) <= 1
-    depth_stencil_attachment = depth_stencil_attachments[0] if len(depth_stencil_attachments) == 1 else {}
+    depth_stencil_attachment = (
+        depth_stencil_attachments[0] if len(depth_stencil_attachments) == 1 else {}
+    )
 
     return {
         "pipeline_bind_point": get_subpass_input(subpass_node, "Pipeline Bind Point"),
-        "input_attachments": get_attachment_references(subpass_node, "Input Attachments", attachments),
-        "color_attachments": get_attachment_references(subpass_node, "Color Attachments", attachments),
+        "input_attachments": get_attachment_references(
+            subpass_node, "Input Attachments", attachments
+        ),
+        "color_attachments": get_attachment_references(
+            subpass_node, "Color Attachments", attachments
+        ),
         "resolve_attachments": [],
         "depth_stencil_attachment": depth_stencil_attachment,
-        "preserve_attachments": [attachments.index(link.from_node)
-                                 for link in subpass_node.inputs["Preserve Attachments"].links]
+        "preserve_attachments": [
+            attachments.index(link.from_node)
+            for link in subpass_node.inputs["Preserve Attachments"].links
+        ],
     }
 
-def get_subpass_dependency_input(subpass_dependency_node: SubpassDependencyNode, input_name: str) -> typing.Any:
-    
+
+def get_subpass_dependency_input(
+    subpass_dependency_node: SubpassDependencyNode, input_name: str
+) -> typing.Any:
+
     assert len(subpass_dependency_node.inputs[input_name].links) == 0
 
     return subpass_dependency_node.inputs[input_name].get_value()
 
 
-def get_subpass_index(subpass_socket: SubpassNodeSocket, subpasses: typing.List[SubpassNode]) -> typing.Union[int, str]:
+def get_subpass_index(
+    subpass_socket: SubpassNodeSocket, subpasses: typing.List[SubpassNode]
+) -> typing.Union[int, str]:
 
     assert len(subpass_socket.links) <= 1
 
@@ -519,69 +580,139 @@ def get_subpass_index(subpass_socket: SubpassNodeSocket, subpasses: typing.List[
         return "external"
 
     else:
-        return subpasses.index(subpass_socket.links[0].from_node) 
+        return subpasses.index(subpass_socket.links[0].from_node)
 
 
-def subpass_dependency_to_json(subpass_depency_node: SubpassDependencyNode, subpasses: typing.List[SubpassNode]) -> JSONType:
-    
+def subpass_dependency_to_json(
+    subpass_depency_node: SubpassDependencyNode, subpasses: typing.List[SubpassNode]
+) -> JSONType:
+
     return {
-        "source_subpass": get_subpass_index(subpass_depency_node.inputs["Source Subpass"], subpasses),
-        "destination_subpass": get_subpass_index(subpass_depency_node.inputs["Destination Subpass"], subpasses),
-        "source_stage_mask": get_subpass_dependency_input(subpass_depency_node, "Source Stage Mask"),
-        "destination_stage_mask": get_subpass_dependency_input(subpass_depency_node, "Destination Stage Mask"),
-        "source_access_mask": get_subpass_dependency_input(subpass_depency_node, "Source Access Mask"),
-        "destination_access_mask": get_subpass_dependency_input(subpass_depency_node, "Destination Access Mask"),
-        "dependency_flags": get_subpass_dependency_input(subpass_depency_node, "Dependency Flags")
+        "source_subpass": get_subpass_index(
+            subpass_depency_node.inputs["Source Subpass"], subpasses
+        ),
+        "destination_subpass": get_subpass_index(
+            subpass_depency_node.inputs["Destination Subpass"], subpasses
+        ),
+        "source_stage_mask": get_subpass_dependency_input(
+            subpass_depency_node, "Source Stage Mask"
+        ),
+        "destination_stage_mask": get_subpass_dependency_input(
+            subpass_depency_node, "Destination Stage Mask"
+        ),
+        "source_access_mask": get_subpass_dependency_input(
+            subpass_depency_node, "Source Access Mask"
+        ),
+        "destination_access_mask": get_subpass_dependency_input(
+            subpass_depency_node, "Destination Access Mask"
+        ),
+        "dependency_flags": get_subpass_dependency_input(
+            subpass_depency_node, "Dependency Flags"
+        ),
     }
 
+
 def render_pass_to_json(
-    nodes: typing.List[bpy.types.Node]
-) -> typing.Tuple[typing.List[RenderPassNode], typing.List[typing.List[SubpassNode]], JSONType]:
-    
-    render_pass_nodes = [node
-                         for node in nodes
-                         if node.bl_idname == "RenderPassNode"]
+    nodes: typing.List[bpy.types.Node],
+) -> typing.Tuple[
+    typing.List[RenderPassNode], typing.List[typing.List[SubpassNode]], JSONType
+]:
 
-    render_pass_names = [node.inputs["Name"].default_value
-                         for node in render_pass_nodes]
+    render_pass_nodes = [node for node in nodes if node.bl_idname == "RenderPassNode"]
 
-    assert functools.reduce(operator.and_, [len(node.inputs["Subpasses"].links) > 0
-                                            for node in render_pass_nodes], True)
+    render_pass_names = [
+        node.inputs["Name"].default_value for node in render_pass_nodes
+    ]
 
-    attachments_per_render_pass = [[link.from_node 
-                                    for link in node.inputs["Attachments"].links]
-                                   for node in render_pass_nodes]
+    assert functools.reduce(
+        operator.and_,
+        [len(node.inputs["Subpasses"].links) > 0 for node in render_pass_nodes],
+        True,
+    )
 
-    assert functools.reduce(operator.and_, [attachment.bl_idname == "AttachmentNode"
-                                            for attachments in attachments_per_render_pass
-                                            for attachment in attachments], True)
+    attachments_per_render_pass = [
+        [link.from_node for link in node.inputs["Attachments"].links]
+        for node in render_pass_nodes
+    ]
 
-    subpasses_per_render_pass = [[link.from_node 
-                                  for link in node.inputs["Subpasses"].links]
-                                 for node in render_pass_nodes]
+    assert functools.reduce(
+        operator.and_,
+        [
+            attachment.bl_idname == "AttachmentNode"
+            for attachments in attachments_per_render_pass
+            for attachment in attachments
+        ],
+        True,
+    )
 
-    assert functools.reduce(operator.and_, [subpass.bl_idname == "SubpassNode"
-                                            for subpasses in subpasses_per_render_pass
-                                            for subpass in subpasses], True)
+    subpasses_per_render_pass = [
+        [link.from_node for link in node.inputs["Subpasses"].links]
+        for node in render_pass_nodes
+    ]
 
-    subpass_dependencies_per_render_pass = [[link.from_node 
-                                             for link in node.inputs["Dependencies"].links]
-                                            for node in render_pass_nodes]
+    assert functools.reduce(
+        operator.and_,
+        [
+            subpass.bl_idname == "SubpassNode"
+            for subpasses in subpasses_per_render_pass
+            for subpass in subpasses
+        ],
+        True,
+    )
 
-    assert functools.reduce(operator.and_, [subpass_dependency.bl_idname == "SubpassDependencyNode"
-                                            for subpass_dependencies in subpass_dependencies_per_render_pass
-                                            for subpass_dependency in subpass_dependencies], True)
+    subpass_dependencies_per_render_pass = [
+        [link.from_node for link in node.inputs["Dependencies"].links]
+        for node in render_pass_nodes
+    ]
 
-    attachments_per_render_pass_jsons = [[attachment_to_json(attachment) for attachment in attachments]
-                                         for attachments in attachments_per_render_pass]
+    assert functools.reduce(
+        operator.and_,
+        [
+            subpass_dependency.bl_idname == "SubpassDependencyNode"
+            for subpass_dependencies in subpass_dependencies_per_render_pass
+            for subpass_dependency in subpass_dependencies
+        ],
+        True,
+    )
 
-    subpasses_per_render_pass_jsons = [[subpass_to_json(subpass, attachments_per_render_pass[render_pass_index]) for subpass in subpasses]
-                                       for render_pass_index, subpasses in enumerate(subpasses_per_render_pass)]
+    attachments_per_render_pass_jsons = [
+        [attachment_to_json(attachment) for attachment in attachments]
+        for attachments in attachments_per_render_pass
+    ]
 
-    dependencies_per_render_pass_jsons = [[subpass_dependency_to_json(subpass_dependency, subpasses_per_render_pass[render_pass_index]) for subpass_dependency in subpass_dependencies]
-                                          for render_pass_index, subpass_dependencies in enumerate(subpass_dependencies_per_render_pass)]
+    subpasses_per_render_pass_jsons = [
+        [
+            subpass_to_json(subpass, attachments_per_render_pass[render_pass_index])
+            for subpass in subpasses
+        ]
+        for render_pass_index, subpasses in enumerate(subpasses_per_render_pass)
+    ]
 
-    json = [{"name": name, "attachments": attachment_jsons, "subpasses": subpass_jsons, "dependencies": dependency_jsons}
-            for (name, attachment_jsons, subpass_jsons, dependency_jsons) in zip(render_pass_names, attachments_per_render_pass_jsons, subpasses_per_render_pass_jsons, dependencies_per_render_pass_jsons)]
+    dependencies_per_render_pass_jsons = [
+        [
+            subpass_dependency_to_json(
+                subpass_dependency, subpasses_per_render_pass[render_pass_index]
+            )
+            for subpass_dependency in subpass_dependencies
+        ]
+        for render_pass_index, subpass_dependencies in enumerate(
+            subpass_dependencies_per_render_pass
+        )
+    ]
+
+    json = [
+        {
+            "name": name,
+            "attachments": attachment_jsons,
+            "subpasses": subpass_jsons,
+            "dependencies": dependency_jsons,
+        }
+        for (name, attachment_jsons, subpass_jsons, dependency_jsons) in zip(
+            render_pass_names,
+            attachments_per_render_pass_jsons,
+            subpasses_per_render_pass_jsons,
+            dependencies_per_render_pass_jsons,
+        )
+    ]
 
     return (render_pass_nodes, subpasses_per_render_pass, json)

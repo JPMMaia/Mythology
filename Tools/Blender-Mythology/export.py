@@ -2,13 +2,14 @@ import bpy
 import json
 import pathlib
 
+
 class MythologyAddonPreferences(bpy.types.AddonPreferences):
-    
+
     bl_idname = __package__
 
     directx_shader_compiler: bpy.props.StringProperty(
         name="DirectX Shader Compiler",
-        subtype='FILE_PATH',
+        subtype="FILE_PATH",
         default="dxc",
     )
 
@@ -19,23 +20,31 @@ class MythologyAddonPreferences(bpy.types.AddonPreferences):
 
 from .compile_shader import compile_shaders
 from .draw import frame_commands_to_json
-from .pipeline_state import create_samplers_json, create_descriptor_set_layouts_json, create_pipeline_layouts_json, pipeline_state_to_json, shader_module_to_json
+from .pipeline_state import (
+    create_samplers_json,
+    create_descriptor_set_layouts_json,
+    create_pipeline_layouts_json,
+    pipeline_state_to_json,
+    shader_module_to_json,
+)
 from .render_pass import render_pass_to_json
+
 
 class MythologyExportProperties(bpy.types.PropertyGroup):
 
     output_file: bpy.props.StringProperty(
         name="Output JSON File",
-        subtype='FILE_PATH',
+        subtype="FILE_PATH",
         default="//pipeline.json",
     )
+
 
 class MythologyExportPanel(bpy.types.Panel):
 
     bl_label = "Export to Mythology"
     bl_idname = "OUTPUT_PT_mythology_export_panel"
-    bl_space_type = 'PROPERTIES'
-    bl_region_type = 'WINDOW'
+    bl_space_type = "PROPERTIES"
+    bl_region_type = "WINDOW"
     bl_context = "output"
 
     def draw(self, context):
@@ -47,13 +56,12 @@ class MythologyExportPanel(bpy.types.Panel):
 
         layout.operator("mythology.export_json")
 
-def write_json_to_file(
-    output_json,
-    output_file: pathlib.PurePath
-) -> None:
 
-    with open(str(output_file), 'w') as output_stream:
+def write_json_to_file(output_json, output_file: pathlib.PurePath) -> None:
+
+    with open(str(output_file), "w") as output_stream:
         json.dump(output_json, output_stream)
+
 
 class MythologyExportOperator(bpy.types.Operator):
 
@@ -67,22 +75,26 @@ class MythologyExportOperator(bpy.types.Operator):
         export_settings = context.scene.mythology_export_settings
 
         shader_compiler = pathlib.PurePath(addon_preferences.directx_shader_compiler)
-        output_json_file = pathlib.PurePath(bpy.path.abspath(export_settings.output_file))
+        output_json_file = pathlib.PurePath(
+            bpy.path.abspath(export_settings.output_file)
+        )
         output_json_directory = output_json_file.parents[0]
 
-        nodes = [node
-                 for node_group in bpy.data.node_groups
-                 for node in node_group.nodes]
+        nodes = [
+            node for node_group in bpy.data.node_groups for node in node_group.nodes
+        ]
 
         if not compile_shaders(shader_compiler, output_json_directory, nodes):
-            return {'FINISHED'}
+            return {"FINISHED"}
 
         render_passes = render_pass_to_json(nodes)
         shader_modules = shader_module_to_json(nodes)
         samplers = create_samplers_json(nodes)
         descriptor_set_layouts = create_descriptor_set_layouts_json(nodes, samplers)
         pipeline_layouts = create_pipeline_layouts_json(nodes, descriptor_set_layouts)
-        pipeline_states = pipeline_state_to_json(nodes, render_passes, shader_modules, pipeline_layouts)
+        pipeline_states = pipeline_state_to_json(
+            nodes, render_passes, shader_modules, pipeline_layouts
+        )
         frame_commands = frame_commands_to_json(nodes, pipeline_states, render_passes)
 
         output_json = {
@@ -92,12 +104,13 @@ class MythologyExportOperator(bpy.types.Operator):
             "descriptor_set_layouts": descriptor_set_layouts[1],
             "pipeline_layouts": pipeline_layouts[1],
             "pipeline_states": pipeline_states[1],
-            "frame_commands": frame_commands
+            "frame_commands": frame_commands,
         }
 
         write_json_to_file(output_json, output_json_file)
-        
-        return {'FINISHED'}
+
+        return {"FINISHED"}
+
 
 def mythology_export_menu(self, context):
 
