@@ -916,7 +916,17 @@ namespace Mythology
 
     kln::translator to_translation(Vector3f const& vector) noexcept
     {
-        return kln::translator{ 1.0f, vector.x, vector.y, vector.z };
+        float const length_squared = vector.x * vector.x + vector.y * vector.y + vector.z * vector.z;
+
+        if (length_squared == 0.0f)
+        {
+            return kln::translator{};
+        }
+        else
+        {
+            float const length = std::sqrt(length_squared);
+            return kln::translator{ length, vector.x, vector.y, vector.z };
+        }
     }
 
     kln::rotor to_rotor(Quaternionf const& quaternion) noexcept
