@@ -972,20 +972,20 @@ namespace Mythology
 
         vk::TransformMatrixKHR row_major_transform = {};
 
-        row_major_transform.matrix[0][0] = column_major_transform.data[0 * 3 + 0];
-        row_major_transform.matrix[0][1] = column_major_transform.data[1 * 3 + 0];
-        row_major_transform.matrix[0][2] = column_major_transform.data[2 * 3 + 0];
-        row_major_transform.matrix[0][3] = column_major_transform.data[3 * 3 + 0];
+        row_major_transform.matrix[0][0] = column_major_transform.data[0 * 4 + 0];
+        row_major_transform.matrix[0][1] = column_major_transform.data[1 * 4 + 0];
+        row_major_transform.matrix[0][2] = column_major_transform.data[2 * 4 + 0];
+        row_major_transform.matrix[0][3] = column_major_transform.data[3 * 4 + 0];
 
-        row_major_transform.matrix[1][0] = column_major_transform.data[0 * 3 + 1];
-        row_major_transform.matrix[1][1] = column_major_transform.data[1 * 3 + 1];
-        row_major_transform.matrix[1][2] = column_major_transform.data[2 * 3 + 1];
-        row_major_transform.matrix[1][3] = column_major_transform.data[3 * 3 + 1];
+        row_major_transform.matrix[1][0] = column_major_transform.data[0 * 4 + 1];
+        row_major_transform.matrix[1][1] = column_major_transform.data[1 * 4 + 1];
+        row_major_transform.matrix[1][2] = column_major_transform.data[2 * 4 + 1];
+        row_major_transform.matrix[1][3] = column_major_transform.data[3 * 4 + 1];
 
-        row_major_transform.matrix[2][0] = column_major_transform.data[0 * 3 + 2];
-        row_major_transform.matrix[2][1] = column_major_transform.data[1 * 3 + 2];
-        row_major_transform.matrix[2][2] = column_major_transform.data[2 * 3 + 2];
-        row_major_transform.matrix[2][3] = column_major_transform.data[3 * 3 + 2];
+        row_major_transform.matrix[2][0] = column_major_transform.data[0 * 4 + 2];
+        row_major_transform.matrix[2][1] = column_major_transform.data[1 * 4 + 2];
+        row_major_transform.matrix[2][2] = column_major_transform.data[2 * 4 + 2];
+        row_major_transform.matrix[2][3] = column_major_transform.data[3 * 4 + 2];
 
         return row_major_transform;
     }
