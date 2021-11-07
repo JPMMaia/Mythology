@@ -761,6 +761,8 @@ namespace Mythology
             };
 
             std::pmr::vector<vk::AccelerationStructureBuildRangeInfoKHR> acceleration_structure_build_range_info{ temporaries_allocator };
+            acceleration_structure_build_range_info.resize(mesh.primitives.size());
+
             for (std::size_t primitive_index = 0; primitive_index < mesh.primitives.size(); ++primitive_index)
             {
                 Primitive const& primitive = mesh.primitives[primitive_index];
