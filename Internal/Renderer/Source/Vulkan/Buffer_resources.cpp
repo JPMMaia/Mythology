@@ -152,16 +152,9 @@ namespace Maia::Renderer::Vulkan
     {
         auto const has_free_space = [this, required_size](std::size_t const index) -> bool
         {
-            if (index < m_allocated_bytes.size())
-            {
-                vk::DeviceSize const allocated_bytes = m_allocated_bytes[index];
+            vk::DeviceSize const allocated_bytes = m_allocated_bytes[index];
 
-                return (allocated_bytes + required_size) <= m_block_size; // TODO align
-            }
-            else
-            {
-                return false;
-            }
+            return (allocated_bytes + required_size) <= m_block_size; // TODO align
         };
 
         auto const has_required_memory_properties = [this, required_memory_property_flags](std::size_t const index) -> bool
@@ -213,6 +206,7 @@ namespace Maia::Renderer::Vulkan
             m_buffers.push_back(buffer_memory.buffer);
             m_device_memory.push_back(buffer_memory.memory);
             m_memory_type_bits.push_back(buffer_memory.memory_type_bits);
+            m_allocated_bytes.push_back(required_size);
 
             Buffer_view const buffer_view
             {
