@@ -1922,7 +1922,7 @@ namespace Maia::Renderer::Vulkan
                 std::pmr::vector<vk::Pipeline>{ temporaries_allocator };
 
             std::pmr::vector<vk::Pipeline> const ray_tracing_pipelines =
-                pipeline_json.contains("graphics_pipeline_states") ?
+                pipeline_json.contains("ray_tracing_pipeline_states") ?
                 create_ray_tracing_pipeline_states(
                     device,
                     pipeline_cache,
