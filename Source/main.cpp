@@ -76,9 +76,9 @@ namespace
         std::map<std::string, docopt::value> const& arguments
     )
     {
-        if (arguments.contains("gltf"))
+        if (arguments.contains("--gltf"))
         {
-            return std::filesystem::path{ arguments.at("gltf").asString() };
+            return std::filesystem::path{ arguments.at("--gltf").asString() };
         }
         else
         {
