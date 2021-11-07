@@ -138,7 +138,7 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& output_allocator
         ) noexcept
         {
-            auto const create_attachment = [] (nlohmann::json const& attachment_json) -> vk::AttachmentDescription
+            auto const create_attachment = [](nlohmann::json const& attachment_json) -> vk::AttachmentDescription
             {
                 return
                 {
@@ -154,7 +154,7 @@ namespace Maia::Renderer::Vulkan
                 };
             };
 
-            std::pmr::vector<vk::AttachmentDescription> attachments{output_allocator};
+            std::pmr::vector<vk::AttachmentDescription> attachments{ output_allocator };
             attachments.resize(attachments_json.size());
 
             std::transform(attachments_json.begin(), attachments_json.end(), attachments.begin(), create_attachment);
@@ -178,7 +178,7 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& output_allocator
         ) noexcept
         {
-            std::pmr::vector<vk::AttachmentReference> attachment_references{output_allocator};
+            std::pmr::vector<vk::AttachmentReference> attachment_references{ output_allocator };
             attachment_references.resize(attachment_references_json.size());
 
             std::transform(attachment_references_json.begin(), attachment_references_json.end(), attachment_references.begin(), create_attachment_reference);
@@ -195,9 +195,9 @@ namespace Maia::Renderer::Vulkan
             for (nlohmann::json const& subpass_json : subpasses_json)
             {
                 count += subpass_json.at("input_attachments").size()
-                        + subpass_json.at("color_attachments").size()
-                        + subpass_json.at("resolve_attachments").size()
-                        + (!subpass_json.at("depth_stencil_attachment").empty() ? 1 : 0);
+                    + subpass_json.at("color_attachments").size()
+                    + subpass_json.at("resolve_attachments").size()
+                    + (!subpass_json.at("depth_stencil_attachment").empty() ? 1 : 0);
 
             }
 
@@ -210,30 +210,30 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& temporaries_allocator
         ) noexcept
         {
-            std::pmr::vector<vk::AttachmentReference> attachment_references{output_allocator};
+            std::pmr::vector<vk::AttachmentReference> attachment_references{ output_allocator };
             attachment_references.reserve(get_attachment_reference_count(subpasses_json));
 
             for (nlohmann::json const& subpass_json : subpasses_json)
             {
                 assert(subpass_json.at("resolve_attachments").empty() || (subpass_json.at("resolve_attachments").size() == subpass_json.at("color_attachments").size()));
 
-                std::pmr::vector<vk::AttachmentReference> const input_attachments = 
+                std::pmr::vector<vk::AttachmentReference> const input_attachments =
                     create_attachment_references(subpass_json.at("input_attachments"), temporaries_allocator);
                 attachment_references.insert(attachment_references.end(), input_attachments.begin(), input_attachments.end());
 
-                std::pmr::vector<vk::AttachmentReference> const color_attachments = 
+                std::pmr::vector<vk::AttachmentReference> const color_attachments =
                     create_attachment_references(subpass_json.at("color_attachments"), temporaries_allocator);
                 attachment_references.insert(attachment_references.end(), color_attachments.begin(), color_attachments.end());
 
                 std::pmr::vector<vk::AttachmentReference> const resolve_attachments =
                     create_attachment_references(subpass_json.at("resolve_attachments"), temporaries_allocator);
                 attachment_references.insert(attachment_references.end(), resolve_attachments.begin(), resolve_attachments.end());
-                
+
                 if (!subpass_json.at("depth_stencil_attachment").empty())
                 {
-                    vk::AttachmentReference const depth_stencil_attachment = 
+                    vk::AttachmentReference const depth_stencil_attachment =
                         create_attachment_reference(subpass_json.at("depth_stencil_attachment"));
-                    
+
                     attachment_references.push_back(depth_stencil_attachment);
                 }
             }
@@ -246,7 +246,7 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& output_allocator
         ) noexcept
         {
-            std::pmr::vector<std::uint32_t> preserve_attachments{output_allocator};
+            std::pmr::vector<std::uint32_t> preserve_attachments{ output_allocator };
 
             for (nlohmann::json const& subpass_json : subpasses_json)
             {
@@ -266,7 +266,7 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<vk::SubpassDescription> const& output_allocator
         ) noexcept
         {
-            std::pmr::vector<vk::SubpassDescription> subpasses{output_allocator};
+            std::pmr::vector<vk::SubpassDescription> subpasses{ output_allocator };
             subpasses.reserve(subpasses_json.size());
 
             vk::AttachmentReference const* current_attachment_reference = attachment_references.data();
@@ -338,7 +338,7 @@ namespace Maia::Renderer::Vulkan
                     }
                     else
                     {
-                        return VK_SUBPASS_EXTERNAL;   
+                        return VK_SUBPASS_EXTERNAL;
                     }
                 };
 
@@ -354,7 +354,7 @@ namespace Maia::Renderer::Vulkan
                 };
             };
 
-            std::pmr::vector<vk::SubpassDependency> dependencies{output_allocator};
+            std::pmr::vector<vk::SubpassDependency> dependencies{ output_allocator };
             dependencies.resize(dependencies_json.size());
 
             std::transform(dependencies_json.begin(), dependencies_json.end(), dependencies.begin(), create_dependency);
@@ -374,7 +374,7 @@ namespace Maia::Renderer::Vulkan
         std::pmr::vector<std::uint32_t> preserve_attachments = create_subpasses_preserve_attachments(render_pass_json.at("subpasses"), output_allocator);
         std::pmr::vector<vk::SubpassDescription> subpasses = create_subpasses(render_pass_json.at("subpasses"), attachment_references, preserve_attachments, output_allocator);
         std::pmr::vector<vk::SubpassDependency> dependencies = create_dependencies(render_pass_json.at("dependencies"), output_allocator);
-        
+
         vk::RenderPassCreateInfo const create_info
         {
             .flags = {},
@@ -405,10 +405,10 @@ namespace Maia::Renderer::Vulkan
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     ) noexcept
     {
-        std::pmr::vector<vk::RenderPass> render_passes{output_allocator};
+        std::pmr::vector<vk::RenderPass> render_passes{ output_allocator };
         render_passes.reserve(render_passes_json.size());
 
-        for (nlohmann::json const& render_pass_json : render_passes_json)       
+        for (nlohmann::json const& render_pass_json : render_passes_json)
         {
             Render_pass_create_info_resources const create_info_resources = create_render_pass_create_info_resources(
                 render_pass_json,
@@ -434,13 +434,13 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& output_allocator
         ) noexcept
         {
-            std::ifstream input_stream{file_path, std::ios::in | std::ios::binary};
+            std::ifstream input_stream{ file_path, std::ios::in | std::ios::binary };
             assert(input_stream.good());
 
             input_stream.seekg(0, std::ios::end);
             auto const size_in_bytes = input_stream.tellg();
 
-            std::pmr::vector<std::byte> buffer{output_allocator};
+            std::pmr::vector<std::byte> buffer{ output_allocator };
             buffer.resize(size_in_bytes);
 
             input_stream.seekg(0, std::ios::beg);
@@ -457,7 +457,7 @@ namespace Maia::Renderer::Vulkan
         {
             assert(bytes.size_bytes() % sizeof(Value_type) == 0);
 
-            std::pmr::vector<Value_type> values{output_allocator};
+            std::pmr::vector<Value_type> values{ output_allocator };
             values.resize(bytes.size_bytes() / sizeof(Value_type));
 
             std::memcpy(values.data(), bytes.data(), bytes.size_bytes());
@@ -475,10 +475,10 @@ namespace Maia::Renderer::Vulkan
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     ) noexcept
     {
-        std::pmr::vector<vk::ShaderModule> shader_modules{output_allocator};
+        std::pmr::vector<vk::ShaderModule> shader_modules{ output_allocator };
         shader_modules.reserve(shader_modules_json.size());
 
-        for (nlohmann::json const& shader_module_json : shader_modules_json)       
+        for (nlohmann::json const& shader_module_json : shader_modules_json)
         {
             std::string const& shader_file = shader_module_json.at("file").get<std::string>();
 
@@ -506,10 +506,10 @@ namespace Maia::Renderer::Vulkan
         std::pmr::polymorphic_allocator<> const& output_allocator
     ) noexcept
     {
-        std::pmr::vector<vk::Sampler> samplers{output_allocator};
+        std::pmr::vector<vk::Sampler> samplers{ output_allocator };
         samplers.reserve(samplers_json.size());
 
-        for (nlohmann::json const& sampler_json : samplers_json)       
+        for (nlohmann::json const& sampler_json : samplers_json)
         {
             vk::SamplerCreateInfo const create_info
             {
@@ -547,9 +547,9 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& output_allocator
         ) noexcept
         {
-            std::pmr::vector<vk::Sampler> immutable_samplers_per_descriptor_set_binding{output_allocator};
+            std::pmr::vector<vk::Sampler> immutable_samplers_per_descriptor_set_binding{ output_allocator };
 
-            for (nlohmann::json const& descriptor_set_layout_json : descriptor_set_layouts_json)       
+            for (nlohmann::json const& descriptor_set_layout_json : descriptor_set_layouts_json)
             {
                 for (nlohmann::json const& binding_json : descriptor_set_layout_json.at("bindings"))
                 {
@@ -573,13 +573,13 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& output_allocator
         ) noexcept
         {
-            std::pmr::vector<vk::DescriptorSetLayoutBinding> bindings{output_allocator};
+            std::pmr::vector<vk::DescriptorSetLayoutBinding> bindings{ output_allocator };
 
             std::size_t start_sampler_index = 0;
 
-            for (nlohmann::json const& descriptor_set_layout_json : descriptor_set_layouts_json)       
+            for (nlohmann::json const& descriptor_set_layout_json : descriptor_set_layouts_json)
             {
-                for (nlohmann::json const& binding_json : descriptor_set_layout_json.at("bindings"))       
+                for (nlohmann::json const& binding_json : descriptor_set_layout_json.at("bindings"))
                 {
                     nlohmann::json const& immutable_samplers_json = binding_json.at("immutable_samplers");
 
@@ -589,7 +589,7 @@ namespace Maia::Renderer::Vulkan
                         .descriptorType = binding_json.at("descriptor_type").get<vk::DescriptorType>(),
                         .descriptorCount = binding_json.at("descriptor_count").get<std::uint32_t>(),
                         .stageFlags = binding_json.at("stage_flags_property").get<vk::ShaderStageFlags>(),
-                        .pImmutableSamplers = 
+                        .pImmutableSamplers =
                             !immutable_samplers_json.empty() ?
                             immutable_samplers_per_descriptor_set_binding.data() + start_sampler_index :
                             nullptr
@@ -617,15 +617,15 @@ namespace Maia::Renderer::Vulkan
         std::pmr::vector<vk::Sampler> const immutable_samplers_per_descriptor_set_binding =
             arrange_immutable_samplers(descriptor_set_layouts_json, samplers, temporaries_allocator);
 
-        std::pmr::vector<vk::DescriptorSetLayoutBinding> const bindings = 
+        std::pmr::vector<vk::DescriptorSetLayoutBinding> const bindings =
             create_descriptor_set_layouts_bindings(descriptor_set_layouts_json, immutable_samplers_per_descriptor_set_binding, temporaries_allocator);
 
-        std::pmr::vector<vk::DescriptorSetLayout> descriptor_set_layouts{output_allocator};
+        std::pmr::vector<vk::DescriptorSetLayout> descriptor_set_layouts{ output_allocator };
         descriptor_set_layouts.reserve(descriptor_set_layouts_json.size());
 
         std::uint32_t start_binding_index = 0;
 
-        for (nlohmann::json const& descriptor_set_layout_json : descriptor_set_layouts_json)       
+        for (nlohmann::json const& descriptor_set_layout_json : descriptor_set_layouts_json)
         {
             std::uint32_t const num_bindings = static_cast<std::uint32_t>(descriptor_set_layout_json.at("bindings").size());
 
@@ -654,9 +654,9 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& output_allocator
         ) noexcept
         {
-            std::pmr::vector<vk::DescriptorSetLayout> descriptor_set_layouts_per_pipeline_layout{output_allocator};
+            std::pmr::vector<vk::DescriptorSetLayout> descriptor_set_layouts_per_pipeline_layout{ output_allocator };
 
-            for (nlohmann::json const& pipeline_layout_json : pipeline_layouts_json)       
+            for (nlohmann::json const& pipeline_layout_json : pipeline_layouts_json)
             {
                 for (nlohmann::json const& descriptor_set_layout_json : pipeline_layout_json.at("descriptor_set_layouts"))
                 {
@@ -686,9 +686,9 @@ namespace Maia::Renderer::Vulkan
                 };
             };
 
-            std::pmr::vector<vk::PushConstantRange> push_constant_ranges{output_allocator};
+            std::pmr::vector<vk::PushConstantRange> push_constant_ranges{ output_allocator };
 
-            for (nlohmann::json const& pipeline_layout_json : pipeline_layouts_json)       
+            for (nlohmann::json const& pipeline_layout_json : pipeline_layouts_json)
             {
                 for (nlohmann::json const& push_constant_range_json : pipeline_layout_json.at("push_constant_ranges"))
                 {
@@ -717,13 +717,13 @@ namespace Maia::Renderer::Vulkan
         std::pmr::vector<vk::PushConstantRange> const push_constant_ranges =
             create_push_constant_ranges(pipeline_layouts_json, temporaries_allocator);
 
-        std::pmr::vector<vk::PipelineLayout> pipeline_layouts{output_allocator};
+        std::pmr::vector<vk::PipelineLayout> pipeline_layouts{ output_allocator };
         pipeline_layouts.reserve(pipeline_layouts_json.size());
 
         std::uint32_t start_descriptor_set_layout_index = 0;
         std::uint32_t start_push_constant_range_index = 0;
 
-        for (nlohmann::json const& pipeline_layout_json : pipeline_layouts_json)       
+        for (nlohmann::json const& pipeline_layout_json : pipeline_layouts_json)
         {
             std::uint32_t const num_descriptor_set_layouts = static_cast<std::uint32_t>(pipeline_layout_json.at("descriptor_set_layouts").size());
             std::uint32_t const num_push_constant_ranges = static_cast<std::uint32_t>(pipeline_layout_json.at("push_constant_ranges").size());
@@ -756,7 +756,7 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& output_allocator
         ) noexcept
         {
-            std::pmr::vector<std::pmr::string> stage_names{output_allocator};
+            std::pmr::vector<std::pmr::string> stage_names{ output_allocator };
 
             for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
             {
@@ -765,7 +765,7 @@ namespace Maia::Renderer::Vulkan
                     std::string const& name = stage_json.at("entry_point").get<std::string>();
 
                     stage_names.push_back(
-                        std::pmr::string{name, output_allocator}
+                        std::pmr::string{ name, output_allocator }
                     );
                 }
             }
@@ -796,7 +796,7 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& output_allocator
         ) noexcept
         {
-            std::pmr::vector<vk::PipelineShaderStageCreateInfo> create_infos{output_allocator};
+            std::pmr::vector<vk::PipelineShaderStageCreateInfo> create_infos{ output_allocator };
 
             std::size_t stage_name_index = 0;
 
@@ -819,7 +819,7 @@ namespace Maia::Renderer::Vulkan
             nlohmann::json const& json
         ) noexcept
         {
-            return 
+            return
             {
                 .binding = json.at("binding").get<std::uint32_t>(),
                 .stride = json.at("stride").get<std::uint32_t>(),
@@ -832,7 +832,7 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& output_allocator
         ) noexcept
         {
-            std::pmr::vector<vk::VertexInputBindingDescription> descriptions{output_allocator};
+            std::pmr::vector<vk::VertexInputBindingDescription> descriptions{ output_allocator };
 
             for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
             {
@@ -851,7 +851,7 @@ namespace Maia::Renderer::Vulkan
             nlohmann::json const& json
         ) noexcept
         {
-            return 
+            return
             {
                 .location = json.at("location").get<std::uint32_t>(),
                 .binding = json.at("binding").get<std::uint32_t>(),
@@ -865,7 +865,7 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& output_allocator
         ) noexcept
         {
-            std::pmr::vector<vk::VertexInputAttributeDescription> descriptions{output_allocator};
+            std::pmr::vector<vk::VertexInputAttributeDescription> descriptions{ output_allocator };
 
             for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
             {
@@ -887,7 +887,7 @@ namespace Maia::Renderer::Vulkan
             std::span<vk::VertexInputAttributeDescription const> const attributes
         ) noexcept
         {
-            return 
+            return
             {
                 .flags = {},
                 .vertexBindingDescriptionCount = static_cast<std::uint32_t>(bindings.size()),
@@ -904,7 +904,7 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& output_allocator
         ) noexcept
         {
-            std::pmr::vector<vk::PipelineVertexInputStateCreateInfo> create_infos{output_allocator};
+            std::pmr::vector<vk::PipelineVertexInputStateCreateInfo> create_infos{ output_allocator };
             create_infos.reserve(pipeline_states_json.size());
 
             std::size_t start_binding_index = 0;
@@ -920,8 +920,8 @@ namespace Maia::Renderer::Vulkan
                 create_infos.push_back(
                     create_pipeline_vertex_input_state_create_info(
                         vertex_input_state_json,
-                        {bindings.data() + start_binding_index, binding_count},
-                        {attributes.data() + start_attribute_index, start_attribute_index}
+                        { bindings.data() + start_binding_index, binding_count },
+                        { attributes.data() + start_attribute_index, start_attribute_index }
                     )
                 );
 
@@ -950,7 +950,7 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& output_allocator
         ) noexcept
         {
-            std::pmr::vector<vk::PipelineInputAssemblyStateCreateInfo> create_infos{output_allocator};
+            std::pmr::vector<vk::PipelineInputAssemblyStateCreateInfo> create_infos{ output_allocator };
 
             for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
             {
@@ -975,7 +975,7 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& output_allocator
         ) noexcept
         {
-            std::pmr::vector<std::optional<vk::PipelineTessellationStateCreateInfo>> create_infos{output_allocator};
+            std::pmr::vector<std::optional<vk::PipelineTessellationStateCreateInfo>> create_infos{ output_allocator };
             create_infos.reserve(pipeline_states_json.size());
 
             for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
@@ -1008,7 +1008,7 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& output_allocator
         ) noexcept
         {
-            std::pmr::vector<vk::Viewport> viewports{output_allocator};
+            std::pmr::vector<vk::Viewport> viewports{ output_allocator };
 
             for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
             {
@@ -1061,7 +1061,7 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& output_allocator
         ) noexcept
         {
-            std::pmr::vector<vk::Rect2D> scissors{output_allocator};
+            std::pmr::vector<vk::Rect2D> scissors{ output_allocator };
 
             for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
             {
@@ -1105,7 +1105,7 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& output_allocator
         ) noexcept
         {
-            std::pmr::vector<vk::PipelineViewportStateCreateInfo> create_infos{output_allocator};
+            std::pmr::vector<vk::PipelineViewportStateCreateInfo> create_infos{ output_allocator };
             create_infos.reserve(pipeline_states_json.size());
 
             std::size_t start_viewport_index = 0;
@@ -1121,8 +1121,8 @@ namespace Maia::Renderer::Vulkan
                 create_infos.push_back(
                     create_pipeline_viewport_state_create_info(
                         viewport_state_json,
-                        {viewports.data() + start_viewport_index, viewport_count},
-                        {scissors.data() + start_scissor_index, scissor_count}
+                        { viewports.data() + start_viewport_index, viewport_count },
+                        { scissors.data() + start_scissor_index, scissor_count }
                     )
                 );
 
@@ -1159,7 +1159,7 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& output_allocator
         ) noexcept
         {
-            std::pmr::vector<vk::PipelineRasterizationStateCreateInfo> create_infos{output_allocator};
+            std::pmr::vector<vk::PipelineRasterizationStateCreateInfo> create_infos{ output_allocator };
 
             for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
             {
@@ -1195,7 +1195,7 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& output_allocator
         ) noexcept
         {
-            std::pmr::vector<vk::PipelineMultisampleStateCreateInfo> create_infos{output_allocator};
+            std::pmr::vector<vk::PipelineMultisampleStateCreateInfo> create_infos{ output_allocator };
             create_infos.reserve(pipeline_states_json.size());
 
             for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
@@ -1248,7 +1248,7 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& output_allocator
         ) noexcept
         {
-            std::pmr::vector<vk::PipelineDepthStencilStateCreateInfo> create_infos{output_allocator};
+            std::pmr::vector<vk::PipelineDepthStencilStateCreateInfo> create_infos{ output_allocator };
 
             for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
             {
@@ -1283,7 +1283,7 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& output_allocator
         ) noexcept
         {
-            std::pmr::vector<vk::PipelineColorBlendAttachmentState> attachments{output_allocator};
+            std::pmr::vector<vk::PipelineColorBlendAttachmentState> attachments{ output_allocator };
 
             for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
             {
@@ -1335,7 +1335,7 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& output_allocator
         ) noexcept
         {
-            std::pmr::vector<vk::PipelineColorBlendStateCreateInfo> create_infos{output_allocator};
+            std::pmr::vector<vk::PipelineColorBlendStateCreateInfo> create_infos{ output_allocator };
             create_infos.reserve(pipeline_states_json.size());
 
             std::size_t start_attachment_index = 0;
@@ -1343,13 +1343,13 @@ namespace Maia::Renderer::Vulkan
             for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
             {
                 nlohmann::json const& color_blend_state_json = pipeline_state_json.at("color_blend_state");
-                
+
                 std::size_t const attachment_count = color_blend_state_json.at("attachments").size();
 
                 create_infos.push_back(
                     create_pipeline_color_blend_state_create_info(
                         color_blend_state_json,
-                        {attachments.data() + start_attachment_index, attachment_count}
+                        { attachments.data() + start_attachment_index, attachment_count }
                     )
                 );
             }
@@ -1363,7 +1363,7 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& output_allocator
         ) noexcept
         {
-            std::pmr::vector<vk::DynamicState> dynamic_states{output_allocator};
+            std::pmr::vector<vk::DynamicState> dynamic_states{ output_allocator };
 
             for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
             {
@@ -1385,7 +1385,7 @@ namespace Maia::Renderer::Vulkan
         {
             assert(dynamic_states.size() == json.at("dynamic_states").size());
 
-            return 
+            return
             {
                 .flags = {},
                 .dynamicStateCount = static_cast<std::uint32_t>(dynamic_states.size()),
@@ -1399,7 +1399,7 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& output_allocator
         ) noexcept
         {
-            std::pmr::vector<vk::PipelineDynamicStateCreateInfo> create_infos{output_allocator};
+            std::pmr::vector<vk::PipelineDynamicStateCreateInfo> create_infos{ output_allocator };
             create_infos.reserve(pipeline_states_json.size());
 
             std::size_t start_dynamic_state_index = 0;
@@ -1413,7 +1413,7 @@ namespace Maia::Renderer::Vulkan
                 create_infos.push_back(
                     create_pipeline_dynamic_state_create_info(
                         pipeline_dynamic_state_json,
-                        {dynamic_states.data() + start_dynamic_state_index, dynamic_state_count}
+                        { dynamic_states.data() + start_dynamic_state_index, dynamic_state_count }
                     )
                 );
 
@@ -1437,33 +1437,33 @@ namespace Maia::Renderer::Vulkan
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     )
     {
-        std::pmr::vector<std::pmr::string> const shader_stage_names = 
+        std::pmr::vector<std::pmr::string> const shader_stage_names =
             create_pipeline_shader_stage_names(
                 pipeline_states_json,
                 temporaries_allocator
             );
 
-        std::pmr::vector<vk::PipelineShaderStageCreateInfo> const shader_stages = 
+        std::pmr::vector<vk::PipelineShaderStageCreateInfo> const shader_stages =
             create_pipeline_shader_stage_create_infos(
                 pipeline_states_json,
                 shader_modules,
                 shader_stage_names,
                 temporaries_allocator
-        );
+            );
 
-        std::pmr::vector<vk::VertexInputBindingDescription> const vertex_input_binding_descriptions = 
+        std::pmr::vector<vk::VertexInputBindingDescription> const vertex_input_binding_descriptions =
             create_vertex_input_binding_descriptions(
                 pipeline_states_json,
                 temporaries_allocator
             );
 
-        std::pmr::vector<vk::VertexInputAttributeDescription> const vertex_input_attribute_descriptions = 
+        std::pmr::vector<vk::VertexInputAttributeDescription> const vertex_input_attribute_descriptions =
             create_vertex_input_attribute_descriptions(
                 pipeline_states_json,
                 temporaries_allocator
             );
 
-        std::pmr::vector<vk::PipelineVertexInputStateCreateInfo> const vertex_input_states = 
+        std::pmr::vector<vk::PipelineVertexInputStateCreateInfo> const vertex_input_states =
             create_pipeline_vertex_input_state_create_infos(
                 pipeline_states_json,
                 vertex_input_binding_descriptions,
@@ -1471,13 +1471,13 @@ namespace Maia::Renderer::Vulkan
                 temporaries_allocator
             );
 
-        std::pmr::vector<vk::PipelineInputAssemblyStateCreateInfo> const input_assembly_states = 
+        std::pmr::vector<vk::PipelineInputAssemblyStateCreateInfo> const input_assembly_states =
             create_pipeline_input_assembly_state_create_infos(
                 pipeline_states_json,
                 temporaries_allocator
             );
 
-        std::pmr::vector<std::optional<vk::PipelineTessellationStateCreateInfo>> const tessellation_states = 
+        std::pmr::vector<std::optional<vk::PipelineTessellationStateCreateInfo>> const tessellation_states =
             create_pipeline_tessellation_state_create_infos(
                 pipeline_states_json,
                 temporaries_allocator
@@ -1487,7 +1487,7 @@ namespace Maia::Renderer::Vulkan
 
         std::pmr::vector<vk::Rect2D> const scissors = create_scissors(pipeline_states_json, temporaries_allocator);
 
-        std::pmr::vector<vk::PipelineViewportStateCreateInfo> const viewport_states = 
+        std::pmr::vector<vk::PipelineViewportStateCreateInfo> const viewport_states =
             create_pipeline_viewport_state_create_infos(
                 pipeline_states_json,
                 viewports,
@@ -1495,31 +1495,31 @@ namespace Maia::Renderer::Vulkan
                 temporaries_allocator
             );
 
-        std::pmr::vector<vk::PipelineRasterizationStateCreateInfo> const rasterization_states = 
+        std::pmr::vector<vk::PipelineRasterizationStateCreateInfo> const rasterization_states =
             create_pipeline_rasterization_state_create_infos(
                 pipeline_states_json,
                 temporaries_allocator
             );
 
-        std::pmr::vector<vk::PipelineMultisampleStateCreateInfo> const multisample_states = 
+        std::pmr::vector<vk::PipelineMultisampleStateCreateInfo> const multisample_states =
             create_pipeline_multisample_state_create_infos(
                 pipeline_states_json,
                 temporaries_allocator
             );
 
-        std::pmr::vector<vk::PipelineDepthStencilStateCreateInfo> const depth_stencil_states = 
+        std::pmr::vector<vk::PipelineDepthStencilStateCreateInfo> const depth_stencil_states =
             create_pipeline_depth_stencil_state_create_infos(
                 pipeline_states_json,
                 temporaries_allocator
             );
 
-        std::pmr::vector<vk::PipelineColorBlendAttachmentState> const color_blend_attachment_states = 
+        std::pmr::vector<vk::PipelineColorBlendAttachmentState> const color_blend_attachment_states =
             create_pipeline_color_blend_attachment_states(
                 pipeline_states_json,
                 temporaries_allocator
             );
 
-        std::pmr::vector<vk::PipelineColorBlendStateCreateInfo> const color_blend_states = 
+        std::pmr::vector<vk::PipelineColorBlendStateCreateInfo> const color_blend_states =
             create_pipeline_color_blend_state_create_infos(
                 pipeline_states_json,
                 color_blend_attachment_states,
@@ -1528,7 +1528,7 @@ namespace Maia::Renderer::Vulkan
 
         std::pmr::vector<vk::DynamicState> const dynamic_states = create_dynamic_states(pipeline_states_json, temporaries_allocator);
 
-        std::pmr::vector<vk::PipelineDynamicStateCreateInfo> const pipeline_dynamic_states = 
+        std::pmr::vector<vk::PipelineDynamicStateCreateInfo> const pipeline_dynamic_states =
             create_pipeline_dynamic_state_create_infos(
                 pipeline_states_json,
                 dynamic_states,
@@ -1536,7 +1536,7 @@ namespace Maia::Renderer::Vulkan
             );
 
 
-        std::pmr::vector<vk::GraphicsPipelineCreateInfo> create_infos{temporaries_allocator};
+        std::pmr::vector<vk::GraphicsPipelineCreateInfo> create_infos{ temporaries_allocator };
         create_infos.reserve(pipeline_states_json.size());
 
         {
@@ -1576,8 +1576,8 @@ namespace Maia::Renderer::Vulkan
         }
 
         if (!create_infos.empty())
-        {   
-            std::pmr::polymorphic_allocator<vk::Pipeline> pipelines_vector_allocator{output_allocator};
+        {
+            std::pmr::polymorphic_allocator<vk::Pipeline> pipelines_vector_allocator{ output_allocator };
             std::pmr::vector<vk::Pipeline> pipelines =
                 device.createGraphicsPipelines(pipeline_cache, create_infos, allocation_callbacks, pipelines_vector_allocator).value;
 
@@ -1594,7 +1594,7 @@ namespace Maia::Renderer::Vulkan
         std::pmr::polymorphic_allocator<> const& output_allocator
     )
     {
-        std::pmr::vector<vk::RayTracingShaderGroupCreateInfoKHR> create_infos{output_allocator};
+        std::pmr::vector<vk::RayTracingShaderGroupCreateInfoKHR> create_infos{ output_allocator };
 
         for (nlohmann::json const& pipeline_state_json : pipeline_states_json)
         {
@@ -1623,7 +1623,7 @@ namespace Maia::Renderer::Vulkan
         std::pmr::polymorphic_allocator<> const& output_allocator
     )
     {
-        auto const get_pipeline_library = [=] (nlohmann::json const& library_index_json) -> vk::Pipeline
+        auto const get_pipeline_library = [=](nlohmann::json const& library_index_json) -> vk::Pipeline
         {
             std::size_t const index = library_index_json.get<std::size_t>();
 
@@ -1631,8 +1631,8 @@ namespace Maia::Renderer::Vulkan
         };
 
         nlohmann::json const& library_info_json = pipeline_state_json.at("library_info");
-        
-        std::pmr::vector<vk::Pipeline> pipeline_libraries{output_allocator};
+
+        std::pmr::vector<vk::Pipeline> pipeline_libraries{ output_allocator };
         pipeline_libraries.resize(library_info_json.size());
 
 
@@ -1651,7 +1651,7 @@ namespace Maia::Renderer::Vulkan
         std::pmr::polymorphic_allocator<> const& output_allocator
     )
     {
-        auto const get_create_info = [] (nlohmann::json const& pipeline_state_json) -> vk::RayTracingPipelineInterfaceCreateInfoKHR
+        auto const get_create_info = [](nlohmann::json const& pipeline_state_json) -> vk::RayTracingPipelineInterfaceCreateInfoKHR
         {
             nlohmann::json const& library_interface_json = pipeline_state_json.at("library_interface");
 
@@ -1664,7 +1664,7 @@ namespace Maia::Renderer::Vulkan
             return create_info;
         };
 
-        std::pmr::vector<vk::RayTracingPipelineInterfaceCreateInfoKHR> create_infos{output_allocator};
+        std::pmr::vector<vk::RayTracingPipelineInterfaceCreateInfoKHR> create_infos{ output_allocator };
         create_infos.resize(pipeline_states_json.size());
 
 
@@ -1689,42 +1689,42 @@ namespace Maia::Renderer::Vulkan
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     )
     {
-        std::pmr::vector<std::pmr::string> const shader_stage_names = 
+        std::pmr::vector<std::pmr::string> const shader_stage_names =
             create_pipeline_shader_stage_names(
                 pipeline_states_json,
                 temporaries_allocator
             );
 
-        std::pmr::vector<vk::PipelineShaderStageCreateInfo> const shader_stages = 
+        std::pmr::vector<vk::PipelineShaderStageCreateInfo> const shader_stages =
             create_pipeline_shader_stage_create_infos(
                 pipeline_states_json,
                 shader_modules,
                 shader_stage_names,
                 temporaries_allocator
-        );
+            );
 
         std::pmr::vector<vk::RayTracingShaderGroupCreateInfoKHR> const groups =
             create_ray_tracing_shader_group_create_infos(
                 pipeline_states_json,
                 temporaries_allocator
             );
-        
-        std::pmr::vector<vk::RayTracingPipelineInterfaceCreateInfoKHR> const library_interfaces = 
+
+        std::pmr::vector<vk::RayTracingPipelineInterfaceCreateInfoKHR> const library_interfaces =
             create_ray_tracing_pipeline_interface_create_infos(
                 pipeline_states_json,
                 temporaries_allocator
             );
-        
+
         std::pmr::vector<vk::DynamicState> const dynamic_states = create_dynamic_states(pipeline_states_json, temporaries_allocator);
 
-        std::pmr::vector<vk::PipelineDynamicStateCreateInfo> const pipeline_dynamic_states = 
+        std::pmr::vector<vk::PipelineDynamicStateCreateInfo> const pipeline_dynamic_states =
             create_pipeline_dynamic_state_create_infos(
                 pipeline_states_json,
                 dynamic_states,
                 temporaries_allocator
             );
 
-        std::pmr::vector<vk::Pipeline> pipelines{output_allocator};
+        std::pmr::vector<vk::Pipeline> pipelines{ output_allocator };
         pipelines.resize(pipeline_states_json.size());
 
         {
@@ -1770,7 +1770,7 @@ namespace Maia::Renderer::Vulkan
                     }
                 };
 
-                std::pmr::polymorphic_allocator<vk::Pipeline> allocator{temporaries_allocator};
+                std::pmr::polymorphic_allocator<vk::Pipeline> allocator{ temporaries_allocator };
                 std::pmr::vector<vk::Pipeline> const pipeline = device.createRayTracingPipelinesKHR(
                     {},
                     pipeline_cache,
@@ -1797,7 +1797,7 @@ namespace Maia::Renderer::Vulkan
         std::pmr::polymorphic_allocator<> const& output_allocator
     )
     {
-        auto const get_pipeline_state = [=] (nlohmann::json const& pipeline_state_json) -> vk::Pipeline
+        auto const get_pipeline_state = [=](nlohmann::json const& pipeline_state_json) -> vk::Pipeline
         {
             std::string const& type = pipeline_state_json.at("type").get<std::string>();
             std::size_t const index = pipeline_state_json.at("index").get<std::size_t>();
@@ -1816,11 +1816,11 @@ namespace Maia::Renderer::Vulkan
             }
             else
             {
-                throw std::runtime_error{"Pipeline type is not recognized!"};
+                throw std::runtime_error{ "Pipeline type is not recognized!" };
             }
         };
 
-        std::pmr::vector<vk::Pipeline> pipeline_states{output_allocator};
+        std::pmr::vector<vk::Pipeline> pipeline_states{ output_allocator };
         pipeline_states.resize(pipeline_states_json.size());
 
         std::transform(
@@ -1842,10 +1842,10 @@ namespace Maia::Renderer::Vulkan
         std::pmr::polymorphic_allocator<> const& output_allocator,
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     ) noexcept :
-        device{device},
-        allocation_callbacks{allocation_callbacks}
+        device{ device },
+        allocation_callbacks{ allocation_callbacks }
     {
-        this->render_passes = 
+        this->render_passes =
             pipeline_json.contains("render_passes") ?
             Maia::Renderer::Vulkan::create_render_passes(
                 device,
@@ -1854,9 +1854,9 @@ namespace Maia::Renderer::Vulkan
                 output_allocator,
                 temporaries_allocator
             ) :
-            std::pmr::vector<vk::RenderPass>{output_allocator};
+            std::pmr::vector<vk::RenderPass>{ output_allocator };
 
-        this->shader_modules = 
+        this->shader_modules =
             pipeline_json.contains("shader_modules") ?
             Maia::Renderer::Vulkan::create_shader_modules(
                 device,
@@ -1866,9 +1866,9 @@ namespace Maia::Renderer::Vulkan
                 output_allocator,
                 temporaries_allocator
             ) :
-            std::pmr::vector<vk::ShaderModule>{output_allocator};
+            std::pmr::vector<vk::ShaderModule>{ output_allocator };
 
-        this->samplers = 
+        this->samplers =
             pipeline_json.contains("samplers") ?
             Maia::Renderer::Vulkan::create_samplers(
                 device,
@@ -1876,9 +1876,9 @@ namespace Maia::Renderer::Vulkan
                 pipeline_json.at("samplers"),
                 output_allocator
             ) :
-            std::pmr::vector<vk::Sampler>{output_allocator};
-        
-        this->descriptor_set_layouts = 
+            std::pmr::vector<vk::Sampler>{ output_allocator };
+
+        this->descriptor_set_layouts =
             pipeline_json.contains("descriptor_set_layouts") ?
             Maia::Renderer::Vulkan::create_descriptor_set_layouts(
                 device,
@@ -1888,9 +1888,9 @@ namespace Maia::Renderer::Vulkan
                 output_allocator,
                 temporaries_allocator
             ) :
-            std::pmr::vector<vk::DescriptorSetLayout>{output_allocator};
+            std::pmr::vector<vk::DescriptorSetLayout>{ output_allocator };
 
-        this->pipeline_layouts = 
+        this->pipeline_layouts =
             pipeline_json.contains("pipeline_layouts") ?
             Maia::Renderer::Vulkan::create_pipeline_layouts(
                 device,
@@ -1900,7 +1900,7 @@ namespace Maia::Renderer::Vulkan
                 output_allocator,
                 temporaries_allocator
             ) :
-            std::pmr::vector<vk::PipelineLayout>{output_allocator};
+            std::pmr::vector<vk::PipelineLayout>{ output_allocator };
 
         if (pipeline_json.contains("pipeline_states"))
         {
@@ -1919,7 +1919,7 @@ namespace Maia::Renderer::Vulkan
                     temporaries_allocator,
                     temporaries_allocator
                 ) :
-                std::pmr::vector<vk::Pipeline>{temporaries_allocator};
+                std::pmr::vector<vk::Pipeline>{ temporaries_allocator };
 
             std::pmr::vector<vk::Pipeline> const ray_tracing_pipelines =
                 pipeline_json.contains("graphics_pipeline_states") ?
@@ -1933,8 +1933,8 @@ namespace Maia::Renderer::Vulkan
                     temporaries_allocator,
                     temporaries_allocator
                 ) :
-                std::pmr::vector<vk::Pipeline>{temporaries_allocator};
-                
+                std::pmr::vector<vk::Pipeline>{ temporaries_allocator };
+
             this->pipeline_states = gather_pipeline_states(
                 compute_pipelines,
                 graphics_pipelines,
@@ -1946,14 +1946,14 @@ namespace Maia::Renderer::Vulkan
     }
 
     Pipeline_resources::Pipeline_resources(Pipeline_resources&& other) noexcept :
-        device{other.device},
-        allocation_callbacks{other.allocation_callbacks},
-        render_passes{std::exchange(other.render_passes, {})},
-        shader_modules{std::exchange(other.shader_modules, {})},
-        samplers{std::exchange(other.samplers, {})},
-        descriptor_set_layouts{std::exchange(other.descriptor_set_layouts, {})},
-        pipeline_layouts{std::exchange(other.pipeline_layouts, {})},
-        pipeline_states{std::exchange(other.pipeline_states, {})}
+        device{ other.device },
+        allocation_callbacks{ other.allocation_callbacks },
+        render_passes{ std::exchange(other.render_passes, {}) },
+        shader_modules{ std::exchange(other.shader_modules, {}) },
+        samplers{ std::exchange(other.samplers, {}) },
+        descriptor_set_layouts{ std::exchange(other.descriptor_set_layouts, {}) },
+        pipeline_layouts{ std::exchange(other.pipeline_layouts, {}) },
+        pipeline_states{ std::exchange(other.pipeline_states, {}) }
     {
     }
 
@@ -1973,7 +1973,7 @@ namespace Maia::Renderer::Vulkan
         {
             this->device.destroy(descriptor_set_layout, this->allocation_callbacks);
         }
-        
+
         for (vk::Sampler const sampler : samplers)
         {
             this->device.destroy(sampler, this->allocation_callbacks);
@@ -2048,7 +2048,7 @@ namespace Maia::Renderer::Vulkan
             Command_type constexpr command_type = Command_type::Begin_render_pass;
             Begin_render_pass::Type constexpr begin_render_pass_type = Begin_render_pass::Type::Dependent;
 
-            std::pmr::vector<std::byte> data{output_allocator};
+            std::pmr::vector<std::byte> data{ output_allocator };
             data.resize(sizeof(command_type) + sizeof(begin_render_pass_type) + sizeof(dependent));
             std::memcpy(data.data(), &command_type, sizeof(command_type));
             std::memcpy(data.data() + sizeof(command_type), &begin_render_pass_type, sizeof(begin_render_pass_type));
@@ -2078,7 +2078,7 @@ namespace Maia::Renderer::Vulkan
                 .pipeline = pipelines[json.at("pipeline").get<std::size_t>()]
             };
 
-            std::pmr::vector<std::byte> data{output_allocator};
+            std::pmr::vector<std::byte> data{ output_allocator };
             data.resize(sizeof(command_type) + sizeof(command));
             std::memcpy(data.data(), &command_type, sizeof(command_type));
             std::memcpy(data.data() + sizeof(command_type), &command, sizeof(command));
@@ -2116,8 +2116,8 @@ namespace Maia::Renderer::Vulkan
                     values_json[2].get<float>(),
                     values_json[3].get<float>(),
                 };
-                
-                return {values};
+
+                return { values };
             }
             else if (type == "INT")
             {
@@ -2129,7 +2129,7 @@ namespace Maia::Renderer::Vulkan
                     values_json[3].get<std::int32_t>(),
                 };
 
-                return {values};
+                return { values };
             }
             else
             {
@@ -2143,7 +2143,7 @@ namespace Maia::Renderer::Vulkan
                     values_json[3].get<std::uint32_t>(),
                 };
 
-                return {values};
+                return { values };
             }
         }
 
@@ -2163,7 +2163,7 @@ namespace Maia::Renderer::Vulkan
             Command_type constexpr command_type = Command_type::Clear_color_image;
             Clear_color_image::Type constexpr clear_subtype = Clear_color_image::Type::Dependent;
 
-            std::pmr::vector<std::byte> data{output_allocator};
+            std::pmr::vector<std::byte> data{ output_allocator };
             data.resize(sizeof(Command_type) + sizeof(Clear_color_image::Type) + sizeof(Clear_color_image::Dependent));
             std::memcpy(data.data(), &command_type, sizeof(command_type));
             std::memcpy(data.data() + sizeof(command_type), &clear_subtype, sizeof(clear_subtype));
@@ -2196,7 +2196,7 @@ namespace Maia::Renderer::Vulkan
                 .first_instance = json.at("first_instance").get<std::uint32_t>(),
             };
 
-            std::pmr::vector<std::byte> data{output_allocator};
+            std::pmr::vector<std::byte> data{ output_allocator };
             data.resize(sizeof(command_type) + sizeof(command));
             std::memcpy(data.data(), &command_type, sizeof(command_type));
             std::memcpy(data.data() + sizeof(command_type), &command, sizeof(command));
@@ -2212,7 +2212,7 @@ namespace Maia::Renderer::Vulkan
 
             Command_type constexpr command_type = Command_type::End_render_pass;
 
-            std::pmr::vector<std::byte> data{output_allocator};
+            std::pmr::vector<std::byte> data{ output_allocator };
             data.resize(sizeof(command_type));
             std::memcpy(data.data(), &command_type, sizeof(command_type));
             return data;
@@ -2262,7 +2262,7 @@ namespace Maia::Renderer::Vulkan
 
             Image_memory_barrier::Type constexpr barrier_type = Image_memory_barrier::Type::Dependent;
 
-            std::pmr::vector<std::byte> data{output_allocator};
+            std::pmr::vector<std::byte> data{ output_allocator };
             data.resize(sizeof(Image_memory_barrier::Type) + sizeof(Image_memory_barrier::Dependent));
             std::memcpy(data.data(), &barrier_type, sizeof(barrier_type));
             std::memcpy(data.data() + sizeof(Image_memory_barrier::Type), &dependent, sizeof(dependent));
@@ -2287,14 +2287,14 @@ namespace Maia::Renderer::Vulkan
 
             Command_type constexpr command_type = Command_type::Pipeline_barrier;
 
-            std::pmr::vector<std::byte> data{output_allocator};
+            std::pmr::vector<std::byte> data{ output_allocator };
             data.resize(sizeof(Command_type) + sizeof(Pipeline_barrier));
             std::memcpy(data.data(), &command_type, sizeof(command_type));
             std::memcpy(data.data() + sizeof(Command_type), &pipeline_barrier, sizeof(pipeline_barrier));
 
             for (nlohmann::json const& image_barrier_json : command_json.at("image_barriers"))
             {
-                std::pmr::vector<std::byte> const image_memory_barrier_data = 
+                std::pmr::vector<std::byte> const image_memory_barrier_data =
                     create_image_memory_barrier(image_barrier_json, temporaries_allocator);
 
                 data.insert(data.end(), image_memory_barrier_data.begin(), image_memory_barrier_data.end());
@@ -2312,7 +2312,7 @@ namespace Maia::Renderer::Vulkan
 
             Command_type constexpr command_type = Command_type::Set_screen_viewport_and_scissors;
 
-            std::pmr::vector<std::byte> data{output_allocator};
+            std::pmr::vector<std::byte> data{ output_allocator };
             data.resize(sizeof(command_type));
             std::memcpy(data.data(), &command_type, sizeof(command_type));
             return data;
@@ -2343,7 +2343,7 @@ namespace Maia::Renderer::Vulkan
 
             Command_type constexpr command_type = Command_type::Trace_rays;
 
-            std::pmr::vector<std::byte> data{output_allocator};
+            std::pmr::vector<std::byte> data{ output_allocator };
             data.resize(sizeof(command_type) + sizeof(Trace_rays));
             std::memcpy(data.data(), &command_type, sizeof(command_type));
             std::memcpy(data.data() + sizeof(command_type), &trace_rays, sizeof(trace_rays));
@@ -2418,7 +2418,7 @@ namespace Maia::Renderer::Vulkan
         std::pmr::polymorphic_allocator<std::byte> const& temporaries_allocator
     ) noexcept
     {
-        std::pmr::vector<std::byte> commands_data{output_allocator};
+        std::pmr::vector<std::byte> commands_data{ output_allocator };
 
         for (nlohmann::json const& command_json : commands_json)
         {
@@ -2427,7 +2427,7 @@ namespace Maia::Renderer::Vulkan
             commands_data.insert(commands_data.end(), command_data.begin(), command_data.end());
         }
 
-        return {commands_data};
+        return { commands_data };
     }
 
     namespace
@@ -2562,7 +2562,7 @@ namespace Maia::Renderer::Vulkan
             vk::Image const image = images[0]; // TODO
             vk::ImageSubresourceRange const& image_subresource_range = image_subresource_ranges[0]; // TODO
 
-            std::pmr::vector<vk::ImageMemoryBarrier> barriers{output_allocator};
+            std::pmr::vector<vk::ImageMemoryBarrier> barriers{ output_allocator };
             barriers.reserve(barrier_count);
 
             for (std::uint8_t barrier_index = 0; barrier_index < barrier_count; ++barrier_index)
@@ -2584,10 +2584,10 @@ namespace Maia::Renderer::Vulkan
                     .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                     .image = image,
                     .subresourceRange = image_subresource_range,
-                });
+                    });
             }
 
-            return {commands_data_offset, barriers};
+            return { commands_data_offset, barriers };
         }
 
         Commands_data_offset add_pipeline_barrier_command(
@@ -2609,9 +2609,9 @@ namespace Maia::Renderer::Vulkan
             assert(command.memory_barrier_count == 0);
             assert(command.buffer_barrier_count == 0);
 
-            std::pair<Commands_data_offset, std::pmr::vector<vk::ImageMemoryBarrier>> const image_barriers = 
+            std::pair<Commands_data_offset, std::pmr::vector<vk::ImageMemoryBarrier>> const image_barriers =
                 create_image_memory_barriers(
-                    {bytes.data() + commands_data_offset, bytes.size() - commands_data_offset},
+                    { bytes.data() + commands_data_offset, bytes.size() - commands_data_offset },
                     command.image_barrier_count,
                     images,
                     image_subresource_ranges,
@@ -2668,7 +2668,7 @@ namespace Maia::Renderer::Vulkan
                         .extent = render_area.extent,
                     }
                 };
-                
+
                 command_buffer.setScissor(0, scissors);
             }
 
@@ -2724,7 +2724,7 @@ namespace Maia::Renderer::Vulkan
             Command_type const command_type = read<Command_type>(bytes.data() + offset_in_bytes);
             offset_in_bytes += sizeof(Command_type);
 
-            std::span<std::byte const> const next_command_bytes = {bytes.data() + offset_in_bytes, bytes.size() - offset_in_bytes};
+            std::span<std::byte const> const next_command_bytes = { bytes.data() + offset_in_bytes, bytes.size() - offset_in_bytes };
 
             switch (command_type)
             {
