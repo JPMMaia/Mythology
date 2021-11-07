@@ -1004,7 +1004,7 @@ namespace Mythology
         if (scene.nodes)
         {
             std::pmr::vector<vk::TransformMatrixKHR> world_matrices{ output_allocator };
-            world_matrices.resize(scene.nodes->size());
+            world_matrices.resize(world.nodes.size());
 
             auto const calculate_world_matrices = [&world, &world_matrices](std::size_t const root_node_index) -> void
             {
