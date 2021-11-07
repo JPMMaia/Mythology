@@ -182,11 +182,11 @@ namespace nlohmann
 			{
 				if (underscore_location == string_value.end())
 				{
-					return {string_value.begin(), string_value.end()};
+					return { string_value.begin(), string_value.end() };
 				}
 				else
 				{
-					return {string_value.begin(), underscore_location};
+					return { string_value.begin(), underscore_location };
 				}
 			}();
 
@@ -233,14 +233,14 @@ namespace nlohmann
 					return 0;
 				}
 				else
-				{					
+				{
 					auto const position = std::distance(string_value.begin(), underscore_location + 1);
 					char* end = nullptr;
 					return std::strtol(string_value.data() + position, &end, 10);
 				}
 			}();
 
-			value = {semantic_type, semantic_index};
+			value = { semantic_type, semantic_index };
 		}
 	};
 
@@ -367,7 +367,7 @@ namespace Maia::glTF
 		{
 			std::string const& value = json.get<std::string>();
 
-			return {value.begin(), value.end(), allocator};
+			return { value.begin(), value.end(), allocator };
 		}
 
 		std::optional<std::pmr::string> get_optional_string_value(
@@ -387,7 +387,7 @@ namespace Maia::glTF
 				return {};
 			}
 		}
-		
+
 		template <class Value_type, class Function_type>
 		std::pmr::vector<Value_type> get_vector_from_json(
 			nlohmann::json const& json,
@@ -395,7 +395,7 @@ namespace Maia::glTF
 			std::pmr::polymorphic_allocator<> const& allocator
 		)
 		{
-			std::pmr::vector<Value_type> elements{allocator};
+			std::pmr::vector<Value_type> elements{ allocator };
 			elements.reserve(json.size());
 
 			for (nlohmann::json const& element_json : json)
@@ -475,7 +475,7 @@ namespace Maia::glTF
 			std::pmr::polymorphic_allocator<> const& allocator
 		)
 		{
-			std::pmr::unordered_map<Key_type, Value_type, Key_hash> map{allocator};
+			std::pmr::unordered_map<Key_type, Value_type, Key_hash> map{ allocator };
 
 			for (auto const& element : json.items())
 			{
@@ -542,12 +542,12 @@ namespace Maia::glTF
 				41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 64, 64, 64, 64, 64
 			};
 
-			std::pmr::vector<std::byte> output{allocator};
+			std::pmr::vector<std::byte> output{ allocator };
 			output.reserve(output_size);
 
 			{
-				std::uint32_t bits{0};
-				std::uint8_t bit_count{0};
+				std::uint32_t bits{ 0 };
+				std::uint8_t bit_count{ 0 };
 
 				for (char const c : input)
 				{
@@ -584,24 +584,24 @@ namespace Maia::glTF
 		{
 			if (uri.compare(0, 5, "data:") == 0)
 			{
-				char const* const base64_prefix{"data:application/octet-stream;base64,"};
-				std::size_t const base64_prefix_size{std::strlen(base64_prefix)};
+				char const* const base64_prefix{ "data:application/octet-stream;base64," };
+				std::size_t const base64_prefix_size{ std::strlen(base64_prefix) };
 				assert((uri.compare(0, base64_prefix_size, base64_prefix) == 0) && "Uri format not supported");
 
-				std::string_view const data_view{uri.data() + base64_prefix_size, uri.size() - base64_prefix_size};
+				std::string_view const data_view{ uri.data() + base64_prefix_size, uri.size() - base64_prefix_size };
 				return decode_base64(data_view, byte_length, allocator);
 			}
 			else
 			{
-				std::filesystem::path const file_path{prefix_path / uri};
+				std::filesystem::path const file_path{ prefix_path / uri };
 				assert(std::filesystem::exists(file_path) && "Couldn't open file");
 				assert(std::filesystem::file_size(file_path) == byte_length);
 
-				std::pmr::vector<std::byte> file_content{allocator};
+				std::pmr::vector<std::byte> file_content{ allocator };
 				file_content.resize(byte_length);
 
 				{
-					std::basic_ifstream<std::byte> file_stream{file_path, std::ios::binary};
+					std::basic_ifstream<std::byte> file_stream{ file_path, std::ios::binary };
 					assert(file_stream.good());
 
 					file_stream.read(file_content.data(), byte_length);
@@ -624,6 +624,7 @@ namespace Maia::glTF
 			.buffer_index = get_value<Index>(json, "buffer"),
 			.byte_offset = get_optional_value_or<Index>(json, "byteOffset", 0),
 			.byte_length = get_value<std::size_t>(json, "byteLength"),
+			.byte_stride = get_optional_value<std::size_t>(json, "byteStride"),
 			.name = get_optional_string_value(json, "name", allocator),
 		};
 	}
@@ -642,7 +643,7 @@ namespace Maia::glTF
 
 	Material material_from_json(nlohmann::json const& json, std::pmr::polymorphic_allocator<> const& allocator)
 	{
-		return 
+		return
 		{
 			.pbr_metallic_roughness = pbr_metallic_roughness_from_json(json.at("pbrMetallicRoughness")),
 			.emissive_factor = get_optional_value_or<Vector3f>(json, "emissiveFactor", {0.0f, 0.0f, 0.0f}),
@@ -711,9 +712,9 @@ namespace Maia::glTF
 		{
 			using Trace = float;
 
-			auto const m = [&matrix] (std::size_t const row, std::size_t const column) -> float
+			auto const m = [&matrix](std::size_t const row, std::size_t const column) -> float
 			{
-				return matrix[4*row+column];
+				return matrix[4 * row + column];
 			};
 
 			std::pair<Quaternionf, Trace> const quaternion_and_trace = [&]() -> std::pair<Quaternionf, Trace>
@@ -722,7 +723,7 @@ namespace Maia::glTF
 				{
 					if (m(0, 0) > m(1, 1))
 					{
-						float const trace = 1.0f + m(0, 0) -m(1, 1) - m(2, 2);
+						float const trace = 1.0f + m(0, 0) - m(1, 1) - m(2, 2);
 						Quaternionf const quaternion
 						{
 							.x = trace,
@@ -731,7 +732,7 @@ namespace Maia::glTF
 							.w = m(1, 2) - m(2, 1)
 						};
 
-						return {quaternion, trace};
+						return { quaternion, trace };
 					}
 					else
 					{
@@ -741,10 +742,10 @@ namespace Maia::glTF
 							.x = m(0, 1) + m(1, 0),
 							.y = trace,
 							.z = m(1, 2) + m(2, 1),
-							.w = m(2, 0)-m(0, 2)
+							.w = m(2, 0) - m(0, 2)
 						};
 
-						return {quaternion, trace};
+						return { quaternion, trace };
 					}
 				}
 				else
@@ -757,10 +758,10 @@ namespace Maia::glTF
 							.x = m(2, 0) + m(0, 2),
 							.y = m(1, 2) + m(2, 1),
 							.z = trace,
-							.w = m(0, 1) -m(1, 0)
+							.w = m(0, 1) - m(1, 0)
 						};
 
-						return {quaternion, trace};
+						return { quaternion, trace };
 					}
 					else
 					{
@@ -773,11 +774,11 @@ namespace Maia::glTF
 							.w = trace
 						};
 
-						return {quaternion, trace};
+						return { quaternion, trace };
 					}
 				}
 			}();
-			
+
 			Quaternionf const quaternion = quaternion_and_trace.first;
 			float const trace = quaternion_and_trace.second;
 			float const scalar = 0.5f / std::sqrt(trace);
@@ -795,19 +796,19 @@ namespace Maia::glTF
 		{
 			std::array<float, 16> matrix_values = matrix.values;
 
-			Vector3f const translation = {matrix_values[12], matrix_values[13], matrix_values[14]};
+			Vector3f const translation = { matrix_values[12], matrix_values[13], matrix_values[14] };
 			matrix_values[12] = matrix_values[13] = matrix_values[14] = 0.0f;
 
-			Vector3f const column_0 = {matrix_values[0], matrix_values[1], matrix_values[2]};
-			Vector3f const column_1 = {matrix_values[4], matrix_values[5], matrix_values[6]};
-			Vector3f const column_2 = {matrix_values[8], matrix_values[9], matrix_values[10]};
+			Vector3f const column_0 = { matrix_values[0], matrix_values[1], matrix_values[2] };
+			Vector3f const column_1 = { matrix_values[4], matrix_values[5], matrix_values[6] };
+			Vector3f const column_2 = { matrix_values[8], matrix_values[9], matrix_values[10] };
 
 			auto const length_of = [](Vector3f const vector) -> float
 			{
-				return std::sqrt(vector.x*vector.x + vector.y*vector.y + vector.z*vector.z);
+				return std::sqrt(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
 			};
 
-			Vector3f const scale = {length_of(column_0), length_of(column_1), length_of(column_2)};
+			Vector3f const scale = { length_of(column_0), length_of(column_1), length_of(column_2) };
 
 			matrix_values[0] /= scale.x;
 			matrix_values[1] /= scale.x;
@@ -918,7 +919,7 @@ namespace Maia::glTF
 
 		Camera::Type const type = get_value<Camera::Type>(json, "type");
 		std::optional<std::pmr::string> const name = get_optional_value<std::pmr::string>(json, "name", to_string);
-		
+
 		{
 			nlohmann::json::const_iterator const orthographic_location = json.find("orthographic");
 
@@ -934,7 +935,7 @@ namespace Maia::glTF
 			else
 			{
 				nlohmann::json::const_iterator const perspective_location = json.find("perspective");
-				
+
 				return
 				{
 					.type = type,
@@ -971,7 +972,7 @@ namespace Maia::glTF
 		std::pmr::vector<Value_type> get_allocated_elements_from_json(
 			nlohmann::json const& json,
 			char const* const key,
-			Value_type (*element_from_json) (nlohmann::json const&, std::pmr::polymorphic_allocator<> const&),
+			Value_type(*element_from_json) (nlohmann::json const&, std::pmr::polymorphic_allocator<> const&),
 			std::pmr::polymorphic_allocator<> const& allocator
 		)
 		{
