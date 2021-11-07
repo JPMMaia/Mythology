@@ -290,7 +290,7 @@ namespace Mythology
         vk::AllocationCallbacks const* const allocation_callbacks
     ) noexcept
     {
-        assert(data_to_upload.size() > upload_buffer.buffer_view().size);
+        assert(data_to_upload.size() <= upload_buffer.buffer_view().size);
 
         std::memcpy(
             upload_buffer.mapped_data(),
