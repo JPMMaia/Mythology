@@ -89,6 +89,8 @@ classes = (
     pipeline_state.VertexInputStateNode,
     pipeline_state.ViewportNode,
     pipeline_state.ViewportStateNode,
+    ray_tracing.RayTracingPipelineInterfaceNodeSocket,
+    ray_tracing.RayTracingPipelineInterfaceNode,
     ray_tracing.RayTracingPipelineStateNode,
     ray_tracing.RayTracingPipelineStateNodeSocket,
     ray_tracing.RayTracingShaderGroupNode,

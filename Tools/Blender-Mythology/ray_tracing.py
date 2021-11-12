@@ -1,6 +1,7 @@
 import bpy
 import nodeitems_utils
 
+from .pipeline_state import PipelineLibraryNodeSocket
 from .render_node_tree import RenderTreeNode
 
 
@@ -15,6 +16,7 @@ ray_tracing_node_categories = [
         "RAY_TRACING",
         "Ray Tracing",
         items=[
+            nodeitems_utils.NodeItem("RayTracingPipelineInterfaceNode"),
             nodeitems_utils.NodeItem("RayTracingPipelineStateNode"),
             nodeitems_utils.NodeItem("RayTracingShaderGroupNode"),
         ],
@@ -104,6 +106,17 @@ ray_tracing_pipeline_create_flag_bits = (
 )
 
 
+class RayTracingPipelineInterfaceNodeSocket(bpy.types.NodeSocket):
+
+    bl_label = "Ray Tracing Pipeline Interface node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.2, 0.9, 0.7, 1.0)
+
+
 class RayTracingPipelineStateNodeSocket(bpy.types.NodeSocket):
 
     bl_label = "Ray Tracing Pipeline State node socket"
@@ -126,6 +139,26 @@ class RayTracingShaderGroupNodeSocket(bpy.types.NodeSocket):
         return (0.9, 0.4, 0.7, 1.0)
 
 
+class RayTracingPipelineInterfaceNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Ray Tracing Pipeline Interface"
+
+    max_pipeline_ray_payload_size_property: bpy.props.IntProperty(
+        name="Max Pipeline Ray Payload Size", default=0, min=0
+    )
+
+    max_pipeline_ray_hit_attribute_size_property: bpy.props.IntProperty(
+        name="Max Pipeline Ray Hit Attribute Size", default=0, min=0
+    )
+
+    def init(self, context):
+        self.outputs.new("RayTracingPipelineInterfaceNodeSocket", "Interface")
+
+    def draw_buttons(self, context, layout):
+        layout.prop(self, "max_pipeline_ray_payload_size_property")
+        layout.prop(self, "max_pipeline_ray_hit_attribute_size_property")
+
+
 class RayTracingShaderGroupNode(bpy.types.Node, RenderTreeNode):
 
     bl_label = "Ray Tracing Shader Group"
@@ -133,9 +166,13 @@ class RayTracingShaderGroupNode(bpy.types.Node, RenderTreeNode):
     type_property: bpy.props.EnumProperty(
         name="Type", items=ray_tracing_shader_group_type_values, default="GENERAL"
     )
-    # TODO
 
     def init(self, context):
+
+        self.inputs.new("PipelineShaderStageNodeSocket", "General Shader")
+        self.inputs.new("PipelineShaderStageNodeSocket", "Closest Hit Shader")
+        self.inputs.new("PipelineShaderStageNodeSocket", "Any Hit Shader")
+        self.inputs.new("PipelineShaderStageNodeSocket", "Intersection Shader")
 
         self.outputs.new("RayTracingShaderGroupNodeSocket", "Shader Group")
 
@@ -153,16 +190,28 @@ class RayTracingPipelineStateNode(bpy.types.Node, RenderTreeNode):
         items=ray_tracing_pipeline_create_flag_bits,
         options={"ANIMATABLE", "ENUM_FLAG"},
     )
-    # TODO
+    max_pipeline_ray_recursion_depth_property: bpy.props.IntProperty(
+        name="Max Pipeline Ray Recursion Depth Property", default=1
+    )
+    base_pipeline_index_property: bpy.props.IntProperty(
+        name="Base Pipeline Index", default=-1
+    )
 
     def init(self, context):
 
-        # TODO maybe this will be in the ShaderGroup
-        self.inputs.new("PipelineShaderStageNodeSocket", "Stages")
-        self.inputs["Stages"].link_limit = 0
+        self.inputs.new("RayTracingShaderGroupNodeSocket", "Shader Groups")
+        self.inputs["Shader Groups"].link_limit = 0
+
+        self.inputs.new("PipelineLibraryNodeSocket", "Library Info")
+        self.inputs.new("RayTracingPipelineInterfaceNodeSocket", "Library Interface")
+        self.inputs.new("DynamicStateNodeSocket", "Dynamic State")
+        self.inputs.new("PipelineLayoutNodeSocket", "Layout")
+        self.inputs.new("PipelineNodeSocket", "Base Pipeline")
 
         self.outputs.new("RayTracingPipelineStateNodeSocket", "Pipeline")
 
     def draw_buttons(self, context, layout):
 
         layout.prop(self, "flags_property")
+        layout.prop(self, "max_pipeline_ray_recursion_depth_property")
+        layout.prop(self, "base_pipeline_index_property")
