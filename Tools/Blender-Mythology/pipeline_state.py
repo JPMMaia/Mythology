@@ -123,6 +123,17 @@ class PipelineLayoutNodeSocket(bpy.types.NodeSocket):
         return (0.7, 0.6, 0.2, 1.0)
 
 
+class PipelineLibraryNodeSocket(bpy.types.NodeSocket):
+
+    bl_label = "Pipeline Library node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.23, 0.44, 0.5, 1.0)
+
+
 class PipelineNodeSocket(bpy.types.NodeSocket):
 
     bl_label = "Pipeline Node Socket"
@@ -513,6 +524,17 @@ class PipelineLayoutNode(bpy.types.Node, RenderTreeNode):
         self.outputs.new("PipelineLayoutNodeSocket", "Pipeline Layout")
 
 
+class PipelineLibraryNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Pipeline Library"
+
+    def init(self, context):
+        self.inputs.new("PipelineNodeSocket", "Pipelines")
+        self.inputs["Pipelines"].link_limit = 0
+
+        self.outputs.new("PipelineLibraryNodeSocket", "Library")
+
+
 class PipelineShaderStageNode(bpy.types.Node, RenderTreeNode):
 
     bl_label = "Pipeline Shader Stage node"
@@ -874,6 +896,7 @@ pipeline_state_node_categories = [
             nodeitems_utils.NodeItem("InputAssemblyStateNode"),
             nodeitems_utils.NodeItem("PipelineDynamicStateNode"),
             nodeitems_utils.NodeItem("PipelineLayoutNode"),
+            nodeitems_utils.NodeItem("PipelineLibraryNode"),
             nodeitems_utils.NodeItem("PipelineShaderStageNode"),
             nodeitems_utils.NodeItem("PushConstantRangeNode"),
             nodeitems_utils.NodeItem("RasterizationStateNode"),
