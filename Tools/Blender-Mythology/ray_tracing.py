@@ -296,8 +296,8 @@ def create_ray_tracing_pipeline_interface_json(
 
 def ray_tracing_pipeline_state_to_json(
     pipeline_node: RayTracingPipelineStateNode,
-    shader_modules: typing.Tuple[typing.List[ShaderModuleNode], JSONType],
-    pipeline_layouts: typing.Tuple[typing.List[PipelineLayoutNode], JSONType],
+    shader_modules: typing.List[ShaderModuleNode],
+    pipeline_layouts: typing.List[PipelineLayoutNode],
     pipelines: typing.List[PipelineNode],
 ) -> JSONType:
 
@@ -321,12 +321,6 @@ def ray_tracing_pipeline_state_to_json(
         "max_pipeline_ray_recursion_depth": pipeline_node.get(
             "max_pipeline_ray_recursion_depth_property", 0
         ),
-        "library_info": create_pipeline_library_json(
-            pipeline_node.inputs["Library Info"].links[0].from_node
-        ),
-        "library_interface": create_ray_tracing_pipeline_interface_json(
-            pipeline_node.inputs["Library Interface"].links[0].from_node
-        ),
         "dynamic_state": create_pipeline_dynamic_state_json(
             pipeline_node.inputs["Dynamic State"]
         ),
@@ -335,9 +329,103 @@ def ray_tracing_pipeline_state_to_json(
         ),
     }
 
+    if len(pipeline_node.inputs["Library Info"].links) == 1:
+        json["library_info"] = create_pipeline_library_json(
+            pipeline_node.inputs["Library Info"].links[0].from_node, pipelines
+        )
+        json["library_interface"] = create_ray_tracing_pipeline_interface_json(
+            pipeline_node.inputs["Library Interface"].links[0].from_node
+        )
+
     if len(pipeline_node.inputs["Base Pipeline"].links) == 1:
         json["base_pipeline"] = find_index(
             pipelines, pipeline_node.inputs["Base Pipeline"].links[0].from_node
         )
 
     return json
+
+
+def find_adjacent_dependencies(
+    node: RayTracingPipelineStateNode,
+) -> typing.List[RayTracingPipelineStateNode]:
+
+    if (
+        len(node.inputs["Library Info"].links) == 0
+        or len(node.inputs["Library Info"].links[0].from_node.inputs["Pipelines"].links)
+        == 0
+    ):
+        return []
+
+    return [
+        link.from_node
+        for link in node.inputs["Library Info"]
+        .links[0]
+        .from_node.inputs["Pipelines"]
+        .links
+        if link.from_node.bl_idname == "RayTracingPipelineStateNode"
+    ]
+
+
+def sort_ray_tracing_pipeline_nodes_auxiliary(
+    stack: typing.List[RayTracingPipelineStateNode],
+    index: int,
+    pipeline_nodes: typing.List[RayTracingPipelineStateNode],
+    pipeline_node_dependencies: typing.List[typing.List[RayTracingPipelineStateNode]],
+    visited: typing.List[bool],
+) -> None:
+
+    visited[index] = True
+
+    dependencies = pipeline_node_dependencies[index]
+
+    for node in dependencies:
+        dependency_index = pipeline_nodes.index(node)
+        if visited[dependency_index] == False:
+            sort_ray_tracing_pipeline_nodes_auxiliary(dependency_index)
+
+    stack.append(pipeline_nodes[index])
+
+
+def sort_ray_tracing_pipeline_nodes(
+    pipeline_nodes: typing.List[RayTracingPipelineStateNode],
+) -> typing.List[RayTracingPipelineStateNode]:
+
+    pipeline_node_dependencies = [
+        find_adjacent_dependencies(node) for node in pipeline_nodes
+    ]
+    visited = [False for node in pipeline_nodes]
+
+    stack = []
+    for index in range(len(pipeline_nodes)):
+        if visited[index] == False:
+            sort_ray_tracing_pipeline_nodes_auxiliary(
+                stack, index, pipeline_nodes, pipeline_node_dependencies, visited
+            )
+
+    sorted_pipeline_nodes = []
+    while len(stack) > 0:
+        sorted_pipeline_nodes.append(stack.pop())
+
+    return sorted_pipeline_nodes
+
+
+def create_ray_tracing_pipelines_json(
+    nodes: typing.List[bpy.types.Node],
+    shader_modules: typing.List[ShaderModuleNode],
+    pipeline_layouts: typing.List[PipelineLayoutNode],
+) -> typing.Tuple[typing.List[RayTracingPipelineStateNode], JSONType]:
+
+    pipeline_nodes = [
+        node for node in nodes if node.bl_idname == "RayTracingPipelineStateNode"
+    ]
+
+    sorted_pipeline_nodes = sort_ray_tracing_pipeline_nodes(pipeline_nodes)
+
+    json = [
+        ray_tracing_pipeline_state_to_json(
+            pipeline_node, shader_modules, pipeline_layouts, sorted_pipeline_nodes
+        )
+        for pipeline_node in sorted_pipeline_nodes
+    ]
+
+    return (sorted_pipeline_nodes, json)

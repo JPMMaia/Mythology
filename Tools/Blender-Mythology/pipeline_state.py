@@ -1346,7 +1346,7 @@ def create_pipeline_dynamic_state_json(
         return {}
 
 
-def pipeline_state_to_json(
+def graphics_pipeline_state_to_json(
     nodes: typing.List[bpy.types.Node],
     render_passes: typing.Tuple[
         typing.List[RenderPassNode], typing.List[typing.List[SubpassNode]], JSONType
@@ -1425,6 +1425,34 @@ def pipeline_state_to_json(
     ]
 
     return (pipeline_state_nodes, json)
+
+
+def create_pipeline_states_json(
+    compute_pipelines: typing.List[bpy.types.Node],
+    graphics_pipelines: typing.List[bpy.types.Node],
+    ray_tracing_pipelines: typing.List[bpy.types.Node],
+) -> typing.Tuple[typing.List[bpy.types.Node], JSONType]:
+
+    pipeline_states = compute_pipelines + graphics_pipelines + ray_tracing_pipelines
+
+    compute_json = [
+        {"type": "compute", "index": index}
+        for index, pipeline_state in enumerate(compute_pipelines)
+    ]
+
+    graphics_json = [
+        {"type": "graphics", "index": index}
+        for index, pipeline_state in enumerate(graphics_pipelines)
+    ]
+
+    ray_tracing_json = [
+        {"type": "ray_tracing", "index": index}
+        for index, pipeline_state in enumerate(ray_tracing_pipelines)
+    ]
+
+    json = compute_json + graphics_json + ray_tracing_json
+
+    return (pipeline_states, json)
 
 
 def create_pipeline_library_json(

@@ -416,13 +416,13 @@ def begin_render_pass_node_to_json(
 
 def bind_pipeline_node_to_json(
     node: BindPipelineNode,
-    pipeline_states: typing.Tuple[typing.List[GraphicsPipelineStateNode], JSONType],
+    pipeline_states: typing.List[bpy.types.Node],
 ) -> JSONType:
 
     return {
         "type": "Bind_pipeline",
         "pipeline_bind_point": node.get("pipeline_bind_point_property", 0),
-        "pipeline": pipeline_states[0].index(
+        "pipeline": pipeline_states.index(
             ignore_reroutes(node.inputs["Pipeline"].links[0].from_node)
         ),
     }
@@ -533,7 +533,7 @@ def set_screen_viewport_and_scissors_node_to_json(
 
 def frame_command_node_to_json(
     node: bpy.types.Node,
-    pipeline_states: typing.Tuple[typing.List[GraphicsPipelineStateNode], JSONType],
+    pipeline_states: typing.List[bpy.types.Node],
     render_passes: typing.Tuple[
         typing.List[RenderPassNode], typing.List[typing.List[SubpassNode]], JSONType
     ],
@@ -576,7 +576,7 @@ def get_frame_command_nodes(begin_frame_node: BeginFrameNode) -> [bpy.types.Node
 
 def frame_commands_to_json(
     nodes: typing.List[bpy.types.Node],
-    pipeline_states: typing.Tuple[typing.List[GraphicsPipelineStateNode], JSONType],
+    pipeline_states: typing.List[bpy.types.Node],
     render_passes: typing.Tuple[
         typing.List[RenderPassNode], typing.List[typing.List[SubpassNode]], JSONType
     ],
