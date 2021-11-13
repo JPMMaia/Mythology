@@ -27,6 +27,18 @@ def get_enum_property_int_value(
     )
 
 
+def find_index(list, value) -> int:
+
+    return next(
+        index for index, current_value in enumerate(list) if current_value == value
+    )
+
+
+def get_input_node(node: bpy.types.Node, input_name: str, index: int) -> bpy.types.Node:
+
+    return node.inputs[input_name].links[index].from_node
+
+
 class Extent2DNodeSocket(bpy.types.NodeSocket):
 
     bl_label = "Extent 2D node socket"
