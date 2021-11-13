@@ -1052,15 +1052,9 @@ def shader_module_to_json(
 
 
 def create_shader_stages_json(
-    pipeline_shader_stage_node_socket: PipelineShaderStageNodeSocket,
+    shader_stage_nodes: typing.List[PipelineShaderStageNode],
     shader_modules: typing.Tuple[typing.List[ShaderModuleNode], JSONType],
 ) -> JSONType:
-
-    assert len(pipeline_shader_stage_node_socket.links) > 0
-
-    shader_stage_nodes = [
-        link.from_node for link in pipeline_shader_stage_node_socket.links
-    ]
 
     assert all(
         len(shader_stage_node.inputs["Shader"].links) == 1
@@ -1368,7 +1362,10 @@ def pipeline_state_to_json(
     names = [pipeline_state.name_property for pipeline_state in pipeline_state_nodes]
 
     stages_per_pipeline_state = [
-        create_shader_stages_json(pipeline_state.inputs["Stages"], shader_modules)
+        create_shader_stages_json(
+            [link.from_node for link in pipeline_state.inputs["Stages"].links],
+            shader_modules,
+        )
         for pipeline_state in pipeline_state_nodes
     ]
 
