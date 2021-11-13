@@ -117,17 +117,6 @@ class RayTracingPipelineInterfaceNodeSocket(bpy.types.NodeSocket):
         return (0.2, 0.9, 0.7, 1.0)
 
 
-class RayTracingPipelineStateNodeSocket(bpy.types.NodeSocket):
-
-    bl_label = "Ray Tracing Pipeline State node socket"
-
-    def draw(self, context, layout, node, text):
-        layout.label(text=text)
-
-    def draw_color(self, context, node):
-        return (0.4, 0.7, 0.9, 1.0)
-
-
 class RayTracingShaderGroupNodeSocket(bpy.types.NodeSocket):
 
     bl_label = "Ray Tracing Shader Group node socket"

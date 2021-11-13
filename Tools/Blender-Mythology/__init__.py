@@ -92,7 +92,6 @@ classes = (
     ray_tracing.RayTracingPipelineInterfaceNodeSocket,
     ray_tracing.RayTracingPipelineInterfaceNode,
     ray_tracing.RayTracingPipelineStateNode,
-    ray_tracing.RayTracingPipelineStateNodeSocket,
     ray_tracing.RayTracingShaderGroupNode,
     ray_tracing.RayTracingShaderGroupNodeSocket,
     render_pass.AccessFlagsNodeSocket,
