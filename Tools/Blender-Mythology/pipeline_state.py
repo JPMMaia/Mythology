@@ -1,6 +1,6 @@
 import bpy
 
-from .common import ignore_reroutes
+from .common import find_index, ignore_reroutes
 from .render_node_tree import RenderTreeNode
 from .render_pass import RenderPassNodeSocket, SubpassNodeSocket
 from .vulkan_enums import (
@@ -1425,3 +1425,12 @@ def pipeline_state_to_json(
     ]
 
     return (pipeline_state_nodes, json)
+
+
+def create_pipeline_library_json(
+    node: PipelineLibraryNode, pipelines: typing.List[PipelineNodeSocket]
+) -> JSONType:
+
+    return [
+        find_index(pipelines, link.from_node) for link in node.inputs["Pipelines"].links
+    ]
