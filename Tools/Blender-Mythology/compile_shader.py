@@ -24,8 +24,9 @@ def compile_shaders(
             "-spirv",
             "-T",
             target,
-            "-E",
-            node.entry_point_property,
+            "-E {}".format(node.entry_point_property)
+            if node.shader_type_property != "LIB"
+            else "",
             node.additional_compile_flags_property,
             bpy.path.abspath(node.input_shader_file_property),
             "-Fo",

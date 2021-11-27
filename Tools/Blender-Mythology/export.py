@@ -62,7 +62,7 @@ class MythologyExportPanel(bpy.types.Panel):
 def write_json_to_file(output_json, output_file: pathlib.PurePath) -> None:
 
     with open(str(output_file), "w") as output_stream:
-        json.dump(output_json, output_stream)
+        json.dump(output_json, output_stream, indent=4)
 
 
 class MythologyExportOperator(bpy.types.Operator):
@@ -96,7 +96,7 @@ class MythologyExportOperator(bpy.types.Operator):
         pipeline_layouts = create_pipeline_layouts_json(nodes, descriptor_set_layouts)
         compute_pipeline_states = ([], [])
         graphics_pipeline_states = graphics_pipeline_state_to_json(
-            nodes, render_passes, shader_modules, pipeline_layouts
+            nodes, render_passes, shader_modules[0], pipeline_layouts
         )
         ray_tracing_pipeline_states = create_ray_tracing_pipelines_json(
             nodes, shader_modules[0], pipeline_layouts[0]

@@ -539,9 +539,41 @@ class PipelineShaderStageNode(bpy.types.Node, RenderTreeNode):
 
     bl_label = "Pipeline Shader Stage node"
 
+    stage_flags_property: bpy.props.EnumProperty(
+        name="Stage Flags", items=shader_stage_flag_values
+    )
+    entry_point_property: bpy.props.StringProperty(name="Entry point", default="main")
+
     def init(self, context):
         self.inputs.new("ShaderModuleNodeSocket", "Shader")
         self.outputs.new("PipelineShaderStageNodeSocket", "Stage")
+        self.update()
+
+    def draw_buttons(self, context, layout):
+
+        if (
+            len(self.inputs["Shader"].links) == 1
+            and self.inputs["Shader"].links[0].from_node.bl_idname == "ShaderModuleNode"
+        ):
+            from_node = self.inputs["Shader"].links[0].from_node
+            if from_node.shader_type_property == "LIB":
+                layout.prop(self, "entry_point_property")
+                layout.prop(self, "stage_flags_property")
+
+    def update(self):
+
+        if (
+            len(self.inputs["Shader"].links) == 1
+            and self.inputs["Shader"].links[0].from_node.bl_idname == "ShaderModuleNode"
+        ):
+            from_node = self.inputs["Shader"].links[0].from_node
+            if from_node.shader_type_property != "LIB":
+
+                shader_type = from_node.get("shader_type_property", 0)
+                self["stage_flags_property"] = shader_type
+
+                entry_point = from_node.get("entry_point_property", "")
+                self["entry_point_property"] = entry_point
 
 
 class PushConstantRangeNode(bpy.types.Node, RenderTreeNode):
@@ -685,10 +717,15 @@ shader_type_values = [
     ("CS", "Compute Shader", "", 0x00000020),
     ("AS", "Amplification Shader", "", 0x00000040),
     ("MS", "Mesh Shader", "", 0x00000080),
+    ("LIB", "Library", "", 0x00000100),
 ]
 
 
 class ShaderModuleNode(bpy.types.Node, RenderTreeNode):
+    def update_adjacent_nodes(self, context):
+        for link in self.outputs["Shader"].links:
+            if link.to_node.bl_idname == "PipelineShaderStageNode":
+                link.to_node.update()
 
     bl_label = "Shader Module node"
 
@@ -697,9 +734,13 @@ class ShaderModuleNode(bpy.types.Node, RenderTreeNode):
     )
     output_shader_filename_property: bpy.props.StringProperty(name="Output Binary")
     language_property: bpy.props.EnumProperty(items=[("HLSL", "HLSL", "", 0)])
-    shader_type_property: bpy.props.EnumProperty(name="Type", items=shader_type_values)
+    shader_type_property: bpy.props.EnumProperty(
+        name="Type", items=shader_type_values, update=update_adjacent_nodes
+    )
     shader_model_property: bpy.props.StringProperty(name="Model", default="6_5")
-    entry_point_property: bpy.props.StringProperty(name="Entry point", default="main")
+    entry_point_property: bpy.props.StringProperty(
+        name="Entry point", default="main", update=update_adjacent_nodes
+    )
     additional_compile_flags_property: bpy.props.StringProperty(
         name="Compile flags", description="Additional compile flags"
     )
@@ -713,7 +754,8 @@ class ShaderModuleNode(bpy.types.Node, RenderTreeNode):
         layout.prop(self, "language_property")
         layout.prop(self, "shader_type_property")
         layout.prop(self, "shader_model_property")
-        layout.prop(self, "entry_point_property")
+        if self.shader_type_property != "LIB":
+            layout.prop(self, "entry_point_property")
         layout.prop(self, "additional_compile_flags_property")
 
 
@@ -1051,9 +1093,19 @@ def shader_module_to_json(
     return (shader_module_nodes, json)
 
 
+def create_shader_stage_json(
+    shader_module_index: int, shader_module: ShaderModuleNode
+) -> JSONType:
+    json = {
+        "shader": shader_module_index,
+        "stage": shader_module.get("shader_type_property", 1),
+        "entry_point": shader_module.get("entry_point_property", "main"),
+    }
+
+
 def create_shader_stages_json(
     shader_stage_nodes: typing.List[PipelineShaderStageNode],
-    shader_modules: typing.Tuple[typing.List[ShaderModuleNode], JSONType],
+    shader_modules: typing.List[ShaderModuleNode],
 ) -> JSONType:
 
     assert all(
@@ -1069,22 +1121,24 @@ def create_shader_stages_json(
     shader_module_indices = [
         next(
             index
-            for index, node in enumerate(shader_modules[0])
+            for index, node in enumerate(shader_modules)
             if node == shader_module_node
         )
         for shader_module_node in shader_module_nodes
     ]
 
-    return [
+    json = [
         {
             "shader": shader_module_index,
-            "stage": shader_module.get("shader_type_property", 1),
-            "entry_point": shader_module.get("entry_point_property", "main"),
+            "stage": shader_stage.get("shader_type_property", 1),
+            "entry_point": shader_stage.get("entry_point_property", "main"),
         }
-        for shader_module_index, shader_module in zip(
-            shader_module_indices, shader_module_nodes
+        for shader_stage, shader_module_index in zip(
+            shader_stage_nodes, shader_module_indices
         )
     ]
+
+    return json
 
 
 def create_vertex_input_attribute_json(node: VertexInputAttributeNode) -> JSONType:
@@ -1351,7 +1405,7 @@ def graphics_pipeline_state_to_json(
     render_passes: typing.Tuple[
         typing.List[RenderPassNode], typing.List[typing.List[SubpassNode]], JSONType
     ],
-    shader_modules: typing.Tuple[typing.List[ShaderModuleNode], JSONType],
+    shader_modules: typing.List[ShaderModuleNode],
     pipeline_layouts: typing.Tuple[typing.List[PipelineLayoutNode], JSONType],
 ) -> typing.Tuple[typing.List[GraphicsPipelineStateNode], JSONType]:
 

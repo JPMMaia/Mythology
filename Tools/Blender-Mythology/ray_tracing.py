@@ -5,7 +5,6 @@ import typing
 from .common import find_index, get_input_node
 from .pipeline_state import (
     PipelineLayoutNode,
-    PipelineNode,
     PipelineShaderStageNode,
     ShaderModuleNode,
     create_pipeline_dynamic_state_json,
@@ -298,7 +297,7 @@ def ray_tracing_pipeline_state_to_json(
     pipeline_node: RayTracingPipelineStateNode,
     shader_modules: typing.List[ShaderModuleNode],
     pipeline_layouts: typing.List[PipelineLayoutNode],
-    pipelines: typing.List[PipelineNode],
+    pipelines: typing.List[bpy.types.Node],
 ) -> JSONType:
 
     pipeline_shader_stages = gather_ray_tracing_shader_stages(

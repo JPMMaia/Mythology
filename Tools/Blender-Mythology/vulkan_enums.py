@@ -397,11 +397,19 @@ sampler_mipmap_mode_values = (
 
 shader_stage_flag_values = (
     ("VERTEX", "Vertex", "", 0x00000001),
-    ("TESSELLATION_CONTROL", "Tessellation_control", "", 0x00000002),
-    ("TESSELLATION_EVALUATION", "Tessellation_evaluation", "", 0x00000004),
+    ("TESSELLATION_CONTROL", "Tessellation control", "", 0x00000002),
+    ("TESSELLATION_EVALUATION", "Tessellation evaluation", "", 0x00000004),
     ("GEOMETRY", "Geometry", "", 0x00000008),
     ("FRAGMENT", "Fragment", "", 0x00000010),
     ("COMPUTE", "Compute", "", 0x00000020),
+    ("AMPLIFICATION", "Amplification", "", 0x00000040),
+    ("MESH", "Mesh", "", 0x00000080),
+    ("RAYGEN", "Ray generation", "", 0x00000100),
+    ("ANY_HIT", "Any hit", "", 0x00000200),
+    ("CLOSEST_HIT", "Closest hit", "", 0x00000400),
+    ("MISS_HIT", "Miss hit", "", 0x00000800),
+    ("INTERSECTION", "Intersection", "", 0x00001000),
+    ("CALLABLE", "Callable", "", 0x00002000),
 )
 
 
