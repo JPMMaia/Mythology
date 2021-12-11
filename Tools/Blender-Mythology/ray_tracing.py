@@ -232,86 +232,36 @@ def create_dynamic_input(socket_name, previous_inputs) -> typing.Any:
     return {"name": socket_name, "links": links}
 
 
-def create_dynamic_input_aux(base_socket_name, previous_inputs):
-
-    linked_socket_names = []
-
-    index = 0
-    while 1:
-        socket_name = base_socket_name + " " + str(index)
-        if socket_name in previous_inputs:
-            input = previous_inputs[socket_name]
-            if len(input.links) > 0:
-                linked_socket_names.append(socket_name)
-        else:
-            break
-        index += 1
+def create_dynamic_inputs(previous_inputs) -> typing.List[typing.Any]:
 
     new_inputs = []
-    for index, socket_name in enumerate(linked_socket_names):
-        links = (
-            previous_inputs[socket_name].links if socket_name in previous_inputs else []
-        )
-        new_inputs.append({"name": base_socket_name + " " + index, "links": links})
 
-    new_inputs.append(
-        {"name": base_socket_name + " " + str(len(new_inputs)), "links": []}
-    )
+    for input in previous_inputs:
+        if len(input.links) > 0:
+            new_inputs.append(
+                {
+                    "name": str(len(new_inputs)),
+                    "from_sockets": [link.from_socket for link in input.links],
+                }
+            )
 
-    return new_inputs
-
-
-def create_dynamic_inputs(
-    previous_inputs,
-) -> typing.List[PipelineShaderStageNodeSocket]:
-    new_inputs = []
-
-    ray_generation_inputs = [
-        create_dynamic_input("Ray Generation Shader", previous_inputs)
-    ]
-    miss_shader_inputs = create_dynamic_input_aux("Miss Shader", previous_inputs)
-    hit_shader_inputs = create_dynamic_input_aux("Hit Shader", previous_inputs)
-    callable_shader_inputs = create_dynamic_input_aux(
-        "Callable Shader", previous_inputs
-    )
-
-    new_inputs = (
-        ray_generation_inputs
-        + miss_shader_inputs
-        + hit_shader_inputs
-        + callable_shader_inputs
-    )
+    new_inputs.append({"name": str(len(new_inputs)), "from_sockets": []})
 
     return new_inputs
 
 
 def dynamic_inputs_need_to_be_recreated(inputs) -> bool:
 
-    base_names = ["Miss Shader", "Hit Shader", "Callable Shader"]
+    if len(inputs) == 0:
+        return True
 
-    for base_name in base_names:
-        input_names = []
+    if len(inputs[len(inputs) - 1].links) > 0:
+        return True
 
-        index = 0
-        while 1:
-            name = base_name + " " + str(index)
-            if name in inputs:
-                input_names.append(name)
-            else:
-                break
-            index += 1
-
-        if len(input_names) == 0:
+    for index in range(0, len(inputs) - 1):
+        input = inputs[index]
+        if len(input.links) == 0:
             return True
-
-        if len(inputs[len(inputs) - 1].links) > 0:
-            return True
-
-        for index in range(0, len(input_names) - 1):
-            name = input_names[index]
-            input = inputs[name]
-            if len(input.links) == 0:
-                return True
 
     return False
 
@@ -320,6 +270,8 @@ class ShaderBindingTableNode(bpy.types.Node, RenderTreeNode):
 
     bl_label = "Shader Binding Table"
     recreating = False
+
+    shader_model_property: bpy.props.StringProperty(name="Name", default="")
 
     def init(self, context):
         self.recreating = True
@@ -332,19 +284,23 @@ class ShaderBindingTableNode(bpy.types.Node, RenderTreeNode):
         inputs = create_dynamic_inputs(self.inputs)
         self.inputs.clear()
 
+        node_tree = self.id_data
         for input in inputs:
             name = input["name"]
             self.inputs.new("RayTracingShaderGroupNodeSocket", name)
 
-            links = input["links"]
-            for link in links:
-                self.inputs[name].links += link
+            from_sockets = input["from_sockets"]
+            for from_socket in from_sockets:
+                node_tree.links.new(from_socket, self.inputs[name])
 
     def update(self):
-        if not self.recreating:  # and dynamic_inputs_need_to_be_recreated(self.inputs):
+        if not self.recreating and dynamic_inputs_need_to_be_recreated(self.inputs):
             self.recreating = True
             self.recreate_inputs()
             self.recreating = False
+
+    def draw_buttons(self, context, layout):
+        layout.prop(self, "shader_model_property")
 
 
 JSONType = typing.Union[
