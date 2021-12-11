@@ -23,6 +23,7 @@ module mythology.sdl.startup_state;
 
 import maia.glTF;
 import maia.renderer.vulkan.serializer;
+import maia.renderer.vulkan.upload;
 import maia.scene;
 
 import mythology.geometry;
@@ -70,6 +71,7 @@ namespace Mythology::SDL
 
         struct Buffer_resources
         {
+            Maia::Renderer::Vulkan::Buffer_resources shader_binding_tables;
             Maia::Renderer::Vulkan::Buffer_resources acceleration_structure_storage;
             Maia::Renderer::Vulkan::Buffer_resources geometry;
             Maia::Renderer::Vulkan::Buffer_resources instance;
@@ -85,6 +87,19 @@ namespace Mythology::SDL
         {
             return Buffer_resources
             {
+                .shader_binding_tables =
+                {
+                    physical_device,
+                    device,
+                    physical_device_type,
+                    {},
+                    4 * 1024,
+                    vk::BufferUsageFlagBits::eShaderBindingTableKHR,
+                    {},
+                    {},
+                    nullptr,
+                    {}
+                },
                 .acceleration_structure_storage =
                 {
                     physical_device,
@@ -216,6 +231,18 @@ namespace Mythology::SDL
                 .bottom_level_acceleration_structures = std::move(bottom_level_acceleration_structures),
                 .top_level_acceleration_structures = std::move(top_level_acceleration_structures)
             };
+        }
+
+        vk::PhysicalDeviceRayTracingPipelinePropertiesKHR get_physical_device_ray_tracing_properties(vk::PhysicalDevice const physical_device) noexcept
+        {
+            vk::PhysicalDeviceRayTracingPipelinePropertiesKHR ray_tracing_properties = {};
+            vk::PhysicalDeviceProperties2 properties = {
+                .pNext = &ray_tracing_properties,
+            };
+
+            physical_device.getProperties2(&properties);
+
+            return ray_tracing_properties;
         }
     }
 
@@ -444,11 +471,33 @@ namespace Mythology::SDL
         nlohmann::json const render_pipeline_json = read_json_from_file(render_pipeline_configuration_file_path);
 
         vk::Device const render_pipeline_device = device_resources.devices[render_pipeline_configuration.device_index];
+        vk::Queue const render_pipeline_upload_queue = queues[device_configurations[render_pipeline_configuration.device_index].upload_queue_index];
+        vk::CommandPool const render_pipeline_command_pool = command_pools_resources.command_pools[device_configurations[render_pipeline_configuration.device_index].upload_queue_index];
+        vk::PhysicalDevice const render_pipeline_physical_device = physical_devices[device_configurations[render_pipeline_configuration.device_index].physical_device_index];
+        vk::PhysicalDeviceType const render_pipeline_physical_device_type = render_pipeline_physical_device.getProperties().deviceType;
+
+        Buffer_resources buffer_resources = create_buffer_resources(
+            render_pipeline_physical_device,
+            render_pipeline_physical_device_type,
+            render_pipeline_device
+        );
+
+        std::unique_ptr<Maia::Renderer::Vulkan::Upload_buffer> render_pipeline_upload_buffer =
+            (render_pipeline_physical_device_type != vk::PhysicalDeviceType::eIntegratedGpu) ?
+            std::make_unique<Maia::Renderer::Vulkan::Upload_buffer>(render_pipeline_device, buffer_resources.upload, 64 * 1024 * 1024) :
+            nullptr;
+
+        vk::PhysicalDeviceRayTracingPipelinePropertiesKHR const physical_device_ray_tracing_properties = get_physical_device_ray_tracing_properties(render_pipeline_physical_device);
 
         Maia::Renderer::Vulkan::Pipeline_resources const render_pipeline_resources
         {
             render_pipeline_device,
+            render_pipeline_upload_queue,
+            render_pipeline_command_pool,
             {},
+            physical_device_ray_tracing_properties,
+            buffer_resources.shader_binding_tables,
+            render_pipeline_upload_buffer.get(),
             nullptr,
             render_pipeline_json,
             render_pipeline_configuration_file_path.parent_path(),
@@ -492,19 +541,9 @@ namespace Mythology::SDL
                 command_list_json,
                 render_pipeline_resources.pipeline_states,
                 render_pipeline_resources.render_passes,
+                render_pipeline_resources.shader_binding_tables,
                 {},
                 {}
-        );
-
-        vk::PhysicalDevice const render_pipeline_physical_device = physical_devices[device_configurations[render_pipeline_configuration.device_index].physical_device_index];
-        vk::PhysicalDeviceType const render_pipeline_physical_device_type = render_pipeline_physical_device.getProperties().deviceType;
-        vk::Queue const render_pipeline_upload_queue = queues[device_configurations[render_pipeline_configuration.device_index].upload_queue_index];
-        vk::CommandPool const render_pipeline_command_pool = command_pools_resources.command_pools[device_configurations[render_pipeline_configuration.device_index].upload_queue_index];
-
-        Buffer_resources buffer_resources = create_buffer_resources(
-            render_pipeline_physical_device,
-            render_pipeline_physical_device_type,
-            render_pipeline_device
         );
 
         std::optional<Scene_resources> const scene_resources = load_scene(
@@ -600,9 +639,6 @@ namespace Mythology::SDL
 
                             std::span<vk::Rect2D const> const output_render_areas = swapchain_render_areas;
 
-                            // TODO
-                            std::span<Maia::Renderer::Vulkan::Shader_binding_tables const> const shader_binding_tables;
-
                             Maia::Renderer::Vulkan::draw(
                                 command_buffer,
                                 output_buffers,
@@ -611,7 +647,6 @@ namespace Mythology::SDL
                                 output_image_subresource_ranges,
                                 output_framebuffers,
                                 output_render_areas,
-                                shader_binding_tables,
                                 commands_data,
                                 {}
                             );
