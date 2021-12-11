@@ -21,7 +21,7 @@ namespace Maia::Renderer::Vulkan
         vk::DeviceSize const size
     ) :
         m_device{ device },
-        m_buffer_view{ buffer_resources.allocate_buffer(size, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent) },
+        m_buffer_view{ buffer_resources.allocate_buffer(size, 1, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent) },
         m_mapped_data{ device.mapMemory(m_buffer_view.memory, m_buffer_view.offset, m_buffer_view.size, vk::MemoryMapFlags{}) }
     {
     }
