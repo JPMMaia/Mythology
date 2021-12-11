@@ -98,6 +98,7 @@ namespace Mythology
 
             return buffer_resources.allocate_buffer(
                 size_in_bytes,
+                1,
                 vk::MemoryPropertyFlagBits::eDeviceLocal
             );
         };
@@ -664,6 +665,7 @@ namespace Mythology
         Maia::Renderer::Vulkan::Buffer_view const acceleration_structure_buffer_view =
             acceleration_structure_storage_buffer_resources.allocate_buffer(
                 acceleration_structure_build_sizes_info.accelerationStructureSize,
+                1,
                 vk::MemoryPropertyFlagBits::eDeviceLocal
             );
 
@@ -742,6 +744,7 @@ namespace Mythology
             Maia::Renderer::Vulkan::Buffer_view const scratch_buffer_view =
                 scratch_buffer_resources.allocate_buffer(
                     acceleration_structure_build_sizes_info.buildScratchSize,
+                    1,
                     vk::MemoryPropertyFlagBits::eDeviceLocal
                 );
 
@@ -1043,6 +1046,7 @@ namespace Mythology
         Maia::Renderer::Vulkan::Buffer_view const instances_buffer_view =
             instances_buffer_resources.allocate_buffer(
                 instance_count * sizeof(vk::AccelerationStructureInstanceKHR),
+                1,
                 vk::MemoryPropertyFlagBits::eDeviceLocal
             );
 
@@ -1132,6 +1136,7 @@ namespace Mythology
         Maia::Renderer::Vulkan::Buffer_view const scratch_buffer_view =
             scratch_buffer_resources.allocate_buffer(
                 acceleration_structure_build_sizes_info.buildScratchSize,
+                1,
                 vk::MemoryPropertyFlagBits::eDeviceLocal
             );
 
@@ -1222,6 +1227,7 @@ namespace Mythology
             Maia::Renderer::Vulkan::Buffer_view const instance_buffer_view =
                 instance_buffer_resources.allocate_buffer(
                     sizeof(VkAccelerationStructureInstanceKHR),
+                    1,
                     vk::MemoryPropertyFlagBits::eDeviceLocal
                 );
 
