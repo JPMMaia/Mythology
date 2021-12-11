@@ -143,18 +143,28 @@ namespace Maia::Renderer::Vulkan
                 .memory_type_bits = memory_requirements.memoryTypeBits,
             };
         }
+
+        template <typename T, typename S>
+        T align(T const value, S const alignment) noexcept
+        {
+            T const remainder = (value % alignment);
+            T const aligned_value = (remainder == 0) ? value : (value + (alignment - remainder));
+            assert((aligned_value % alignment) == 0);
+            return aligned_value;
+        }
     }
 
     Buffer_view Buffer_resources::allocate_buffer(
         vk::DeviceSize const required_size,
+        std::uint32_t const required_alignment,
         vk::MemoryPropertyFlags const required_memory_property_flags
     )
     {
-        auto const has_free_space = [this, required_size](std::size_t const index) -> bool
+        auto const has_free_space = [this, required_size, required_alignment](std::size_t const index) -> bool
         {
             vk::DeviceSize const allocated_bytes = m_allocated_bytes[index];
 
-            return (allocated_bytes + required_size) <= m_block_size; // TODO align
+            return align(allocated_bytes + required_size, required_alignment) <= m_block_size;
         };
 
         auto const has_required_memory_properties = [this, required_memory_property_flags](std::size_t const index) -> bool
@@ -178,7 +188,7 @@ namespace Maia::Renderer::Vulkan
         {
             auto const free_block_index = *free_block_iterator;
 
-            vk::DeviceSize const offset = m_allocated_bytes[free_block_index]; // TODO align
+            vk::DeviceSize const offset = align(m_allocated_bytes[free_block_index], required_alignment);
             m_allocated_bytes[free_block_index] += required_size;
 
             Buffer_view const buffer_view
@@ -227,5 +237,10 @@ namespace Maia::Renderer::Vulkan
             m_allocated_bytes.end(),
             vk::DeviceSize{ 0 }
         );
+    }
+
+    vk::BufferUsageFlags Buffer_resources::usage() noexcept
+    {
+        return m_usage;
     }
 }

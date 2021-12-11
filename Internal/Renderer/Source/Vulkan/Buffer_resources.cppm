@@ -44,10 +44,13 @@ namespace Maia::Renderer::Vulkan
 
         Buffer_view allocate_buffer(
             vk::DeviceSize const required_size,
+            std::uint32_t const required_alignment,
             vk::MemoryPropertyFlags required_memory_property_flags = vk::MemoryPropertyFlagBits::eDeviceLocal
         );
 
         void clear() noexcept;
+
+        vk::BufferUsageFlags usage() noexcept;
 
     private:
 
