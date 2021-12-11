@@ -2,10 +2,13 @@ import bpy
 import nodeitems_utils
 import typing
 
+import random
+
 from .common import find_index, get_input_node
 from .pipeline_state import (
     PipelineLayoutNode,
     PipelineShaderStageNode,
+    PipelineShaderStageNodeSocket,
     ShaderModuleNode,
     create_pipeline_dynamic_state_json,
     create_pipeline_library_json,
@@ -28,6 +31,7 @@ ray_tracing_node_categories = [
             nodeitems_utils.NodeItem("RayTracingPipelineInterfaceNode"),
             nodeitems_utils.NodeItem("RayTracingPipelineStateNode"),
             nodeitems_utils.NodeItem("RayTracingShaderGroupNode"),
+            nodeitems_utils.NodeItem("ShaderBindingTableNode"),
         ],
     ),
 ]
@@ -137,6 +141,17 @@ class RayTracingShaderGroupNodeSocket(bpy.types.NodeSocket):
         return (0.9, 0.4, 0.7, 1.0)
 
 
+class ShaderBindingTableNodeSocket(bpy.types.NodeSocket):
+
+    bl_label = "Shader Binding Table node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.4, 0.2, 0.1, 1.0)
+
+
 class RayTracingPipelineInterfaceNode(bpy.types.Node, RenderTreeNode):
 
     bl_label = "Ray Tracing Pipeline Interface"
@@ -210,6 +225,126 @@ class RayTracingPipelineStateNode(bpy.types.Node, RenderTreeNode):
         layout.prop(self, "name_property")
         layout.prop(self, "flags_property")
         layout.prop(self, "max_pipeline_ray_recursion_depth_property")
+
+
+def create_dynamic_input(socket_name, previous_inputs) -> typing.Any:
+    links = previous_inputs[socket_name].links if socket_name in previous_inputs else []
+    return {"name": socket_name, "links": links}
+
+
+def create_dynamic_input_aux(base_socket_name, previous_inputs):
+
+    linked_socket_names = []
+
+    index = 0
+    while 1:
+        socket_name = base_socket_name + " " + str(index)
+        if socket_name in previous_inputs:
+            input = previous_inputs[socket_name]
+            if len(input.links) > 0:
+                linked_socket_names.append(socket_name)
+        else:
+            break
+        index += 1
+
+    new_inputs = []
+    for index, socket_name in enumerate(linked_socket_names):
+        links = (
+            previous_inputs[socket_name].links if socket_name in previous_inputs else []
+        )
+        new_inputs.append({"name": base_socket_name + " " + index, "links": links})
+
+    new_inputs.append(
+        {"name": base_socket_name + " " + str(len(new_inputs)), "links": []}
+    )
+
+    return new_inputs
+
+
+def create_dynamic_inputs(
+    previous_inputs,
+) -> typing.List[PipelineShaderStageNodeSocket]:
+    new_inputs = []
+
+    ray_generation_inputs = [
+        create_dynamic_input("Ray Generation Shader", previous_inputs)
+    ]
+    miss_shader_inputs = create_dynamic_input_aux("Miss Shader", previous_inputs)
+    hit_shader_inputs = create_dynamic_input_aux("Hit Shader", previous_inputs)
+    callable_shader_inputs = create_dynamic_input_aux(
+        "Callable Shader", previous_inputs
+    )
+
+    new_inputs = (
+        ray_generation_inputs
+        + miss_shader_inputs
+        + hit_shader_inputs
+        + callable_shader_inputs
+    )
+
+    return new_inputs
+
+
+def dynamic_inputs_need_to_be_recreated(inputs) -> bool:
+
+    base_names = ["Miss Shader", "Hit Shader", "Callable Shader"]
+
+    for base_name in base_names:
+        input_names = []
+
+        index = 0
+        while 1:
+            name = base_name + " " + str(index)
+            if name in inputs:
+                input_names.append(name)
+            else:
+                break
+            index += 1
+
+        if len(input_names) == 0:
+            return True
+
+        if len(inputs[len(inputs) - 1].links) > 0:
+            return True
+
+        for index in range(0, len(input_names) - 1):
+            name = input_names[index]
+            input = inputs[name]
+            if len(input.links) == 0:
+                return True
+
+    return False
+
+
+class ShaderBindingTableNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Shader Binding Table"
+    recreating = False
+
+    def init(self, context):
+        self.recreating = True
+        self.recreate_inputs()
+        self.recreating = False
+
+        self.outputs.new("ShaderBindingTableNodeSocket", "Table")
+
+    def recreate_inputs(self):
+        inputs = create_dynamic_inputs(self.inputs)
+        self.inputs.clear()
+
+        for input in inputs:
+            name = input["name"]
+            self.inputs.new("RayTracingShaderGroupNodeSocket", name)
+
+            links = input["links"]
+            for link in links:
+                self.inputs[name].links += link
+
+    def update(self):
+        if not self.recreating:  # and dynamic_inputs_need_to_be_recreated(self.inputs):
+            self.recreating = True
+            self.recreate_inputs()
+            self.recreating = False
 
 
 JSONType = typing.Union[
