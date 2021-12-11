@@ -13,6 +13,9 @@ module;
 
 export module maia.renderer.vulkan.serializer;
 
+import maia.renderer.vulkan.buffer_resources;
+import maia.renderer.vulkan.upload;
+
 namespace Maia::Renderer::Vulkan
 {
     export struct Render_pass_create_info_resources
@@ -94,7 +97,12 @@ namespace Maia::Renderer::Vulkan
     {
         Pipeline_resources(
             vk::Device device,
-            vk::PipelineCache const pipeline_cache,
+            vk::Queue upload_queue,
+            vk::CommandPool command_pool,
+            vk::PipelineCache pipeline_cache,
+            vk::PhysicalDeviceRayTracingPipelinePropertiesKHR const& physical_device_ray_tracing_properties,
+            Maia::Renderer::Vulkan::Buffer_resources& shader_binding_tables_buffer_resources,
+            Maia::Renderer::Vulkan::Upload_buffer const* upload_buffer,
             vk::AllocationCallbacks const* allocation_callbacks,
             nlohmann::json const& pipeline_json,
             std::filesystem::path const& pipeline_json_parent_path,
@@ -118,6 +126,8 @@ namespace Maia::Renderer::Vulkan
         std::pmr::vector<vk::DescriptorSetLayout> descriptor_set_layouts;
         std::pmr::vector<vk::PipelineLayout> pipeline_layouts;
         std::pmr::vector<vk::Pipeline> pipeline_states;
+        std::pmr::vector<Maia::Renderer::Vulkan::Buffer_view> shader_binding_table_buffer_views;
+        std::pmr::vector<vk::StridedDeviceAddressRegionKHR> shader_binding_tables;
     };
 
 
@@ -130,17 +140,10 @@ namespace Maia::Renderer::Vulkan
         nlohmann::json const& commands_json,
         std::span<vk::Pipeline const> pipelines,
         std::span<vk::RenderPass const> render_passes,
+        std::span<vk::StridedDeviceAddressRegionKHR const> shader_binding_tables,
         std::pmr::polymorphic_allocator<std::byte> const& output_allocator,
         std::pmr::polymorphic_allocator<std::byte> const& temporaries_allocator
     ) noexcept;
-
-    export struct Shader_binding_tables
-    {
-        vk::StridedDeviceAddressRegionKHR raygen = {};
-        vk::StridedDeviceAddressRegionKHR miss = {};
-        vk::StridedDeviceAddressRegionKHR hit = {};
-        vk::StridedDeviceAddressRegionKHR callable = {};
-    };
 
     export void draw(
         vk::CommandBuffer command_buffer,
@@ -150,7 +153,6 @@ namespace Maia::Renderer::Vulkan
         std::span<vk::ImageSubresourceRange const> output_image_subresource_ranges,
         std::span<vk::Framebuffer const> output_framebuffers,
         std::span<vk::Rect2D const> output_render_areas,
-        std::span<Shader_binding_tables const> const shader_binding_tables,
         Commands_data const& commands_data,
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     ) noexcept;

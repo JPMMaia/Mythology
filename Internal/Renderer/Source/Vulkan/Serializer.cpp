@@ -14,6 +14,9 @@ module;
 
 module maia.renderer.vulkan.serializer;
 
+import maia.renderer.vulkan.buffer_resources;
+import maia.renderer.vulkan.upload;
+
 namespace nlohmann
 {
     template <>
@@ -1833,9 +1836,166 @@ namespace Maia::Renderer::Vulkan
         return pipeline_states;
     }
 
+    template <typename T, typename S>
+    T align(T const value, S const alignment) noexcept
+    {
+        T const remainder = (value % alignment);
+        T const aligned_value = (remainder == 0) ? value : (value + (alignment - remainder));
+        assert((aligned_value % alignment) == 0);
+        return aligned_value;
+    }
+
+    std::pmr::vector<Maia::Renderer::Vulkan::Buffer_view> create_shader_binding_table_buffer_views(
+        vk::PhysicalDeviceRayTracingPipelinePropertiesKHR const& physical_device_properties,
+        Maia::Renderer::Vulkan::Buffer_resources& shader_binding_tables_buffer_resources,
+        nlohmann::json const& shader_binding_tables_json,
+        std::pmr::polymorphic_allocator<> const& output_allocator
+    )
+    {
+        assert((shader_binding_tables_buffer_resources.usage() & vk::BufferUsageFlagBits::eShaderBindingTableKHR));
+
+        using Buffer_view = Maia::Renderer::Vulkan::Buffer_view;
+
+        std::uint32_t const handle_size_aligned = align(physical_device_properties.shaderGroupHandleSize, physical_device_properties.shaderGroupHandleAlignment);
+        std::uint32_t const alignment = physical_device_properties.shaderGroupBaseAlignment;
+
+        std::pmr::vector<Buffer_view> buffer_views{ output_allocator };
+        buffer_views.reserve(shader_binding_tables_json.size());
+
+        for (nlohmann::json const& shader_binding_table_json : shader_binding_tables_json)
+        {
+            std::uint32_t const group_count = shader_binding_table_json.at("group_count").get<std::uint32_t>();
+
+            vk::DeviceSize const required_size = group_count * handle_size_aligned;
+            Buffer_view const buffer_view = shader_binding_tables_buffer_resources.allocate_buffer(required_size, alignment, vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+            buffer_views.push_back(buffer_view);
+        }
+
+        return buffer_views;
+    }
+
+    void upload_shader_binding_tables_data(
+        vk::Device const device,
+        vk::Queue const upload_queue,
+        vk::CommandPool const command_pool,
+        std::span<vk::Pipeline const> const pipeline_states,
+        vk::PhysicalDeviceRayTracingPipelinePropertiesKHR const& physical_device_properties,
+        std::span<Maia::Renderer::Vulkan::Buffer_view const> const shader_binding_table_buffer_views,
+        Maia::Renderer::Vulkan::Upload_buffer const* const upload_buffer,
+        vk::AllocationCallbacks const* allocation_callbacks,
+        nlohmann::json const& shader_binding_tables_json,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
+    )
+    {
+        assert(shader_binding_tables_json.size() == shader_binding_table_buffer_views.size());
+
+        std::uint32_t const handle_size_aligned = align(physical_device_properties.shaderGroupHandleSize, physical_device_properties.shaderGroupHandleAlignment);
+        std::uint32_t const alignment = physical_device_properties.shaderGroupBaseAlignment;
+
+        for (std::size_t index = 0; index < shader_binding_tables_json.size(); ++index)
+        {
+            nlohmann::json const& shader_binding_table_json = shader_binding_tables_json[index];
+            Maia::Renderer::Vulkan::Buffer_view const& buffer_view = shader_binding_table_buffer_views[index];
+
+            vk::Pipeline const pipeline = pipeline_states[shader_binding_table_json.at("pipeline_state_index").get<std::size_t>()];
+            std::uint32_t const first_group = shader_binding_table_json.at("first_group").get<std::uint32_t>();
+            std::uint32_t const group_count = shader_binding_table_json.at("group_count").get<std::uint32_t>();
+
+            std::pmr::vector<std::byte> shader_group_handles{ temporaries_allocator };
+            shader_group_handles.resize(physical_device_properties.shaderGroupHandleSize * group_count);
+
+            {
+                vk::Result const result = device.getRayTracingShaderGroupHandlesKHR(pipeline, first_group, group_count, shader_group_handles.size(), shader_group_handles.data());
+                if (result != vk::Result::eSuccess)
+                {
+                    throw std::runtime_error{ "device.getRayTracingShaderGroupHandlesKHR() failed!" };
+                }
+            }
+
+            std::pmr::vector<std::byte> aligned_shader_group_handles{ temporaries_allocator };
+            aligned_shader_group_handles.resize(handle_size_aligned * group_count, std::byte{});
+
+            for (std::size_t group_index = 0; group_index < group_count; ++group_index)
+            {
+                std::size_t const source = group_index * physical_device_properties.shaderGroupHandleSize;
+                std::size_t const destination = group_index * handle_size_aligned;
+                std::memcpy(aligned_shader_group_handles.data() + destination, shader_group_handles.data() + source, physical_device_properties.shaderGroupHandleSize);
+            }
+
+            Maia::Renderer::Vulkan::upload_data(
+                device,
+                upload_queue,
+                command_pool,
+                buffer_view,
+                aligned_shader_group_handles,
+                upload_buffer,
+                allocation_callbacks
+            );
+        }
+    }
+
+    vk::StridedDeviceAddressRegionKHR create_shader_binding_table(
+        vk::Device const device,
+        vk::PhysicalDeviceRayTracingPipelinePropertiesKHR const& physical_device_properties,
+        Maia::Renderer::Vulkan::Buffer_view const& shader_binding_table_buffer_view
+    )
+    {
+        std::uint32_t const handle_size_aligned = align(physical_device_properties.shaderGroupHandleSize, physical_device_properties.shaderGroupHandleAlignment);
+
+        vk::BufferDeviceAddressInfo const buffer_device_address_info =
+        {
+            .buffer = shader_binding_table_buffer_view.buffer,
+        };
+        vk::DeviceAddress const shader_binding_table_device_address = device.getBufferAddress(buffer_device_address_info) + shader_binding_table_buffer_view.offset;
+
+        vk::StridedDeviceAddressRegionKHR const shader_binding_table
+        {
+            .deviceAddress = shader_binding_table_device_address,
+            .stride = handle_size_aligned,
+            .size = shader_binding_table_buffer_view.size,
+        };
+
+        return shader_binding_table;
+    }
+
+    std::pmr::vector<vk::StridedDeviceAddressRegionKHR> create_shader_binding_tables(
+        vk::Device const device,
+        vk::PhysicalDeviceRayTracingPipelinePropertiesKHR const& physical_device_properties,
+        std::span<Maia::Renderer::Vulkan::Buffer_view const> const shader_binding_table_buffer_views,
+        std::pmr::polymorphic_allocator<> const& output_allocator
+    )
+    {
+        using Buffer_view = Maia::Renderer::Vulkan::Buffer_view;
+
+        std::pmr::vector<vk::StridedDeviceAddressRegionKHR> shader_binding_tables{ output_allocator };
+        shader_binding_tables.reserve(shader_binding_table_buffer_views.size());
+
+        for (std::size_t index = 0; index < shader_binding_table_buffer_views.size(); ++index)
+        {
+            Maia::Renderer::Vulkan::Buffer_view const& shader_binding_table_buffer_view = shader_binding_table_buffer_views[index];
+
+            vk::StridedDeviceAddressRegionKHR const shader_binding_table =
+                create_shader_binding_table(
+                    device,
+                    physical_device_properties,
+                    shader_binding_table_buffer_view
+                );
+
+            shader_binding_tables.push_back(shader_binding_table);
+        }
+
+        return shader_binding_tables;
+    }
+
     Pipeline_resources::Pipeline_resources(
         vk::Device const device,
+        vk::Queue const upload_queue,
+        vk::CommandPool const command_pool,
         vk::PipelineCache const pipeline_cache,
+        vk::PhysicalDeviceRayTracingPipelinePropertiesKHR const& physical_device_ray_tracing_properties,
+        Maia::Renderer::Vulkan::Buffer_resources& shader_binding_tables_buffer_resources,
+        Maia::Renderer::Vulkan::Upload_buffer const* const upload_buffer,
         vk::AllocationCallbacks const* const allocation_callbacks,
         nlohmann::json const& pipeline_json,
         std::filesystem::path const& pipeline_json_parent_path,
@@ -1940,6 +2100,38 @@ namespace Maia::Renderer::Vulkan
                 graphics_pipelines,
                 ray_tracing_pipelines,
                 pipeline_json.at("pipeline_states"),
+                output_allocator
+            );
+        }
+
+        if (pipeline_json.contains("shader_binding_tables"))
+        {
+            nlohmann::json const& shader_binding_tables_json = pipeline_json.at("shader_binding_tables");
+
+            this->shader_binding_table_buffer_views = create_shader_binding_table_buffer_views(
+                physical_device_ray_tracing_properties,
+                shader_binding_tables_buffer_resources,
+                shader_binding_tables_json,
+                output_allocator
+            );
+
+            upload_shader_binding_tables_data(
+                device,
+                upload_queue,
+                command_pool,
+                this->pipeline_states,
+                physical_device_ray_tracing_properties,
+                this->shader_binding_table_buffer_views,
+                upload_buffer,
+                allocation_callbacks,
+                shader_binding_tables_json,
+                temporaries_allocator
+            );
+
+            this->shader_binding_tables = create_shader_binding_tables(
+                device,
+                physical_device_ray_tracing_properties,
+                this->shader_binding_table_buffer_views,
                 output_allocator
             );
         }
@@ -2323,22 +2515,34 @@ namespace Maia::Renderer::Vulkan
             std::uint32_t width = 0;
             std::uint32_t height = 0;
             std::uint32_t depth = 0;
-            std::uint8_t binding_tables_index = 0;
+            vk::StridedDeviceAddressRegionKHR raygen_shader_binding_table = {};
+            vk::StridedDeviceAddressRegionKHR miss_shader_binding_table = {};
+            vk::StridedDeviceAddressRegionKHR hit_shader_binding_table = {};
+            vk::StridedDeviceAddressRegionKHR callable_shader_binding_table = {};
         };
 
         std::pmr::vector<std::byte> create_trace_rays_data(
             nlohmann::json const& command_json,
+            std::span<vk::StridedDeviceAddressRegionKHR const> const shader_binding_tables,
             std::pmr::polymorphic_allocator<> const& output_allocator
         )
         {
             assert(command_json.at("type").get<std::string>() == "Trace_rays");
 
+            vk::StridedDeviceAddressRegionKHR const raygen = command_json.contains("raygen_shader_binding_table_index") ? shader_binding_tables[command_json.at("raygen_shader_binding_table_index").get<std::size_t>()] : vk::StridedDeviceAddressRegionKHR{};
+            vk::StridedDeviceAddressRegionKHR const miss = command_json.contains("miss_shader_binding_table_index") ? shader_binding_tables[command_json.at("miss_shader_binding_table_index").get<std::size_t>()] : vk::StridedDeviceAddressRegionKHR{};
+            vk::StridedDeviceAddressRegionKHR const hit = command_json.contains("hit_shader_binding_table_index") ? shader_binding_tables[command_json.at("hit_shader_binding_table_index").get<std::size_t>()] : vk::StridedDeviceAddressRegionKHR{};
+            vk::StridedDeviceAddressRegionKHR const callable = command_json.contains("callable_shader_binding_table_index") ? shader_binding_tables[command_json.at("callable_shader_binding_table_index").get<std::size_t>()] : vk::StridedDeviceAddressRegionKHR{};
+
             Trace_rays const trace_rays
             {
                 .width = command_json.at("width").get<std::uint32_t>(),
-                .height = command_json.at("height").get<std::uint32_t>(),
-                .depth = command_json.at("depth").get<std::uint32_t>(),
-                .binding_tables_index = command_json.at("binding_tables_index").get<std::uint8_t>(),
+                    .height = command_json.at("height").get<std::uint32_t>(),
+                    .depth = command_json.at("depth").get<std::uint32_t>(),
+                    .raygen_shader_binding_table = raygen,
+                    .miss_shader_binding_table = miss,
+                    .hit_shader_binding_table = hit,
+                    .callable_shader_binding_table = callable,
             };
 
             Command_type constexpr command_type = Command_type::Trace_rays;
@@ -2354,6 +2558,7 @@ namespace Maia::Renderer::Vulkan
             nlohmann::json const& command_json,
             std::span<vk::Pipeline const> const pipelines,
             std::span<vk::RenderPass const> const render_passes,
+            std::span<vk::StridedDeviceAddressRegionKHR const> const shader_binding_tables,
             std::pmr::polymorphic_allocator<std::byte> const& output_allocator,
             std::pmr::polymorphic_allocator<std::byte> const& temporaries_allocator
         ) noexcept
@@ -2387,7 +2592,7 @@ namespace Maia::Renderer::Vulkan
             }
             else if (type == "Trace_rays")
             {
-                return create_trace_rays_data(command_json, output_allocator);
+                return create_trace_rays_data(command_json, shader_binding_tables, output_allocator);
             }
             else if (type == "Set_screen_viewport_and_scissors")
             {
@@ -2414,6 +2619,7 @@ namespace Maia::Renderer::Vulkan
         nlohmann::json const& commands_json,
         std::span<vk::Pipeline const> const pipelines,
         std::span<vk::RenderPass const> const render_passes,
+        std::span<vk::StridedDeviceAddressRegionKHR const> const shader_binding_tables,
         std::pmr::polymorphic_allocator<std::byte> const& output_allocator,
         std::pmr::polymorphic_allocator<std::byte> const& temporaries_allocator
     ) noexcept
@@ -2422,7 +2628,7 @@ namespace Maia::Renderer::Vulkan
 
         for (nlohmann::json const& command_json : commands_json)
         {
-            std::pmr::vector<std::byte> const command_data = create_command_data(command_json, pipelines, render_passes, temporaries_allocator, temporaries_allocator);
+            std::pmr::vector<std::byte> const command_data = create_command_data(command_json, pipelines, render_passes, shader_binding_tables, temporaries_allocator, temporaries_allocator);
 
             commands_data.insert(commands_data.end(), command_data.begin(), command_data.end());
         }
@@ -2677,7 +2883,6 @@ namespace Maia::Renderer::Vulkan
 
         Commands_data_offset add_trace_rays_command(
             vk::CommandBuffer const command_buffer,
-            std::span<Shader_binding_tables const> const shader_binding_tables,
             std::span<std::byte const> const bytes
         ) noexcept
         {
@@ -2686,13 +2891,11 @@ namespace Maia::Renderer::Vulkan
             Trace_rays const command = read<Trace_rays>(bytes.data() + commands_data_offset);
             commands_data_offset += sizeof(Trace_rays);
 
-            Shader_binding_tables const& shader_binding_table = shader_binding_tables[command.binding_tables_index];
-
             command_buffer.traceRaysKHR(
-                shader_binding_table.raygen,
-                shader_binding_table.miss,
-                shader_binding_table.hit,
-                shader_binding_table.callable,
+                &command.raygen_shader_binding_table,
+                &command.miss_shader_binding_table,
+                &command.hit_shader_binding_table,
+                &command.callable_shader_binding_table,
                 command.width,
                 command.height,
                 command.depth
@@ -2710,7 +2913,6 @@ namespace Maia::Renderer::Vulkan
         std::span<vk::ImageSubresourceRange const> const output_image_subresource_ranges,
         std::span<vk::Framebuffer const> const output_framebuffers,
         std::span<vk::Rect2D const> const output_render_areas,
-        std::span<Shader_binding_tables const> const shader_binding_tables,
         Commands_data const& commands_data,
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     ) noexcept
@@ -2753,7 +2955,7 @@ namespace Maia::Renderer::Vulkan
                 break;
 
             case Command_type::Trace_rays:
-                offset_in_bytes += add_trace_rays_command(command_buffer, shader_binding_tables, next_command_bytes);
+                offset_in_bytes += add_trace_rays_command(command_buffer, next_command_bytes);
                 break;
 
             case Command_type::Set_screen_viewport_and_scissors:

@@ -19,17 +19,19 @@ target_module (
 target_module (
     MaiaRendererVulkan
     PUBLIC
-    "maia.renderer.vulkan.serializer"
-    INTERFACE "Serializer.cppm"
-    IMPLEMENTATION "Serializer.cpp"
-)
-
-target_module (
-    MaiaRendererVulkan
-    PUBLIC
     "maia.renderer.vulkan.upload"
     INTERFACE "Upload.cppm"
     INTERFACE_DEPENDS "maia.renderer.vulkan.buffer_resources"
     IMPLEMENTATION "Upload.cpp"
     IMPLEMENTATION_DEPENDS "maia.renderer.vulkan.buffer_resources"
+)
+
+target_module (
+    MaiaRendererVulkan
+    PUBLIC
+    "maia.renderer.vulkan.serializer"
+    INTERFACE "Serializer.cppm"
+    INTERFACE_DEPENDS "maia.renderer.vulkan.buffer_resources"
+    IMPLEMENTATION "Serializer.cpp"
+    IMPLEMENTATION_DEPENDS "maia.renderer.vulkan.buffer_resources" "maia.renderer.vulkan.upload"
 )
