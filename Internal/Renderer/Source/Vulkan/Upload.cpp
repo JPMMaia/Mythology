@@ -121,17 +121,16 @@ namespace Maia::Renderer::Vulkan
     }
 
     void upload_data(
-        vk::PhysicalDeviceType const physical_device_type,
         vk::Device const device,
         vk::Queue const queue,
         vk::CommandPool const command_pool,
         Buffer_view const& buffer_view,
         std::span<std::byte const> const data,
-        std::optional<Upload_buffer const*> const upload_buffer,
+        Upload_buffer const* const upload_buffer,
         vk::AllocationCallbacks const* const allocation_callbacks
     )
     {
-        if (physical_device_type == vk::PhysicalDeviceType::eIntegratedGpu)
+        if (upload_buffer == nullptr)
         {
             void* const mapped_data = device.mapMemory(
                 buffer_view.memory,
@@ -152,12 +151,7 @@ namespace Maia::Renderer::Vulkan
         }
         else
         {
-            if (!upload_buffer)
-            {
-                throw std::runtime_error{ "Upload buffer must be provided for a non-integrated GPU device!" };
-            }
-
-            Buffer_view const upload_buffer_view = (*upload_buffer)->buffer_view();
+            Buffer_view const upload_buffer_view = upload_buffer->buffer_view();
 
             if (data.size() > upload_buffer_view.size)
             {
@@ -165,7 +159,7 @@ namespace Maia::Renderer::Vulkan
             }
 
             std::memcpy(
-                (*upload_buffer)->mapped_data(),
+                upload_buffer->mapped_data(),
                 data.data(),
                 data.size()
             );

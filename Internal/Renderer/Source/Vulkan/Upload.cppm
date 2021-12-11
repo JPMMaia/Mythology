@@ -39,13 +39,12 @@ namespace Maia::Renderer::Vulkan
     };
 
     export void upload_data(
-        vk::PhysicalDeviceType physical_device_type,
         vk::Device device,
         vk::Queue queue,
         vk::CommandPool command_pool,
         Buffer_view const& buffer_view,
         std::span<std::byte const> data,
-        std::optional<Upload_buffer const*> upload_buffer,
+        Upload_buffer const* upload_buffer,
         vk::AllocationCallbacks const* allocation_callbacks
     );
 }
