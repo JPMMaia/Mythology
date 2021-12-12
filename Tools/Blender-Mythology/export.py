@@ -28,7 +28,10 @@ from .pipeline_state import (
     graphics_pipeline_state_to_json,
     shader_module_to_json,
 )
-from .ray_tracing import create_ray_tracing_pipelines_json
+from .ray_tracing import (
+    create_ray_tracing_pipelines_json,
+    create_shader_binding_tables_json,
+)
 from .render_pass import render_pass_to_json
 
 
@@ -86,8 +89,8 @@ class MythologyExportOperator(bpy.types.Operator):
             node for node_group in bpy.data.node_groups for node in node_group.nodes
         ]
 
-        if not compile_shaders(shader_compiler, output_json_directory, nodes):
-            return {"FINISHED"}
+        # if not compile_shaders(shader_compiler, output_json_directory, nodes):
+        # return {"FINISHED"}
 
         render_passes = render_pass_to_json(nodes)
         shader_modules = shader_module_to_json(nodes)
@@ -106,6 +109,9 @@ class MythologyExportOperator(bpy.types.Operator):
             graphics_pipeline_states[0],
             ray_tracing_pipeline_states[0],
         )
+        shader_binding_tables = create_shader_binding_tables_json(
+            nodes, pipeline_states[0]
+        )
         frame_commands = frame_commands_to_json(
             nodes, pipeline_states[0], render_passes
         )
@@ -120,8 +126,9 @@ class MythologyExportOperator(bpy.types.Operator):
                 "compute_pipeline_states": compute_pipeline_states[1],
                 "graphics_pipeline_states": graphics_pipeline_states[1],
                 "ray_tracing_pipeline_states": ray_tracing_pipeline_states[1],
-                "pipeline_states": [],
+                "pipeline_states": pipeline_states[1],
             },
+            "shader_binding_tables": shader_binding_tables[1],
             "frame_commands": frame_commands,
         }
 

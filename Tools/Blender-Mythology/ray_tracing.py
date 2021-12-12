@@ -2,8 +2,7 @@ import bpy
 import nodeitems_utils
 import typing
 
-import random
-
+from .array_inputs import recreate_dynamic_inputs, update_dynamic_inputs
 from .common import find_index, get_input_node
 from .pipeline_state import (
     PipelineLayoutNode,
@@ -32,6 +31,7 @@ ray_tracing_node_categories = [
             nodeitems_utils.NodeItem("RayTracingPipelineStateNode"),
             nodeitems_utils.NodeItem("RayTracingShaderGroupNode"),
             nodeitems_utils.NodeItem("ShaderBindingTableNode"),
+            nodeitems_utils.NodeItem("ShaderGroupsArrayNode"),
         ],
     ),
 ]
@@ -152,6 +152,17 @@ class ShaderBindingTableNodeSocket(bpy.types.NodeSocket):
         return (0.4, 0.2, 0.1, 1.0)
 
 
+class ShaderGroupsArrayNodeSocket(bpy.types.NodeSocket):
+
+    bl_label = "Shader Groups Array node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.4, 0.7, 0.6, 1.0)
+
+
 class RayTracingPipelineInterfaceNode(bpy.types.Node, RenderTreeNode):
 
     bl_label = "Ray Tracing Pipeline Interface"
@@ -210,9 +221,7 @@ class RayTracingPipelineStateNode(bpy.types.Node, RenderTreeNode):
 
     def init(self, context):
 
-        self.inputs.new("RayTracingShaderGroupNodeSocket", "Shader Groups")
-        self.inputs["Shader Groups"].link_limit = 0
-
+        self.inputs.new("ShaderGroupsArrayNodeSocket", "Shader Groups Array")
         self.inputs.new("PipelineLibraryNodeSocket", "Library Info")
         self.inputs.new("RayTracingPipelineInterfaceNodeSocket", "Library Interface")
         self.inputs.new("PipelineDynamicStateNodeSocket", "Dynamic State")
@@ -227,80 +236,47 @@ class RayTracingPipelineStateNode(bpy.types.Node, RenderTreeNode):
         layout.prop(self, "max_pipeline_ray_recursion_depth_property")
 
 
-def create_dynamic_input(socket_name, previous_inputs) -> typing.Any:
-    links = previous_inputs[socket_name].links if socket_name in previous_inputs else []
-    return {"name": socket_name, "links": links}
-
-
-def create_dynamic_inputs(previous_inputs) -> typing.List[typing.Any]:
-
-    new_inputs = []
-
-    for input in previous_inputs:
-        if len(input.links) > 0:
-            new_inputs.append(
-                {
-                    "name": str(len(new_inputs)),
-                    "from_sockets": [link.from_socket for link in input.links],
-                }
-            )
-
-    new_inputs.append({"name": str(len(new_inputs)), "from_sockets": []})
-
-    return new_inputs
-
-
-def dynamic_inputs_need_to_be_recreated(inputs) -> bool:
-
-    if len(inputs) == 0:
-        return True
-
-    if len(inputs[len(inputs) - 1].links) > 0:
-        return True
-
-    for index in range(0, len(inputs) - 1):
-        input = inputs[index]
-        if len(input.links) == 0:
-            return True
-
-    return False
-
-
 class ShaderBindingTableNode(bpy.types.Node, RenderTreeNode):
 
     bl_label = "Shader Binding Table"
-    recreating = False
 
-    shader_model_property: bpy.props.StringProperty(name="Name", default="")
+    name_property: bpy.props.StringProperty(name="Name", default="")
+    first_group_property: bpy.props.IntProperty(name="First Group", default=0)
+    group_count_property: bpy.props.IntProperty(name="Group Count", default=1)
 
     def init(self, context):
-        self.recreating = True
-        self.recreate_inputs()
-        self.recreating = False
+
+        self.inputs.new("PipelineNodeSocket", "Pipeline")
 
         self.outputs.new("ShaderBindingTableNodeSocket", "Table")
 
-    def recreate_inputs(self):
-        inputs = create_dynamic_inputs(self.inputs)
-        self.inputs.clear()
+    def draw_buttons(self, context, layout):
+        layout.prop(self, "name_property")
+        layout.prop(self, "first_group_property")
+        layout.prop(self, "group_count_property")
 
-        node_tree = self.id_data
-        for input in inputs:
-            name = input["name"]
-            self.inputs.new("RayTracingShaderGroupNodeSocket", name)
 
-            from_sockets = input["from_sockets"]
-            for from_socket in from_sockets:
-                node_tree.links.new(from_socket, self.inputs[name])
+class ShaderGroupsArrayNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Shader Groups Array"
+    recreating = False
+
+    def init(self, context):
+        self.recreating = True
+        recreate_dynamic_inputs(
+            self.id_data, self.inputs, "RayTracingShaderGroupNodeSocket"
+        )
+        self.recreating = False
+
+        self.outputs.new("ShaderGroupsArrayNodeSocket", "Shader Groups Array")
 
     def update(self):
-        if not self.recreating and dynamic_inputs_need_to_be_recreated(self.inputs):
+        if not self.recreating:
             self.recreating = True
-            self.recreate_inputs()
+            update_dynamic_inputs(
+                self.id_data, self.inputs, "RayTracingShaderGroupNodeSocket"
+            )
             self.recreating = False
-
-    def draw_buttons(self, context, layout):
-        layout.prop(self, "shader_model_property")
 
 
 JSONType = typing.Union[
@@ -391,22 +367,26 @@ def ray_tracing_pipeline_state_to_json(
     pipelines: typing.List[bpy.types.Node],
 ) -> JSONType:
 
-    pipeline_shader_stages = gather_ray_tracing_shader_stages(
-        [
-            shader_group_link.from_node
-            for shader_group_link in pipeline_node.inputs["Shader Groups"].links
-        ]
-    )
+    if len(pipeline_node.inputs["Shader Groups Array"].links) != 1:
+        raise "Ray tracing pipeline state is not linked to a Shader Groups Array node!"
+
+    shader_groups = [
+        input.links[0].from_node
+        for input in pipeline_node.inputs["Shader Groups Array"]
+        .links[0]
+        .from_node.inputs
+        if len(input.links) == 1
+    ]
+
+    pipeline_shader_stages = gather_ray_tracing_shader_stages(shader_groups)
 
     json = {
         "name": pipeline_node.name_property,
         "flags": pipeline_node.get("stage_flags_property", 0),
         "stages": create_shader_stages_json(pipeline_shader_stages, shader_modules),
         "groups": [
-            create_ray_tracing_shader_group_json(
-                group_link.from_node, pipeline_shader_stages
-            )
-            for group_link in pipeline_node.inputs["Shader Groups"].links
+            create_ray_tracing_shader_group_json(shader_group, pipeline_shader_stages)
+            for shader_group in shader_groups
         ],
         "max_pipeline_ray_recursion_depth": pipeline_node.get(
             "max_pipeline_ray_recursion_depth_property", 0
@@ -519,3 +499,27 @@ def create_ray_tracing_pipelines_json(
     ]
 
     return (sorted_pipeline_nodes, json)
+
+
+def create_shader_binding_tables_json(
+    nodes: typing.List[bpy.types.Node], pipeline_nodes: typing.List[typing.Any]
+) -> typing.Tuple[typing.List[ShaderBindingTableNode], JSONType]:
+
+    shader_binding_table_nodes = [
+        node for node in nodes if node.bl_idname == "ShaderBindingTableNode"
+    ]
+
+    json = [
+        {
+            "name": shader_binding_table_node.get("name_property", ""),
+            "pipeline_state_index": find_index(
+                pipeline_nodes,
+                shader_binding_table_node.inputs["Pipeline"].links[0].from_node,
+            ),
+            "first_group": shader_binding_table_node.get("first_group_property", 0),
+            "group_count": shader_binding_table_node.get("group_count_property", 1),
+        }
+        for shader_binding_table_node in shader_binding_table_nodes
+    ]
+
+    return (shader_binding_table_nodes, json)

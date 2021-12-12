@@ -96,6 +96,8 @@ classes = (
     ray_tracing.RayTracingShaderGroupNodeSocket,
     ray_tracing.ShaderBindingTableNode,
     ray_tracing.ShaderBindingTableNodeSocket,
+    ray_tracing.ShaderGroupsArrayNode,
+    ray_tracing.ShaderGroupsArrayNodeSocket,
     render_pass.AccessFlagsNodeSocket,
     render_pass.AttachmentNodeSocket,
     render_pass.AttachmentReferenceNodeSocket,
