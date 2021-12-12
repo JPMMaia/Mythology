@@ -1093,16 +1093,6 @@ def shader_module_to_json(
     return (shader_module_nodes, json)
 
 
-def create_shader_stage_json(
-    shader_module_index: int, shader_module: ShaderModuleNode
-) -> JSONType:
-    json = {
-        "shader": shader_module_index,
-        "stage": shader_module.get("shader_type_property", 1),
-        "entry_point": shader_module.get("entry_point_property", "main"),
-    }
-
-
 def create_shader_stages_json(
     shader_stage_nodes: typing.List[PipelineShaderStageNode],
     shader_modules: typing.List[ShaderModuleNode],
@@ -1130,7 +1120,7 @@ def create_shader_stages_json(
     json = [
         {
             "shader": shader_module_index,
-            "stage": shader_stage.get("shader_type_property", 1),
+            "stage": shader_stage.get("stage_flags_property", 0),
             "entry_point": shader_stage.get("entry_point_property", "main"),
         }
         for shader_stage, shader_module_index in zip(
