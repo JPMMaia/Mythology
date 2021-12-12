@@ -40,19 +40,19 @@ def dynamic_inputs_need_to_be_recreated(inputs) -> bool:
     return False
 
 
-def recreate_dynamic_inputs(node_tree, inputs) -> None:
+def recreate_dynamic_inputs(node_tree, inputs, type_name) -> None:
     new_inputs = create_dynamic_inputs(inputs)
     inputs.clear()
 
     for input in new_inputs:
         name = input["name"]
-        inputs.new("RayTracingShaderGroupNodeSocket", name)
+        inputs.new(type_name, name)
 
         from_sockets = input["from_sockets"]
         for from_socket in from_sockets:
             node_tree.links.new(from_socket, inputs[name])
 
 
-def update_dynamic_inputs(node_tree, inputs) -> None:
+def update_dynamic_inputs(node_tree, inputs, type_name) -> None:
     if dynamic_inputs_need_to_be_recreated(inputs):
-        recreate_dynamic_inputs(node_tree, inputs)
+        recreate_dynamic_inputs(node_tree, inputs, type_name)
