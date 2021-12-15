@@ -56,3 +56,4 @@ def recreate_dynamic_inputs(node_tree, inputs, type_name) -> None:
 def update_dynamic_inputs(node_tree, inputs, type_name) -> None:
     if dynamic_inputs_need_to_be_recreated(inputs):
         recreate_dynamic_inputs(node_tree, inputs, type_name)
+        

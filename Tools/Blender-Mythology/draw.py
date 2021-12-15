@@ -1,5 +1,6 @@
 import bpy
 
+from .array_inputs import recreate_dynamic_inputs, update_dynamic_inputs
 from .common import find_index, Rect2DNodeSocket
 from .pipeline_state import GraphicsPipelineStateNode, PipelineNodeSocket
 from .render_node_tree import RenderTreeNode
@@ -65,6 +66,47 @@ class ClearValueNodeSocket(bpy.types.NodeSocket):
     def draw_color(self, context, node):
         return (1.0, 1.0, 1.0, 1.0)
 
+class DescriptorSetNodeSocket(bpy.types.NodeSocket):
+
+    bl_label = "Descriptor Set node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.5, 0.9, 0.7, 1.0)
+
+class DescriptorSetArrayNodeSocket(bpy.types.NodeSocket):
+
+    bl_label = "Descriptor Set Array node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.9, 0.7, 0.5, 1.0)
+
+class DynamicOffsetNodeSocket(bpy.types.NodeSocket):
+
+    bl_label = "Dynamic Offset node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.1, 0.7, 0.4, 1.0)
+
+
+class DynamicOffsetArrayNodeSocket(bpy.types.NodeSocket):
+
+    bl_label = "Dynamic Offset Array node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.7, 0.2, 0.2, 1.0)
+
 
 class ExecutionNodeSocket(bpy.types.NodeSocket):
 
@@ -126,6 +168,27 @@ class BeginRenderPassNode(bpy.types.Node, RenderTreeNode):
         self.inputs["Clear Subpasses"].link_limit = 0
 
         self.outputs.new("ExecutionNodeSocket", "Execution")
+
+
+class BindDescriptorSetNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Bind Descriptor Set node"
+
+    pipeline_bind_point_property: bpy.props.EnumProperty(
+        name="Pipeline Bind Point", items=pipeline_bind_point_values
+    )
+    first_set_property: bpy.props.IntProperty(name="First Set", min=0)
+
+    def init(self, context):
+        self.inputs.new("ExecutionNodeSocket", "Execution")
+        self.inputs.new("PipelineLayoutNodeSocket", "Pipeline Layout")
+        self.inputs.new("DescriptorSetArrayNodeSocket", "Descriptor Set Array")
+        self.inputs.new("DynamicOffsetArrayNodeSocket", "Dynamic Offset Array")
+        self.outputs.new("ExecutionNodeSocket", "Execution")
+
+    def draw_buttons(self, context, layout):
+        layout.prop(self, "pipeline_bind_point_property")
+        layout.prop(self, "first_set_property")
 
 
 class BindPipelineNode(bpy.types.Node, RenderTreeNode):
@@ -230,6 +293,37 @@ class ClearValueNode(bpy.types.Node, RenderTreeNode):
         self.inputs.new("ClearDepthStencilValueNodeSocket", "Depth Stencil")
 
         self.outputs.new("ClearValueNodeSocket", "Clear Value")
+
+
+class DynamicOffsetNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Dynamic Offset"
+    value_property: bpy.props.IntProperty(name="Value", min=0)
+
+    def init(self, context):
+        self.outputs.new("DynamicOffsetNodeSocket", "Dynamic Offset")
+
+    def draw_buttons(self, context, layout):
+        layout.prop(self, "value_property")
+
+
+class DynamicOffsetArrayNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Dynamic Offsets Array"
+    recreating = False
+
+    def init(self, context):
+        self.recreating = True
+        recreate_dynamic_inputs(self.id_data, self.inputs, "DynamicOffsetNodeSocket")
+        self.recreating = False
+
+        self.outputs.new("DynamicOffsetArrayNodeSocket", "Dynamic Offsets Array")
+
+    def update(self):
+        if not self.recreating:
+            self.recreating = True
+            update_dynamic_inputs(self.id_data, self.inputs, "DynamicOffsetNodeSocket")
+            self.recreating = False
 
 
 class DrawNode(bpy.types.Node, RenderTreeNode):
@@ -391,7 +485,10 @@ draw_node_categories = [
         items=[
             nodeitems_utils.NodeItem("BeginFrameNode"),
             nodeitems_utils.NodeItem("BeginRenderPassNode"),
+            nodeitems_utils.NodeItem("BindDescriptorSetNode"),
             nodeitems_utils.NodeItem("BindPipelineNode"),
+            nodeitems_utils.NodeItem("DynamicOffsetNode"),
+            nodeitems_utils.NodeItem("DynamicOffsetArrayNode"),
             nodeitems_utils.NodeItem("ClearColorValueNode"),
             nodeitems_utils.NodeItem("ClearColorImageNode"),
             nodeitems_utils.NodeItem("ClearDepthStencilValueNode"),
