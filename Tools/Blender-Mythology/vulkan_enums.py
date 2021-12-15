@@ -103,7 +103,16 @@ descriptor_type_values = (
     ("UNIFORM_BUFFER_DYNAMIC", "Uniform buffer dynamic", "", 8),
     ("STORAGE_BUFFER_DYNAMIC", "Storage buffer dynamic", "", 9),
     ("INPUT_ATTACHMENT", "Input attachment", "", 10),
+    ("ACCELERATION_STRUCTURE_KHR", "Acceleration structure KHR", "", 150000),
 )
+
+
+def get_descriptor_type_value(value):
+    if value == 150000:
+        return 1000150000
+    else:
+        return value
+
 
 dynamic_state_values = (
     ("VIEWPORT", "Viewport", "", 0),
@@ -349,7 +358,16 @@ logic_operation_values = (
 pipeline_bind_point_values = (
     ("GRAPHICS", "Graphics", "", 0),
     ("COMPUTE", "Compute", "", 1),
+    ("RAY_TRACING_KHR", "Ray", "", 165000),
 )
+
+
+def get_pipeline_bind_point_value(value):
+    if value == 165000:
+        return 1000165000
+    else:
+        return value
+
 
 pipeline_stage_flag_values = (
     ("TOP_OF_PIPE", "Top_of_pipe", "", 0x00000001),

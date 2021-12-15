@@ -1,5 +1,6 @@
 import bpy
 
+from .array_inputs import recreate_dynamic_inputs, update_dynamic_inputs
 from .common import find_index, ignore_reroutes
 from .render_node_tree import RenderTreeNode
 from .render_pass import RenderPassNodeSocket, SubpassNodeSocket
@@ -11,6 +12,7 @@ from .vulkan_enums import (
     compare_operation_values,
     cull_modes,
     descriptor_type_values,
+    get_descriptor_type_value,
     dynamic_state_values,
     filter_values,
     format_values,
@@ -77,6 +79,17 @@ class DescriptorSetLayoutNodeSocket(bpy.types.NodeSocket):
 
     def draw_color(self, context, node):
         return (0.2, 0.4, 0.6, 1.0)
+
+
+class DescriptorSetLayoutArrayNodeSocket(bpy.types.NodeSocket):
+
+    bl_label = "Descriptor Set Layout Array node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.6, 0.4, 0.2, 1.0)
 
 
 class DynamicStateNodeSocket(bpy.types.NodeSocket):
@@ -442,6 +455,31 @@ class DescriptorSetLayoutNode(bpy.types.Node, RenderTreeNode):
         self.outputs.new("DescriptorSetLayoutNodeSocket", "Descriptor Set Layout")
 
 
+class DescriptorSetLayoutArrayNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Descriptor Set Layouts Array"
+    recreating = False
+
+    def init(self, context):
+        self.recreating = True
+        recreate_dynamic_inputs(
+            self.id_data, self.inputs, "DescriptorSetLayoutNodeSocket"
+        )
+        self.recreating = False
+
+        self.outputs.new(
+            "DescriptorSetLayoutArrayNodeSocket", "Descriptor Set Layouts Array"
+        )
+
+    def update(self):
+        if not self.recreating:
+            self.recreating = True
+            update_dynamic_inputs(
+                self.id_data, self.inputs, "DescriptorSetLayoutNodeSocket"
+            )
+            self.recreating = False
+
+
 class DynamicStateNode(bpy.types.Node, RenderTreeNode):
 
     bl_label = "Dynamic State node"
@@ -518,8 +556,11 @@ class PipelineLayoutNode(bpy.types.Node, RenderTreeNode):
     bl_label = "Pipeline Layout node"
 
     def init(self, context):
-        self.inputs.new("DescriptorSetLayoutNodeSocket", "Descriptor Set Layouts")
+        self.inputs.new(
+            "DescriptorSetLayoutArrayNodeSocket", "Descriptor Set Layouts Array"
+        )
         self.inputs.new("PushConstantRangeNodeSocket", "Push Constant Ranges")
+        self.inputs["Push Constant Ranges"].link_limit = 0
 
         self.outputs.new("PipelineLayoutNodeSocket", "Pipeline Layout")
 
@@ -933,6 +974,7 @@ pipeline_state_node_categories = [
             nodeitems_utils.NodeItem("DepthStencilStateNode"),
             nodeitems_utils.NodeItem("DescriptorSetLayoutBindingNode"),
             nodeitems_utils.NodeItem("DescriptorSetLayoutNode"),
+            nodeitems_utils.NodeItem("DescriptorSetLayoutArrayNode"),
             nodeitems_utils.NodeItem("DynamicStateNode"),
             nodeitems_utils.NodeItem("GraphicsPipelineStateNode"),
             nodeitems_utils.NodeItem("InputAssemblyStateNode"),
@@ -1013,8 +1055,8 @@ def create_descriptor_set_layouts_json(
             "bindings": [
                 {
                     "binding": link.from_node.get("binding_property", 0),
-                    "descriptor_type": link.from_node.get(
-                        "descriptor_type_property", 0
+                    "descriptor_type": get_descriptor_type_value(
+                        link.from_node.get("descriptor_type_property", 0)
                     ),
                     "descriptor_count": link.from_node.get(
                         "descriptor_count_property", 1
@@ -1061,12 +1103,17 @@ def create_pipeline_layouts_json(
     json = [
         {
             "descriptor_set_layouts": [
-                descriptor_set_layouts[0].index(link.from_node)
-                for link in node.inputs["Descriptor Set Layouts"].links
-            ],
+                descriptor_set_layouts[0].index(input.links[0].from_node)
+                for input in node.inputs["Descriptor Set Layouts Array"]
+                .links[0]
+                .from_node.inputs
+                if len(input.links) == 1
+            ]
+            if len(node.inputs["Descriptor Set Layouts Array"].links) == 1
+            else [],
             "push_constant_ranges": [
                 create_push_constant_range_json(link.from_node)
-                for link in node.inputs["Descriptor Set Layouts"].links
+                for link in node.inputs["Push Constant Ranges"].links
             ],
         }
         for node in pipeline_layout_nodes

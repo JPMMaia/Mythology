@@ -1,6 +1,6 @@
 import bpy
 
-from .common import Rect2DNodeSocket
+from .common import find_index, Rect2DNodeSocket
 from .pipeline_state import GraphicsPipelineStateNode, PipelineNodeSocket
 from .render_node_tree import RenderTreeNode
 from .render_pass import (
@@ -9,6 +9,7 @@ from .render_pass import (
     SubpassNode,
     SubpassNodeSocket,
 )
+from .ray_tracing import ShaderBindingTableNode
 from .resources import ImageNodeSocket, ImageSubresourceRangeNodeSocket
 from .vulkan_enums import (
     access_flag_values,
@@ -16,6 +17,7 @@ from .vulkan_enums import (
     image_layout_values,
     image_layout_values_to_int,
     pipeline_bind_point_values,
+    get_pipeline_bind_point_value,
     pipeline_stage_flag_values,
 )
 
@@ -349,6 +351,30 @@ class SetScreenViewportAndScissorsNode(bpy.types.Node, RenderTreeNode):
         self.outputs.new("ExecutionNodeSocket", "Execution")
 
 
+class TraceRaysNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Trace Rays"
+
+    width_property: bpy.props.IntProperty(name="Width", default=1, min=1)
+    height_property: bpy.props.IntProperty(name="Heighth", default=1, min=1)
+    depth_property: bpy.props.IntProperty(name="Depth", default=1, min=1)
+
+    def init(self, context):
+        self.inputs.new("ExecutionNodeSocket", "Execution")
+        self.inputs.new("ShaderBindingTableNodeSocket", "Raygen Shader Binding Table")
+        self.inputs.new("ShaderBindingTableNodeSocket", "Miss Shader Binding Table")
+        self.inputs.new("ShaderBindingTableNodeSocket", "Hit Shader Binding Table")
+        self.inputs.new("ShaderBindingTableNodeSocket", "Callable Shader Binding Table")
+
+        self.outputs.new("ExecutionNodeSocket", "Execution")
+
+    def draw_buttons(self, context, layout):
+
+        layout.prop(self, "width_property")
+        layout.prop(self, "height_property")
+        layout.prop(self, "depth_property")
+
+
 import nodeitems_utils
 
 
@@ -377,6 +403,7 @@ draw_node_categories = [
             nodeitems_utils.NodeItem("ImageMemoryBarrierNode"),
             nodeitems_utils.NodeItem("PipelineBarrierNode"),
             nodeitems_utils.NodeItem("SetScreenViewportAndScissorsNode"),
+            nodeitems_utils.NodeItem("TraceRaysNode"),
         ],
     ),
 ]
@@ -421,7 +448,9 @@ def bind_pipeline_node_to_json(
 
     return {
         "type": "Bind_pipeline",
-        "pipeline_bind_point": node.get("pipeline_bind_point_property", 0),
+        "pipeline_bind_point": get_pipeline_bind_point_value(
+            node.get("pipeline_bind_point_property", 0)
+        ),
         "pipeline": pipeline_states.index(
             ignore_reroutes(node.inputs["Pipeline"].links[0].from_node)
         ),
@@ -531,12 +560,51 @@ def set_screen_viewport_and_scissors_node_to_json(
     return {"type": "Set_screen_viewport_and_scissors"}
 
 
+def trace_rays_node_to_json(
+    node: TraceRaysNode, shader_binding_table_nodes: typing.List[ShaderBindingTableNode]
+) -> JSONType:
+
+    json = {
+        "type": "Trace_rays",
+        "width": node.get("width_property", 1),
+        "height": node.get("height_property", 1),
+        "depth": node.get("depth_property", 1),
+    }
+
+    if len(node.inputs["Raygen Shader Binding Table"].links) == 1:
+        json["raygen_shader_binding_table_index"] = find_index(
+            shader_binding_table_nodes,
+            node.inputs["Raygen Shader Binding Table"].links[0].from_node,
+        )
+
+    if len(node.inputs["Miss Shader Binding Table"].links) == 1:
+        json["miss_shader_binding_table_index"] = find_index(
+            shader_binding_table_nodes,
+            node.inputs["Miss Shader Binding Table"].links[0].from_node,
+        )
+
+    if len(node.inputs["Hit Shader Binding Table"].links) == 1:
+        json["hit_shader_binding_table_index"] = find_index(
+            shader_binding_table_nodes,
+            node.inputs["Hit Shader Binding Table"].links[0].from_node,
+        )
+
+    if len(node.inputs["Callable Shader Binding Table"].links) == 1:
+        json["callable_shader_binding_table_index"] = find_index(
+            shader_binding_table_nodes,
+            node.inputs["Callable Shader Binding Table"].links[0].from_node,
+        )
+
+    return json
+
+
 def frame_command_node_to_json(
     node: bpy.types.Node,
     pipeline_states: typing.List[bpy.types.Node],
     render_passes: typing.Tuple[
         typing.List[RenderPassNode], typing.List[typing.List[SubpassNode]], JSONType
     ],
+    shader_binding_tables: typing.List[ShaderBindingTableNode],
 ) -> JSONType:
 
     if node.bl_idname == "BeginRenderPassNode":
@@ -553,6 +621,8 @@ def frame_command_node_to_json(
         return pipeline_barrier_node_to_json(node)
     elif node.bl_idname == "SetScreenViewportAndScissorsNode":
         return set_screen_viewport_and_scissors_node_to_json(node)
+    elif node.bl_idname == "TraceRaysNode":
+        return trace_rays_node_to_json(node, shader_binding_tables)
 
     assert False
 
@@ -580,6 +650,7 @@ def frame_commands_to_json(
     render_passes: typing.Tuple[
         typing.List[RenderPassNode], typing.List[typing.List[SubpassNode]], JSONType
     ],
+    shader_binding_tables: typing.List[ShaderBindingTableNode],
 ) -> JSONType:
 
     begin_frame_nodes = [node for node in nodes if node.bl_idname == "BeginFrameNode"]
@@ -590,7 +661,9 @@ def frame_commands_to_json(
 
     return [
         [
-            frame_command_node_to_json(command_node, pipeline_states, render_passes)
+            frame_command_node_to_json(
+                command_node, pipeline_states, render_passes, shader_binding_tables
+            )
             for command_node in frame_command_nodes_per_begin_frame_node[
                 begin_frame_index
             ]

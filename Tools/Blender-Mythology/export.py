@@ -89,8 +89,8 @@ class MythologyExportOperator(bpy.types.Operator):
             node for node_group in bpy.data.node_groups for node in node_group.nodes
         ]
 
-        if not compile_shaders(shader_compiler, output_json_directory, nodes):
-            return {"FINISHED"}
+        # if not compile_shaders(shader_compiler, output_json_directory, nodes):
+        # return {"FINISHED"}
 
         render_passes = render_pass_to_json(nodes)
         shader_modules = shader_module_to_json(nodes)
@@ -113,7 +113,7 @@ class MythologyExportOperator(bpy.types.Operator):
             nodes, pipeline_states[0]
         )
         frame_commands = frame_commands_to_json(
-            nodes, pipeline_states[0], render_passes
+            nodes, pipeline_states[0], render_passes, shader_binding_tables[0]
         )
 
         output_json = {
