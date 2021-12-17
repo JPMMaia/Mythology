@@ -8,6 +8,7 @@ import bpy
 import nodeitems_utils
 
 from .common import *
+from .descriptors import *
 from .draw import *
 from .export import *
 from .pipeline_state import *
@@ -24,6 +25,12 @@ classes = (
     common.Extent2DNode,
     common.Offset2DNode,
     common.Rect2DNode,
+    descriptors.DescriptorSetLayoutBindingNode,
+    descriptors.DescriptorSetLayoutBindingNodeSocket,
+    descriptors.DescriptorSetLayoutNode,
+    descriptors.DescriptorSetLayoutNodeSocket,
+    descriptors.DescriptorSetLayoutArrayNode,
+    descriptors.DescriptorSetLayoutArrayNodeSocket,
     draw.ClearColorValueNodeSocket,
     draw.ClearDepthStencilValueNodeSocket,
     draw.ClearSubpassNodeSocket,
@@ -56,9 +63,6 @@ classes = (
     pipeline_state.ColorBlendAttachmentStateNodeSocket,
     pipeline_state.ColorBlendStateNodeSocket,
     pipeline_state.DepthStencilStateNodeSocket,
-    pipeline_state.DescriptorSetLayoutBindingNodeSocket,
-    pipeline_state.DescriptorSetLayoutNodeSocket,
-    pipeline_state.DescriptorSetLayoutArrayNodeSocket,
     pipeline_state.DynamicStateNodeSocket,
     pipeline_state.InputAssemblyStateNodeSocket,
     pipeline_state.PipelineDynamicStateNodeSocket,
@@ -79,9 +83,6 @@ classes = (
     pipeline_state.ColorBlendAttachmentStateNode,
     pipeline_state.ColorBlendStateNode,
     pipeline_state.DepthStencilStateNode,
-    pipeline_state.DescriptorSetLayoutBindingNode,
-    pipeline_state.DescriptorSetLayoutNode,
-    pipeline_state.DescriptorSetLayoutArrayNode,
     pipeline_state.DynamicStateNode,
     pipeline_state.GraphicsPipelineStateNode,
     pipeline_state.InputAssemblyStateNode,
@@ -146,6 +147,7 @@ def register():
 
     nodeitems_utils.register_node_categories("COMMON", common_node_categories)
     nodeitems_utils.register_node_categories("COMMANDS", draw_node_categories)
+    nodeitems_utils.register_node_categories("DESCRIPTORS", descriptor_node_categories)
     nodeitems_utils.register_node_categories("RAY_TRACING", ray_tracing_node_categories)
     nodeitems_utils.register_node_categories("RENDER_PASS", render_pass_node_categories)
     nodeitems_utils.register_node_categories(
@@ -165,6 +167,7 @@ def unregister():
 
     nodeitems_utils.unregister_node_categories("COMMON")
     nodeitems_utils.unregister_node_categories("COMMANDS")
+    nodeitems_utils.unregister_node_categories("DESCRIPTORS")
     nodeitems_utils.unregister_node_categories("PIPELINE_STATE")
     nodeitems_utils.unregister_node_categories("RAY_TRACING")
     nodeitems_utils.unregister_node_categories("RENDER_PASS")

@@ -19,10 +19,10 @@ class MythologyAddonPreferences(bpy.types.AddonPreferences):
 
 
 from .compile_shader import compile_shaders
+from .descriptors import create_descriptor_set_layouts_json
 from .draw import frame_commands_to_json
 from .pipeline_state import (
     create_samplers_json,
-    create_descriptor_set_layouts_json,
     create_pipeline_layouts_json,
     create_pipeline_states_json,
     graphics_pipeline_state_to_json,
@@ -95,7 +95,7 @@ class MythologyExportOperator(bpy.types.Operator):
         render_passes = render_pass_to_json(nodes)
         shader_modules = shader_module_to_json(nodes)
         samplers = create_samplers_json(nodes)
-        descriptor_set_layouts = create_descriptor_set_layouts_json(nodes, samplers)
+        descriptor_set_layouts = create_descriptor_set_layouts_json(nodes, samplers[0])
         pipeline_layouts = create_pipeline_layouts_json(nodes, descriptor_set_layouts)
         compute_pipeline_states = ([], [])
         graphics_pipeline_states = graphics_pipeline_state_to_json(
