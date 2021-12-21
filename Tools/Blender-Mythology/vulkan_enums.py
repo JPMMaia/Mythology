@@ -62,6 +62,49 @@ blend_operation_values = (
     ("MAX", "Max", "", 4),
 )
 
+buffer_create_flags_values = (
+    ("SPARSE_BINDING_BIT", "sparse_binding_bit", "", 0x00000001),
+    ("SPARSE_RESIDENCY_BIT", "sparse_residency_bit", "", 0x00000002),
+    ("SPARSE_ALIASED_BIT", "sparse_aliased_bit", "", 0x00000004),
+    ("PROTECTED_BIT", "protected_bit", "", 0x00000008),
+    (
+        "DEVICE_ADDRESS_CAPTURE_REPLAY_BIT",
+        "device_address_capture_replay_bit",
+        "",
+        0x00000010,
+    ),
+)
+
+buffer_usage_flags_values = (
+    ("TRANSFER_SRC_BIT", "transfer_src_bit", "", 0x00000001),
+    ("TRANSFER_DST_BIT", "transfer_dst_bit", "", 0x00000002),
+    ("UNIFORM_TEXEL_BUFFER_BIT", "uniform_texel_buffer_bit", "", 0x00000004),
+    ("STORAGE_TEXEL_BUFFER_BIT", "storage_texel_buffer_bit", "", 0x00000008),
+    ("UNIFORM_BUFFER_BIT", "uniform_buffer_bit", "", 0x00000010),
+    ("STORAGE_BUFFER_BIT", "storage_buffer_bit", "", 0x00000020),
+    ("INDEX_BUFFER_BIT", "index_buffer_bit", "", 0x00000040),
+    ("VERTEX_BUFFER_BIT", "vertex_buffer_bit", "", 0x00000080),
+    ("INDIRECT_BUFFER_BIT", "indirect_buffer_bit", "", 0x00000100),
+    ("SHADER_DEVICE_ADDRESS_BIT", "shader_device_address_bit", "", 0x00020000),
+    ("VIDEO_DECODE_SRC_BIT_KHR", "video_decode_src_bit_khr", "", 0x00002000),
+    ("VIDEO_DECODE_DST_BIT_KHR", "video_decode_dst_bit_khr", "", 0x00004000),
+    (
+        "ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR",
+        "acceleration_structure_build_input_read_only_bit_khr",
+        "",
+        0x00080000,
+    ),
+    (
+        "ACCELERATION_STRUCTURE_STORAGE_BIT_KHR",
+        "acceleration_structure_storage_bit_khr",
+        "",
+        0x00100000,
+    ),
+    ("SHADER_BINDING_TABLE_BIT_KHR", "shader_binding_table_bit_khr", "", 0x00000400),
+    ("VIDEO_ENCODE_DST_BIT_KHR", "video_encode_dst_bit_khr", "", 0x00008000),
+    ("VIDEO_ENCODE_SRC_BIT_KHR", "video_encode_src_bit_khr", "", 0x00010000),
+)
+
 color_component_flag_values = (
     ("R", "R", "", 0x00000001),
     ("G", "G", "", 0x00000002),
@@ -78,6 +121,16 @@ compare_operation_values = (
     ("NOT_EQUAL", "Not equal", "", 5),
     ("GREATER_OR_EQUAL", "Greater or equal", "", 6),
     ("ALWAYS", "Always", "", 7),
+)
+
+component_swizzle_values = (
+    ("IDENTITY", "Identity", "", 0),
+    ("ZERO", "Zero", "", 1),
+    ("ONE", "One", "", 2),
+    ("R", "R", "", 3),
+    ("G", "G", "", 4),
+    ("B", "B", "", 5),
+    ("A", "A", "", 6),
 )
 
 cull_modes = (
@@ -286,6 +339,42 @@ front_face = (
     ("CLOCKWISE", "Clockwise", "", 1),
 )
 
+image_aspect_flag_bits = (
+    ("COLOR_BIT", "color_bit", "", 0x00000001),
+    ("DEPTH_BIT", "depth_bit", "", 0x00000002),
+    ("STENCIL_BIT", "stencil_bit", "", 0x00000004),
+    ("METADATA_BIT", "metadata_bit", "", 0x00000008),
+    ("PLANE_0_BIT", "plane_0_bit", "", 0x00000010),
+    ("PLANE_1_BIT", "plane_1_bit", "", 0x00000020),
+    ("PLANE_2_BIT", "plane_2_bit", "", 0x00000040),
+    ("NONE_KHR", "none_khr", "", 0),
+)
+
+image_create_flags = (
+    ("SPARSE_BINDING_BIT", "sparse_binding_bit", "", 0x00000001),
+    ("SPARSE_RESIDENCY_BIT", "sparse_residency_bit", "", 0x00000002),
+    ("SPARSE_ALIASED_BIT", "sparse_aliased_bit", "", 0x00000004),
+    ("MUTABLE_FORMAT_BIT", "mutable_format_bit", "", 0x00000008),
+    ("CUBE_COMPATIBLE_BIT", "cube_compatible_bit", "", 0x00000010),
+    ("ALIAS_BIT", "alias_bit", "", 0x00000400),
+    (
+        "SPLIT_INSTANCE_BIND_REGIONS_BIT",
+        "split_instance_bind_regions_bit",
+        "",
+        0x00000040,
+    ),
+    ("2D_ARRAY_COMPATIBLE_BIT", "2d_array_compatible_bit", "", 0x00000020),
+    (
+        "BLOCK_TEXEL_VIEW_COMPATIBLE_BIT",
+        "block_texel_view_compatible_bit",
+        "",
+        0x00000080,
+    ),
+    ("EXTENDED_USAGE_BIT", "extended_usage_bit", "", 0x00000100),
+    ("PROTECTED_BIT", "protected_bit", "", 0x00000800),
+    ("DISJOINT_BIT", "disjoint_bit", "", 0x00000200),
+)
+
 image_layout_values = (
     ("UNDEFINED", "Undefined", "", 0),
     ("GENERAL", "General", "", 1),
@@ -316,6 +405,12 @@ image_layout_values = (
     ("SHARED_PRESENT_KHR", "Shared_present_khr", "", 116),
 )
 
+image_type_values = (
+    ("1D", "1D", "", 0),
+    ("2D", "2D", "", 1),
+    ("3D", "3D", "", 2),
+)
+
 image_layout_values_to_int = {
     "UNDEFINED": 0,
     "GENERAL": 1,
@@ -335,6 +430,39 @@ image_layout_values_to_int = {
     "PRESENT_SRC_KHR": 1000001002,
     "SHARED_PRESENT_KHR": 1000111000,
 }
+
+image_view_type_values = (
+    ("1D", "1d", "", 0),
+    ("2D", "2d", "", 1),
+    ("3D", "3d", "", 2),
+    ("CUBE", "cube", "", 3),
+    ("1D_ARRAY", "1d_array", "", 4),
+    ("2D_ARRAY", "2d_array", "", 5),
+    ("CUBE_ARRAY", "cube_array", "", 6),
+)
+
+image_usage_flag_bits = (
+    ("TRANSFER_SRC_BIT", "transfer_src_bit", "", 0x00000001),
+    ("TRANSFER_DST_BIT", "transfer_dst_bit", "", 0x00000002),
+    ("SAMPLED_BIT", "sampled_bit", "", 0x00000004),
+    ("STORAGE_BIT", "storage_bit", "", 0x00000008),
+    ("COLOR_ATTACHMENT_BIT", "color_attachment_bit", "", 0x00000010),
+    ("DEPTH_STENCIL_ATTACHMENT_BIT", "depth_stencil_attachment_bit", "", 0x00000020),
+    ("TRANSIENT_ATTACHMENT_BIT", "transient_attachment_bit", "", 0x00000040),
+    ("INPUT_ATTACHMENT_BIT", "input_attachment_bit", "", 0x00000080),
+    ("VIDEO_DECODE_DST_BIT_KHR", "video_decode_dst_bit_khr", "", 0x00000400),
+    ("VIDEO_DECODE_SRC_BIT_KHR", "video_decode_src_bit_khr", "", 0x00000800),
+    ("VIDEO_DECODE_DPB_BIT_KHR", "video_decode_dpb_bit_khr", "", 0x00001000),
+    (
+        "FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR",
+        "fragment_shading_rate_attachment_bit_khr",
+        "",
+        0x00000100,
+    ),
+    ("VIDEO_ENCODE_DST_BIT_KHR", "video_encode_dst_bit_khr", "", 0x00002000),
+    ("VIDEO_ENCODE_SRC_BIT_KHR", "video_encode_src_bit_khr", "", 0x00004000),
+    ("VIDEO_ENCODE_DPB_BIT_KHR", "video_encode_dpb_bit_khr", "", 0x00008000),
+)
 
 logic_operation_values = (
     ("CLEAR", "Clear", "", 0),
@@ -400,6 +528,16 @@ polygon_modes = (
     ("POINT", "Point", "", 2),
 )
 
+sample_count_flag_bits = (
+    ("1_BIT", "1_BIT", "", 0x00000001),
+    ("2_BIT", "2_BIT", "", 0x00000002),
+    ("4_BIT", "4_BIT", "", 0x00000004),
+    ("8_BIT", "8_BIT", "", 0x00000008),
+    ("16_BIT", "16_BIT", "", 0x00000010),
+    ("32_BIT", "32_BIT", "", 0x00000020),
+    ("64_BIT", "64_BIT", "", 0x00000040),
+)
+
 sampler_address_move_values = (
     ("REPEAT", "Repeat", "", 0),
     ("MIRRORED_REPEAT", "Mirrored repeat", "", 1),
@@ -440,4 +578,9 @@ stencil_operation_values = (
     ("INVERT", "Invert", "", 5),
     ("INCREMENT_AND_WRAP", "Increment and wrap", "", 6),
     ("DECREMENT_AND_WRAP", "Decrement and wrap", "", 7),
+)
+
+tiling_values = (
+    ("OPTIMAL", "optimal", "", 0),
+    ("LINEAR", "linear", "", 1),
 )

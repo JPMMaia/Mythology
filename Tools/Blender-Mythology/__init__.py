@@ -25,18 +25,30 @@ classes = (
     common.Extent2DNode,
     common.Offset2DNode,
     common.Rect2DNode,
+    descriptors.DescriptorBufferInfoNode,
+    descriptors.DescriptorBufferInfoNodeSocket,
+    descriptors.DescriptorBufferInfoArrayNode,
+    descriptors.DescriptorBufferInfoArrayNodeSocket,
+    descriptors.DescriptorImageInfoNode,
+    descriptors.DescriptorImageInfoNodeSocket,
+    descriptors.DescriptorImageInfoArrayNode,
+    descriptors.DescriptorImageInfoArrayNodeSocket,
     descriptors.DescriptorSetLayoutBindingNode,
     descriptors.DescriptorSetLayoutBindingNodeSocket,
     descriptors.DescriptorSetLayoutNode,
     descriptors.DescriptorSetLayoutNodeSocket,
     descriptors.DescriptorSetLayoutArrayNode,
     descriptors.DescriptorSetLayoutArrayNodeSocket,
+    descriptors.DescriptorSetBindingNode,
+    descriptors.DescriptorSetBindingNodeSocket,
+    descriptors.DescriptorSetNode,
+    descriptors.DescriptorSetNodeSocket,
+    descriptors.DescriptorSetArrayNode,
+    descriptors.DescriptorSetArrayNodeSocket,
     draw.ClearColorValueNodeSocket,
     draw.ClearDepthStencilValueNodeSocket,
     draw.ClearSubpassNodeSocket,
     draw.ClearValueNodeSocket,
-    draw.DescriptorSetNodeSocket,
-    draw.DescriptorSetArrayNodeSocket,
     draw.DynamicOffsetNodeSocket,
     draw.DynamicOffsetArrayNodeSocket,
     draw.ExecutionNodeSocket,
@@ -100,6 +112,9 @@ classes = (
     pipeline_state.VertexInputStateNode,
     pipeline_state.ViewportNode,
     pipeline_state.ViewportStateNode,
+    ray_tracing.AccelerationStructureNodeSocket,
+    ray_tracing.AccelerationStructureArrayNode,
+    ray_tracing.AccelerationStructureArrayNodeSocket,
     ray_tracing.RayTracingPipelineInterfaceNodeSocket,
     ray_tracing.RayTracingPipelineInterfaceNode,
     ray_tracing.RayTracingPipelineStateNode,
@@ -129,8 +144,18 @@ classes = (
     render_pass.RenderPassNode,
     render_pass.SubpassDependencyNode,
     render_pass.SubpassNode,
+    resources.BufferNode,
+    resources.BufferNodeSocket,
+    resources.BufferViewNode,
+    resources.BufferViewNodeSocket,
+    resources.ComponentMappingNode,
+    resources.ComponentMappingNodeSocket,
+    resources.ImageNode,
     resources.ImageNodeSocket,
+    resources.ImageSubresourceRangeNode,
     resources.ImageSubresourceRangeNodeSocket,
+    resources.ImageViewNode,
+    resources.ImageViewNodeSocket,
     export.MythologyExportProperties,
     export.MythologyAddonPreferences,
     export.MythologyExportOperator,
@@ -150,6 +175,7 @@ def register():
     nodeitems_utils.register_node_categories("DESCRIPTORS", descriptor_node_categories)
     nodeitems_utils.register_node_categories("RAY_TRACING", ray_tracing_node_categories)
     nodeitems_utils.register_node_categories("RENDER_PASS", render_pass_node_categories)
+    nodeitems_utils.register_node_categories("RESOURCES", resources_node_categories)
     nodeitems_utils.register_node_categories(
         "PIPELINE_STATE", pipeline_state_node_categories
     )
@@ -171,6 +197,7 @@ def unregister():
     nodeitems_utils.unregister_node_categories("PIPELINE_STATE")
     nodeitems_utils.unregister_node_categories("RAY_TRACING")
     nodeitems_utils.unregister_node_categories("RENDER_PASS")
+    nodeitems_utils.unregister_node_categories("RESOURCES")
 
     from bpy.utils import unregister_class
 

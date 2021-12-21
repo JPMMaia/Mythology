@@ -66,25 +66,6 @@ class ClearValueNodeSocket(bpy.types.NodeSocket):
     def draw_color(self, context, node):
         return (1.0, 1.0, 1.0, 1.0)
 
-class DescriptorSetNodeSocket(bpy.types.NodeSocket):
-
-    bl_label = "Descriptor Set node socket"
-
-    def draw(self, context, layout, node, text):
-        layout.label(text=text)
-
-    def draw_color(self, context, node):
-        return (0.5, 0.9, 0.7, 1.0)
-
-class DescriptorSetArrayNodeSocket(bpy.types.NodeSocket):
-
-    bl_label = "Descriptor Set Array node socket"
-
-    def draw(self, context, layout, node, text):
-        layout.label(text=text)
-
-    def draw_color(self, context, node):
-        return (0.9, 0.7, 0.5, 1.0)
 
 class DynamicOffsetNodeSocket(bpy.types.NodeSocket):
 

@@ -27,6 +27,7 @@ ray_tracing_node_categories = [
         "RAY_TRACING",
         "Ray Tracing",
         items=[
+            nodeitems_utils.NodeItem("AccelerationStructureArrayNode"),
             nodeitems_utils.NodeItem("RayTracingPipelineInterfaceNode"),
             nodeitems_utils.NodeItem("RayTracingPipelineStateNode"),
             nodeitems_utils.NodeItem("RayTracingShaderGroupNode"),
@@ -119,6 +120,28 @@ ray_tracing_pipeline_create_flag_bits = (
 )
 
 
+class AccelerationStructureNodeSocket(bpy.types.NodeSocket):
+
+    bl_label = "Acceleration Structure node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.3, 0.6, 0.1, 1.0)
+
+
+class AccelerationStructureArrayNodeSocket(bpy.types.NodeSocket):
+
+    bl_label = "Acceleration Structure Array node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.1, 0.3, 0.6, 1.0)
+
+
 class RayTracingPipelineInterfaceNodeSocket(bpy.types.NodeSocket):
 
     bl_label = "Ray Tracing Pipeline Interface node socket"
@@ -161,6 +184,31 @@ class ShaderGroupsArrayNodeSocket(bpy.types.NodeSocket):
 
     def draw_color(self, context, node):
         return (0.4, 0.7, 0.6, 1.0)
+
+
+class AccelerationStructureArrayNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Acceleration Structures Array"
+    recreating = False
+
+    def init(self, context):
+        self.recreating = True
+        recreate_dynamic_inputs(
+            self.id_data, self.inputs, "AccelerationStructureNodeSocket"
+        )
+        self.recreating = False
+
+        self.outputs.new(
+            "AccelerationStructureArrayNodeSocket", "Acceleration Structures Array"
+        )
+
+    def update(self):
+        if not self.recreating:
+            self.recreating = True
+            update_dynamic_inputs(
+                self.id_data, self.inputs, "AccelerationStructureNodeSocket"
+            )
+            self.recreating = False
 
 
 class RayTracingPipelineInterfaceNode(bpy.types.Node, RenderTreeNode):
