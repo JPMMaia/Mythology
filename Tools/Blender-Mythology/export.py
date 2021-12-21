@@ -26,7 +26,7 @@ class MythologyAddonPreferences(bpy.types.AddonPreferences):
 
 
 from .compile_shader import compile_shaders
-from .descriptors import create_descriptor_set_layouts_json
+from .descriptors import create_descriptor_set_layouts_json, create_descriptor_sets_json
 from .draw import frame_commands_to_json
 from .pipeline_state import (
     create_samplers_json,
@@ -107,7 +107,12 @@ class MythologyExportOperator(bpy.types.Operator):
         image_views = create_image_views_json(nodes, images[0])
         samplers = create_samplers_json(nodes)
         descriptor_set_layouts = create_descriptor_set_layouts_json(nodes, samplers[0])
-        pipeline_layouts = create_pipeline_layouts_json(nodes, descriptor_set_layouts)
+        descriptor_sets = create_descriptor_sets_json(
+            nodes, descriptor_set_layouts[0], buffers[0], image_views[0], samplers[0]
+        )
+        pipeline_layouts = create_pipeline_layouts_json(
+            nodes, descriptor_set_layouts[0]
+        )
         compute_pipeline_states = ([], [])
         graphics_pipeline_states = graphics_pipeline_state_to_json(
             nodes, render_passes, shader_modules[0], pipeline_layouts
@@ -124,7 +129,12 @@ class MythologyExportOperator(bpy.types.Operator):
             nodes, pipeline_states[0]
         )
         frame_commands = frame_commands_to_json(
-            nodes, pipeline_states[0], render_passes, shader_binding_tables[0]
+            nodes,
+            descriptor_sets[0],
+            pipeline_layouts[0],
+            pipeline_states[0],
+            render_passes,
+            shader_binding_tables[0],
         )
 
         output_json = {
@@ -136,6 +146,7 @@ class MythologyExportOperator(bpy.types.Operator):
             "image_views": image_views[1],
             "samplers": samplers[1],
             "descriptor_set_layouts": descriptor_set_layouts[1],
+            "descriptor_sets": descriptor_sets[1],
             "pipeline_layouts": pipeline_layouts[1],
             "pipeline_states": {
                 "compute_pipeline_states": compute_pipeline_states[1],

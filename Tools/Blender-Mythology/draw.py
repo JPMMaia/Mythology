@@ -2,7 +2,12 @@ import bpy
 
 from .array_inputs import recreate_dynamic_inputs, update_dynamic_inputs
 from .common import find_index, Rect2DNodeSocket
-from .pipeline_state import GraphicsPipelineStateNode, PipelineNodeSocket
+from .descriptors import DescriptorSetNode
+from .pipeline_state import (
+    GraphicsPipelineStateNode,
+    PipelineLayoutNode,
+    PipelineNodeSocket,
+)
 from .render_node_tree import RenderTreeNode
 from .render_pass import (
     RenderPassNode,
@@ -129,11 +134,15 @@ class BeginFrameNode(bpy.types.Node, RenderTreeNode):
     def init(self, context):
         self.outputs.new("ExecutionNodeSocket", "Execution")
         self.outputs.new("ImageNodeSocket", "Output Image")
+        self.outputs.new("ImageViewNodeSocket", "Output Image View")
         self.outputs.new(
             "ImageSubresourceRangeNodeSocket", "Output Image Subresource Range"
         )
         self.outputs.new("Rect2DNodeSocket", "Output Image Area")
         self.outputs.new("FramebufferNodeSocket", "Output Framebuffer")
+        self.outputs.new(
+            "AccelerationStructureNodeSocket", "Input Acceleration Structure"
+        )
 
 
 class BeginRenderPassNode(bpy.types.Node, RenderTreeNode):
@@ -519,6 +528,36 @@ def begin_render_pass_node_to_json(
     }
 
 
+def bind_descriptor_set_to_json(
+    node: BindDescriptorSetNode,
+    descriptor_sets: typing.List[DescriptorSetNode],
+    pipeline_layouts: typing.List[PipelineLayoutNode],
+) -> JSONType:
+
+    json = {
+        "type": "Bind_descriptor_set",
+        "pipeline_bind_point": node.get("pipeline_bind_point_property", 0),
+        "first_set": node.get("first_set_property", 0),
+        "pipeline_layout": find_index(
+            pipeline_layouts, node.inputs["Pipeline Layout"].links[0].from_node
+        ),
+        "descriptor_sets": [
+            find_index(descriptor_sets, input.links[0].from_node)
+            for input in node.inputs["Descriptor Set Array"].links[0].from_node.inputs
+            if len(input.links) > 0
+        ],
+    }
+
+    if len(node.inputs["Dynamic Offset Array"].links) == 1:
+        json["dynamic_offsets"] = [
+            input.links[0].from_node.value
+            for input in node.inputs["Dynamic Offset Array"].links[0].from_node.inputs
+            if len(input.links) > 0
+        ]
+
+    return json
+
+
 def bind_pipeline_node_to_json(
     node: BindPipelineNode,
     pipeline_states: typing.List[bpy.types.Node],
@@ -678,6 +717,8 @@ def trace_rays_node_to_json(
 
 def frame_command_node_to_json(
     node: bpy.types.Node,
+    descriptor_sets: typing.List[DescriptorSetNode],
+    pipeline_layouts: typing.List[PipelineLayoutNode],
     pipeline_states: typing.List[bpy.types.Node],
     render_passes: typing.Tuple[
         typing.List[RenderPassNode], typing.List[typing.List[SubpassNode]], JSONType
@@ -687,6 +728,8 @@ def frame_command_node_to_json(
 
     if node.bl_idname == "BeginRenderPassNode":
         return begin_render_pass_node_to_json(node, render_passes)
+    elif node.bl_idname == "BindDescriptorSetNode":
+        return bind_descriptor_set_to_json(node, descriptor_sets, pipeline_layouts)
     elif node.bl_idname == "BindPipelineNode":
         return bind_pipeline_node_to_json(node, pipeline_states)
     elif node.bl_idname == "ClearColorImageNode":
@@ -705,7 +748,9 @@ def frame_command_node_to_json(
     assert False
 
 
-def get_frame_command_nodes(begin_frame_node: BeginFrameNode) -> [bpy.types.Node]:
+def get_frame_command_nodes(
+    begin_frame_node: BeginFrameNode,
+) -> typing.List[bpy.types.Node]:
 
     frame_command_nodes = []
 
@@ -724,6 +769,8 @@ def get_frame_command_nodes(begin_frame_node: BeginFrameNode) -> [bpy.types.Node
 
 def frame_commands_to_json(
     nodes: typing.List[bpy.types.Node],
+    descriptor_sets: typing.List[DescriptorSetNode],
+    pipeline_layouts: typing.List[PipelineLayoutNode],
     pipeline_states: typing.List[bpy.types.Node],
     render_passes: typing.Tuple[
         typing.List[RenderPassNode], typing.List[typing.List[SubpassNode]], JSONType
@@ -740,7 +787,12 @@ def frame_commands_to_json(
     return [
         [
             frame_command_node_to_json(
-                command_node, pipeline_states, render_passes, shader_binding_tables
+                command_node,
+                descriptor_sets,
+                pipeline_layouts,
+                pipeline_states,
+                render_passes,
+                shader_binding_tables,
             )
             for command_node in frame_command_nodes_per_begin_frame_node[
                 begin_frame_index

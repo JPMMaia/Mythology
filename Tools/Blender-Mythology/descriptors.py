@@ -3,7 +3,9 @@ import nodeitems_utils
 import typing
 
 from .array_inputs import recreate_dynamic_inputs, update_dynamic_inputs
+from .common import find_index
 from .render_node_tree import RenderTreeNode
+from .resources import BufferNode, ImageViewNode
 from .vulkan_enums import (
     descriptor_type_values,
     get_descriptor_type_value,
@@ -374,6 +376,119 @@ def create_descriptor_set_layouts_json(
     ]
 
     return (descriptor_set_layout_nodes, json)
+
+
+def descriptor_image_info_to_json(
+    node: DescriptorImageInfoNode,
+    image_views: typing.List[ImageViewNode],
+    samplers: typing.List[bpy.types.Node],
+) -> typing.Any:
+
+    json = {}
+
+    if len(node.inputs["Image View"].links) == 1:
+        json["image_view"] = (
+            {
+                "type": "internal",
+                "index": find_index(
+                    image_views, node.inputs["Image View"].links[0].from_node
+                ),
+            }
+            if node.inputs["Image View"].links[0].from_node.bl_idname == "ImageViewNode"
+            else {"type": "external"}
+        )
+        json["image_layout"] = node.get("image_layout_property", 0)
+
+    if len(node.inputs["Sampler"].links) == 1:
+        json["sampler"] = find_index(
+            samplers,
+            node.inputs["Sampler"].links[0].from_node,
+        )
+
+    return json
+
+
+def descriptor_set_binding_to_json(
+    node: DescriptorSetBindingNode,
+    buffers: typing.List[BufferNode],
+    image_views: typing.List[ImageViewNode],
+    samplers: typing.List[bpy.types.Node],
+) -> typing.Any:
+
+    json = {
+        "binding": node.get("binding_property", 0),
+        "descriptor_type": node.get("descriptor_type_property", 0),
+        "first_array_element": node.get("first_array_element_property", 0),
+    }
+
+    if len(node.inputs["Descriptor Buffer Info Array"].links) == 1:
+        json["buffer_infos"] = [
+            {
+                "buffer": find_index(
+                    buffers, input.from_node.inputs["Buffer"].links[0].from_node
+                ),
+                "offset": input.from_node.get("offset_property", 0),
+                "range": input.from_node.get("range_property", 1),
+            }
+            for input in node.inputs["Descriptor Buffer Info Array"]
+            .links[0]
+            .from_node.inputs
+            if len(input.links) == 1
+        ]
+
+    if len(node.inputs["Descriptor Image Info Array"].links) == 1:
+        json["image_infos"] = [
+            descriptor_image_info_to_json(
+                input.links[0].from_node, image_views, samplers
+            )
+            for input in node.inputs["Descriptor Image Info Array"]
+            .links[0]
+            .from_node.inputs
+            if len(input.links) == 1
+        ]
+
+    if len(node.inputs["Acceleration Structure Array"].links) == 1:
+        json["acceleration_structure"] = [
+            {"type": "external"}
+            for input in node.inputs["Acceleration Structure Array"]
+            .links[0]
+            .from_node.inputs
+            if len(input.links) == 1
+            and input.links[0].from_node.bl_idname == "BeginFrameNode"
+        ]
+
+    return json
+
+
+def create_descriptor_sets_json(
+    nodes: typing.List[bpy.types.Node],
+    descriptor_set_layouts: typing.List[DescriptorSetLayoutNode],
+    buffers: typing.List[BufferNode],
+    image_views: typing.List[ImageViewNode],
+    samplers: typing.List[bpy.types.Node],
+) -> typing.Tuple[typing.List[DescriptorSetLayoutNode], typing.Any]:
+
+    descriptor_set_nodes = [
+        node for node in nodes if node.bl_idname == "DescriptorSetNode"
+    ]
+
+    json = [
+        {
+            "layout": find_index(
+                descriptor_set_layouts,
+                node.inputs["Descriptor Set Layout"].links[0].from_node,
+            ),
+            "bindings": [
+                descriptor_set_binding_to_json(
+                    link.from_node, buffers, image_views, samplers
+                )
+                for link in node.inputs["Descriptor Set Bindings"].links
+            ],
+        }
+        for node in descriptor_set_nodes
+    ]
+
+    return (descriptor_set_nodes, json)
 
 
 class DescriptorsNodeCategory(nodeitems_utils.NodeCategory):

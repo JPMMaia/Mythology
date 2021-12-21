@@ -961,7 +961,7 @@ def create_pipeline_layouts_json(
     json = [
         {
             "descriptor_set_layouts": [
-                descriptor_set_layouts[0].index(input.links[0].from_node)
+                descriptor_set_layouts.index(input.links[0].from_node)
                 for input in node.inputs["Descriptor Set Layouts Array"]
                 .links[0]
                 .from_node.inputs
