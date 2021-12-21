@@ -1,4 +1,54 @@
 import bpy
+import nodeitems_utils
+
+from .render_node_tree import RenderTreeNode
+from .vulkan_enums import (
+    buffer_create_flags_values,
+    buffer_usage_flags_values,
+    component_swizzle_values,
+    format_values,
+    image_aspect_flag_bits,
+    image_create_flags,
+    image_layout_values,
+    image_type_values,
+    image_view_type_values,
+    image_usage_flag_bits,
+    sample_count_flag_bits,
+    tiling_values,
+)
+
+
+class BufferNodeSocket(bpy.types.NodeSocket):
+
+    bl_label = "Buffer node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.35, 0.35, 0.5, 1.0)
+
+
+class BufferViewNodeSocket(bpy.types.NodeSocket):
+
+    bl_label = "Buffer View node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.80, 0.2, 0.9, 1.0)
+
+
+class ComponentMappingNodeSocket(bpy.types.NodeSocket):
+
+    bl_label = "Component Mapping node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (1.0, 0.5, 0.25, 1.0)
 
 
 class ImageNodeSocket(bpy.types.NodeSocket):
@@ -21,3 +71,214 @@ class ImageSubresourceRangeNodeSocket(bpy.types.NodeSocket):
 
     def draw_color(self, context, node):
         return (0.25, 0.25, 1.0, 1.0)
+
+
+class ImageViewNodeSocket(bpy.types.NodeSocket):
+
+    bl_label = "Image View node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.6, 0.4, 0.2, 1.0)
+
+
+class BufferNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Buffer"
+
+    buffer_create_flags_property: bpy.props.EnumProperty(
+        name="Create Flags",
+        items=buffer_create_flags_values,
+        options={"ANIMATABLE", "ENUM_FLAG"},
+    )
+    size_property: bpy.props.IntProperty(name="Size", min=1, default=1)
+    buffer_usage_flags_property: bpy.props.EnumProperty(
+        name="Usage Flags",
+        items=buffer_usage_flags_values,
+        options={"ANIMATABLE", "ENUM_FLAG"},
+    )
+
+    def init(self, context):
+
+        self.outputs.new("BufferNodeSocket", "Buffer")
+
+    def draw_buttons(self, context, layout):
+
+        layout.label(text="Flags")
+        layout.prop(self, "buffer_create_flags_property")
+        layout.prop(self, "size_property")
+        layout.label(text="Usage")
+        layout.prop(self, "buffer_usage_flags_property")
+
+
+class BufferViewNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Buffer View"
+
+    format_property: bpy.props.EnumProperty(name="Format", items=format_values)
+    offset_property: bpy.props.IntProperty(name="Offset", min=0, default=0)
+    range_property: bpy.props.IntProperty(name="Range", min=1, default=1)
+
+    def init(self, context):
+
+        self.inputs.new("BufferNodeSocket", "Buffer")
+
+        self.outputs.new("BufferViewNodeSocket", "Buffer View")
+
+    def draw_buttons(self, context, layout):
+
+        layout.prop(self, "format_property")
+        layout.prop(self, "offset_property")
+        layout.prop(self, "range_property")
+
+
+class ComponentMappingNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Component Mapping"
+
+    r_property: bpy.props.EnumProperty(name="R", items=component_swizzle_values)
+    g_property: bpy.props.EnumProperty(name="G", items=component_swizzle_values)
+    b_property: bpy.props.EnumProperty(name="B", items=component_swizzle_values)
+    a_property: bpy.props.EnumProperty(name="A", items=component_swizzle_values)
+
+    def init(self, context):
+
+        self.outputs.new("ComponentMappingNodeSocket", "Components")
+
+    def draw_buttons(self, context, layout):
+
+        layout.prop(self, "r_property")
+        layout.prop(self, "g_property")
+        layout.prop(self, "b_property")
+        layout.prop(self, "a_property")
+
+
+class ImageNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Image"
+
+    create_flags_property: bpy.props.EnumProperty(
+        name="Create Flags",
+        items=image_create_flags,
+        options={"ANIMATABLE", "ENUM_FLAG"},
+    )
+    type_property: bpy.props.EnumProperty(
+        name="Type", items=image_type_values, default="2D"
+    )
+    format_property: bpy.props.EnumProperty(name="Format", items=format_values)
+    mip_levels_property: bpy.props.IntProperty(name="Mip Levels", min=1, default=1)
+    array_layers_property: bpy.props.IntProperty(name="Array Layers", min=1, default=1)
+    sample_count_flags_property: bpy.props.EnumProperty(
+        name="Sample Count", items=sample_count_flag_bits
+    )
+    tiling_property: bpy.props.EnumProperty(name="Tiling", items=tiling_values)
+    image_usage_flags_property: bpy.props.EnumProperty(
+        name="Usage Flags",
+        items=image_usage_flag_bits,
+        options={"ANIMATABLE", "ENUM_FLAG"},
+    )
+    initial_layout_property: bpy.props.EnumProperty(
+        name="Initial Layout", items=image_layout_values
+    )
+
+    def init(self, context):
+
+        self.inputs.new("Extent2DNodeSocket", "Extent")
+
+        self.outputs.new("ImageNodeSocket", "Image")
+
+    def draw_buttons(self, context, layout):
+
+        layout.label(text="Flags")
+        layout.prop(self, "create_flags_property")
+        layout.prop(self, "type_property")
+        layout.prop(self, "format_property")
+        layout.prop(self, "mip_levels_property")
+        layout.prop(self, "array_layers_property")
+        layout.prop(self, "sample_count_flags_property")
+        layout.prop(self, "tiling_property")
+        layout.prop(self, "image_usage_flags_property")
+        layout.prop(self, "initial_layout_property")
+
+
+class ImageSubresourceRangeNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Image Subresource Range"
+
+    aspect_mask_property: bpy.props.EnumProperty(
+        name="Aspect Mask",
+        items=image_aspect_flag_bits,
+        options={"ANIMATABLE", "ENUM_FLAG"},
+    )
+    base_mip_level_property: bpy.props.IntProperty(
+        name="Base Mip Level", min=0, default=0
+    )
+    mip_level_count_property: bpy.props.IntProperty(
+        name="Mip Level Count", min=1, default=1
+    )
+    base_array_layer_property: bpy.props.IntProperty(
+        name="Base Array Layer", min=0, default=0
+    )
+    array_layer_count_property: bpy.props.IntProperty(
+        name="Array Layer Count", min=1, default=1
+    )
+
+    def init(self, context):
+
+        self.outputs.new("ImageSubresourceRangeNodeSocket", "Image Subresource Range")
+
+    def draw_buttons(self, context, layout):
+
+        layout.label(text="Aspect Mask")
+        layout.prop(self, "aspect_mask_property")
+        layout.prop(self, "base_mip_level_property")
+        layout.prop(self, "mip_level_count_property")
+        layout.prop(self, "base_array_layer_property")
+        layout.prop(self, "array_layer_count_property")
+
+
+class ImageViewNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Image View"
+
+    view_type_property: bpy.props.EnumProperty(
+        name="View Type", items=image_view_type_values, default="2D"
+    )
+    format_property: bpy.props.EnumProperty(name="Format", items=format_values)
+
+    def init(self, context):
+
+        self.inputs.new("ImageNodeSocket", "Image")
+        self.inputs.new("ComponentMappingNodeSocket", "Components")
+        self.inputs.new("ImageSubresourceRangeNodeSocket", "Subresource Range")
+
+        self.outputs.new("ImageViewNodeSocket", "Image View")
+
+    def draw_buttons(self, context, layout):
+
+        layout.prop(self, "view_type_property")
+        layout.prop(self, "format_property")
+
+
+class ResourcesNodeCategory(nodeitems_utils.NodeCategory):
+    @classmethod
+    def poll(cls, context):
+        return context.space_data.tree_type == "RenderNodeTree"
+
+
+resources_node_categories = [
+    ResourcesNodeCategory(
+        "RESOURCES",
+        "Resources",
+        items=[
+            nodeitems_utils.NodeItem("BufferNode"),
+            nodeitems_utils.NodeItem("BufferViewNode"),
+            nodeitems_utils.NodeItem("ComponentMappingNode"),
+            nodeitems_utils.NodeItem("ImageNode"),
+            nodeitems_utils.NodeItem("ImageSubresourceRangeNode"),
+            nodeitems_utils.NodeItem("ImageViewNode"),
+        ],
+    ),
+]
