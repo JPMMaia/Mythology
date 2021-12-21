@@ -286,6 +286,30 @@ resources_node_categories = [
 ]
 
 
+def component_mapping_to_json(node: bpy.types.Node) -> typing.Any:
+
+    if node.bl_idname == "BeginFrameNode":
+        return {"type": "external"}
+    else:
+        return {
+            "r": node.get("r_property", 0),
+            "g": node.get("g_property", 0),
+            "b": node.get("b_property", 0),
+            "a": node.get("a_property", 0),
+        }
+
+
+def image_subresource_range_to_json(node: bpy.types.Node) -> typing.Any:
+
+    return {
+        "aspect_mask": node.get("aspect_mask_property", 0),
+        "base_mip_level": node.get("base_mip_level_property", 0),
+        "mip_level_count": node.get("mip_level_count_property", 1),
+        "base_array_layer": node.get("base_array_layer_property", 0),
+        "array_layer_count": node.get("array_layer_count_property", 1),
+    }
+
+
 def create_buffers_json(
     nodes: typing.List[bpy.types.Node],
 ) -> typing.Tuple[typing.List[BufferNode], typing.Any]:
@@ -373,6 +397,12 @@ def create_image_views_json(
             "mip_level_count": node.get("mip_level_count_property", 1),
             "base_array_layer": node.get("base_array_layer_property", 0),
             "array_layer_count": node.get("array_layer_count_property", 1),
+            "components": component_mapping_to_json(
+                node.inputs["Components"].links[0].from_node
+            ),
+            "subresource_range": image_subresource_range_to_json(
+                node.inputs["Subresource Range"].links[0].from_node
+            ),
         }
         for node in image_view_nodes
     ]
