@@ -1,6 +1,8 @@
 import bpy
 import nodeitems_utils
+import typing
 
+from .common import create_extent_2d_json, find_index
 from .render_node_tree import RenderTreeNode
 from .vulkan_enums import (
     buffer_create_flags_values,
@@ -282,3 +284,97 @@ resources_node_categories = [
         ],
     ),
 ]
+
+
+def create_buffers_json(
+    nodes: typing.List[bpy.types.Node],
+) -> typing.Tuple[typing.List[BufferNode], typing.Any]:
+
+    buffer_nodes = [node for node in nodes if node.bl_idname == "BufferNode"]
+
+    json = [
+        {
+            "flags": node.get("buffer_create_flags_property", 0),
+            "size": node.get("size_property", 1),
+            "usage": node.get("buffer_usage_flags_property", 0),
+        }
+        for node in buffer_nodes
+    ]
+
+    return (buffer_nodes, json)
+
+
+def create_buffer_views_json(
+    nodes: typing.List[bpy.types.Node], buffer_nodes: typing.List[BufferNode]
+) -> typing.Tuple[typing.List[BufferViewNode], typing.Any]:
+
+    buffer_view_nodes = [node for node in nodes if node.bl_idname == "BufferViewNode"]
+
+    json = [
+        {
+            "buffer": find_index(
+                buffer_nodes,
+                node.inputs["Buffer"].links[0].from_node,
+            ),
+            "format": node.get("format_property", 0),
+            "offset": node.get("offset_property", 0),
+            "range": node.get("range_property", 1),
+        }
+        for node in buffer_view_nodes
+    ]
+
+    return (buffer_view_nodes, json)
+
+
+def create_images_json(
+    nodes: typing.List[bpy.types.Node],
+) -> typing.Tuple[typing.List[ImageNode], typing.Any]:
+
+    image_nodes = [node for node in nodes if node.bl_idname == "ImageNode"]
+
+    json = [
+        {
+            "flags": node.get("create_flags_property", 0),
+            "type": node.get("type_property", 0),
+            "format": node.get("format_property", 0),
+            "mip_levels": node.get("mip_levels_property", 1),
+            "array_layers": node.get("array_layers_property", 1),
+            "sample_count": node.get("sample_count_flags_property", 0),
+            "tiling": node.get("tiling_property", 0),
+            "usage": node.get("image_usage_flags_property", 0),
+            "initial_layout": node.get("initial_layout_property", 0),
+            "extent": create_extent_2d_json(node.inputs["Extent"].links[0].from_node),
+        }
+        for node in image_nodes
+    ]
+
+    return (image_nodes, json)
+
+
+def create_image_views_json(
+    nodes: typing.List[bpy.types.Node],
+    image_nodes: typing.List[ImageNode],
+) -> typing.Tuple[typing.List[ImageViewNode], typing.Any]:
+
+    image_view_nodes = [node for node in nodes if node.bl_idname == "ImageViewNode"]
+
+    json = [
+        {
+            "image": {"type": "external"}
+            if node.inputs["Image"].links[0].from_socket.name == "Output Image"
+            else {
+                "type": "internal",
+                "index": find_index(
+                    image_nodes, node.inputs["Image"].links[0].from_node
+                ),
+            },
+            "aspect_mask": node.get("aspect_mask_property", 0),
+            "base_mip_level": node.get("base_mip_level_property", 0),
+            "mip_level_count": node.get("mip_level_count_property", 1),
+            "base_array_layer": node.get("base_array_layer_property", 0),
+            "array_layer_count": node.get("array_layer_count_property", 1),
+        }
+        for node in image_view_nodes
+    ]
+
+    return (image_view_nodes, json)

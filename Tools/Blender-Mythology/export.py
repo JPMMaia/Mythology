@@ -2,6 +2,13 @@ import bpy
 import json
 import pathlib
 
+from .resources import (
+    create_buffers_json,
+    create_buffer_views_json,
+    create_image_views_json,
+    create_images_json,
+)
+
 
 class MythologyAddonPreferences(bpy.types.AddonPreferences):
 
@@ -94,6 +101,10 @@ class MythologyExportOperator(bpy.types.Operator):
 
         render_passes = render_pass_to_json(nodes)
         shader_modules = shader_module_to_json(nodes)
+        buffers = create_buffers_json(nodes)
+        buffer_views = create_buffer_views_json(nodes, buffers[0])
+        images = create_images_json(nodes)
+        image_views = create_image_views_json(nodes, images[0])
         samplers = create_samplers_json(nodes)
         descriptor_set_layouts = create_descriptor_set_layouts_json(nodes, samplers[0])
         pipeline_layouts = create_pipeline_layouts_json(nodes, descriptor_set_layouts)
@@ -119,6 +130,10 @@ class MythologyExportOperator(bpy.types.Operator):
         output_json = {
             "render_passes": render_passes[2],
             "shader_modules": shader_modules[1],
+            "buffers": buffers[1],
+            "buffer_views": buffer_views[1],
+            "images": images[1],
+            "image_views": image_views[1],
             "samplers": samplers[1],
             "descriptor_set_layouts": descriptor_set_layouts[1],
             "pipeline_layouts": pipeline_layouts[1],
