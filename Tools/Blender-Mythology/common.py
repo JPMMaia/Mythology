@@ -39,6 +39,16 @@ def get_input_node(node: bpy.types.Node, input_name: str, index: int) -> bpy.typ
     return node.inputs[input_name].links[index].from_node
 
 
+def create_index_json(global_list, frame_list, value) -> typing.Any:
+
+    if value in global_list:
+        return {"type": "pipeline_resource", "index": global_list.index(value)}
+    elif value in frame_list:
+        return {"type": "frame_resource", "index": frame_list.index(value)}
+    else:
+        raise ValueError("Value was not found in either list.")
+
+
 class Extent2DNodeSocket(bpy.types.NodeSocket):
 
     bl_label = "Extent 2D node socket"

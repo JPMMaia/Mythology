@@ -288,15 +288,12 @@ resources_node_categories = [
 
 def component_mapping_to_json(node: bpy.types.Node) -> typing.Any:
 
-    if node.bl_idname == "BeginFrameNode":
-        return {"type": "external"}
-    else:
-        return {
-            "r": node.get("r_property", 0),
-            "g": node.get("g_property", 0),
-            "b": node.get("b_property", 0),
-            "a": node.get("a_property", 0),
-        }
+    return {
+        "r": node.get("r_property", 0),
+        "g": node.get("g_property", 0),
+        "b": node.get("b_property", 0),
+        "a": node.get("a_property", 0),
+    }
 
 
 def image_subresource_range_to_json(node: bpy.types.Node) -> typing.Any:
@@ -332,7 +329,12 @@ def create_buffer_views_json(
     nodes: typing.List[bpy.types.Node], buffer_nodes: typing.List[BufferNode]
 ) -> typing.Tuple[typing.List[BufferViewNode], typing.Any]:
 
-    buffer_view_nodes = [node for node in nodes if node.bl_idname == "BufferViewNode"]
+    buffer_view_nodes = [
+        node
+        for node in nodes
+        if node.bl_idname == "BufferViewNode"
+        and node.inputs["Buffer"].links[0].from_node.bl_idname == "BufferNode"
+    ]
 
     json = [
         {
@@ -380,18 +382,16 @@ def create_image_views_json(
     image_nodes: typing.List[ImageNode],
 ) -> typing.Tuple[typing.List[ImageViewNode], typing.Any]:
 
-    image_view_nodes = [node for node in nodes if node.bl_idname == "ImageViewNode"]
+    image_view_nodes = [
+        node
+        for node in nodes
+        if node.bl_idname == "ImageViewNode"
+        and node.inputs["Image"].links[0].from_node.bl_idname == "ImageNode"
+    ]
 
     json = [
         {
-            "image": {"type": "external"}
-            if node.inputs["Image"].links[0].from_socket.name == "Output Image"
-            else {
-                "type": "internal",
-                "index": find_index(
-                    image_nodes, node.inputs["Image"].links[0].from_node
-                ),
-            },
+            "image": find_index(image_nodes, node.inputs["Image"].links[0].from_node),
             "aspect_mask": node.get("aspect_mask_property", 0),
             "base_mip_level": node.get("base_mip_level_property", 0),
             "mip_level_count": node.get("mip_level_count_property", 1),

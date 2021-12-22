@@ -1,7 +1,7 @@
 import bpy
 
 from .array_inputs import recreate_dynamic_inputs, update_dynamic_inputs
-from .common import find_index, Rect2DNodeSocket
+from .common import create_index_json, find_index, Rect2DNodeSocket
 from .descriptors import DescriptorSetNode
 from .pipeline_state import (
     GraphicsPipelineStateNode,
@@ -530,7 +530,8 @@ def begin_render_pass_node_to_json(
 
 def bind_descriptor_set_to_json(
     node: BindDescriptorSetNode,
-    descriptor_sets: typing.List[DescriptorSetNode],
+    global_descriptor_sets: typing.List[DescriptorSetNode],
+    frame_descriptor_sets: typing.List[DescriptorSetNode],
     pipeline_layouts: typing.List[PipelineLayoutNode],
 ) -> JSONType:
 
@@ -542,7 +543,11 @@ def bind_descriptor_set_to_json(
             pipeline_layouts, node.inputs["Pipeline Layout"].links[0].from_node
         ),
         "descriptor_sets": [
-            find_index(descriptor_sets, input.links[0].from_node)
+            create_index_json(
+                global_descriptor_sets,
+                frame_descriptor_sets,
+                input.links[0].from_node,
+            )
             for input in node.inputs["Descriptor Set Array"].links[0].from_node.inputs
             if len(input.links) > 0
         ],
@@ -717,7 +722,8 @@ def trace_rays_node_to_json(
 
 def frame_command_node_to_json(
     node: bpy.types.Node,
-    descriptor_sets: typing.List[DescriptorSetNode],
+    global_descriptor_sets: typing.List[DescriptorSetNode],
+    frame_descriptor_sets: typing.List[DescriptorSetNode],
     pipeline_layouts: typing.List[PipelineLayoutNode],
     pipeline_states: typing.List[bpy.types.Node],
     render_passes: typing.Tuple[
@@ -729,7 +735,9 @@ def frame_command_node_to_json(
     if node.bl_idname == "BeginRenderPassNode":
         return begin_render_pass_node_to_json(node, render_passes)
     elif node.bl_idname == "BindDescriptorSetNode":
-        return bind_descriptor_set_to_json(node, descriptor_sets, pipeline_layouts)
+        return bind_descriptor_set_to_json(
+            node, global_descriptor_sets, frame_descriptor_sets, pipeline_layouts
+        )
     elif node.bl_idname == "BindPipelineNode":
         return bind_pipeline_node_to_json(node, pipeline_states)
     elif node.bl_idname == "ClearColorImageNode":
@@ -769,7 +777,8 @@ def get_frame_command_nodes(
 
 def frame_commands_to_json(
     nodes: typing.List[bpy.types.Node],
-    descriptor_sets: typing.List[DescriptorSetNode],
+    global_descriptor_sets: typing.List[DescriptorSetNode],
+    frame_descriptor_sets: typing.List[DescriptorSetNode],
     pipeline_layouts: typing.List[PipelineLayoutNode],
     pipeline_states: typing.List[bpy.types.Node],
     render_passes: typing.Tuple[
@@ -788,7 +797,8 @@ def frame_commands_to_json(
         [
             frame_command_node_to_json(
                 command_node,
-                descriptor_sets,
+                global_descriptor_sets,
+                frame_descriptor_sets,
                 pipeline_layouts,
                 pipeline_states,
                 render_passes,

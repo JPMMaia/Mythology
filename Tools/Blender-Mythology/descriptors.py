@@ -388,14 +388,9 @@ def descriptor_image_info_to_json(
 
     if len(node.inputs["Image View"].links) == 1:
         json["image_view"] = (
-            {
-                "type": "internal",
-                "index": find_index(
-                    image_views, node.inputs["Image View"].links[0].from_node
-                ),
-            }
+            find_index(image_views, node.inputs["Image View"].links[0].from_node)
             if node.inputs["Image View"].links[0].from_node.bl_idname == "ImageViewNode"
-            else {"type": "external"}
+            else 0
         )
         json["image_layout"] = node.get("image_layout_property", 0)
 
@@ -413,6 +408,7 @@ def descriptor_set_binding_to_json(
     buffers: typing.List[BufferNode],
     image_views: typing.List[ImageViewNode],
     samplers: typing.List[bpy.types.Node],
+    acceleration_structures: typing.List[bpy.types.Node],
 ) -> typing.Any:
 
     json = {
@@ -448,8 +444,10 @@ def descriptor_set_binding_to_json(
         ]
 
     if len(node.inputs["Acceleration Structure Array"].links) == 1:
-        json["acceleration_structure"] = [
-            {"type": "external"}
+        json["acceleration_structures"] = [
+            find_index(acceleration_structures, input.links[0].from_node)
+            if input.links[0].from_node.bl_idname == "AccelerationStructureNode"
+            else 0
             for input in node.inputs["Acceleration Structure Array"]
             .links[0]
             .from_node.inputs
@@ -460,17 +458,26 @@ def descriptor_set_binding_to_json(
     return json
 
 
-def create_descriptor_sets_json(
-    nodes: typing.List[bpy.types.Node],
+def depends_on_frame_node(node: bpy.types.Node) -> bool:
+
+    if node.bl_idname == "BeginFrameNode":
+        return True
+
+    for input in node.inputs:
+        for link in input.links:
+            if depends_on_frame_node(link.from_node):
+                return True
+
+    return False
+
+
+def create_descriptor_sets(
+    descriptor_set_nodes: typing.List[bpy.types.Node],
     descriptor_set_layouts: typing.List[DescriptorSetLayoutNode],
     buffers: typing.List[BufferNode],
     image_views: typing.List[ImageViewNode],
     samplers: typing.List[bpy.types.Node],
 ) -> typing.Tuple[typing.List[DescriptorSetLayoutNode], typing.Any]:
-
-    descriptor_set_nodes = [
-        node for node in nodes if node.bl_idname == "DescriptorSetNode"
-    ]
 
     json = [
         {
@@ -480,7 +487,11 @@ def create_descriptor_sets_json(
             ),
             "bindings": [
                 descriptor_set_binding_to_json(
-                    link.from_node, buffers, image_views, samplers
+                    link.from_node,
+                    buffers,
+                    image_views,
+                    samplers,
+                    [],  # TODO acceleration structures
                 )
                 for link in node.inputs["Descriptor Set Bindings"].links
             ],
@@ -489,6 +500,44 @@ def create_descriptor_sets_json(
     ]
 
     return (descriptor_set_nodes, json)
+
+
+def create_global_descriptor_sets(
+    nodes: typing.List[bpy.types.Node],
+    descriptor_set_layouts: typing.List[DescriptorSetLayoutNode],
+    buffers: typing.List[BufferNode],
+    image_views: typing.List[ImageViewNode],
+    samplers: typing.List[bpy.types.Node],
+) -> typing.Tuple[typing.List[DescriptorSetLayoutNode], typing.Any]:
+
+    descriptor_set_nodes = [
+        node
+        for node in nodes
+        if node.bl_idname == "DescriptorSetNode" and not depends_on_frame_node(node)
+    ]
+
+    return create_descriptor_sets(
+        descriptor_set_nodes, descriptor_set_layouts, buffers, image_views, samplers
+    )
+
+
+def create_frame_descriptor_sets(
+    nodes: typing.List[bpy.types.Node],
+    descriptor_set_layouts: typing.List[DescriptorSetLayoutNode],
+    buffers: typing.List[BufferNode],
+    image_views: typing.List[ImageViewNode],
+    samplers: typing.List[bpy.types.Node],
+) -> typing.Tuple[typing.List[DescriptorSetNode], typing.Any]:
+
+    descriptor_set_nodes = [
+        node
+        for node in nodes
+        if node.bl_idname == "DescriptorSetNode" and depends_on_frame_node(node)
+    ]
+
+    return create_descriptor_sets(
+        descriptor_set_nodes, descriptor_set_layouts, buffers, image_views, samplers
+    )
 
 
 class DescriptorsNodeCategory(nodeitems_utils.NodeCategory):
