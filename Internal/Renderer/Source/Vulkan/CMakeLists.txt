@@ -39,7 +39,7 @@ target_module (
     PUBLIC
     "maia.renderer.vulkan.serializer"
     INTERFACE "Serializer.cppm"
-    INTERFACE_DEPENDS "maia.renderer.vulkan.buffer_resources"
+    INTERFACE_DEPENDS "maia.renderer.vulkan.buffer_resources" "maia.renderer.vulkan.image_resources"
     IMPLEMENTATION "Serializer.cpp"
-    IMPLEMENTATION_DEPENDS "maia.renderer.vulkan.buffer_resources" "maia.renderer.vulkan.upload"
+    IMPLEMENTATION_DEPENDS "maia.renderer.vulkan.buffer_resources" "maia.renderer.vulkan.image_resources" "maia.renderer.vulkan.upload"
 )

@@ -15,6 +15,7 @@ module;
 module maia.renderer.vulkan.serializer;
 
 import maia.renderer.vulkan.buffer_resources;
+import maia.renderer.vulkan.image_resources;
 import maia.renderer.vulkan.upload;
 
 namespace nlohmann
@@ -68,81 +69,164 @@ namespace nlohmann
     };
 }
 
-    template <>
-    struct adl_serializer<vk::DependencyFlags>
-    {
-        static void to_json(json& j, vk::DependencyFlags const& value)
-        {
-            assert(false);
-        }
-
-        static void from_json(const json& j, vk::DependencyFlags& value)
-        {
-            value = static_cast<vk::DependencyFlags>(j.get<std::uint32_t>());
-        }
-    };
-
-    template <>
-    struct adl_serializer<vk::ShaderStageFlags>
-    {
-        static void to_json(json& j, vk::ShaderStageFlags const& value)
-        {
-            assert(false);
-        }
-
-        static void from_json(const json& j, vk::ShaderStageFlags& value)
-        {
-            value = static_cast<vk::ShaderStageFlags>(j.get<std::uint32_t>());
-        }
-    };
-
-    template <>
-    struct adl_serializer<vk::CullModeFlags>
-    {
-        static void to_json(json& j, vk::CullModeFlags const& value)
-        {
-            assert(false);
-        }
-
-        static void from_json(const json& j, vk::CullModeFlags& value)
-        {
-            value = static_cast<vk::CullModeFlags>(j.get<std::uint32_t>());
-        }
-    };
-
-    template <>
-    struct adl_serializer<vk::BlendFactor>
-    {
-        static void to_json(json& j, vk::BlendFactor const& value)
-        {
-            assert(false);
-        }
-
-        static void from_json(const json& j, vk::BlendFactor& value)
-        {
-            value = static_cast<vk::BlendFactor>(j.get<std::uint32_t>());
-        }
-    };
-
-    template <>
-    struct adl_serializer<vk::ColorComponentFlags>
-    {
-        static void to_json(json& j, vk::ColorComponentFlags const& value)
-        {
-            assert(false);
-        }
-
-        static void from_json(const json& j, vk::ColorComponentFlags& value)
-        {
-            value = static_cast<vk::ColorComponentFlags>(j.get<std::uint32_t>());
-        }
-    };
-}
-
 namespace Maia::Renderer::Vulkan
 {
     namespace
     {
+        Maia::Renderer::Vulkan::Buffer_resources create_buffer_resources(
+            nlohmann::json const& buffers_json,
+            vk::PhysicalDevice const physical_device,
+            vk::Device const device,
+            vk::PhysicalDeviceType const physical_device_type,
+            vk::AllocationCallbacks const* const allocation_callbacks,
+            std::pmr::polymorphic_allocator<> const& allocator
+        )
+        {
+            vk::DeviceSize const block_size = 64 * 1024 * 1024;
+
+            vk::BufferUsageFlags const usage_flags = [&]() -> vk::BufferUsageFlags
+            {
+                vk::BufferUsageFlags usage_flags = {};
+
+                for (nlohmann::json const& buffer_json : buffers_json)
+                {
+                    usage_flags |= buffer_json.at("usage").get<vk::BufferUsageFlags>();
+                }
+
+                return usage_flags;
+            }();
+
+            return Buffer_resources
+            {
+                physical_device,
+                device,
+                physical_device_type,
+                {},
+                block_size,
+                usage_flags,
+                {},
+                {},
+                allocation_callbacks,
+                allocator
+            };
+        }
+
+        std::pmr::vector<Maia::Renderer::Vulkan::Buffer_view> create_buffers(
+            nlohmann::json const& buffers_json,
+            vk::Device const device,
+            Maia::Renderer::Vulkan::Buffer_resources& buffer_resources,
+            std::pmr::polymorphic_allocator<> const& output_allocator
+        )
+        {
+            std::pmr::vector<Maia::Renderer::Vulkan::Buffer_view> buffers{ output_allocator };
+            buffers.reserve(buffers_json.size());
+
+            for (nlohmann::json const& buffer_json : buffers_json)
+            {
+                vk::DeviceSize const size = buffer_json.at("size").get<vk::DeviceSize>();
+                buffers.push_back(buffer_resources.allocate_buffer(size, 1, vk::MemoryPropertyFlagBits::eDeviceLocal));
+            }
+
+            return buffers;
+        }
+
+        std::pmr::vector<vk::BufferView> create_buffer_views(
+            nlohmann::json const& buffer_views_json,
+            vk::Device const device,
+            std::span<Maia::Renderer::Vulkan::Buffer_view const> const buffers,
+            vk::AllocationCallbacks const* const allocator,
+            std::pmr::polymorphic_allocator<> const& output_allocator
+        )
+        {
+            std::pmr::vector<vk::BufferView> buffer_views{ output_allocator };
+            buffer_views.reserve(buffer_views_json.size());
+
+            for (nlohmann::json const& buffer_view_json : buffer_views_json)
+            {
+                std::size_t const buffer_index = buffer_view_json.at("buffer").get<std::size_t>();
+                vk::Format const format = buffer_view_json.at("format").get<vk::Format>();
+                vk::DeviceSize const offset = buffer_view_json.at("offset").get<vk::DeviceSize>();
+                vk::DeviceSize const range = buffer_view_json.at("range").get<vk::DeviceSize>();
+
+                Maia::Renderer::Vulkan::Buffer_view const buffer = buffers[buffer_index];
+
+                vk::BufferViewCreateInfo const create_info
+                {
+                    .flags = {},
+                    .buffer = buffer.buffer,
+                    .format = format,
+                    .offset = buffer.offset + offset,
+                    .range = range,
+                };
+
+                vk::BufferView const buffer_view = device.createBufferView(create_info, allocator);
+
+                buffer_views.push_back(buffer_view);
+            }
+
+            return buffer_views;
+        }
+
+        std::pmr::vector<Maia::Renderer::Vulkan::Image_memory_view> create_images(
+            nlohmann::json const& images_json,
+            Maia::Renderer::Vulkan::Image_resources& image_resources,
+            std::pmr::polymorphic_allocator<> const& output_allocator
+        )
+        {
+            std::pmr::vector<Maia::Renderer::Vulkan::Image_memory_view> images{ output_allocator };
+            images.reserve(images_json.size());
+
+            for (nlohmann::json const& image_json : images_json)
+            {
+                vk::ImageCreateInfo const create_info
+                {
+                    .flags = image_json.at("flags").get<vk::ImageCreateFlags>(),
+                    .imageType = image_json.at("type").get<vk::ImageType>(),
+                    .format = image_json.at("format").get<vk::Format>(),
+                    .extent = image_json.at("extent").get<vk::Extent3D>(),
+                    .mipLevels = image_json.at("mipLevels").get<std::uint32_t>(),
+                    .arrayLayers = image_json.at("arrayLayers").get<std::uint32_t>(),
+                    .samples = image_json.at("samples").get<vk::SampleCountFlagBits>(),
+                    .tiling = image_json.at("tiling").get<vk::ImageTiling>(),
+                    .usage = image_json.at("usage").get<vk::ImageUsageFlags>(),
+                    .sharingMode = vk::SharingMode::eExclusive,
+                    .queueFamilyIndexCount = 0,
+                    .pQueueFamilyIndices = nullptr,
+                    .initialLayout = image_json.at("initial_layout").get<vk::ImageLayout>(),
+                };
+
+                Maia::Renderer::Vulkan::Image_memory_view const image_memory_view =
+                    image_resources.allocate_image(create_info, vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+                images.push_back(image_memory_view);
+            }
+
+            return images;
+        }
+
+        vk::DeviceMemory create_images_device_memory(
+            vk::Device const device,
+            std::span<vk::Image const> const images,
+            Maia::Renderer::Vulkan::Image_resources& image_resources,
+            vk::AllocationCallbacks const* const allocator
+        )
+        {
+            for (vk::Image const image : images)
+            {
+
+            }
+
+            vk::MemoryAllocateInfo const allocate_info
+            {
+                .allocationSize = {},
+                .memoryTypeIndex = {},
+            };
+
+            vk::DeviceMemory const device_memory = device.allocateMemory(allocate_info, allocator);
+
+            return device_memory;
+        }
+
         std::pmr::vector<vk::AttachmentDescription> create_attachments(
             nlohmann::json const& attachments_json,
             std::pmr::polymorphic_allocator<> const& output_allocator
