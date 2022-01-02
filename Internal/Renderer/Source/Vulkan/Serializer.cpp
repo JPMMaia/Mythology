@@ -20,46 +20,53 @@ import maia.renderer.vulkan.upload;
 namespace nlohmann
 {
     template <>
-    struct adl_serializer<vk::AttachmentDescriptionFlags>
+    struct adl_serializer<vk::BlendFactor>
     {
-        static void to_json(json& j, vk::AttachmentDescriptionFlags const& value)
+        static void to_json(json& j, vk::BlendFactor const& value)
         {
             assert(false);
         }
 
-        static void from_json(const json& j, vk::AttachmentDescriptionFlags& value)
+        static void from_json(const json& j, vk::BlendFactor& value)
         {
-            value = static_cast<vk::AttachmentDescriptionFlags>(j.get<std::uint32_t>());
+            value = static_cast<vk::BlendFactor>(j.get<std::uint32_t>());
+        }
+    };
+
+    template <typename BitType>
+    struct adl_serializer<vk::Flags<BitType>>
+    {
+        static void to_json(json& j, vk::Flags<BitType> const& value)
+        {
+            assert(false);
+        }
+
+        static void from_json(const json& j, vk::Flags<BitType>& value)
+        {
+            BitType const bit = j.get<BitType>();
+            value = vk::Flags<BitType>(bit);
         }
     };
 
     template <>
-    struct adl_serializer<vk::PipelineStageFlags>
+    struct adl_serializer<vk::Extent3D>
     {
-        static void to_json(json& j, vk::PipelineStageFlags const& value)
+        static void to_json(json& j, vk::Extent3D const& value)
         {
             assert(false);
         }
 
-        static void from_json(const json& j, vk::PipelineStageFlags& value)
+        static void from_json(const json& j, vk::Extent3D& value)
         {
-            value = static_cast<vk::PipelineStageFlags>(j.get<std::uint32_t>());
+            value = vk::Extent3D
+            {
+                .width = j.at("width").get<std::uint32_t>(),
+                .height = j.at("height").get<std::uint32_t>(),
+                .depth = j.at("depth").get<std::uint32_t>(),
+            };
         }
     };
-
-    template <>
-    struct adl_serializer<vk::AccessFlags>
-    {
-        static void to_json(json& j, vk::AccessFlags const& value)
-        {
-            assert(false);
-        }
-
-        static void from_json(const json& j, vk::AccessFlags& value)
-        {
-            value = static_cast<vk::AccessFlags>(j.get<std::uint32_t>());
-        }
-    };
+}
 
     template <>
     struct adl_serializer<vk::DependencyFlags>
