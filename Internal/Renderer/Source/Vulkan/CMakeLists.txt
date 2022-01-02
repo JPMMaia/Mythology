@@ -19,6 +19,14 @@ target_module (
 target_module (
     MaiaRendererVulkan
     PUBLIC
+    "maia.renderer.vulkan.image_resources"
+    INTERFACE "Image_resources.cppm"
+    IMPLEMENTATION "Image_resources.cpp"
+)
+
+target_module (
+    MaiaRendererVulkan
+    PUBLIC
     "maia.renderer.vulkan.upload"
     INTERFACE "Upload.cppm"
     INTERFACE_DEPENDS "maia.renderer.vulkan.buffer_resources"
