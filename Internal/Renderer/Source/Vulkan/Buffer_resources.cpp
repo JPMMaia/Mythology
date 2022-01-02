@@ -58,23 +58,22 @@ namespace Maia::Renderer::Vulkan
     {
         std::optional<std::uint32_t> get_memory_type_index(
             vk::PhysicalDevice const physical_device,
-            std::uint32_t bits,
-            vk::MemoryPropertyFlags const property_flags
+            std::uint32_t const required_memory_type_bits,
+            vk::MemoryPropertyFlags const required_properties
         ) noexcept
         {
             vk::PhysicalDeviceMemoryProperties const memory_properties = physical_device.getMemoryProperties();
 
-            for (std::uint32_t memory_type_index = 0; memory_type_index < memory_properties.memoryTypeCount; ++memory_type_index)
+            for (std::uint32_t memory_index = 0; memory_index < memory_properties.memoryTypeCount; ++memory_index)
             {
-                if ((bits & 1) == 1)
-                {
-                    if ((memory_properties.memoryTypes[memory_type_index].propertyFlags & property_flags) == property_flags)
-                    {
-                        return memory_type_index;
-                    }
-                }
+                std::uint32_t const memory_type_bits = (1 << memory_index);
+                bool const is_required_memory_type = memory_type_bits & required_memory_type_bits;
 
-                bits >>= 1;
+                vk::MemoryPropertyFlags const properties = memory_properties.memoryTypes[memory_index].propertyFlags;
+                bool const has_required_properties = (properties & required_properties) == required_properties;
+
+                if (is_required_memory_type && has_required_properties)
+                    return memory_index;
             }
 
             return std::nullopt;
@@ -164,7 +163,7 @@ namespace Maia::Renderer::Vulkan
         {
             vk::DeviceSize const allocated_bytes = m_allocated_bytes[index];
 
-            return align(allocated_bytes + required_size, required_alignment) <= m_block_size;
+            return (align(allocated_bytes, required_alignment) + required_size) <= m_block_size;
         };
 
         auto const has_required_memory_properties = [this, required_memory_property_flags](std::size_t const index) -> bool
@@ -189,7 +188,7 @@ namespace Maia::Renderer::Vulkan
             auto const free_block_index = *free_block_iterator;
 
             vk::DeviceSize const offset = align(m_allocated_bytes[free_block_index], required_alignment);
-            m_allocated_bytes[free_block_index] += required_size;
+            m_allocated_bytes[free_block_index] += offset + required_size;
 
             Buffer_view const buffer_view
             {
