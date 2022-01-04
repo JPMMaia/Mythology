@@ -34,6 +34,26 @@ namespace nlohmann
         }
     };
 
+    template <>
+    struct adl_serializer<vk::ComponentMapping>
+    {
+        static void to_json(json& j, vk::ComponentMapping const& value)
+        {
+            assert(false);
+        }
+
+        static void from_json(const json& j, vk::ComponentMapping& value)
+        {
+            value = vk::ComponentMapping
+            {
+                .r = static_cast<vk::ComponentSwizzle>(j.at("r").get<std::uint32_t>()),
+                .g = static_cast<vk::ComponentSwizzle>(j.at("g").get<std::uint32_t>()),
+                .b = static_cast<vk::ComponentSwizzle>(j.at("b").get<std::uint32_t>()),
+                .a = static_cast<vk::ComponentSwizzle>(j.at("a").get<std::uint32_t>()),
+            };
+        }
+    };
+
     template <typename BitType>
     struct adl_serializer<vk::Flags<BitType>>
     {
@@ -64,6 +84,27 @@ namespace nlohmann
                 .width = j.at("width").get<std::uint32_t>(),
                 .height = j.at("height").get<std::uint32_t>(),
                 .depth = j.at("depth").get<std::uint32_t>(),
+            };
+        }
+    };
+
+    template <>
+    struct adl_serializer<vk::ImageSubresourceRange>
+    {
+        static void to_json(json& j, vk::ImageSubresourceRange const& value)
+        {
+            assert(false);
+        }
+
+        static void from_json(const json& j, vk::ImageSubresourceRange& value)
+        {
+            value = vk::ImageSubresourceRange
+            {
+                .aspectMask = j.at("aspect_mask").get<vk::ImageAspectFlags>(),
+                .baseMipLevel = j.at("base_mip_level").get<std::uint32_t>(),
+                .levelCount = j.at("level_count").get<std::uint32_t>(),
+                .baseArrayLayer = j.at("base_array_layer").get<std::uint32_t>(),
+                .layerCount = j.at("layer_count").get<std::uint32_t>(),
             };
         }
     };
@@ -204,27 +245,199 @@ namespace Maia::Renderer::Vulkan
             return images;
         }
 
-        vk::DeviceMemory create_images_device_memory(
+        std::pmr::vector<vk::ImageView> create_image_views(
+            nlohmann::json const& image_views_json,
             vk::Device const device,
-            std::span<vk::Image const> const images,
-            Maia::Renderer::Vulkan::Image_resources& image_resources,
-            vk::AllocationCallbacks const* const allocator
+            std::span<Maia::Renderer::Vulkan::Image_memory_view const> const images,
+            vk::AllocationCallbacks const* const allocator,
+            std::pmr::polymorphic_allocator<> const& output_allocator
         )
         {
-            for (vk::Image const image : images)
-            {
+            std::pmr::vector<vk::ImageView> image_views{ output_allocator };
+            image_views.reserve(image_views_json.size());
 
+            for (nlohmann::json const& image_view_json : image_views_json)
+            {
+                vk::ImageViewCreateFlags const flags = image_view_json.at("flags").get<vk::ImageViewCreateFlags>();
+                std::size_t const image_index = image_view_json.at("image").get<std::size_t>();
+                vk::ImageViewType const view_type = image_view_json.at("view_type").get<vk::ImageViewType>();
+                vk::Format const format = image_view_json.at("format").get<vk::Format>();
+                vk::ComponentMapping const components = image_view_json.at("components").get<vk::ComponentMapping>();
+                vk::ImageSubresourceRange const subresource_range = image_view_json.at("subresource_range").get<vk::ImageSubresourceRange>();
+
+                Maia::Renderer::Vulkan::Image_memory_view const image_memory_view = images[image_index];
+
+                vk::ImageViewCreateInfo const create_info
+                {
+                    .flags = flags,
+                    .image = image_memory_view.image,
+                    .viewType = view_type,
+                    .format = format,
+                    .components = components,
+                    .subresourceRange = subresource_range,
+                };
+
+                vk::ImageView const image_view = device.createImageView(create_info, allocator);
+
+                image_views.push_back(image_view);
             }
 
-            vk::MemoryAllocateInfo const allocate_info
+            return image_views;
+        }
+
+        std::pmr::vector<vk::DescriptorSet> create_descriptor_sets(
+            nlohmann::json const& descriptor_sets_json,
+            vk::Device const device,
+            vk::DescriptorPool const descriptor_pool,
+            std::span<vk::DescriptorSetLayout const> const descriptor_set_layouts,
+            std::pmr::polymorphic_allocator<> const& output_allocator,
+            std::pmr::polymorphic_allocator<> const& temporaries_allocator
+        )
+        {
+            std::pmr::vector<vk::DescriptorSetLayout> ordered_descriptor_set_layouts{ temporaries_allocator };
+            ordered_descriptor_set_layouts.reserve(descriptor_sets_json.size());
+
+            for (nlohmann::json const& descriptor_set_json : descriptor_sets_json)
             {
-                .allocationSize = {},
-                .memoryTypeIndex = {},
+                std::size_t const descriptor_set_layout_index = descriptor_set_json.at("layout").get<std::size_t>();
+
+                ordered_descriptor_set_layouts.push_back(descriptor_set_layouts[descriptor_set_layout_index]);
+            }
+
+            vk::DescriptorSetAllocateInfo const allocate_info
+            {
+                .descriptorPool = descriptor_pool,
+                .descriptorSetCount = static_cast<std::uint32_t>(ordered_descriptor_set_layouts.size()),
+                .pSetLayouts = ordered_descriptor_set_layouts.data(),
             };
 
-            vk::DeviceMemory const device_memory = device.allocateMemory(allocate_info, allocator);
+            std::pmr::polymorphic_allocator<vk::DescriptorSet> descriptor_sets_allocator{ output_allocator };
+            std::pmr::vector<vk::DescriptorSet> descriptor_sets =
+                device.allocateDescriptorSets(allocate_info, descriptor_sets_allocator);
 
-            return device_memory;
+            return descriptor_sets;
+        }
+
+        void update_descriptor_sets(
+            nlohmann::json const& descriptor_sets_json,
+            vk::Device const device,
+            std::span<vk::DescriptorSet const> const descriptor_sets,
+            std::span<Maia::Renderer::Vulkan::Buffer_view const> const buffers,
+            std::span<vk::BufferView const> const buffer_views,
+            std::span<vk::ImageView const> const image_views,
+            std::span<vk::Sampler const> const samplers,
+            std::span<vk::AccelerationStructureKHR const> const acceleration_structures,
+            std::pmr::polymorphic_allocator<> const& temporaries_allocator
+        )
+        {
+            for (std::size_t descriptor_set_index = 0; descriptor_set_index < descriptor_sets_json.size(); ++descriptor_set_index)
+            {
+                nlohmann::json const& descriptor_set_json = descriptor_sets_json[descriptor_set_index];
+                nlohmann::json const& bindings_json = descriptor_set_json.at("bindings");
+
+                std::pmr::vector<vk::DescriptorBufferInfo> buffer_infos{ temporaries_allocator };
+                std::pmr::vector<vk::DescriptorImageInfo> image_infos{ temporaries_allocator };
+
+                std::pmr::vector<vk::WriteDescriptorSet> writes{ temporaries_allocator };
+                writes.reserve(bindings_json.size());
+
+                vk::DescriptorSet const descriptor_set = descriptor_sets[descriptor_set_index];
+
+                for (nlohmann::json const& binding_json : bindings_json)
+                {
+                    vk::DescriptorType const descriptor_type = binding_json.at("descriptor_type").get<vk::DescriptorType>();
+
+                    switch (descriptor_type)
+                    {
+                    case vk::DescriptorType::eSampler:
+                    case vk::DescriptorType::eCombinedImageSampler:
+                    case vk::DescriptorType::eSampledImage:
+                    case vk::DescriptorType::eStorageImage:
+                    case vk::DescriptorType::eInputAttachment:
+                    {
+                        nlohmann::json const& image_infos_json = binding_json.at("image_infos");
+
+                        for (nlohmann::json const& image_info_json : image_infos_json)
+                        {
+                            if (descriptor_type == vk::DescriptorType::eSampler)
+                            {
+                                std::size_t const sampler_index = image_info_json.at("sampler").get<std::size_t>();
+
+                                image_infos.push_back(
+                                    vk::DescriptorImageInfo
+                                    {
+                                        .sampler = samplers[sampler_index],
+                                    }
+                                );
+                            }
+                            else if (descriptor_type == vk::DescriptorType::eCombinedImageSampler)
+                            {
+                                std::size_t const sampler_index = image_info_json.at("sampler").get<std::size_t>();
+                                std::size_t const image_view_index = image_info_json.at("image_view").get<std::size_t>();
+                                vk::ImageLayout const image_layout = image_info_json.at("image_layout").get<vk::ImageLayout>();
+
+                                image_infos.push_back(
+                                    vk::DescriptorImageInfo
+                                    {
+                                        .sampler = samplers[sampler_index],
+                                        .imageView = image_views[image_view_index],
+                                        .imageLayout = image_layout,
+                                    }
+                                );
+                            }
+                            else
+                            {
+                                std::size_t const image_view_index = image_info_json.at("image_view").get<std::size_t>();
+                                vk::ImageLayout const image_layout = image_info_json.at("image_layout").get<vk::ImageLayout>();
+
+                                image_infos.push_back(
+                                    vk::DescriptorImageInfo
+                                    {
+                                        .imageView = image_views[image_view_index],
+                                        .imageLayout = image_layout,
+                                    }
+                                );
+                            }
+                        }
+
+                        writes.push_back(
+                            vk::WriteDescriptorSet
+                            {
+                                .dstSet = descriptor_set,
+                                .dstBinding = binding_json.at("binding").get<std::uint32_t>(),
+                                .dstArrayElement = binding_json.at("first_array_element").get<std::uint32_t>(),
+                                .descriptorCount = static_cast<std::uint32_t>(image_infos_json.size()),
+                                .descriptorType = descriptor_type,
+                                .pImageInfo = image_infos.data() + (image_infos.size() - image_infos_json.size()),
+                            }
+                        );
+
+                        break;
+                    }
+                    case vk::DescriptorType::eUniformTexelBuffer:
+                    case vk::DescriptorType::eStorageTexelBuffer:
+                    {
+                        nlohmann::json const& buffer_views_json = binding_json.at("buffer_views");
+
+                        // TODO need to create pointer to buffer views
+                        throw std::runtime_error{ "Not implemented!" };
+                    }
+                    break;
+                    case vk::DescriptorType::eUniformBuffer:
+                    case vk::DescriptorType::eStorageBuffer:
+                    case vk::DescriptorType::eUniformBufferDynamic:
+                    case vk::DescriptorType::eStorageBufferDynamic:
+                        // TODO fill buffers
+                        break;
+
+                    case vk::DescriptorType::eAccelerationStructureKHR:
+                        // TODO fill acceleration structure
+                        break;
+                    }
+                }
+
+                device.updateDescriptorSets(writes, {});
+            }
         }
 
         std::pmr::vector<vk::AttachmentDescription> create_attachments(
