@@ -391,12 +391,10 @@ def create_image_views_json(
 
     json = [
         {
+            "flags": 0,
             "image": find_index(image_nodes, node.inputs["Image"].links[0].from_node),
-            "aspect_mask": node.get("aspect_mask_property", 0),
-            "base_mip_level": node.get("base_mip_level_property", 0),
-            "mip_level_count": node.get("mip_level_count_property", 1),
-            "base_array_layer": node.get("base_array_layer_property", 0),
-            "array_layer_count": node.get("array_layer_count_property", 1),
+            "view_type": node.get("view_type_property", 0),
+            "format": node.get("format_property", 0),
             "components": component_mapping_to_json(
                 node.inputs["Components"].links[0].from_node
             ),
