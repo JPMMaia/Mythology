@@ -330,16 +330,18 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<> const& temporaries_allocator
         )
         {
+            // TODO reserve
+            std::pmr::vector<vk::DescriptorBufferInfo> buffer_infos{ temporaries_allocator };
+            std::pmr::vector<vk::DescriptorImageInfo> image_infos{ temporaries_allocator };
+            std::pmr::vector<vk::BufferView> ordered_buffer_views{ temporaries_allocator };
+            std::pmr::vector<vk::AccelerationStructureKHR> ordered_acceleration_structures{ temporaries_allocator };
+            std::pmr::vector<vk::WriteDescriptorSetAccelerationStructureKHR> acceleration_structure_writes{ temporaries_allocator };
+            std::pmr::vector<vk::WriteDescriptorSet> writes{ temporaries_allocator };
+
             for (std::size_t descriptor_set_index = 0; descriptor_set_index < descriptor_sets_json.size(); ++descriptor_set_index)
             {
                 nlohmann::json const& descriptor_set_json = descriptor_sets_json[descriptor_set_index];
                 nlohmann::json const& bindings_json = descriptor_set_json.at("bindings");
-
-                std::pmr::vector<vk::DescriptorBufferInfo> buffer_infos{ temporaries_allocator };
-                std::pmr::vector<vk::DescriptorImageInfo> image_infos{ temporaries_allocator };
-
-                std::pmr::vector<vk::WriteDescriptorSet> writes{ temporaries_allocator };
-                writes.reserve(bindings_json.size());
 
                 vk::DescriptorSet const descriptor_set = descriptor_sets[descriptor_set_index];
 
@@ -400,6 +402,8 @@ namespace Maia::Renderer::Vulkan
                             }
                         }
 
+                        assert(image_infos_json.size() <= image_infos.size());
+
                         writes.push_back(
                             vk::WriteDescriptorSet
                             {
@@ -419,25 +423,116 @@ namespace Maia::Renderer::Vulkan
                     {
                         nlohmann::json const& buffer_views_json = binding_json.at("buffer_views");
 
-                        // TODO need to create pointer to buffer views
-                        throw std::runtime_error{ "Not implemented!" };
+                        for (std::size_t const buffer_view_index : buffer_views_json)
+                        {
+                            ordered_buffer_views.push_back(
+                                buffer_views[buffer_view_index]
+                            );
+                        }
+
+                        assert(buffer_views_json.size() <= ordered_buffer_views.size());
+
+                        writes.push_back(
+                            vk::WriteDescriptorSet
+                            {
+                                .dstSet = descriptor_set,
+                                .dstBinding = binding_json.at("binding").get<std::uint32_t>(),
+                                .dstArrayElement = binding_json.at("first_array_element").get<std::uint32_t>(),
+                                .descriptorCount = static_cast<std::uint32_t>(buffer_views_json.size()),
+                                .descriptorType = descriptor_type,
+                                .pTexelBufferView = ordered_buffer_views.data() + (ordered_buffer_views.size() - buffer_views_json.size()),
+                            }
+                        );
+
+                        break;
                     }
-                    break;
                     case vk::DescriptorType::eUniformBuffer:
                     case vk::DescriptorType::eStorageBuffer:
                     case vk::DescriptorType::eUniformBufferDynamic:
                     case vk::DescriptorType::eStorageBufferDynamic:
-                        // TODO fill buffers
-                        break;
+                    {
+                        nlohmann::json const& buffer_infos_json = binding_json.at("buffer_infos");
 
-                    case vk::DescriptorType::eAccelerationStructureKHR:
-                        // TODO fill acceleration structure
+                        for (nlohmann::json const& buffer_info_json : buffer_infos_json)
+                        {
+                            std::size_t const buffer_index = buffer_info_json.at("buffer").get<std::size_t>();
+                            vk::DeviceSize const offset = buffer_info_json.at("offset").get<vk::DeviceSize>();
+                            vk::DeviceSize const range = buffer_info_json.at("range").get<vk::DeviceSize>();
+
+                            Maia::Renderer::Vulkan::Buffer_view const& buffer_memory_view = buffers[buffer_index];
+
+                            if ((offset + range) > buffer_memory_view.size)
+                            {
+                                throw std::runtime_error{ "DescriptorBufferInfo offset+range out of bounds!" };
+                            }
+
+                            buffer_infos.push_back(
+                                vk::DescriptorBufferInfo
+                                {
+                                    .buffer = buffer_memory_view.buffer,
+                                    .offset = buffer_memory_view.offset + offset,
+                                    .range = range,
+                                }
+                            );
+                        }
+
+                        assert(buffer_infos_json.size() <= buffer_infos.size());
+
+                        writes.push_back(
+                            vk::WriteDescriptorSet
+                            {
+                                .dstSet = descriptor_set,
+                                .dstBinding = binding_json.at("binding").get<std::uint32_t>(),
+                                .dstArrayElement = binding_json.at("first_array_element").get<std::uint32_t>(),
+                                .descriptorCount = static_cast<std::uint32_t>(buffer_infos_json.size()),
+                                .descriptorType = descriptor_type,
+                                .pBufferInfo = buffer_infos.data() + (buffer_infos.size() - buffer_infos_json.size()),
+                            }
+                        );
+
                         break;
                     }
-                }
+                    case vk::DescriptorType::eAccelerationStructureKHR:
+                    {
+                        nlohmann::json const& acceleration_structures_json = binding_json.at("acceleration_structures");
 
-                device.updateDescriptorSets(writes, {});
+                        for (std::size_t const acceleration_structure_index : acceleration_structures_json)
+                        {
+                            ordered_acceleration_structures.push_back(
+                                acceleration_structures[acceleration_structure_index]
+                            );
+                        }
+
+                        assert(acceleration_structures_json.size() <= ordered_acceleration_structures.size());
+
+                        acceleration_structure_writes.push_back(
+                            vk::WriteDescriptorSetAccelerationStructureKHR
+                            {
+                                .accelerationStructureCount = static_cast<std::uint32_t>(acceleration_structures_json.size()),
+                                .pAccelerationStructures = ordered_acceleration_structures.data() + (ordered_acceleration_structures.size() - acceleration_structures_json.size())
+                            }
+                        );
+
+                        assert(!acceleration_structure_writes.empty());
+
+                        writes.push_back(
+                            vk::WriteDescriptorSet
+                            {
+                                .pNext = acceleration_structure_writes.data() + acceleration_structure_writes.size() - 1,
+                                .dstSet = descriptor_set,
+                                .dstBinding = binding_json.at("binding").get<std::uint32_t>(),
+                                .dstArrayElement = binding_json.at("first_array_element").get<std::uint32_t>(),
+                                .descriptorType = descriptor_type,
+                            }
+                        );
+
+                        break;
+                    }
+                    }
+                }
             }
+
+            device.updateDescriptorSets(writes, {});
         }
 
         std::pmr::vector<vk::AttachmentDescription> create_attachments(
