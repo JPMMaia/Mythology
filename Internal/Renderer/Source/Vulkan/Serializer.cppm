@@ -14,10 +14,41 @@ module;
 export module maia.renderer.vulkan.serializer;
 
 import maia.renderer.vulkan.buffer_resources;
+import maia.renderer.vulkan.image_resources;
 import maia.renderer.vulkan.upload;
 
 namespace Maia::Renderer::Vulkan
 {
+    export vk::DescriptorPool create_descriptor_pool(
+        nlohmann::json const& descriptor_sets_json,
+        nlohmann::json const& descriptor_set_layouts_json,
+        vk::Device device,
+        std::uint32_t descriptor_set_count_multiplier,
+        vk::AllocationCallbacks const* allocation_callbacks,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
+    );
+
+    export std::pmr::vector<vk::DescriptorSet> create_descriptor_sets(
+        nlohmann::json const& descriptor_sets_json,
+        vk::Device device,
+        vk::DescriptorPool descriptor_pool,
+        std::span<vk::DescriptorSetLayout const> descriptor_set_layouts,
+        std::pmr::polymorphic_allocator<> const& output_allocator,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
+    );
+
+    export void update_descriptor_sets(
+        nlohmann::json const& descriptor_sets_json,
+        vk::Device device,
+        std::span<vk::DescriptorSet const> descriptor_sets,
+        std::span<Maia::Renderer::Vulkan::Buffer_view const> buffers,
+        std::span<vk::BufferView const> buffer_views,
+        std::span<vk::ImageView const> image_views,
+        std::span<vk::Sampler const> samplers,
+        std::span<vk::AccelerationStructureKHR const> acceleration_structures,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
+    );
+
     export struct Render_pass_create_info_resources
     {
         std::pmr::vector<vk::AttachmentDescription> attachments;
@@ -96,6 +127,8 @@ namespace Maia::Renderer::Vulkan
     export struct Pipeline_resources
     {
         Pipeline_resources(
+            vk::PhysicalDevice const physical_device,
+            vk::PhysicalDeviceType const physical_device_type,
             vk::Device device,
             vk::Queue upload_queue,
             vk::CommandPool command_pool,
@@ -111,12 +144,12 @@ namespace Maia::Renderer::Vulkan
         ) noexcept;
 
         Pipeline_resources(Pipeline_resources const&) noexcept = delete;
-        Pipeline_resources(Pipeline_resources&& other) noexcept;
+        Pipeline_resources(Pipeline_resources&& other) noexcept = default;
         
         ~Pipeline_resources() noexcept;
 
         Pipeline_resources& operator=(Pipeline_resources const&) noexcept = delete;
-        Pipeline_resources& operator=(Pipeline_resources&& other) noexcept;
+        Pipeline_resources& operator=(Pipeline_resources&& other) noexcept = default;
 
         vk::Device device;
         vk::AllocationCallbacks const* allocation_callbacks;
@@ -128,6 +161,14 @@ namespace Maia::Renderer::Vulkan
         std::pmr::vector<vk::Pipeline> pipeline_states;
         std::pmr::vector<Maia::Renderer::Vulkan::Buffer_view> shader_binding_table_buffer_views;
         std::pmr::vector<vk::StridedDeviceAddressRegionKHR> shader_binding_tables;
+        Maia::Renderer::Vulkan::Buffer_resources buffer_resources;
+        std::pmr::vector<Maia::Renderer::Vulkan::Buffer_view> buffer_memory_views;
+        std::pmr::vector<vk::BufferView> buffer_views;
+        Maia::Renderer::Vulkan::Image_resources image_resources;
+        std::pmr::vector<Maia::Renderer::Vulkan::Image_memory_view> image_memory_views;
+        std::pmr::vector<vk::ImageView> image_views;
+        vk::DescriptorPool descriptor_pool;
+        std::pmr::vector<vk::DescriptorSet> descriptor_sets;
     };
 
 

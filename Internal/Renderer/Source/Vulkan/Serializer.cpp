@@ -154,7 +154,6 @@ namespace Maia::Renderer::Vulkan
 
         std::pmr::vector<Maia::Renderer::Vulkan::Buffer_view> create_buffers(
             nlohmann::json const& buffers_json,
-            vk::Device const device,
             Maia::Renderer::Vulkan::Buffer_resources& buffer_resources,
             std::pmr::polymorphic_allocator<> const& output_allocator
         )
@@ -283,6 +282,59 @@ namespace Maia::Renderer::Vulkan
             }
 
             return image_views;
+        }
+
+        vk::DescriptorPool create_descriptor_pool(
+            nlohmann::json const& descriptor_sets_json,
+            nlohmann::json const& descriptor_set_layouts_json,
+            vk::Device const device,
+            std::uint32_t const descriptor_set_count_multiplier,
+            vk::AllocationCallbacks const* const allocation_callbacks,
+            std::pmr::polymorphic_allocator<> const& temporaries_allocator
+        )
+        {
+            std::pmr::vector<vk::DescriptorPoolSize> pool_sizes{ temporaries_allocator };
+            pool_sizes.reserve(15);
+
+            for (nlohmann::json const& descriptor_set_json : descriptor_sets_json)
+            {
+                std::size_t const descriptor_set_layout_index = descriptor_set_json.at("layout").get<std::size_t>();
+                nlohmann::json const& descriptor_set_layout_json = descriptor_set_layouts_json[descriptor_set_layout_index];
+
+                for (nlohmann::json const& binding_json : descriptor_set_layout_json)
+                {
+                    vk::DescriptorType const descriptor_type = binding_json.at("descriptor_type").get<vk::DescriptorType>();
+                    std::uint32_t const descriptor_count = binding_json.at("descriptor_count").get<std::uint32_t>();
+
+                    auto const pool_size_iterator =
+                        std::find_if(pool_sizes.begin(), pool_sizes.end(), [descriptor_type](vk::DescriptorPoolSize const& size) -> bool { return size.type == descriptor_type; });
+
+                    if (pool_size_iterator == pool_sizes.end())
+                    {
+                        pool_sizes.push_back(
+                            vk::DescriptorPoolSize
+                            {
+                                .type = descriptor_type,
+                                .descriptorCount = descriptor_count,
+                            }
+                        );
+                    }
+                    else
+                    {
+                        pool_size_iterator->descriptorCount += descriptor_count;
+                    }
+                }
+            }
+
+            vk::DescriptorPoolCreateInfo const create_info
+            {
+                .flags = {},
+                .maxSets = static_cast<std::uint32_t>(descriptor_sets_json.size()) * descriptor_set_count_multiplier,
+                .poolSizeCount = static_cast<std::uint32_t>(pool_sizes.size()),
+                .pPoolSizes = pool_sizes.data(),
+            };
+
+            return device.createDescriptorPool(create_info, allocation_callbacks);
         }
 
         std::pmr::vector<vk::DescriptorSet> create_descriptor_sets(
@@ -2388,6 +2440,8 @@ namespace Maia::Renderer::Vulkan
     }
 
     Pipeline_resources::Pipeline_resources(
+        vk::PhysicalDevice const physical_device,
+        vk::PhysicalDeviceType const physical_device_type,
         vk::Device const device,
         vk::Queue const upload_queue,
         vk::CommandPool const command_pool,
@@ -2402,7 +2456,9 @@ namespace Maia::Renderer::Vulkan
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     ) noexcept :
         device{ device },
-        allocation_callbacks{ allocation_callbacks }
+        allocation_callbacks{ allocation_callbacks },
+        buffer_resources{ create_buffer_resources(pipeline_json.contains("buffers") ? pipeline_json.at("buffers") : nlohmann::json{}, physical_device, device, physical_device_type, allocation_callbacks, output_allocator) },
+        image_resources{ physical_device, device, physical_device_type, {}, 64 * 1024 * 1024, {}, {}, allocation_callbacks, output_allocator }
     {
         this->render_passes =
             pipeline_json.contains("render_passes") ?
@@ -2534,22 +2590,69 @@ namespace Maia::Renderer::Vulkan
                 output_allocator
             );
         }
-    }
 
-    Pipeline_resources::Pipeline_resources(Pipeline_resources&& other) noexcept :
-        device{ other.device },
-        allocation_callbacks{ other.allocation_callbacks },
-        render_passes{ std::exchange(other.render_passes, {}) },
-        shader_modules{ std::exchange(other.shader_modules, {}) },
-        samplers{ std::exchange(other.samplers, {}) },
-        descriptor_set_layouts{ std::exchange(other.descriptor_set_layouts, {}) },
-        pipeline_layouts{ std::exchange(other.pipeline_layouts, {}) },
-        pipeline_states{ std::exchange(other.pipeline_states, {}) }
-    {
+        if (pipeline_json.contains("buffers"))
+        {
+            this->buffer_memory_views = create_buffers(pipeline_json.at("buffers"), this->buffer_resources, output_allocator);
+
+            if (pipeline_json.contains("buffer_views"))
+            {
+                this->buffer_views = create_buffer_views(pipeline_json.at("buffer_views"), device, this->buffer_memory_views, allocation_callbacks, output_allocator);
+            }
+        }
+
+        if (pipeline_json.contains("images"))
+        {
+            this->image_memory_views = create_images(pipeline_json.at("images"), this->image_resources, output_allocator);
+
+            if (pipeline_json.contains("image_views"))
+            {
+                this->image_views = create_image_views(pipeline_json.at("image_views"), device, this->image_memory_views, allocation_callbacks, output_allocator);
+            }
+        }
+
+        if (pipeline_json.contains("descriptor_sets"))
+        {
+            nlohmann::json const& descriptor_sets_json = pipeline_json.at("descriptor_sets");
+
+            this->descriptor_pool = create_descriptor_pool(
+                descriptor_sets_json,
+                pipeline_json.at("descriptor_set_layouts"),
+                device,
+                1,
+                allocation_callbacks,
+                temporaries_allocator
+            );
+
+            this->descriptor_sets = create_descriptor_sets(
+                descriptor_sets_json,
+                device,
+                this->descriptor_pool,
+                this->descriptor_set_layouts,
+                output_allocator,
+                temporaries_allocator
+            );
+
+            // TODO update descriptor sets
+        }
     }
 
     Pipeline_resources::~Pipeline_resources() noexcept
     {
+        this->device.freeDescriptorSets(this->descriptor_pool, descriptor_sets);
+
+        this->device.destroy(descriptor_pool, this->allocation_callbacks);
+
+        for (vk::ImageView const image_view : image_views)
+        {
+            this->device.destroy(image_view, this->allocation_callbacks);
+        }
+
+        for (vk::BufferView const buffer_view : buffer_views)
+        {
+            this->device.destroy(buffer_view, this->allocation_callbacks);
+        }
+
         for (vk::Pipeline const pipeline_state : pipeline_states)
         {
             this->device.destroy(pipeline_state, this->allocation_callbacks);
@@ -2579,20 +2682,6 @@ namespace Maia::Renderer::Vulkan
         {
             this->device.destroy(render_passe, this->allocation_callbacks);
         }
-    }
-
-    Pipeline_resources& Pipeline_resources::operator=(Pipeline_resources&& other) noexcept
-    {
-        this->device = other.device;
-        this->allocation_callbacks = other.allocation_callbacks;
-        std::swap(this->render_passes, other.render_passes);
-        std::swap(this->shader_modules, other.shader_modules);
-        std::swap(this->samplers, other.samplers);
-        std::swap(this->descriptor_set_layouts, other.descriptor_set_layouts);
-        std::swap(this->pipeline_layouts, other.pipeline_layouts);
-        std::swap(this->pipeline_states, other.pipeline_states);
-
-        return *this;
     }
 
     namespace
