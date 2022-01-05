@@ -491,6 +491,8 @@ namespace Mythology::SDL
 
         Maia::Renderer::Vulkan::Pipeline_resources const render_pipeline_resources
         {
+            render_pipeline_physical_device,
+            render_pipeline_physical_device_type,
             render_pipeline_device,
             render_pipeline_upload_queue,
             render_pipeline_command_pool,

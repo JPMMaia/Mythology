@@ -259,6 +259,7 @@ namespace Mythology::SDL
     export struct Render_pipeline_input_resources
     {
         Render_pipeline_input_resources(
+            nlohmann::json const& frame_resources_json,
             std::span<Render_pipeline_input_configuration const> const inputs,
             std::span<vk::Device const> const swapchain_devices,
             std::span<std::pmr::vector<vk::Image> const> swapchain_images,
@@ -279,5 +280,7 @@ namespace Mythology::SDL
         std::pmr::vector<vk::Device> swapchain_devices;
         std::pmr::vector<std::pmr::vector<vk::ImageView>> image_views;
         std::pmr::vector<std::pmr::vector<vk::Framebuffer>> framebuffers;
+        std::pmr::vector<vk::DescriptorPool> descriptor_pools;
+        std::pmr::vector<std::pmr::vector<vk::DescriptorSet>> descriptor_sets;
     };
 }
