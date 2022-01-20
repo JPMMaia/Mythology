@@ -587,6 +587,173 @@ namespace Maia::Renderer::Vulkan
             device.updateDescriptorSets(writes, {});
         }
 
+        struct Frame_descriptor_set_binding
+        {
+            vk::DescriptorType descriptor_type = {};
+            std::uint32_t binding = {};
+            std::uint32_t first_array_element = {};
+        };
+
+        std::pmr::vector<std::pmr::vector<Frame_descriptor_set_binding>> create_descriptor_sets_bindings(
+            nlohmann::json const& frame_descriptor_sets,
+            std::pmr::polymorphic_allocator<> const& output_allocator
+        )
+        {
+            std::pmr::vector<std::pmr::vector<Frame_descriptor_set_binding>> descriptor_sets_bindings{ output_allocator };
+            descriptor_sets_bindings.reserve(frame_descriptor_sets.size());
+
+            for (nlohmann::json const& descriptor_set_json : frame_descriptor_sets)
+            {
+                nlohmann::json const& bindings_json = descriptor_set_json.at("bindings");
+
+                std::pmr::vector<Frame_descriptor_set_binding> descriptor_set_bindings;
+                descriptor_set_bindings.resize(bindings_json.size());
+
+                for (nlohmann::json const& binding_json : bindings_json)
+                {
+                    descriptor_set_bindings.push_back(
+                        Frame_descriptor_set_binding
+                        {
+                            .descriptor_type = binding_json.at("descriptor_type").get<vk::DescriptorType>(),
+                            .binding = binding_json.at("binding").get<std::uint32_t>(),
+                            .first_array_element = binding_json.at("first_array_element").get<std::uint32_t>(),
+                        }
+                    );
+                }
+
+                descriptor_sets_bindings.push_back(std::move(descriptor_set_bindings));
+            }
+
+            return descriptor_sets_bindings;
+        }
+
+        std::pmr::vector<std::pmr::vector<std::pmr::vector<std::size_t>>> create_descriptor_sets_image_indices(
+            nlohmann::json const& frame_descriptor_sets,
+            std::span<std::size_t const> const input_index_to_image_index,
+            std::pmr::polymorphic_allocator<> const& output_allocator
+        )
+        {
+            std::pmr::vector<std::pmr::vector<std::pmr::vector<std::size_t>>> image_indices{ output_allocator };
+            image_indices.reserve(frame_descriptor_sets.size());
+
+            for (nlohmann::json const& descriptor_set : frame_descriptor_sets)
+            {
+                nlohmann::json const& bindings = descriptor_set.at("bindings");
+
+                std::pmr::vector<std::pmr::vector<std::size_t>> descriptor_set_indices{ output_allocator };
+                descriptor_set_indices.reserve(bindings.size());
+
+                for (nlohmann::json const& binding : bindings)
+                {
+                    nlohmann::json const& image_infos = descriptor_set.at("image_infos");
+
+                    std::pmr::vector<std::size_t> binding_image_indices{ output_allocator };
+                    binding_image_indices.reserve(image_infos.size());
+
+                    for (nlohmann::json const& image_info : image_infos)
+                    {
+                        std::size_t const input_index = image_info.at("image_view").get<std::size_t>();
+                        std::size_t const image_view_index = input_index_to_image_index.at(input_index);
+
+                        binding_image_indices.push_back(image_view_index);
+                    }
+
+                    descriptor_set_indices.push_back(std::move(binding_image_indices));
+                }
+
+                image_indices.push_back(std::move(descriptor_set_indices));
+            }
+
+            return image_indices;
+        }
+
+        std::pmr::vector<std::pmr::vector<std::pmr::vector<vk::DescriptorImageInfo>>> create_frame_descriptor_set_image_infos(
+            std::span<std::pmr::vector<std::pmr::vector<std::size_t>> const> const descriptor_sets_image_indices,
+            std::span<vk::ImageView const> const frame_image_views,
+            std::span<vk::ImageLayout const> const frame_image_layouts,
+            std::pmr::polymorphic_allocator<> const& output_allocator
+        )
+        {
+            assert(frame_image_views.size() == frame_image_layouts.size());
+
+            std::pmr::vector<std::pmr::vector<std::pmr::vector<vk::DescriptorImageInfo>>> image_infos{ output_allocator };
+
+            for (std::span<std::pmr::vector<std::size_t> const> const descriptor_set_image_indices : descriptor_sets_image_indices)
+            {
+                std::pmr::vector<std::pmr::vector<vk::DescriptorImageInfo>> descriptor_set_image_infos{ output_allocator };
+                descriptor_set_image_infos.reserve(descriptor_set_image_indices.size());
+
+                for (std::span<std::size_t const> const binding_image_indices : descriptor_set_image_indices)
+                {
+                    std::pmr::vector<vk::DescriptorImageInfo> binding_image_infos{ output_allocator };
+                    binding_image_infos.reserve(binding_image_indices.size());
+
+                    for (std::size_t const image_index : binding_image_indices)
+                    {
+                        binding_image_infos.push_back(
+                            vk::DescriptorImageInfo
+                            {
+                                .imageView = frame_image_views[image_index],
+                                .imageLayout = frame_image_layouts[image_index],
+                            }
+                        );
+                    }
+
+                    assert(binding_image_infos.size() == binding_image_indices.size());
+                    descriptor_set_image_infos.push_back(std::move(binding_image_infos));
+                }
+
+                assert(descriptor_set_image_infos.size() == descriptor_set_image_indices.size());
+                image_infos.push_back(std::move(descriptor_set_image_infos));
+            }
+
+            assert(image_infos.size() == descriptor_sets_image_indices.size());
+            return image_infos;
+        }
+
+        void update_frame_descriptor_sets(
+            vk::Device const device,
+            std::span<vk::DescriptorSet const> const frame_descriptor_sets,
+            std::span<std::pmr::vector<Frame_descriptor_set_binding> const> const descriptor_set_bindings,
+            std::span<std::pmr::vector<std::pmr::vector<vk::DescriptorImageInfo> const>> const descriptor_set_image_infos,
+            std::pmr::polymorphic_allocator<> const& temporaries_allocator
+        )
+        {
+            assert(frame_descriptor_sets.size() == descriptor_set_bindings.size());
+            assert(frame_descriptor_sets.size() == descriptor_set_image_infos.size());
+
+            std::pmr::vector<vk::WriteDescriptorSet> writes{ temporaries_allocator };
+
+            for (std::size_t descriptor_set_index = 0; descriptor_set_index < frame_descriptor_sets.size(); ++descriptor_set_index)
+            {
+                vk::DescriptorSet const descriptor_set = frame_descriptor_sets[descriptor_set_index];
+
+                std::span<Frame_descriptor_set_binding const> const bindings = descriptor_set_bindings[descriptor_set_index];
+                std::span<std::pmr::vector<vk::DescriptorImageInfo> const> const binding_image_infos = descriptor_set_image_infos[descriptor_set_index];
+                assert(bindings.size() == binding_image_infos.size());
+
+                for (std::size_t binding_index = 0; binding_index < bindings.size(); ++binding_index)
+                {
+                    Frame_descriptor_set_binding const binding = bindings[binding_index];
+                    std::span<vk::DescriptorImageInfo const> const image_infos = binding_image_infos[binding_index];
+
+                    writes.push_back(
+                        vk::WriteDescriptorSet
+                        {
+                            .dstSet = descriptor_set,
+                            .dstBinding = binding.binding,
+                            .dstArrayElement = binding.first_array_element,
+                            .descriptorCount = static_cast<std::uint32_t>(image_infos.size()),
+                            .descriptorType = binding.descriptor_type,
+                            .pImageInfo = image_infos.data(),
+                        }
+                    );
+                }
+            }
+
+            device.updateDescriptorSets(writes, {});
+        }
+
         std::pmr::vector<vk::AttachmentDescription> create_attachments(
             nlohmann::json const& attachments_json,
             std::pmr::polymorphic_allocator<> const& output_allocator
@@ -2633,7 +2800,17 @@ namespace Maia::Renderer::Vulkan
                 temporaries_allocator
             );
 
-            // TODO update descriptor sets
+            update_descriptor_sets(
+                descriptor_sets_json,
+                device,
+                this->descriptor_sets,
+                this->buffer_memory_views,
+                this->buffer_views,
+                this->image_views,
+                {},
+                {},
+                temporaries_allocator
+            );
         }
     }
 
