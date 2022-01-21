@@ -283,477 +283,558 @@ namespace Maia::Renderer::Vulkan
 
             return image_views;
         }
+    }
 
-        vk::DescriptorPool create_descriptor_pool(
-            nlohmann::json const& descriptor_sets_json,
-            nlohmann::json const& descriptor_set_layouts_json,
-            vk::Device const device,
-            std::uint32_t const descriptor_set_count_multiplier,
-            vk::AllocationCallbacks const* const allocation_callbacks,
-            std::pmr::polymorphic_allocator<> const& temporaries_allocator
-        )
+    vk::DescriptorPool create_descriptor_pool(
+        nlohmann::json const& descriptor_sets_json,
+        nlohmann::json const& descriptor_set_layouts_json,
+        vk::Device const device,
+        std::uint32_t const descriptor_set_count_multiplier,
+        vk::AllocationCallbacks const* const allocation_callbacks,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
+    )
+    {
+        std::pmr::vector<vk::DescriptorPoolSize> pool_sizes{ temporaries_allocator };
+        pool_sizes.reserve(15);
+
+        for (nlohmann::json const& descriptor_set_json : descriptor_sets_json)
         {
-            std::pmr::vector<vk::DescriptorPoolSize> pool_sizes{ temporaries_allocator };
-            pool_sizes.reserve(15);
+            std::size_t const descriptor_set_layout_index = descriptor_set_json.at("layout").get<std::size_t>();
+            nlohmann::json const& descriptor_set_layout_json = descriptor_set_layouts_json[descriptor_set_layout_index];
 
-            for (nlohmann::json const& descriptor_set_json : descriptor_sets_json)
+            for (nlohmann::json const& binding_json : descriptor_set_layout_json)
             {
-                std::size_t const descriptor_set_layout_index = descriptor_set_json.at("layout").get<std::size_t>();
-                nlohmann::json const& descriptor_set_layout_json = descriptor_set_layouts_json[descriptor_set_layout_index];
+                vk::DescriptorType const descriptor_type = binding_json.at("descriptor_type").get<vk::DescriptorType>();
+                std::uint32_t const descriptor_count = binding_json.at("descriptor_count").get<std::uint32_t>();
 
-                for (nlohmann::json const& binding_json : descriptor_set_layout_json)
+                auto const pool_size_iterator =
+                    std::find_if(pool_sizes.begin(), pool_sizes.end(), [descriptor_type](vk::DescriptorPoolSize const& size) -> bool { return size.type == descriptor_type; });
+
+                if (pool_size_iterator == pool_sizes.end())
                 {
-                    vk::DescriptorType const descriptor_type = binding_json.at("descriptor_type").get<vk::DescriptorType>();
-                    std::uint32_t const descriptor_count = binding_json.at("descriptor_count").get<std::uint32_t>();
-
-                    auto const pool_size_iterator =
-                        std::find_if(pool_sizes.begin(), pool_sizes.end(), [descriptor_type](vk::DescriptorPoolSize const& size) -> bool { return size.type == descriptor_type; });
-
-                    if (pool_size_iterator == pool_sizes.end())
-                    {
-                        pool_sizes.push_back(
-                            vk::DescriptorPoolSize
-                            {
-                                .type = descriptor_type,
-                                .descriptorCount = descriptor_count,
-                            }
-                        );
-                    }
-                    else
-                    {
-                        pool_size_iterator->descriptorCount += descriptor_count;
-                    }
-                }
-            }
-
-            vk::DescriptorPoolCreateInfo const create_info
-            {
-                .flags = {},
-                .maxSets = static_cast<std::uint32_t>(descriptor_sets_json.size()) * descriptor_set_count_multiplier,
-                .poolSizeCount = static_cast<std::uint32_t>(pool_sizes.size()),
-                .pPoolSizes = pool_sizes.data(),
-            };
-
-            return device.createDescriptorPool(create_info, allocation_callbacks);
-        }
-
-        std::pmr::vector<vk::DescriptorSet> create_descriptor_sets(
-            nlohmann::json const& descriptor_sets_json,
-            vk::Device const device,
-            vk::DescriptorPool const descriptor_pool,
-            std::span<vk::DescriptorSetLayout const> const descriptor_set_layouts,
-            std::pmr::polymorphic_allocator<> const& output_allocator,
-            std::pmr::polymorphic_allocator<> const& temporaries_allocator
-        )
-        {
-            std::pmr::vector<vk::DescriptorSetLayout> ordered_descriptor_set_layouts{ temporaries_allocator };
-            ordered_descriptor_set_layouts.reserve(descriptor_sets_json.size());
-
-            for (nlohmann::json const& descriptor_set_json : descriptor_sets_json)
-            {
-                std::size_t const descriptor_set_layout_index = descriptor_set_json.at("layout").get<std::size_t>();
-
-                ordered_descriptor_set_layouts.push_back(descriptor_set_layouts[descriptor_set_layout_index]);
-            }
-
-            vk::DescriptorSetAllocateInfo const allocate_info
-            {
-                .descriptorPool = descriptor_pool,
-                .descriptorSetCount = static_cast<std::uint32_t>(ordered_descriptor_set_layouts.size()),
-                .pSetLayouts = ordered_descriptor_set_layouts.data(),
-            };
-
-            std::pmr::polymorphic_allocator<vk::DescriptorSet> descriptor_sets_allocator{ output_allocator };
-            std::pmr::vector<vk::DescriptorSet> descriptor_sets =
-                device.allocateDescriptorSets(allocate_info, descriptor_sets_allocator);
-
-            return descriptor_sets;
-        }
-
-        void update_descriptor_sets(
-            nlohmann::json const& descriptor_sets_json,
-            vk::Device const device,
-            std::span<vk::DescriptorSet const> const descriptor_sets,
-            std::span<Maia::Renderer::Vulkan::Buffer_view const> const buffers,
-            std::span<vk::BufferView const> const buffer_views,
-            std::span<vk::ImageView const> const image_views,
-            std::span<vk::Sampler const> const samplers,
-            std::span<vk::AccelerationStructureKHR const> const acceleration_structures,
-            std::pmr::polymorphic_allocator<> const& temporaries_allocator
-        )
-        {
-            // TODO reserve
-            std::pmr::vector<vk::DescriptorBufferInfo> buffer_infos{ temporaries_allocator };
-            std::pmr::vector<vk::DescriptorImageInfo> image_infos{ temporaries_allocator };
-            std::pmr::vector<vk::BufferView> ordered_buffer_views{ temporaries_allocator };
-            std::pmr::vector<vk::AccelerationStructureKHR> ordered_acceleration_structures{ temporaries_allocator };
-            std::pmr::vector<vk::WriteDescriptorSetAccelerationStructureKHR> acceleration_structure_writes{ temporaries_allocator };
-            std::pmr::vector<vk::WriteDescriptorSet> writes{ temporaries_allocator };
-
-            for (std::size_t descriptor_set_index = 0; descriptor_set_index < descriptor_sets_json.size(); ++descriptor_set_index)
-            {
-                nlohmann::json const& descriptor_set_json = descriptor_sets_json[descriptor_set_index];
-                nlohmann::json const& bindings_json = descriptor_set_json.at("bindings");
-
-                vk::DescriptorSet const descriptor_set = descriptor_sets[descriptor_set_index];
-
-                for (nlohmann::json const& binding_json : bindings_json)
-                {
-                    vk::DescriptorType const descriptor_type = binding_json.at("descriptor_type").get<vk::DescriptorType>();
-
-                    switch (descriptor_type)
-                    {
-                    case vk::DescriptorType::eSampler:
-                    case vk::DescriptorType::eCombinedImageSampler:
-                    case vk::DescriptorType::eSampledImage:
-                    case vk::DescriptorType::eStorageImage:
-                    case vk::DescriptorType::eInputAttachment:
-                    {
-                        nlohmann::json const& image_infos_json = binding_json.at("image_infos");
-
-                        for (nlohmann::json const& image_info_json : image_infos_json)
+                    pool_sizes.push_back(
+                        vk::DescriptorPoolSize
                         {
-                            if (descriptor_type == vk::DescriptorType::eSampler)
-                            {
-                                std::size_t const sampler_index = image_info_json.at("sampler").get<std::size_t>();
-
-                                image_infos.push_back(
-                                    vk::DescriptorImageInfo
-                                    {
-                                        .sampler = samplers[sampler_index],
-                                    }
-                                );
-                            }
-                            else if (descriptor_type == vk::DescriptorType::eCombinedImageSampler)
-                            {
-                                std::size_t const sampler_index = image_info_json.at("sampler").get<std::size_t>();
-                                std::size_t const image_view_index = image_info_json.at("image_view").get<std::size_t>();
-                                vk::ImageLayout const image_layout = image_info_json.at("image_layout").get<vk::ImageLayout>();
-
-                                image_infos.push_back(
-                                    vk::DescriptorImageInfo
-                                    {
-                                        .sampler = samplers[sampler_index],
-                                        .imageView = image_views[image_view_index],
-                                        .imageLayout = image_layout,
-                                    }
-                                );
-                            }
-                            else
-                            {
-                                std::size_t const image_view_index = image_info_json.at("image_view").get<std::size_t>();
-                                vk::ImageLayout const image_layout = image_info_json.at("image_layout").get<vk::ImageLayout>();
-
-                                image_infos.push_back(
-                                    vk::DescriptorImageInfo
-                                    {
-                                        .imageView = image_views[image_view_index],
-                                        .imageLayout = image_layout,
-                                    }
-                                );
-                            }
-                        }
-
-                        assert(image_infos_json.size() <= image_infos.size());
-
-                        writes.push_back(
-                            vk::WriteDescriptorSet
-                            {
-                                .dstSet = descriptor_set,
-                                .dstBinding = binding_json.at("binding").get<std::uint32_t>(),
-                                .dstArrayElement = binding_json.at("first_array_element").get<std::uint32_t>(),
-                                .descriptorCount = static_cast<std::uint32_t>(image_infos_json.size()),
-                                .descriptorType = descriptor_type,
-                                .pImageInfo = image_infos.data() + (image_infos.size() - image_infos_json.size()),
-                            }
-                        );
-
-                        break;
-                    }
-                    case vk::DescriptorType::eUniformTexelBuffer:
-                    case vk::DescriptorType::eStorageTexelBuffer:
-                    {
-                        nlohmann::json const& buffer_views_json = binding_json.at("buffer_views");
-
-                        for (std::size_t const buffer_view_index : buffer_views_json)
-                        {
-                            ordered_buffer_views.push_back(
-                                buffer_views[buffer_view_index]
-                            );
-                        }
-
-                        assert(buffer_views_json.size() <= ordered_buffer_views.size());
-
-                        writes.push_back(
-                            vk::WriteDescriptorSet
-                            {
-                                .dstSet = descriptor_set,
-                                .dstBinding = binding_json.at("binding").get<std::uint32_t>(),
-                                .dstArrayElement = binding_json.at("first_array_element").get<std::uint32_t>(),
-                                .descriptorCount = static_cast<std::uint32_t>(buffer_views_json.size()),
-                                .descriptorType = descriptor_type,
-                                .pTexelBufferView = ordered_buffer_views.data() + (ordered_buffer_views.size() - buffer_views_json.size()),
-                            }
-                        );
-
-                        break;
-                    }
-                    case vk::DescriptorType::eUniformBuffer:
-                    case vk::DescriptorType::eStorageBuffer:
-                    case vk::DescriptorType::eUniformBufferDynamic:
-                    case vk::DescriptorType::eStorageBufferDynamic:
-                    {
-                        nlohmann::json const& buffer_infos_json = binding_json.at("buffer_infos");
-
-                        for (nlohmann::json const& buffer_info_json : buffer_infos_json)
-                        {
-                            std::size_t const buffer_index = buffer_info_json.at("buffer").get<std::size_t>();
-                            vk::DeviceSize const offset = buffer_info_json.at("offset").get<vk::DeviceSize>();
-                            vk::DeviceSize const range = buffer_info_json.at("range").get<vk::DeviceSize>();
-
-                            Maia::Renderer::Vulkan::Buffer_view const& buffer_memory_view = buffers[buffer_index];
-
-                            if ((offset + range) > buffer_memory_view.size)
-                            {
-                                throw std::runtime_error{ "DescriptorBufferInfo offset+range out of bounds!" };
-                            }
-
-                            buffer_infos.push_back(
-                                vk::DescriptorBufferInfo
-                                {
-                                    .buffer = buffer_memory_view.buffer,
-                                    .offset = buffer_memory_view.offset + offset,
-                                    .range = range,
-                                }
-                            );
-                        }
-
-                        assert(buffer_infos_json.size() <= buffer_infos.size());
-
-                        writes.push_back(
-                            vk::WriteDescriptorSet
-                            {
-                                .dstSet = descriptor_set,
-                                .dstBinding = binding_json.at("binding").get<std::uint32_t>(),
-                                .dstArrayElement = binding_json.at("first_array_element").get<std::uint32_t>(),
-                                .descriptorCount = static_cast<std::uint32_t>(buffer_infos_json.size()),
-                                .descriptorType = descriptor_type,
-                                .pBufferInfo = buffer_infos.data() + (buffer_infos.size() - buffer_infos_json.size()),
-                            }
-                        );
-
-                        break;
-                    }
-                    case vk::DescriptorType::eAccelerationStructureKHR:
-                    {
-                        nlohmann::json const& acceleration_structures_json = binding_json.at("acceleration_structures");
-
-                        for (std::size_t const acceleration_structure_index : acceleration_structures_json)
-                        {
-                            ordered_acceleration_structures.push_back(
-                                acceleration_structures[acceleration_structure_index]
-                            );
-                        }
-
-                        assert(acceleration_structures_json.size() <= ordered_acceleration_structures.size());
-
-                        acceleration_structure_writes.push_back(
-                            vk::WriteDescriptorSetAccelerationStructureKHR
-                            {
-                                .accelerationStructureCount = static_cast<std::uint32_t>(acceleration_structures_json.size()),
-                                .pAccelerationStructures = ordered_acceleration_structures.data() + (ordered_acceleration_structures.size() - acceleration_structures_json.size())
-                            }
-                        );
-
-                        assert(!acceleration_structure_writes.empty());
-
-                        writes.push_back(
-                            vk::WriteDescriptorSet
-                            {
-                                .pNext = acceleration_structure_writes.data() + acceleration_structure_writes.size() - 1,
-                                .dstSet = descriptor_set,
-                                .dstBinding = binding_json.at("binding").get<std::uint32_t>(),
-                                .dstArrayElement = binding_json.at("first_array_element").get<std::uint32_t>(),
-                                .descriptorType = descriptor_type,
-                            }
-                        );
-
-                        break;
-                    }
-                    }
-                }
-            }
-
-            device.updateDescriptorSets(writes, {});
-        }
-
-        struct Frame_descriptor_set_binding
-        {
-            vk::DescriptorType descriptor_type = {};
-            std::uint32_t binding = {};
-            std::uint32_t first_array_element = {};
-        };
-
-        std::pmr::vector<std::pmr::vector<Frame_descriptor_set_binding>> create_descriptor_sets_bindings(
-            nlohmann::json const& frame_descriptor_sets,
-            std::pmr::polymorphic_allocator<> const& output_allocator
-        )
-        {
-            std::pmr::vector<std::pmr::vector<Frame_descriptor_set_binding>> descriptor_sets_bindings{ output_allocator };
-            descriptor_sets_bindings.reserve(frame_descriptor_sets.size());
-
-            for (nlohmann::json const& descriptor_set_json : frame_descriptor_sets)
-            {
-                nlohmann::json const& bindings_json = descriptor_set_json.at("bindings");
-
-                std::pmr::vector<Frame_descriptor_set_binding> descriptor_set_bindings;
-                descriptor_set_bindings.resize(bindings_json.size());
-
-                for (nlohmann::json const& binding_json : bindings_json)
-                {
-                    descriptor_set_bindings.push_back(
-                        Frame_descriptor_set_binding
-                        {
-                            .descriptor_type = binding_json.at("descriptor_type").get<vk::DescriptorType>(),
-                            .binding = binding_json.at("binding").get<std::uint32_t>(),
-                            .first_array_element = binding_json.at("first_array_element").get<std::uint32_t>(),
+                            .type = descriptor_type,
+                            .descriptorCount = descriptor_count,
                         }
                     );
                 }
-
-                descriptor_sets_bindings.push_back(std::move(descriptor_set_bindings));
+                else
+                {
+                    pool_size_iterator->descriptorCount += descriptor_count;
+                }
             }
-
-            return descriptor_sets_bindings;
         }
 
-        std::pmr::vector<std::pmr::vector<std::pmr::vector<std::size_t>>> create_descriptor_sets_image_indices(
-            nlohmann::json const& frame_descriptor_sets,
-            std::span<std::size_t const> const input_index_to_image_index,
-            std::pmr::polymorphic_allocator<> const& output_allocator
-        )
+        vk::DescriptorPoolCreateInfo const create_info
         {
-            std::pmr::vector<std::pmr::vector<std::pmr::vector<std::size_t>>> image_indices{ output_allocator };
-            image_indices.reserve(frame_descriptor_sets.size());
+            .flags = {},
+            .maxSets = static_cast<std::uint32_t>(descriptor_sets_json.size()) * descriptor_set_count_multiplier,
+            .poolSizeCount = static_cast<std::uint32_t>(pool_sizes.size()),
+            .pPoolSizes = pool_sizes.data(),
+        };
 
-            for (nlohmann::json const& descriptor_set : frame_descriptor_sets)
+        return device.createDescriptorPool(create_info, allocation_callbacks);
+    }
+
+    std::pmr::vector<vk::DescriptorSet> create_descriptor_sets(
+        nlohmann::json const& descriptor_sets_json,
+        vk::Device const device,
+        vk::DescriptorPool const descriptor_pool,
+        std::span<vk::DescriptorSetLayout const> const descriptor_set_layouts,
+        std::pmr::polymorphic_allocator<> const& output_allocator,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
+    )
+    {
+        std::pmr::vector<vk::DescriptorSetLayout> ordered_descriptor_set_layouts{ temporaries_allocator };
+        ordered_descriptor_set_layouts.reserve(descriptor_sets_json.size());
+
+        for (nlohmann::json const& descriptor_set_json : descriptor_sets_json)
+        {
+            std::size_t const descriptor_set_layout_index = descriptor_set_json.at("layout").get<std::size_t>();
+
+            ordered_descriptor_set_layouts.push_back(descriptor_set_layouts[descriptor_set_layout_index]);
+        }
+
+        vk::DescriptorSetAllocateInfo const allocate_info
+        {
+            .descriptorPool = descriptor_pool,
+            .descriptorSetCount = static_cast<std::uint32_t>(ordered_descriptor_set_layouts.size()),
+            .pSetLayouts = ordered_descriptor_set_layouts.data(),
+        };
+
+        std::pmr::polymorphic_allocator<vk::DescriptorSet> descriptor_sets_allocator{ output_allocator };
+        std::pmr::vector<vk::DescriptorSet> descriptor_sets =
+            device.allocateDescriptorSets(allocate_info, descriptor_sets_allocator);
+
+        return descriptor_sets;
+    }
+
+    void update_descriptor_sets(
+        nlohmann::json const& descriptor_sets_json,
+        vk::Device const device,
+        std::span<vk::DescriptorSet const> const descriptor_sets,
+        std::span<Maia::Renderer::Vulkan::Buffer_view const> const buffers,
+        std::span<vk::BufferView const> const buffer_views,
+        std::span<vk::ImageView const> const image_views,
+        std::span<vk::Sampler const> const samplers,
+        std::span<vk::AccelerationStructureKHR const> const acceleration_structures,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
+    )
+    {
+        // TODO reserve
+        std::pmr::vector<vk::DescriptorBufferInfo> buffer_infos{ temporaries_allocator };
+        std::pmr::vector<vk::DescriptorImageInfo> image_infos{ temporaries_allocator };
+        std::pmr::vector<vk::BufferView> ordered_buffer_views{ temporaries_allocator };
+        std::pmr::vector<vk::AccelerationStructureKHR> ordered_acceleration_structures{ temporaries_allocator };
+        std::pmr::vector<vk::WriteDescriptorSetAccelerationStructureKHR> acceleration_structure_writes{ temporaries_allocator };
+        std::pmr::vector<vk::WriteDescriptorSet> writes{ temporaries_allocator };
+
+        for (std::size_t descriptor_set_index = 0; descriptor_set_index < descriptor_sets_json.size(); ++descriptor_set_index)
+        {
+            nlohmann::json const& descriptor_set_json = descriptor_sets_json[descriptor_set_index];
+            nlohmann::json const& bindings_json = descriptor_set_json.at("bindings");
+
+            vk::DescriptorSet const descriptor_set = descriptor_sets[descriptor_set_index];
+
+            for (nlohmann::json const& binding_json : bindings_json)
             {
-                nlohmann::json const& bindings = descriptor_set.at("bindings");
+                vk::DescriptorType const descriptor_type = binding_json.at("descriptor_type").get<vk::DescriptorType>();
 
-                std::pmr::vector<std::pmr::vector<std::size_t>> descriptor_set_indices{ output_allocator };
-                descriptor_set_indices.reserve(bindings.size());
-
-                for (nlohmann::json const& binding : bindings)
+                switch (descriptor_type)
                 {
-                    nlohmann::json const& image_infos = descriptor_set.at("image_infos");
+                case vk::DescriptorType::eSampler:
+                case vk::DescriptorType::eCombinedImageSampler:
+                case vk::DescriptorType::eSampledImage:
+                case vk::DescriptorType::eStorageImage:
+                case vk::DescriptorType::eInputAttachment:
+                {
+                    nlohmann::json const& image_infos_json = binding_json.at("image_infos");
 
-                    std::pmr::vector<std::size_t> binding_image_indices{ output_allocator };
-                    binding_image_indices.reserve(image_infos.size());
-
-                    for (nlohmann::json const& image_info : image_infos)
+                    for (nlohmann::json const& image_info_json : image_infos_json)
                     {
-                        std::size_t const input_index = image_info.at("image_view").get<std::size_t>();
-                        std::size_t const image_view_index = input_index_to_image_index.at(input_index);
+                        if (descriptor_type == vk::DescriptorType::eSampler)
+                        {
+                            std::size_t const sampler_index = image_info_json.at("sampler").get<std::size_t>();
 
-                        binding_image_indices.push_back(image_view_index);
+                            image_infos.push_back(
+                                vk::DescriptorImageInfo
+                                {
+                                    .sampler = samplers[sampler_index],
+                                }
+                            );
+                        }
+                        else if (descriptor_type == vk::DescriptorType::eCombinedImageSampler)
+                        {
+                            std::size_t const sampler_index = image_info_json.at("sampler").get<std::size_t>();
+                            std::size_t const image_view_index = image_info_json.at("image_view").get<std::size_t>();
+                            vk::ImageLayout const image_layout = image_info_json.at("image_layout").get<vk::ImageLayout>();
+
+                            image_infos.push_back(
+                                vk::DescriptorImageInfo
+                                {
+                                    .sampler = samplers[sampler_index],
+                                    .imageView = image_views[image_view_index],
+                                    .imageLayout = image_layout,
+                                }
+                            );
+                        }
+                        else
+                        {
+                            std::size_t const image_view_index = image_info_json.at("image_view").get<std::size_t>();
+                            vk::ImageLayout const image_layout = image_info_json.at("image_layout").get<vk::ImageLayout>();
+
+                            image_infos.push_back(
+                                vk::DescriptorImageInfo
+                                {
+                                    .imageView = image_views[image_view_index],
+                                    .imageLayout = image_layout,
+                                }
+                            );
+                        }
                     }
 
-                    descriptor_set_indices.push_back(std::move(binding_image_indices));
-                }
-
-                image_indices.push_back(std::move(descriptor_set_indices));
-            }
-
-            return image_indices;
-        }
-
-        std::pmr::vector<std::pmr::vector<std::pmr::vector<vk::DescriptorImageInfo>>> create_frame_descriptor_set_image_infos(
-            std::span<std::pmr::vector<std::pmr::vector<std::size_t>> const> const descriptor_sets_image_indices,
-            std::span<vk::ImageView const> const frame_image_views,
-            std::span<vk::ImageLayout const> const frame_image_layouts,
-            std::pmr::polymorphic_allocator<> const& output_allocator
-        )
-        {
-            assert(frame_image_views.size() == frame_image_layouts.size());
-
-            std::pmr::vector<std::pmr::vector<std::pmr::vector<vk::DescriptorImageInfo>>> image_infos{ output_allocator };
-
-            for (std::span<std::pmr::vector<std::size_t> const> const descriptor_set_image_indices : descriptor_sets_image_indices)
-            {
-                std::pmr::vector<std::pmr::vector<vk::DescriptorImageInfo>> descriptor_set_image_infos{ output_allocator };
-                descriptor_set_image_infos.reserve(descriptor_set_image_indices.size());
-
-                for (std::span<std::size_t const> const binding_image_indices : descriptor_set_image_indices)
-                {
-                    std::pmr::vector<vk::DescriptorImageInfo> binding_image_infos{ output_allocator };
-                    binding_image_infos.reserve(binding_image_indices.size());
-
-                    for (std::size_t const image_index : binding_image_indices)
-                    {
-                        binding_image_infos.push_back(
-                            vk::DescriptorImageInfo
-                            {
-                                .imageView = frame_image_views[image_index],
-                                .imageLayout = frame_image_layouts[image_index],
-                            }
-                        );
-                    }
-
-                    assert(binding_image_infos.size() == binding_image_indices.size());
-                    descriptor_set_image_infos.push_back(std::move(binding_image_infos));
-                }
-
-                assert(descriptor_set_image_infos.size() == descriptor_set_image_indices.size());
-                image_infos.push_back(std::move(descriptor_set_image_infos));
-            }
-
-            assert(image_infos.size() == descriptor_sets_image_indices.size());
-            return image_infos;
-        }
-
-        void update_frame_descriptor_sets(
-            vk::Device const device,
-            std::span<vk::DescriptorSet const> const frame_descriptor_sets,
-            std::span<std::pmr::vector<Frame_descriptor_set_binding> const> const descriptor_set_bindings,
-            std::span<std::pmr::vector<std::pmr::vector<vk::DescriptorImageInfo> const>> const descriptor_set_image_infos,
-            std::pmr::polymorphic_allocator<> const& temporaries_allocator
-        )
-        {
-            assert(frame_descriptor_sets.size() == descriptor_set_bindings.size());
-            assert(frame_descriptor_sets.size() == descriptor_set_image_infos.size());
-
-            std::pmr::vector<vk::WriteDescriptorSet> writes{ temporaries_allocator };
-
-            for (std::size_t descriptor_set_index = 0; descriptor_set_index < frame_descriptor_sets.size(); ++descriptor_set_index)
-            {
-                vk::DescriptorSet const descriptor_set = frame_descriptor_sets[descriptor_set_index];
-
-                std::span<Frame_descriptor_set_binding const> const bindings = descriptor_set_bindings[descriptor_set_index];
-                std::span<std::pmr::vector<vk::DescriptorImageInfo> const> const binding_image_infos = descriptor_set_image_infos[descriptor_set_index];
-                assert(bindings.size() == binding_image_infos.size());
-
-                for (std::size_t binding_index = 0; binding_index < bindings.size(); ++binding_index)
-                {
-                    Frame_descriptor_set_binding const binding = bindings[binding_index];
-                    std::span<vk::DescriptorImageInfo const> const image_infos = binding_image_infos[binding_index];
+                    assert(image_infos_json.size() <= image_infos.size());
 
                     writes.push_back(
                         vk::WriteDescriptorSet
                         {
                             .dstSet = descriptor_set,
-                            .dstBinding = binding.binding,
-                            .dstArrayElement = binding.first_array_element,
-                            .descriptorCount = static_cast<std::uint32_t>(image_infos.size()),
-                            .descriptorType = binding.descriptor_type,
-                            .pImageInfo = image_infos.data(),
+                            .dstBinding = binding_json.at("binding").get<std::uint32_t>(),
+                            .dstArrayElement = binding_json.at("first_array_element").get<std::uint32_t>(),
+                            .descriptorCount = static_cast<std::uint32_t>(image_infos_json.size()),
+                            .descriptorType = descriptor_type,
+                            .pImageInfo = image_infos.data() + (image_infos.size() - image_infos_json.size()),
+                        }
+                    );
+
+                    break;
+                }
+                case vk::DescriptorType::eUniformTexelBuffer:
+                case vk::DescriptorType::eStorageTexelBuffer:
+                {
+                    nlohmann::json const& buffer_views_json = binding_json.at("buffer_views");
+
+                    for (std::size_t const buffer_view_index : buffer_views_json)
+                    {
+                        ordered_buffer_views.push_back(
+                            buffer_views[buffer_view_index]
+                        );
+                    }
+
+                    assert(buffer_views_json.size() <= ordered_buffer_views.size());
+
+                    writes.push_back(
+                        vk::WriteDescriptorSet
+                        {
+                            .dstSet = descriptor_set,
+                            .dstBinding = binding_json.at("binding").get<std::uint32_t>(),
+                            .dstArrayElement = binding_json.at("first_array_element").get<std::uint32_t>(),
+                            .descriptorCount = static_cast<std::uint32_t>(buffer_views_json.size()),
+                            .descriptorType = descriptor_type,
+                            .pTexelBufferView = ordered_buffer_views.data() + (ordered_buffer_views.size() - buffer_views_json.size()),
+                        }
+                    );
+
+                    break;
+                }
+                case vk::DescriptorType::eUniformBuffer:
+                case vk::DescriptorType::eStorageBuffer:
+                case vk::DescriptorType::eUniformBufferDynamic:
+                case vk::DescriptorType::eStorageBufferDynamic:
+                {
+                    nlohmann::json const& buffer_infos_json = binding_json.at("buffer_infos");
+
+                    for (nlohmann::json const& buffer_info_json : buffer_infos_json)
+                    {
+                        std::size_t const buffer_index = buffer_info_json.at("buffer").get<std::size_t>();
+                        vk::DeviceSize const offset = buffer_info_json.at("offset").get<vk::DeviceSize>();
+                        vk::DeviceSize const range = buffer_info_json.at("range").get<vk::DeviceSize>();
+
+                        Maia::Renderer::Vulkan::Buffer_view const& buffer_memory_view = buffers[buffer_index];
+
+                        if ((offset + range) > buffer_memory_view.size)
+                        {
+                            throw std::runtime_error{ "DescriptorBufferInfo offset+range out of bounds!" };
+                        }
+
+                        buffer_infos.push_back(
+                            vk::DescriptorBufferInfo
+                            {
+                                .buffer = buffer_memory_view.buffer,
+                                .offset = buffer_memory_view.offset + offset,
+                                .range = range,
+                            }
+                        );
+                    }
+
+                    assert(buffer_infos_json.size() <= buffer_infos.size());
+
+                    writes.push_back(
+                        vk::WriteDescriptorSet
+                        {
+                            .dstSet = descriptor_set,
+                            .dstBinding = binding_json.at("binding").get<std::uint32_t>(),
+                            .dstArrayElement = binding_json.at("first_array_element").get<std::uint32_t>(),
+                            .descriptorCount = static_cast<std::uint32_t>(buffer_infos_json.size()),
+                            .descriptorType = descriptor_type,
+                            .pBufferInfo = buffer_infos.data() + (buffer_infos.size() - buffer_infos_json.size()),
+                        }
+                    );
+
+                    break;
+                }
+                case vk::DescriptorType::eAccelerationStructureKHR:
+                {
+                    nlohmann::json const& acceleration_structures_json = binding_json.at("acceleration_structures");
+
+                    for (std::size_t const acceleration_structure_index : acceleration_structures_json)
+                    {
+                        ordered_acceleration_structures.push_back(
+                            acceleration_structures[acceleration_structure_index]
+                        );
+                    }
+
+                    assert(acceleration_structures_json.size() <= ordered_acceleration_structures.size());
+
+                    acceleration_structure_writes.push_back(
+                        vk::WriteDescriptorSetAccelerationStructureKHR
+                        {
+                            .accelerationStructureCount = static_cast<std::uint32_t>(acceleration_structures_json.size()),
+                            .pAccelerationStructures = ordered_acceleration_structures.data() + (ordered_acceleration_structures.size() - acceleration_structures_json.size())
+                        }
+                    );
+
+                    assert(!acceleration_structure_writes.empty());
+
+                    writes.push_back(
+                        vk::WriteDescriptorSet
+                        {
+                            .pNext = acceleration_structure_writes.data() + acceleration_structure_writes.size() - 1,
+                            .dstSet = descriptor_set,
+                            .dstBinding = binding_json.at("binding").get<std::uint32_t>(),
+                            .dstArrayElement = binding_json.at("first_array_element").get<std::uint32_t>(),
+                            .descriptorType = descriptor_type,
+                        }
+                    );
+
+                    break;
+                }
+                }
+            }
+        }
+
+        device.updateDescriptorSets(writes, {});
+    }
+
+    std::pmr::vector<std::pmr::vector<vk::DescriptorSet>> create_frame_descriptor_sets(
+        nlohmann::json const& frame_descriptor_sets_json,
+        vk::Device const device,
+        vk::DescriptorPool const descriptor_pool,
+        std::span<vk::DescriptorSetLayout const> const descriptor_set_layouts,
+        std::size_t const frames_in_flight,
+        std::pmr::polymorphic_allocator<> const& output_allocator,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
+    )
+    {
+        std::pmr::vector<std::pmr::vector<vk::DescriptorSet>> descriptor_sets{ output_allocator };
+        descriptor_sets.reserve(frames_in_flight);
+
+        for (std::size_t frame_index = 0; frame_index < frames_in_flight; ++frame_index)
+        {
+            std::pmr::vector<vk::DescriptorSet> frame_descriptor_sets = create_descriptor_sets(
+                frame_descriptor_sets_json,
+                device,
+                descriptor_pool,
+                descriptor_set_layouts,
+                output_allocator,
+                temporaries_allocator
+            );
+
+            descriptor_sets.push_back(std::move(frame_descriptor_sets));
+        }
+
+        return descriptor_sets;
+    }
+
+    std::pmr::vector<std::pmr::vector<Frame_descriptor_set_binding>> create_descriptor_sets_bindings(
+        nlohmann::json const& frame_descriptor_sets,
+        std::pmr::polymorphic_allocator<> const& output_allocator
+    )
+    {
+        std::pmr::vector<std::pmr::vector<Frame_descriptor_set_binding>> descriptor_sets_bindings{ output_allocator };
+        descriptor_sets_bindings.reserve(frame_descriptor_sets.size());
+
+        for (nlohmann::json const& descriptor_set_json : frame_descriptor_sets)
+        {
+            nlohmann::json const& bindings_json = descriptor_set_json.at("bindings");
+
+            std::pmr::vector<Frame_descriptor_set_binding> descriptor_set_bindings;
+            descriptor_set_bindings.resize(bindings_json.size());
+
+            for (nlohmann::json const& binding_json : bindings_json)
+            {
+                descriptor_set_bindings.push_back(
+                    Frame_descriptor_set_binding
+                    {
+                        .descriptor_type = binding_json.at("descriptor_type").get<vk::DescriptorType>(),
+                        .binding = binding_json.at("binding").get<std::uint32_t>(),
+                        .first_array_element = binding_json.at("first_array_element").get<std::uint32_t>(),
+                    }
+                );
+            }
+
+            descriptor_sets_bindings.push_back(std::move(descriptor_set_bindings));
+        }
+
+        return descriptor_sets_bindings;
+    }
+
+    std::pmr::vector<std::pmr::vector<std::pmr::vector<vk::ImageLayout>>> create_descriptor_sets_image_layouts(
+        nlohmann::json const& frame_descriptor_sets,
+        std::pmr::polymorphic_allocator<> const& output_allocator
+    )
+    {
+        std::pmr::vector<std::pmr::vector<std::pmr::vector<vk::ImageLayout>>> descriptor_sets_image_layouts{ output_allocator };
+        descriptor_sets_image_layouts.reserve(frame_descriptor_sets.size());
+
+        for (nlohmann::json const& descriptor_set_json : frame_descriptor_sets)
+        {
+            nlohmann::json const& bindings_json = descriptor_set_json.at("bindings");
+
+            std::pmr::vector<std::pmr::vector<vk::ImageLayout>> descriptor_set_image_layouts{ output_allocator };
+            descriptor_set_image_layouts.resize(bindings_json.size());
+
+            for (nlohmann::json const& binding_json : bindings_json)
+            {
+                nlohmann::json const& image_infos_json = binding_json.at("image_infos");
+
+                std::pmr::vector<vk::ImageLayout> image_layouts{ output_allocator };
+                image_layouts.reserve(image_infos_json.size());
+
+                for (nlohmann::json const& image_info_json : image_infos_json)
+                {
+                    image_layouts.push_back(
+                        image_info_json.at("image_layout").get<vk::ImageLayout>()
+                    );
+                }
+
+                descriptor_set_image_layouts.push_back(std::move(image_layouts));
+            }
+
+            descriptor_sets_image_layouts.push_back(std::move(descriptor_set_image_layouts));
+        }
+
+        return descriptor_sets_image_layouts;
+    }
+
+
+    std::pmr::vector<std::pmr::vector<std::pmr::vector<std::size_t>>> create_descriptor_sets_image_indices(
+        nlohmann::json const& frame_descriptor_sets,
+        std::span<std::size_t const> const input_index_to_image_index,
+        std::pmr::polymorphic_allocator<> const& output_allocator
+    )
+    {
+        std::pmr::vector<std::pmr::vector<std::pmr::vector<std::size_t>>> image_indices{ output_allocator };
+        image_indices.reserve(frame_descriptor_sets.size());
+
+        for (nlohmann::json const& descriptor_set : frame_descriptor_sets)
+        {
+            nlohmann::json const& bindings = descriptor_set.at("bindings");
+
+            std::pmr::vector<std::pmr::vector<std::size_t>> descriptor_set_indices{ output_allocator };
+            descriptor_set_indices.reserve(bindings.size());
+
+            for (nlohmann::json const& binding : bindings)
+            {
+                nlohmann::json const& image_infos = descriptor_set.at("image_infos");
+
+                std::pmr::vector<std::size_t> binding_image_indices{ output_allocator };
+                binding_image_indices.reserve(image_infos.size());
+
+                for (nlohmann::json const& image_info : image_infos)
+                {
+                    std::size_t const input_index = image_info.at("image_view").get<std::size_t>();
+                    std::size_t const image_view_index = input_index_to_image_index[input_index];
+
+                    binding_image_indices.push_back(image_view_index);
+                }
+
+                descriptor_set_indices.push_back(std::move(binding_image_indices));
+            }
+
+            image_indices.push_back(std::move(descriptor_set_indices));
+        }
+
+        return image_indices;
+    }
+
+    std::pmr::vector<std::pmr::vector<std::pmr::vector<vk::DescriptorImageInfo>>> create_frame_descriptor_set_image_infos(
+        std::span<std::pmr::vector<std::pmr::vector<std::size_t>> const> const descriptor_sets_image_indices,
+        std::span<std::pmr::vector<std::pmr::vector<vk::ImageLayout>> const> const descriptor_sets_image_layouts,
+        std::span<vk::ImageView const> const frame_image_views,
+        std::pmr::polymorphic_allocator<> const& output_allocator
+    )
+    {
+        assert(descriptor_sets_image_indices.size() == descriptor_sets_image_layouts.size());
+
+        std::pmr::vector<std::pmr::vector<std::pmr::vector<vk::DescriptorImageInfo>>> image_infos{ output_allocator };
+
+        for (std::size_t descriptor_set_index = 0; descriptor_set_index < descriptor_sets_image_indices.size(); ++descriptor_set_index)
+        {
+            std::span<std::pmr::vector<std::size_t> const> const descriptor_set_image_indices = descriptor_sets_image_indices[descriptor_set_index];
+
+            std::pmr::vector<std::pmr::vector<vk::DescriptorImageInfo>> descriptor_set_image_infos{ output_allocator };
+            descriptor_set_image_infos.reserve(descriptor_set_image_indices.size());
+
+            for (std::size_t binding_index = 0; binding_index < descriptor_set_image_indices.size(); ++binding_index)
+            {
+                std::span<std::size_t const> const binding_image_indices = descriptor_set_image_indices[binding_index];
+
+                std::pmr::vector<vk::DescriptorImageInfo> binding_image_infos{ output_allocator };
+                binding_image_infos.reserve(binding_image_indices.size());
+
+                for (std::size_t image_info_index = 0; image_info_index < binding_image_indices.size(); ++image_info_index)
+                {
+                    std::size_t const image_index = binding_image_indices[image_info_index];
+                    vk::ImageLayout const image_layout = descriptor_sets_image_layouts[descriptor_set_index][binding_index][image_info_index];
+
+                    binding_image_infos.push_back(
+                        vk::DescriptorImageInfo
+                        {
+                            .imageView = frame_image_views[image_index],
+                            .imageLayout = image_layout,
                         }
                     );
                 }
+
+                assert(binding_image_infos.size() == binding_image_indices.size());
+                descriptor_set_image_infos.push_back(std::move(binding_image_infos));
             }
 
-            device.updateDescriptorSets(writes, {});
+            assert(descriptor_set_image_infos.size() == descriptor_set_image_indices.size());
+            image_infos.push_back(std::move(descriptor_set_image_infos));
         }
 
+        assert(image_infos.size() == descriptor_sets_image_indices.size());
+        return image_infos;
+    }
+
+    void update_frame_descriptor_sets(
+        vk::Device const device,
+        std::span<vk::DescriptorSet const> const frame_descriptor_sets,
+        std::span<std::pmr::vector<std::pmr::vector<std::size_t>> const> descriptor_sets_image_indices,
+        std::span<std::pmr::vector<std::pmr::vector<vk::ImageLayout>> const> descriptor_sets_image_layouts,
+        std::span<vk::ImageView const> frame_image_views,
+        std::span<std::pmr::vector<Frame_descriptor_set_binding> const> const descriptor_set_bindings,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
+    )
+    {
+        assert(frame_descriptor_sets.size() == descriptor_set_bindings.size());
+
+        std::pmr::vector<std::pmr::vector<std::pmr::vector<vk::DescriptorImageInfo>>> const descriptor_set_image_infos =
+            create_frame_descriptor_set_image_infos(
+                descriptor_sets_image_indices,
+                descriptor_sets_image_layouts,
+                frame_image_views,
+                temporaries_allocator
+            );
+
+        std::pmr::vector<vk::WriteDescriptorSet> writes{ temporaries_allocator };
+
+        for (std::size_t descriptor_set_index = 0; descriptor_set_index < frame_descriptor_sets.size(); ++descriptor_set_index)
+        {
+            vk::DescriptorSet const descriptor_set = frame_descriptor_sets[descriptor_set_index];
+
+            std::span<Frame_descriptor_set_binding const> const bindings = descriptor_set_bindings[descriptor_set_index];
+            std::span<std::pmr::vector<vk::DescriptorImageInfo> const> const binding_image_infos = descriptor_set_image_infos[descriptor_set_index];
+            assert(bindings.size() == binding_image_infos.size());
+
+            for (std::size_t binding_index = 0; binding_index < bindings.size(); ++binding_index)
+            {
+                Frame_descriptor_set_binding const binding = bindings[binding_index];
+                std::span<vk::DescriptorImageInfo const> const image_infos = binding_image_infos[binding_index];
+
+                writes.push_back(
+                    vk::WriteDescriptorSet
+                    {
+                        .dstSet = descriptor_set,
+                        .dstBinding = binding.binding,
+                        .dstArrayElement = binding.first_array_element,
+                        .descriptorCount = static_cast<std::uint32_t>(image_infos.size()),
+                        .descriptorType = binding.descriptor_type,
+                        .pImageInfo = image_infos.data(),
+                    }
+                );
+            }
+        }
+
+        device.updateDescriptorSets(writes, {});
+    }
+
+    namespace
+    {
         std::pmr::vector<vk::AttachmentDescription> create_attachments(
             nlohmann::json const& attachments_json,
             std::pmr::polymorphic_allocator<> const& output_allocator

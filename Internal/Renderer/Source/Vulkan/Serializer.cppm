@@ -49,6 +49,49 @@ namespace Maia::Renderer::Vulkan
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     );
 
+    export struct Frame_descriptor_set_binding
+    {
+        vk::DescriptorType descriptor_type = {};
+        std::uint32_t binding = {};
+        std::uint32_t first_array_element = {};
+    };
+
+    export std::pmr::vector<std::pmr::vector<vk::DescriptorSet>> create_frame_descriptor_sets(
+        nlohmann::json const& frame_descriptor_sets_json,
+        vk::Device device,
+        vk::DescriptorPool descriptor_pool,
+        std::span<vk::DescriptorSetLayout const> descriptor_set_layouts,
+        std::size_t frames_in_flight,
+        std::pmr::polymorphic_allocator<> const& output_allocator,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
+    );
+
+    export std::pmr::vector<std::pmr::vector<Frame_descriptor_set_binding>> create_descriptor_sets_bindings(
+        nlohmann::json const& frame_descriptor_sets,
+        std::pmr::polymorphic_allocator<> const& output_allocator
+    );
+
+    export std::pmr::vector<std::pmr::vector<std::pmr::vector<vk::ImageLayout>>> create_descriptor_sets_image_layouts(
+        nlohmann::json const& frame_descriptor_sets,
+        std::pmr::polymorphic_allocator<> const& output_allocator
+    );
+
+    export std::pmr::vector<std::pmr::vector<std::pmr::vector<std::size_t>>> create_descriptor_sets_image_indices(
+        nlohmann::json const& frame_descriptor_sets,
+        std::span<std::size_t const> input_index_to_image_index,
+        std::pmr::polymorphic_allocator<> const& output_allocator
+    );
+
+    export void update_frame_descriptor_sets(
+        vk::Device device,
+        std::span<vk::DescriptorSet const> frame_descriptor_sets,
+        std::span<std::pmr::vector<std::pmr::vector<std::size_t>> const> descriptor_sets_image_indices,
+        std::span<std::pmr::vector<std::pmr::vector<vk::ImageLayout>> const> descriptor_sets_image_layouts,
+        std::span<vk::ImageView const> frame_image_views,
+        std::span<std::pmr::vector<Frame_descriptor_set_binding> const> descriptor_set_bindings,
+        std::pmr::polymorphic_allocator<> const& temporaries_allocator
+    );
+
     export struct Render_pass_create_info_resources
     {
         std::pmr::vector<vk::AttachmentDescription> attachments;
