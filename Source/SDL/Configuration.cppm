@@ -1,5 +1,6 @@
 module;
 
+#include <nlohmann/json.hpp>
 #include <SDL2/SDL.h>
 #include <vulkan/vulkan.hpp>
 
@@ -13,6 +14,7 @@ module;
 
 export module mythology.sdl.configuration;
 
+import maia.renderer.vulkan.serializer;
 import mythology.sdl.render_resources;
 import mythology.sdl.sdl;
 
@@ -259,15 +261,21 @@ namespace Mythology::SDL
     export struct Render_pipeline_input_resources
     {
         Render_pipeline_input_resources(
+            nlohmann::json const& descriptor_set_layouts_json,
             nlohmann::json const& frame_resources_json,
             std::span<Render_pipeline_input_configuration const> const inputs,
             std::span<vk::Device const> const swapchain_devices,
             std::span<std::pmr::vector<vk::Image> const> swapchain_images,
             std::span<vk::Format const> swapchain_image_formats,
             std::span<vk::ImageSubresourceRange const> swapchain_image_subresource_ranges,
-            std::span<vk::Rect2D const> const swapchain_render_areas,
-            std::span<vk::RenderPass const> const render_pipeline_render_passes,
-            std::pmr::polymorphic_allocator<> const& allocator
+            std::span<vk::Rect2D const> swapchain_render_areas,
+            vk::Device render_pipeline_device,
+            std::span<vk::RenderPass const> render_pipeline_render_passes,
+            std::span<vk::DescriptorSetLayout const> render_pipeline_descriptor_set_layouts,
+            std::uint32_t frames_in_flight,
+            vk::AllocationCallbacks const* allocation_callbacks,
+            std::pmr::polymorphic_allocator<> const& output_allocator,
+            std::pmr::polymorphic_allocator<> const& temporaries_allocator
         );
         
         Render_pipeline_input_resources(Render_pipeline_input_resources const&) = delete;
@@ -280,7 +288,10 @@ namespace Mythology::SDL
         std::pmr::vector<vk::Device> swapchain_devices;
         std::pmr::vector<std::pmr::vector<vk::ImageView>> image_views;
         std::pmr::vector<std::pmr::vector<vk::Framebuffer>> framebuffers;
-        std::pmr::vector<vk::DescriptorPool> descriptor_pools;
+        vk::DescriptorPool descriptor_pool;
         std::pmr::vector<std::pmr::vector<vk::DescriptorSet>> descriptor_sets;
+        std::pmr::vector<std::pmr::vector<Maia::Renderer::Vulkan::Frame_descriptor_set_binding>> descriptor_sets_bindings;
+        std::pmr::vector<std::pmr::vector<std::pmr::vector<vk::ImageLayout>>> descriptor_sets_image_layouts;
+        std::pmr::vector<std::pmr::vector<std::pmr::vector<std::size_t>>> descriptor_sets_image_indices;
     };
 }

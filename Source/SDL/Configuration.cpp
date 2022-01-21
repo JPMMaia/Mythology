@@ -1,5 +1,6 @@
 module;
 
+#include <nlohmann/json.hpp>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_vulkan.h>
 #include <vulkan/vulkan.hpp>
@@ -890,105 +891,10 @@ namespace Mythology::SDL
 
             return framebuffers;
         }
-
-        std::pmr::vector<vk::DescriptorPool> create_render_pipeline_input_descriptor_pools(
-            nlohmann::json const& frame_resources_json,
-            nlohmann::json const& descriptor_set_layouts_json,
-            std::span<vk::Device const> const swapchain_devices,
-            std::uint32_t const number_of_frames_in_flight,
-            vk::AllocationCallbacks const* const allocation_callbacks,
-            std::pmr::polymorphic_allocator<> const& output_allocator,
-            std::pmr::polymorphic_allocator<> const& temporaries_allocator
-        )
-        {
-            std::pmr::vector<vk::DescriptorPool> descriptor_pools{ output_allocator };
-            descriptor_pools.resize(swapchain_devices.size(), vk::DescriptorPool{});
-
-            if (frame_resources_json.contains("descriptor_sets"))
-            {
-                nlohmann::json const& descriptor_sets_json = frame_resources_json.at("descriptor_sets");
-
-                for (std::size_t swapchain_index = 0; swapchain_index < swapchain_devices.size(); ++swapchain_index)
-                {
-                    descriptor_pools[swapchain_index] = create_descriptor_pool(
-                        descriptor_sets_json,
-                        descriptor_set_layouts_json,
-                        swapchain_devices[swapchain_index],
-                        number_of_frames_in_flight,
-                        allocation_callbacks,
-                        temporaries_allocator
-                    );
-                }
-            }
-
-            return descriptor_pools;
-        }
-
-        std::pmr::vector<std::pmr::vector<vk::DescriptorSet>> create_render_pipeline_input_descriptor_sets(
-            nlohmann::json const& frame_resources_json,
-            std::span<vk::Device const> const swapchain_devices,
-            std::span<vk::DescriptorPool const> const descriptor_pools,
-            std::span<vk::DescriptorSetLayout const> const render_pipeline_descriptor_set_layouts,
-            std::pmr::polymorphic_allocator<> const& output_allocator,
-            std::pmr::polymorphic_allocator<> const& temporaries_allocator
-        )
-        {
-            assert(swapchain_devices.size() == descriptor_pools.size());
-
-            std::pmr::vector<std::pmr::vector<vk::DescriptorSet>> descriptor_sets{ allocator };
-            descriptor_sets.resize(swapchain_devices.size());
-
-            if (frame_resources_json.contains("descriptor_sets"))
-            {
-                nlohmann::json const& descriptor_sets_json = frame_resources_json.at("descriptor_sets");
-
-                for (std::size_t swapchain_index = 0; swapchain_index < swapchain_devices.size(); ++swapchain_devices)
-                {
-                    descriptor_sets[swapchain_index] = Maia::Renderer::Vulkan::create_descriptor_sets(
-                        descriptor_sets_json,
-                        swapchain_devices[swapchain_index],
-                        descriptor_pools[swapchain_index],
-                        render_pipeline_descriptor_set_layouts,
-                        output_allocator,
-                        temporaries_allocator
-                    );
-                }
-            }
-
-            return descriptor_sets;
-        }
-
-        void update_render_pipeline_input_descriptor_sets(
-            nlohmann::json const& frame_resources_json,
-            std::span<vk::Device const> const swapchain_devices,
-            std::span<std::pmr::vector<vk::DescriptorSet> const> const descriptor_sets,
-            std::span<vk::ImageView const> const image_views,
-            std::pmr::polymorphic_allocator<> const& temporaries_allocator
-        )
-        {
-            if (frame_resources_json.contains("descriptor_sets"))
-            {
-                nlohmann::json const& descriptor_sets_json = frame_resources_json.at("descriptor_sets");
-
-                for (std::size_t swapchain_index = 0; swapchain_index < swapchain_devices.size(); ++swapchain_devices)
-                {
-                    Maia::Renderer::Vulkan::update_descriptor_sets(
-                        descriptor_sets_json,
-                        swapchain_devices[swapchain_index],
-                        descriptor_sets[swapchain_index],
-                        {},
-                        {},
-                        image_views,
-                        {},
-                        {},
-                        temporaries_allocator
-                    );
-                }
-            }
-        }
     }
 
     Render_pipeline_input_resources::Render_pipeline_input_resources(
+        nlohmann::json const& descriptor_set_layouts_json,
         nlohmann::json const& frame_resources_json,
         std::span<Render_pipeline_input_configuration const> const inputs,
         std::span<vk::Device const> const swapchain_devices,
@@ -996,24 +902,68 @@ namespace Mythology::SDL
         std::span<vk::Format const> swapchain_image_formats,
         std::span<vk::ImageSubresourceRange const> swapchain_image_subresource_ranges,
         std::span<vk::Rect2D const> const swapchain_render_areas,
+        vk::Device const render_pipeline_device,
         std::span<vk::RenderPass const> const render_pipeline_render_passes,
         std::span<vk::DescriptorSetLayout const> const render_pipeline_descriptor_set_layouts,
+        std::uint32_t const frames_in_flight,
+        vk::AllocationCallbacks const* const allocation_callbacks,
         std::pmr::polymorphic_allocator<> const& output_allocator,
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     ) :
         swapchain_devices{ swapchain_devices.begin(), swapchain_devices.end(), output_allocator },
         image_views{ create_render_pipeline_input_image_views(inputs, swapchain_devices, swapchain_images, swapchain_image_formats, swapchain_image_subresource_ranges, output_allocator) },
         framebuffers{ create_render_pipeline_input_framebuffers(inputs, swapchain_devices, this->image_views, swapchain_render_areas, render_pipeline_render_passes, output_allocator) },
-        descriptor_pools{}, // TODO create descriptor pools
-        descriptor_sets{ create_render_pipeline_input_descriptor_sets(frame_resources_json, swapchain_devices, descriptor_pools, render_pipeline_descriptor_set_layouts, output_allocator, temporaries_allocator) }
+        descriptor_pool{},
+        descriptor_sets{}
     {
-        update_render_pipeline_input_descriptor_sets(
-            frame_resources_json,
-            this->swapchain_devices,
-            this->descriptor_sets,
-            this->image_views,
-            temporaries_allocator
-        );
+        if (frame_resources_json.contains("descriptor_sets"))
+        {
+            nlohmann::json const& descriptor_sets_json = frame_resources_json.at("descriptor_sets");
+
+            if (descriptor_sets_json.contains("per_frame"))
+            {
+                nlohmann::json const& per_frame_descriptor_sets_json = descriptor_sets_json.at("per_frame");
+
+                using namespace Maia::Renderer::Vulkan;
+
+                this->descriptor_pool = create_descriptor_pool(
+                    per_frame_descriptor_sets_json,
+                    descriptor_set_layouts_json,
+                    render_pipeline_device,
+                    frames_in_flight,
+                    allocation_callbacks,
+                    temporaries_allocator
+                );
+
+                this->descriptor_sets = create_frame_descriptor_sets(
+                    per_frame_descriptor_sets_json,
+                    render_pipeline_device,
+                    this->descriptor_pool,
+                    render_pipeline_descriptor_set_layouts,
+                    frames_in_flight,
+                    output_allocator,
+                    temporaries_allocator
+                );
+
+                this->descriptor_sets_bindings = create_descriptor_sets_bindings(
+                    per_frame_descriptor_sets_json,
+                    output_allocator
+                );
+
+                this->descriptor_sets_image_layouts = create_descriptor_sets_image_layouts(
+                    per_frame_descriptor_sets_json,
+                    output_allocator
+                );
+
+                std::pmr::vector<std::size_t> input_index_to_image_index; // TODO
+
+                this->descriptor_sets_image_indices = create_descriptor_sets_image_indices(
+                    per_frame_descriptor_sets_json,
+                    input_index_to_image_index,
+                    output_allocator
+                );
+            }
+        }
     }
 
     Render_pipeline_input_resources::~Render_pipeline_input_resources() noexcept

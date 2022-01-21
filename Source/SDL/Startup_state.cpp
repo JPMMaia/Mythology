@@ -338,7 +338,8 @@ namespace Mythology::SDL
                 {
                     Render_pipeline_input_configuration
                     {
-                        .swapchain_index = 0
+                        .swapchain_index = 0,
+                        .framebuffer_render_pass_index = 0,
                     }
                 },
             }
@@ -523,19 +524,27 @@ namespace Mythology::SDL
 
         std::pmr::vector<vk::Format> const swapchain_formats = get_swapchain_image_formats(swapchain_configurations, {});
 
+        nlohmann::json const& command_lists_json = render_pipeline_json.at("frame_commands");
+
         Mythology::SDL::Render_pipeline_input_resources const pipeline_input_resources
         {
+            command_lists_json.contains("descriptor_set_layouts") ? command_lists_json.at("descriptor_set_layouts") : nlohmann::json{},
+            command_lists_json.contains("frame_resources") ? command_lists_json.at("frame_resources") : nlohmann::json{},
             render_pipeline_configuration.inputs,
             swapchain_devices,
             swapchain_resources.images,
             swapchain_formats,
             swapchain_image_subresource_ranges,
             swapchain_render_areas,
+            render_pipeline_device,
             render_pipeline_resources.render_passes,
+            render_pipeline_resources.descriptor_set_layouts,
+            number_of_frames_in_flight,
+            nullptr,
+            {},
             {}
         };
 
-        nlohmann::json const& command_lists_json = render_pipeline_json.at("frame_commands");
         nlohmann::json const& command_list_json = command_lists_json[render_pipeline_configuration.command_list_index];
 
         Maia::Renderer::Vulkan::Commands_data const commands_data =
@@ -640,6 +649,16 @@ namespace Mythology::SDL
                             );
 
                             std::span<vk::Rect2D const> const output_render_areas = swapchain_render_areas;
+
+                            Maia::Renderer::Vulkan::update_frame_descriptor_sets(
+                                render_pipeline_device,
+                                pipeline_input_resources.descriptor_sets[frame_index],
+                                pipeline_input_resources.descriptor_sets_image_indices,
+                                pipeline_input_resources.descriptor_sets_image_layouts,
+                                output_image_views,
+                                pipeline_input_resources.descriptor_sets_bindings,
+                                {}
+                            );
 
                             Maia::Renderer::Vulkan::draw(
                                 command_buffer,
