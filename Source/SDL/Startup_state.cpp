@@ -524,12 +524,10 @@ namespace Mythology::SDL
 
         std::pmr::vector<vk::Format> const swapchain_formats = get_swapchain_image_formats(swapchain_configurations, {});
 
-        nlohmann::json const& command_lists_json = render_pipeline_json.at("frame_commands");
-
         Mythology::SDL::Render_pipeline_input_resources const pipeline_input_resources
         {
-            command_lists_json.contains("descriptor_set_layouts") ? command_lists_json.at("descriptor_set_layouts") : nlohmann::json{},
-            command_lists_json.contains("frame_resources") ? command_lists_json.at("frame_resources") : nlohmann::json{},
+            render_pipeline_json.contains("descriptor_set_layouts") ? render_pipeline_json.at("descriptor_set_layouts") : nlohmann::json{},
+            render_pipeline_json.contains("frame_resources") ? render_pipeline_json.at("frame_resources") : nlohmann::json{},
             render_pipeline_configuration.inputs,
             swapchain_devices,
             swapchain_resources.images,
@@ -545,6 +543,7 @@ namespace Mythology::SDL
             {}
         };
 
+        nlohmann::json const& command_lists_json = render_pipeline_json.at("frame_commands");
         nlohmann::json const& command_list_json = command_lists_json[render_pipeline_configuration.command_list_index];
 
         Maia::Renderer::Vulkan::Commands_data const commands_data =
@@ -575,6 +574,11 @@ namespace Mythology::SDL
         {
             return {};
         }
+
+        Maia::Renderer::Vulkan::Frame_descriptor_sets_map const frame_descriptor_sets_map = Maia::Renderer::Vulkan::create_frame_descriptor_sets_map(
+            (render_pipeline_json.contains("frame_resources") && render_pipeline_json.at("frame_resources").contains("descriptor_sets")) ? render_pipeline_json.at("frame_resources").at("descriptor_sets").at("descriptor_sets") : nlohmann::json{},
+            {}
+        );
 
         std::uint8_t frame_index = 0;
 
@@ -662,13 +666,20 @@ namespace Mythology::SDL
                                 {}
                             );
 
+                            std::pmr::vector<vk::DescriptorSet> const frame_descriptor_sets = Maia::Renderer::Vulkan::get_frame_descriptor_sets(
+                                pipeline_input_resources.descriptor_sets[frame_index],
+                                {}, // TODO
+                                frame_descriptor_sets_map,
+                                {}
+                            );
+
                             Maia::Renderer::Vulkan::draw(
                                 command_buffer,
                                 output_buffers,
                                 output_images,
                                 output_image_views,
                                 output_image_subresource_ranges,
-                                pipeline_input_resources.descriptor_sets[frame_index],
+                                frame_descriptor_sets,
                                 output_framebuffers,
                                 output_render_areas,
                                 commands_data,
