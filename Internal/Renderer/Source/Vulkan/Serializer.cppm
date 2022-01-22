@@ -92,6 +92,24 @@ namespace Maia::Renderer::Vulkan
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     );
 
+    export struct Frame_descriptor_sets_map
+    {
+        std::pmr::vector<std::size_t> per_frame_indices;
+        std::pmr::vector<std::size_t> shared_indices;
+    };
+
+    export Frame_descriptor_sets_map create_frame_descriptor_sets_map(
+        nlohmann::json const& frame_descriptor_sets_json,
+        std::pmr::polymorphic_allocator<> const& output_allocator
+    );
+
+    export std::pmr::vector<vk::DescriptorSet> get_frame_descriptor_sets(
+        std::span<vk::DescriptorSet const> per_frame_descriptor_sets,
+        std::span<vk::DescriptorSet const> shared_descriptor_sets,
+        Frame_descriptor_sets_map const& map,
+        std::pmr::polymorphic_allocator<> const& output_allocator
+    );
+
     export struct Render_pass_create_info_resources
     {
         std::pmr::vector<vk::AttachmentDescription> attachments;

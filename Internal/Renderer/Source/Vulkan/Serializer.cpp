@@ -833,6 +833,90 @@ namespace Maia::Renderer::Vulkan
         device.updateDescriptorSets(writes, {});
     }
 
+    Frame_descriptor_sets_map create_frame_descriptor_sets_map(
+        nlohmann::json const& frame_descriptor_sets_json,
+        std::pmr::polymorphic_allocator<> const& output_allocator
+    )
+    {
+        std::size_t const per_frame_descriptor_set_count =
+            std::count_if(
+                frame_descriptor_sets_json.begin(),
+                frame_descriptor_sets_json.end(),
+                [](nlohmann::json const& json) -> std::size_t { return json.at("type").get<std::string>() == "per_frame";}
+        );
+
+        std::size_t const shared_descriptor_set_count =
+            std::count_if(
+                frame_descriptor_sets_json.begin(),
+                frame_descriptor_sets_json.end(),
+                [](nlohmann::json const& json) -> std::size_t { return json.at("type").get<std::string>() == "shared";}
+        );
+
+        std::pmr::vector<std::size_t> per_frame_indices{ output_allocator };
+        per_frame_indices.resize(per_frame_descriptor_set_count, std::numeric_limits<std::size_t>::max());
+
+        std::pmr::vector<std::size_t> shared_indices{ output_allocator };
+        shared_indices.resize(shared_descriptor_set_count, std::numeric_limits<std::size_t>::max());
+
+        for (std::size_t to_index = 0; to_index < frame_descriptor_sets_json.size(); ++to_index)
+        {
+            nlohmann::json const& json = frame_descriptor_sets_json[to_index];
+
+            std::string const& type = json.at("type").get<std::string>();
+            std::size_t const from_index = json.at("index").get<std::size_t>();
+
+            if (type == "per_frame")
+            {
+                per_frame_indices[from_index] = to_index;
+            }
+            else
+            {
+                assert(type == "shared");
+
+                shared_indices[from_index] = to_index;
+            }
+        }
+
+        auto const is_valid = [](std::size_t const index) -> bool { return index != std::numeric_limits<std::size_t>::max(); };
+        assert(std::all_of(per_frame_indices.begin(), per_frame_indices.end(), is_valid));
+        assert(std::all_of(shared_indices.begin(), shared_indices.end(), is_valid));
+
+        return Frame_descriptor_sets_map
+        {
+            .per_frame_indices = std::move(per_frame_indices),
+            .shared_indices = std::move(shared_indices),
+        };
+    }
+
+    std::pmr::vector<vk::DescriptorSet> get_frame_descriptor_sets(
+        std::span<vk::DescriptorSet const> const per_frame_descriptor_sets,
+        std::span<vk::DescriptorSet const> const shared_descriptor_sets,
+        Frame_descriptor_sets_map const& map,
+        std::pmr::polymorphic_allocator<> const& output_allocator
+    )
+    {
+        assert(per_frame_descriptor_sets.size() == map.per_frame_indices.size());
+        assert(shared_descriptor_sets.size() == map.shared_indices.size());
+
+        std::pmr::vector<vk::DescriptorSet> frame_descriptor_sets{ output_allocator };
+        frame_descriptor_sets.resize(map.per_frame_indices.size() + map.shared_indices.size(), {});
+
+        for (std::size_t from_index = 0; from_index < per_frame_descriptor_sets.size(); ++from_index)
+        {
+            std::size_t const to_index = map.per_frame_indices[from_index];
+            frame_descriptor_sets[to_index] = per_frame_descriptor_sets[from_index];
+        }
+
+        for (std::size_t from_index = 0; from_index < shared_descriptor_sets.size(); ++from_index)
+        {
+            std::size_t const to_index = map.shared_indices[from_index];
+            frame_descriptor_sets[to_index] = shared_descriptor_sets[from_index];
+        }
+
+        assert(map.per_frame_indices.size() + map.shared_indices.size());
+        return frame_descriptor_sets;
+    }
+
     namespace
     {
         std::pmr::vector<vk::AttachmentDescription> create_attachments(
