@@ -222,7 +222,9 @@ namespace Maia::Renderer::Vulkan
 
     export Commands_data create_commands_data(
         nlohmann::json const& commands_json,
+        std::span<vk::DescriptorSet const> const descriptor_sets,
         std::span<vk::Pipeline const> pipelines,
+        std::span<vk::PipelineLayout const> const pipeline_layouts,
         std::span<vk::RenderPass const> render_passes,
         std::span<vk::StridedDeviceAddressRegionKHR const> shader_binding_tables,
         std::pmr::polymorphic_allocator<std::byte> const& output_allocator,
@@ -235,6 +237,7 @@ namespace Maia::Renderer::Vulkan
         std::span<vk::Image const> output_images,
         std::span<vk::ImageView const> output_image_views,
         std::span<vk::ImageSubresourceRange const> output_image_subresource_ranges,
+        std::span<vk::DescriptorSet const> const frame_descriptor_sets,
         std::span<vk::Framebuffer const> output_framebuffers,
         std::span<vk::Rect2D const> output_render_areas,
         Commands_data const& commands_data,
