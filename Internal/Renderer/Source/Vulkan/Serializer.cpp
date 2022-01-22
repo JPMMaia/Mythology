@@ -2947,6 +2947,7 @@ namespace Maia::Renderer::Vulkan
         enum class Command_type : std::uint8_t
         {
             Begin_render_pass,
+            Bind_descriptor_sets,
             Bind_pipeline,
             Clear_color_image,
             Draw,
@@ -2955,6 +2956,119 @@ namespace Maia::Renderer::Vulkan
             Trace_rays,
             Set_screen_viewport_and_scissors
         };
+
+        template <typename... Types>
+        std::pmr::vector<std::byte> write_command_data(
+            std::pmr::polymorphic_allocator<> const& output_allocator,
+            Types&&... command_data
+        )
+        {
+            std::size_t constexpr data_size = (0 + ... + sizeof(std::remove_cvref_t<Types>));
+
+            std::pmr::vector<std::byte> data{ output_allocator };
+            data.resize(data_size);
+
+            std::size_t offset = 0;
+
+            auto const write_single_command = [&data, &offset] <typename Type> (Type const& command) -> void
+            {
+                std::memcpy(data.data() + offset, &command, sizeof(Type));
+                offset += sizeof(Type);
+            };
+
+            (write_single_command(command_data), ...);
+
+            return data;
+        }
+
+        struct Bind_descriptor_sets
+        {
+            vk::PipelineBindPoint pipeline_bind_point = {};
+            vk::PipelineLayout pipeline_layout = {};
+            std::uint32_t first_set = {};
+            std::uint32_t descriptor_set_count = {};
+            std::uint32_t dynamic_offset_count = {};
+
+            enum class Bind_type : std::uint8_t
+            {
+                Frame_resource,
+                Pipeline_resource,
+            };
+
+            struct Frame_resource
+            {
+                std::uint32_t descriptor_set_index = {};
+            };
+
+            struct Pipeline_resource
+            {
+                vk::DescriptorSet descriptor_set = {};
+            };
+        };
+
+        std::pmr::vector<std::byte> create_bind_descriptor_sets_data(
+            nlohmann::json const& json,
+            std::span<vk::DescriptorSet const> const pipeline_descriptor_sets,
+            std::span<vk::PipelineLayout const> const pipeline_layouts,
+            std::pmr::polymorphic_allocator<> const& output_allocator,
+            std::pmr::polymorphic_allocator<> const& temporaries_allocator
+        ) noexcept
+        {
+            Bind_descriptor_sets const bind_descriptor_sets
+            {
+                .pipeline_bind_point = json.at("pipeline_bind_point").get<vk::PipelineBindPoint>(),
+                .pipeline_layout = pipeline_layouts[json.at("pipeline_layout").get<std::size_t>()],
+                .first_set = json.at("first_set").get<std::uint32_t>(),
+                .descriptor_set_count = static_cast<std::uint32_t>(json.at("descriptor_sets").size()),
+                .dynamic_offset_count = json.contains("dynamic_offsets") ? static_cast<std::uint32_t>(json.at("dynamic_offsets").size()) : 0,
+            };
+
+            std::pmr::vector<std::byte> data = write_command_data(temporaries_allocator, Command_type::Bind_descriptor_sets, bind_descriptor_sets);
+            data.reserve(data.size() + bind_descriptor_sets.descriptor_set_count * (sizeof(Bind_descriptor_sets::Bind_type) + sizeof(vk::DescriptorSet)) + bind_descriptor_sets.dynamic_offset_count * sizeof(std::uint32_t));
+
+            for (nlohmann::json const& descriptor_set_json : json.at("descriptor_sets"))
+            {
+                std::string const& type = descriptor_set_json.at("type").get<std::string>();
+
+                if (type == "frame_resource")
+                {
+                    Bind_descriptor_sets::Frame_resource const frame_resource
+                    {
+                        .descriptor_set_index = descriptor_set_json.at("index").get<std::uint32_t>(),
+                    };
+
+                    std::pmr::vector<std::byte> const descriptor_set_data = write_command_data(temporaries_allocator, Bind_descriptor_sets::Bind_type::Frame_resource, frame_resource);
+                    data.insert(data.end(), descriptor_set_data.begin(), descriptor_set_data.end());
+                }
+                else if (type == "pipeline_resource")
+                {
+                    Bind_descriptor_sets::Pipeline_resource const pipeline_resource
+                    {
+                        .descriptor_set = pipeline_descriptor_sets[descriptor_set_json.at("index").get<std::uint32_t>()],
+                    };
+
+                    std::pmr::vector<std::byte> const descriptor_set_data = write_command_data(temporaries_allocator, Bind_descriptor_sets::Bind_type::Pipeline_resource, pipeline_resource);
+                    data.insert(data.end(), descriptor_set_data.begin(), descriptor_set_data.end());
+                }
+            }
+
+            if (json.contains("dynamic_offsets"))
+            {
+                for (nlohmann::json const& dynamic_offset_json : json.at("dynamic_offsets"))
+                {
+                    std::uint32_t const dynamic_offset = dynamic_offset_json.get<std::uint32_t>();
+
+                    std::array<std::byte, sizeof(std::uint32_t)> dynamic_offset_bytes;
+                    std::memcpy(dynamic_offset_bytes.data(), &dynamic_offset, dynamic_offset_bytes.size());
+
+                    data.insert(data.end(), dynamic_offset_bytes.begin(), dynamic_offset_bytes.end());
+                }
+            }
+
+            std::pmr::vector<std::byte> output{ output_allocator };
+            output.assign(data.begin(), data.end());
+            return output;
+        }
 
         namespace Begin_render_pass
         {
@@ -3302,7 +3416,9 @@ namespace Maia::Renderer::Vulkan
 
         std::pmr::vector<std::byte> create_command_data(
             nlohmann::json const& command_json,
+            std::span<vk::DescriptorSet const> const descriptor_sets,
             std::span<vk::Pipeline const> const pipelines,
+            std::span<vk::PipelineLayout const> const pipeline_layouts,
             std::span<vk::RenderPass const> const render_passes,
             std::span<vk::StridedDeviceAddressRegionKHR const> const shader_binding_tables,
             std::pmr::polymorphic_allocator<std::byte> const& output_allocator,
@@ -3315,6 +3431,10 @@ namespace Maia::Renderer::Vulkan
             if (type == "Begin_render_pass")
             {
                 return create_begin_render_pass_data(command_json, render_passes, output_allocator);
+            }
+            else if (type == "Bind_descriptor_sets")
+            {
+                return create_bind_descriptor_sets_data(command_json, descriptor_sets, pipeline_layouts, output_allocator, temporaries_allocator);
             }
             else if (type == "Bind_pipeline")
             {
@@ -3363,7 +3483,9 @@ namespace Maia::Renderer::Vulkan
 
     Commands_data create_commands_data(
         nlohmann::json const& commands_json,
+        std::span<vk::DescriptorSet const> const descriptor_sets,
         std::span<vk::Pipeline const> const pipelines,
+        std::span<vk::PipelineLayout const> const pipeline_layouts,
         std::span<vk::RenderPass const> const render_passes,
         std::span<vk::StridedDeviceAddressRegionKHR const> const shader_binding_tables,
         std::pmr::polymorphic_allocator<std::byte> const& output_allocator,
@@ -3374,7 +3496,7 @@ namespace Maia::Renderer::Vulkan
 
         for (nlohmann::json const& command_json : commands_json)
         {
-            std::pmr::vector<std::byte> const command_data = create_command_data(command_json, pipelines, render_passes, shader_binding_tables, temporaries_allocator, temporaries_allocator);
+            std::pmr::vector<std::byte> const command_data = create_command_data(command_json, descriptor_sets, pipelines, pipeline_layouts, render_passes, shader_binding_tables, temporaries_allocator, temporaries_allocator);
 
             commands_data.insert(commands_data.end(), command_data.begin(), command_data.end());
         }
@@ -3385,6 +3507,21 @@ namespace Maia::Renderer::Vulkan
     namespace
     {
         using Commands_data_offset = std::size_t;
+
+        std::span<std::byte const> create_data_span(
+            std::span<std::byte const> const bytes,
+            std::size_t commands_data_offset
+        ) noexcept
+        {
+            return { bytes.data() + commands_data_offset, bytes.size() - commands_data_offset };
+        }
+
+        template <typename T>
+        struct Read_data
+        {
+            T data = {};
+            std::size_t read_bytes = {};
+        };
 
         Commands_data_offset add_begin_render_pass_command(
             vk::CommandBuffer const command_buffer,
@@ -3418,6 +3555,117 @@ namespace Maia::Renderer::Vulkan
             command_buffer.beginRenderPass(
                 begin_info,
                 vk::SubpassContents::eInline
+            );
+
+            return commands_data_offset;
+        }
+
+        Read_data<std::pmr::vector<vk::DescriptorSet>> get_command_descriptor_sets(
+            std::span<std::byte const> const bytes,
+            std::uint32_t const descriptor_set_count,
+            std::span<vk::DescriptorSet const> const frame_descriptor_sets,
+            std::pmr::polymorphic_allocator<std::byte> const& output_allocator
+        )
+        {
+            if (descriptor_set_count == 0)
+            {
+                return { .data = std::pmr::vector<vk::DescriptorSet>{ output_allocator }, .read_bytes = 0 };
+            }
+
+            Commands_data_offset commands_data_offset = 0;
+
+            std::pmr::vector<vk::DescriptorSet> descriptor_sets{ output_allocator };
+            descriptor_sets.reserve(descriptor_set_count);
+
+            for (std::uint32_t descriptor_set_index = 0; descriptor_set_index < descriptor_set_count; ++descriptor_set_index)
+            {
+                Bind_descriptor_sets::Bind_type const bind_type = read<Bind_descriptor_sets::Bind_type>(bytes.data() + commands_data_offset);
+                commands_data_offset += sizeof(bind_type);
+
+                if (bind_type == Bind_descriptor_sets::Bind_type::Frame_resource)
+                {
+                    Bind_descriptor_sets::Frame_resource const frame_resource = read<Bind_descriptor_sets::Frame_resource>(bytes.data() + commands_data_offset);
+                    commands_data_offset += sizeof(frame_resource);
+
+                    assert(frame_resource.descriptor_set_index < frame_descriptor_sets.size());
+                    descriptor_sets.push_back(frame_descriptor_sets[frame_resource.descriptor_set_index]);
+                }
+                else
+                {
+                    assert(bind_type == Bind_descriptor_sets::Bind_type::Pipeline_resource);
+
+                    Bind_descriptor_sets::Pipeline_resource const pipeline_resource = read<Bind_descriptor_sets::Pipeline_resource>(bytes.data() + commands_data_offset);
+                    commands_data_offset += sizeof(pipeline_resource);
+
+                    descriptor_sets.push_back(pipeline_resource.descriptor_set);
+                }
+
+                assert(commands_data_offset <= bytes.size_bytes());
+            }
+
+            assert(descriptor_sets.size() == descriptor_set_count);
+            return { .data = std::move(descriptor_sets), .read_bytes = commands_data_offset, };
+        }
+
+        Read_data<std::pmr::vector<std::uint32_t>> get_command_dynamic_offsets(
+            std::span<std::byte const> const bytes,
+            std::uint32_t const dynamic_offset_count,
+            std::pmr::polymorphic_allocator<std::byte> const& output_allocator
+        )
+        {
+            assert(bytes.size_bytes() <= (dynamic_offset_count * sizeof(std::uint32_t)));
+
+            if (dynamic_offset_count == 0)
+            {
+                return { .data = std::pmr::vector<std::uint32_t>{ output_allocator }, .read_bytes = 0 };
+            }
+
+            Commands_data_offset const bytes_to_read = dynamic_offset_count * sizeof(std::uint32_t);
+
+            std::pmr::vector<std::uint32_t> dynamic_offsets{ output_allocator };
+            dynamic_offsets.resize(dynamic_offset_count);
+
+            std::memcpy(dynamic_offsets.data(), bytes.data(), bytes_to_read);
+
+            assert(dynamic_offsets.size() == dynamic_offset_count);
+            return { .data = std::move(dynamic_offsets), .read_bytes = bytes_to_read, };
+        }
+
+        Commands_data_offset add_bind_descriptor_sets_command(
+            vk::CommandBuffer const command_buffer,
+            std::span<vk::DescriptorSet const> const frame_descriptor_sets,
+            std::span<std::byte const> const bytes,
+            std::pmr::polymorphic_allocator<std::byte> const& temporaries_allocator
+        )
+        {
+            Commands_data_offset commands_data_offset = 0;
+
+            Bind_descriptor_sets const command = read<Bind_descriptor_sets>(bytes.data() + commands_data_offset);
+            commands_data_offset += sizeof(command);
+
+            Read_data<std::pmr::vector<vk::DescriptorSet>> const descriptor_sets = get_command_descriptor_sets(
+                create_data_span(bytes, commands_data_offset),
+                command.descriptor_set_count,
+                frame_descriptor_sets,
+                temporaries_allocator
+            );
+            commands_data_offset += descriptor_sets.read_bytes;
+
+            Read_data<std::pmr::vector<std::uint32_t>> const dynamic_offsets = get_command_dynamic_offsets(
+                create_data_span(bytes, commands_data_offset),
+                command.dynamic_offset_count,
+                temporaries_allocator
+            );
+            commands_data_offset += dynamic_offsets.read_bytes;
+
+            command_buffer.bindDescriptorSets(
+                command.pipeline_bind_point,
+                command.pipeline_layout,
+                command.first_set,
+                command.descriptor_set_count,
+                descriptor_sets.data.data(),
+                command.dynamic_offset_count,
+                dynamic_offsets.data.data()
             );
 
             return commands_data_offset;
@@ -3657,6 +3905,7 @@ namespace Maia::Renderer::Vulkan
         std::span<vk::Image const> const output_images,
         std::span<vk::ImageView const> const output_image_views,
         std::span<vk::ImageSubresourceRange const> const output_image_subresource_ranges,
+        std::span<vk::DescriptorSet const> const frame_descriptor_sets,
         std::span<vk::Framebuffer const> const output_framebuffers,
         std::span<vk::Rect2D const> const output_render_areas,
         Commands_data const& commands_data,
@@ -3678,6 +3927,10 @@ namespace Maia::Renderer::Vulkan
             {
             case Command_type::Begin_render_pass:
                 offset_in_bytes += add_begin_render_pass_command(command_buffer, output_framebuffers, output_render_areas, next_command_bytes);
+                break;
+
+            case Command_type::Bind_descriptor_sets:
+                offset_in_bytes += add_bind_descriptor_sets_command(command_buffer, frame_descriptor_sets, next_command_bytes, temporaries_allocator);
                 break;
 
             case Command_type::Bind_pipeline:
