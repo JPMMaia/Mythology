@@ -893,6 +893,24 @@ namespace Mythology::SDL
         }
     }
 
+    std::pmr::vector<std::size_t> create_input_index_to_image_index_map(
+        std::span<Render_pipeline_input_configuration const> const inputs,
+        std::pmr::polymorphic_allocator<> const& output_allocator
+    )
+    {
+        std::pmr::vector<std::size_t> input_index_to_image_index{ output_allocator };
+        input_index_to_image_index.resize(inputs.size());
+
+        std::transform(
+            inputs.begin(),
+            inputs.end(),
+            input_index_to_image_index.begin(),
+            [](Render_pipeline_input_configuration const& input) { return input.swapchain_index; }
+        );
+
+        return input_index_to_image_index;
+    }
+
     Render_pipeline_input_resources::Render_pipeline_input_resources(
         nlohmann::json const& descriptor_set_layouts_json,
         nlohmann::json const& frame_resources_json,
@@ -955,7 +973,7 @@ namespace Mythology::SDL
                     output_allocator
                 );
 
-                std::pmr::vector<std::size_t> input_index_to_image_index; // TODO
+                std::pmr::vector<std::size_t> const input_index_to_image_index = create_input_index_to_image_index_map(inputs, temporaries_allocator);
 
                 this->descriptor_sets_image_indices = create_descriptor_sets_image_indices(
                     per_frame_descriptor_sets_json,

@@ -550,7 +550,9 @@ namespace Mythology::SDL
         Maia::Renderer::Vulkan::Commands_data const commands_data =
             Maia::Renderer::Vulkan::create_commands_data(
                 command_list_json,
+                render_pipeline_resources.descriptor_sets,
                 render_pipeline_resources.pipeline_states,
+                render_pipeline_resources.pipeline_layouts,
                 render_pipeline_resources.render_passes,
                 render_pipeline_resources.shader_binding_tables,
                 {},
@@ -666,6 +668,7 @@ namespace Mythology::SDL
                                 output_images,
                                 output_image_views,
                                 output_image_subresource_ranges,
+                                pipeline_input_resources.descriptor_sets[frame_index],
                                 output_framebuffers,
                                 output_render_areas,
                                 commands_data,
