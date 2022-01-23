@@ -549,22 +549,39 @@ namespace Maia::Renderer::Vulkan
                 {
                     nlohmann::json const& acceleration_structures_json = binding_json.at("acceleration_structures");
 
-                    for (std::size_t const acceleration_structure_index : acceleration_structures_json)
+                    if (acceleration_structures_json.is_string())
                     {
-                        ordered_acceleration_structures.push_back(
-                            acceleration_structures[acceleration_structure_index]
+                        assert(acceleration_structures_json.get<std::string>() == "all");
+
+                        acceleration_structure_writes.push_back(
+                            vk::WriteDescriptorSetAccelerationStructureKHR
+                            {
+                                .accelerationStructureCount = static_cast<std::uint32_t>(acceleration_structures.size()),
+                                .pAccelerationStructures = acceleration_structures.data(),
+                            }
                         );
                     }
+                    else
+                    {
+                        assert(acceleration_structures_json.is_array());
 
-                    assert(acceleration_structures_json.size() <= ordered_acceleration_structures.size());
-
-                    acceleration_structure_writes.push_back(
-                        vk::WriteDescriptorSetAccelerationStructureKHR
+                        for (std::size_t const acceleration_structure_index : acceleration_structures_json)
                         {
-                            .accelerationStructureCount = static_cast<std::uint32_t>(acceleration_structures_json.size()),
-                            .pAccelerationStructures = ordered_acceleration_structures.data() + (ordered_acceleration_structures.size() - acceleration_structures_json.size())
+                            ordered_acceleration_structures.push_back(
+                                acceleration_structures[acceleration_structure_index]
+                            );
                         }
-                    );
+
+                        assert(acceleration_structures_json.size() <= ordered_acceleration_structures.size());
+
+                        acceleration_structure_writes.push_back(
+                            vk::WriteDescriptorSetAccelerationStructureKHR
+                            {
+                                .accelerationStructureCount = static_cast<std::uint32_t>(acceleration_structures_json.size()),
+                                .pAccelerationStructures = ordered_acceleration_structures.data() + (ordered_acceleration_structures.size() - acceleration_structures_json.size())
+                            }
+                        );
+                    }
 
                     assert(!acceleration_structure_writes.empty());
 
@@ -3711,7 +3728,7 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<std::byte> const& output_allocator
         )
         {
-            assert(bytes.size_bytes() <= (dynamic_offset_count * sizeof(std::uint32_t)));
+            assert((dynamic_offset_count * sizeof(std::uint32_t)) <= bytes.size_bytes());
 
             if (dynamic_offset_count == 0)
             {
