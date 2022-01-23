@@ -444,16 +444,7 @@ def descriptor_set_binding_to_json(
         ]
 
     if len(node.inputs["Acceleration Structure Array"].links) == 1:
-        json["acceleration_structures"] = [
-            find_index(acceleration_structures, input.links[0].from_node)
-            if input.links[0].from_node.bl_idname == "AccelerationStructureNode"
-            else 0
-            for input in node.inputs["Acceleration Structure Array"]
-            .links[0]
-            .from_node.inputs
-            if len(input.links) == 1
-            and input.links[0].from_node.bl_idname == "BeginFrameNode"
-        ]
+        json["acceleration_structures"] = "all"
 
     return json
 
