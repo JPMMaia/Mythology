@@ -302,7 +302,7 @@ namespace Maia::Renderer::Vulkan
             std::size_t const descriptor_set_layout_index = descriptor_set_json.at("layout").get<std::size_t>();
             nlohmann::json const& descriptor_set_layout_json = descriptor_set_layouts_json[descriptor_set_layout_index];
 
-            for (nlohmann::json const& binding_json : descriptor_set_layout_json)
+            for (nlohmann::json const& binding_json : descriptor_set_layout_json.at("bindings"))
             {
                 vk::DescriptorType const descriptor_type = binding_json.at("descriptor_type").get<vk::DescriptorType>();
                 std::uint32_t const descriptor_count = binding_json.at("descriptor_count").get<std::uint32_t>();
@@ -631,7 +631,7 @@ namespace Maia::Renderer::Vulkan
             nlohmann::json const& bindings_json = descriptor_set_json.at("bindings");
 
             std::pmr::vector<Frame_descriptor_set_binding> descriptor_set_bindings;
-            descriptor_set_bindings.resize(bindings_json.size());
+            descriptor_set_bindings.reserve(bindings_json.size());
 
             for (nlohmann::json const& binding_json : bindings_json)
             {
@@ -664,7 +664,7 @@ namespace Maia::Renderer::Vulkan
             nlohmann::json const& bindings_json = descriptor_set_json.at("bindings");
 
             std::pmr::vector<std::pmr::vector<vk::ImageLayout>> descriptor_set_image_layouts{ output_allocator };
-            descriptor_set_image_layouts.resize(bindings_json.size());
+            descriptor_set_image_layouts.reserve(bindings_json.size());
 
             for (nlohmann::json const& binding_json : bindings_json)
             {
@@ -708,7 +708,7 @@ namespace Maia::Renderer::Vulkan
 
             for (nlohmann::json const& binding : bindings)
             {
-                nlohmann::json const& image_infos = descriptor_set.at("image_infos");
+                nlohmann::json const& image_infos = binding.at("image_infos");
 
                 std::pmr::vector<std::size_t> binding_image_indices{ output_allocator };
                 binding_image_indices.reserve(image_infos.size());
@@ -2389,10 +2389,10 @@ namespace Maia::Renderer::Vulkan
                 vk::RayTracingShaderGroupCreateInfoKHR const create_info
                 {
                     .type = group_json.at("type").get<vk::RayTracingShaderGroupTypeKHR>(),
-                    .generalShader = group_json.at("general_shader").get<std::uint32_t>(),
-                    .closestHitShader = group_json.at("closest_hit_shader").get<std::uint32_t>(),
-                    .anyHitShader = group_json.at("any_hit_shader").get<std::uint32_t>(),
-                    .intersectionShader = group_json.at("intersection_shader").get<std::uint32_t>(),
+                    .generalShader = group_json.contains("general_shader") ? group_json.at("general_shader").get<std::uint32_t>() : VK_SHADER_UNUSED_KHR,
+                    .closestHitShader = group_json.contains("closest_hit_shader") ? group_json.at("closest_hit_shader").get<std::uint32_t>() : VK_SHADER_UNUSED_KHR,
+                    .anyHitShader = group_json.contains("any_hit_shader") ? group_json.at("any_hit_shader").get<std::uint32_t>() : VK_SHADER_UNUSED_KHR,
+                    .intersectionShader = group_json.contains("intersection_shader") ? group_json.at("intersection_shader").get<std::uint32_t>() : VK_SHADER_UNUSED_KHR,
                     .pShaderGroupCaptureReplayHandle = nullptr,
                 };
 
@@ -2409,6 +2409,11 @@ namespace Maia::Renderer::Vulkan
         std::pmr::polymorphic_allocator<> const& output_allocator
     )
     {
+        if (!pipeline_state_json.contains("library_info"))
+        {
+            return std::pmr::vector<vk::Pipeline>{ output_allocator };
+        }
+
         auto const get_pipeline_library = [=](nlohmann::json const& library_index_json) -> vk::Pipeline
         {
             std::size_t const index = library_index_json.get<std::size_t>();
@@ -2432,25 +2437,32 @@ namespace Maia::Renderer::Vulkan
         return pipeline_libraries;
     }
 
-    std::pmr::vector<vk::RayTracingPipelineInterfaceCreateInfoKHR> create_ray_tracing_pipeline_interface_create_infos(
+    std::pmr::vector<std::optional<vk::RayTracingPipelineInterfaceCreateInfoKHR>> create_ray_tracing_pipeline_interface_create_infos(
         nlohmann::json const& pipeline_states_json,
         std::pmr::polymorphic_allocator<> const& output_allocator
     )
     {
-        auto const get_create_info = [](nlohmann::json const& pipeline_state_json) -> vk::RayTracingPipelineInterfaceCreateInfoKHR
+        auto const get_create_info = [](nlohmann::json const& pipeline_state_json) -> std::optional<vk::RayTracingPipelineInterfaceCreateInfoKHR>
         {
-            nlohmann::json const& library_interface_json = pipeline_state_json.at("library_interface");
-
-            vk::RayTracingPipelineInterfaceCreateInfoKHR const create_info
+            if (pipeline_state_json.contains("library_interface"))
             {
-                .maxPipelineRayPayloadSize = library_interface_json.at("max_pipeline_ray_payload_size").get<std::uint32_t>(),
-                .maxPipelineRayHitAttributeSize = library_interface_json.at("max_pipeline_ray_hit_attribute_size").get<std::uint32_t>(),
-            };
+                nlohmann::json const& library_interface_json = pipeline_state_json.at("library_interface");
 
-            return create_info;
+                vk::RayTracingPipelineInterfaceCreateInfoKHR const create_info
+                {
+                    .maxPipelineRayPayloadSize = library_interface_json.at("max_pipeline_ray_payload_size").get<std::uint32_t>(),
+                    .maxPipelineRayHitAttributeSize = library_interface_json.at("max_pipeline_ray_hit_attribute_size").get<std::uint32_t>(),
+                };
+
+                return create_info;
+            }
+            else
+            {
+                return std::nullopt;
+            }
         };
 
-        std::pmr::vector<vk::RayTracingPipelineInterfaceCreateInfoKHR> create_infos{ output_allocator };
+        std::pmr::vector<std::optional<vk::RayTracingPipelineInterfaceCreateInfoKHR>> create_infos{ output_allocator };
         create_infos.resize(pipeline_states_json.size());
 
 
@@ -2495,7 +2507,7 @@ namespace Maia::Renderer::Vulkan
                 temporaries_allocator
             );
 
-        std::pmr::vector<vk::RayTracingPipelineInterfaceCreateInfoKHR> const library_interfaces =
+        std::pmr::vector<std::optional<vk::RayTracingPipelineInterfaceCreateInfoKHR>> const library_interfaces =
             create_ray_tracing_pipeline_interface_create_infos(
                 pipeline_states_json,
                 temporaries_allocator
@@ -2534,7 +2546,7 @@ namespace Maia::Renderer::Vulkan
                 vk::PipelineLibraryCreateInfoKHR const library_info
                 {
                     .libraryCount = static_cast<std::uint32_t>(pipeline_libraries.size()),
-                    .pLibraries = pipeline_libraries.data()
+                    .pLibraries = !pipeline_libraries.empty() ? pipeline_libraries.data() : nullptr
                 };
 
                 std::array<vk::RayTracingPipelineCreateInfoKHR, 1> const create_info
@@ -2548,9 +2560,9 @@ namespace Maia::Renderer::Vulkan
                         .pGroups = groups.data() + start_group_index,
                         .maxPipelineRayRecursionDepth = pipeline_state_json.at("max_pipeline_ray_recursion_depth").get<std::uint32_t>(),
                         .pLibraryInfo = &library_info,
-                        .pLibraryInterface = &library_interfaces[index],
+                        .pLibraryInterface = library_interfaces[index].has_value() ? &library_interfaces[index].value() : nullptr,
                         .pDynamicState = &pipeline_dynamic_states[index],
-                        .layout = pipeline_layouts[pipeline_state_json.at("pipeline_layout").get<std::size_t>()],
+                        .layout = pipeline_layouts[pipeline_state_json.at("layout").get<std::size_t>()],
                         .basePipelineHandle = {},
                         .basePipelineIndex = {},
                     }
@@ -2851,10 +2863,12 @@ namespace Maia::Renderer::Vulkan
 
         if (pipeline_json.contains("pipeline_states"))
         {
+            nlohmann::json const& pipeline_states_json = pipeline_json.at("pipeline_states");
+
             std::pmr::vector<vk::Pipeline> const compute_pipelines; // TODO
 
             std::pmr::vector<vk::Pipeline> const graphics_pipelines =
-                pipeline_json.contains("graphics_pipeline_states") ?
+                pipeline_states_json.contains("graphics_pipeline_states") ?
                 create_graphics_pipeline_states(
                     device,
                     pipeline_cache,
@@ -2862,21 +2876,21 @@ namespace Maia::Renderer::Vulkan
                     shader_modules,
                     pipeline_layouts,
                     render_passes,
-                    pipeline_json.at("graphics_pipeline_states"),
+                    pipeline_states_json.at("graphics_pipeline_states"),
                     temporaries_allocator,
                     temporaries_allocator
                 ) :
                 std::pmr::vector<vk::Pipeline>{ temporaries_allocator };
 
             std::pmr::vector<vk::Pipeline> const ray_tracing_pipelines =
-                pipeline_json.contains("ray_tracing_pipeline_states") ?
+                pipeline_states_json.contains("ray_tracing_pipeline_states") ?
                 create_ray_tracing_pipeline_states(
                     device,
                     pipeline_cache,
                     allocation_callbacks,
                     shader_modules,
                     pipeline_layouts,
-                    pipeline_json.at("ray_tracing_pipeline_states"),
+                    pipeline_states_json.at("ray_tracing_pipeline_states"),
                     temporaries_allocator,
                     temporaries_allocator
                 ) :
@@ -2886,7 +2900,7 @@ namespace Maia::Renderer::Vulkan
                 compute_pipelines,
                 graphics_pipelines,
                 ray_tracing_pipelines,
-                pipeline_json.at("pipeline_states"),
+                pipeline_states_json.at("pipeline_states"),
                 output_allocator
             );
         }
