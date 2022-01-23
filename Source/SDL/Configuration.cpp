@@ -706,6 +706,11 @@ namespace Mythology::SDL
         std::pmr::polymorphic_allocator<> const& allocator
     )
     {
+        if (swapchain_framebuffers.empty())
+        {
+            return std::pmr::vector<vk::Framebuffer>{allocator};
+        }
+
         assert(swapchain_framebuffers.size() == swapchain_image_indices.size());
 
         auto const get_input_framebuffer = [=](Render_pipeline_input_configuration const& input) -> vk::Framebuffer
@@ -851,6 +856,11 @@ namespace Mythology::SDL
             std::pmr::polymorphic_allocator<> const& allocator
         )
         {
+            if(render_pipeline_render_passes.empty())
+            {
+                return std::pmr::vector<std::pmr::vector<vk::Framebuffer>>{allocator};
+            }
+
             auto const create_framebuffers = [=](Render_pipeline_input_configuration const& input) -> std::pmr::vector<vk::Framebuffer>
             {
                 vk::Device const device = swapchain_devices[input.swapchain_index];
