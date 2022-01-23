@@ -1212,7 +1212,14 @@ namespace Mythology
             };
         };
 
-        auto const mesh_nodes = *scene.nodes | std::views::filter([&world](std::size_t const node_index) -> bool { return world.nodes[node_index].mesh_index.has_value(); });
+        std::pmr::vector<std::size_t> const node_indices = [&] {
+            std::pmr::vector<std::size_t> node_indices{ temporaries_allocator };
+            node_indices.resize(world.nodes.size());
+            std::iota(node_indices.begin(), node_indices.end(), std::size_t{ 0 });
+            return node_indices;
+        }();
+
+        auto const mesh_nodes = node_indices | std::views::filter([&world](std::size_t const node_index) -> bool { return world.nodes[node_index].mesh_index.has_value(); });
 
         std::pmr::vector<vk::AccelerationStructureInstanceKHR> const acceleration_structure_instances =
             transform_and_output_to_vector<vk::AccelerationStructureInstanceKHR>(
@@ -1281,9 +1288,12 @@ namespace Mythology
                 temporaries_allocator
                 );
 
+        assert(acceleration_structures.size() == acceleration_structure_geometries.size());
+        assert(acceleration_structures.size() == acceleration_structure_build_sizes_infos.size());
+
         vk::CommandBuffer const command_buffer = create_one_time_submit_command_buffer(device, command_pool);
 
-        auto const build_top_level_acceleration_structure_lambda = [&](std::size_t const acceleration_structure_index) -> void
+        for (std::size_t acceleration_structure_index = 0; acceleration_structure_index < acceleration_structures.size(); ++acceleration_structure_index)
         {
             build_top_level_acceleration_structure(
                 device,
@@ -1293,10 +1303,7 @@ namespace Mythology
                 acceleration_structure_geometries[acceleration_structure_index],
                 acceleration_structure_build_sizes_infos[acceleration_structure_index]
             );
-        };
-
-        auto mesh_nodes_copy = mesh_nodes;
-        std::ranges::for_each(mesh_nodes_copy, build_top_level_acceleration_structure_lambda);
+        }
 
         submit_and_wait(device, queue, command_pool, command_buffer, allocation_callbacks);
 
