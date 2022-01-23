@@ -233,6 +233,81 @@ namespace Mythology::SDL
             };
         }
 
+        std::pmr::vector<vk::AccelerationStructureKHR> get_acceleration_structure_handles(
+            std::span<Mythology::Acceleration_structure const> const acceleration_structures,
+            std::pmr::polymorphic_allocator<> const& output_allocator
+        )
+        {
+            std::pmr::vector<vk::AccelerationStructureKHR> handles{ output_allocator };
+            handles.resize(acceleration_structures.size());
+
+            std::transform(
+                acceleration_structures.begin(),
+                acceleration_structures.end(),
+                handles.begin(),
+                [](Mythology::Acceleration_structure const& acceleration_structure)->vk::AccelerationStructureKHR { return acceleration_structure.handle; }
+            );
+
+            return handles;
+        }
+
+        struct Frame_shared_resources
+        {
+            Frame_shared_resources(
+                vk::Device const device,
+                nlohmann::json const& frame_shared_descriptor_sets_json,
+                nlohmann::json const& descriptor_set_layouts_json,
+                std::span<vk::DescriptorSetLayout const> const descriptor_set_layouts,
+                std::span<vk::AccelerationStructureKHR const> const top_level_acceleration_structures,
+                vk::AllocationCallbacks const* const allocation_callbacks,
+                std::pmr::polymorphic_allocator<> const& output_allocator,
+                std::pmr::polymorphic_allocator<> const& temporaries_allocator
+            ) :
+                device{ device },
+                allocation_callbacks{ allocation_callbacks }
+            {
+                this->descriptor_pool = Maia::Renderer::Vulkan::create_descriptor_pool(
+                    frame_shared_descriptor_sets_json,
+                    descriptor_set_layouts_json,
+                    device,
+                    1,
+                    allocation_callbacks,
+                    temporaries_allocator
+                );
+
+                this->descriptor_sets = Maia::Renderer::Vulkan::create_descriptor_sets(
+                    frame_shared_descriptor_sets_json,
+                    device,
+                    this->descriptor_pool,
+                    descriptor_set_layouts,
+                    output_allocator,
+                    temporaries_allocator
+                );
+
+                Maia::Renderer::Vulkan::update_descriptor_sets(
+                    frame_shared_descriptor_sets_json,
+                    device,
+                    this->descriptor_sets,
+                    {},
+                    {},
+                    {},
+                    {},
+                    top_level_acceleration_structures,
+                    temporaries_allocator
+                );
+            }
+
+            ~Frame_shared_resources()
+            {
+                this->device.destroy(this->descriptor_pool, this->allocation_callbacks);
+            }
+
+            vk::Device device = {};
+            vk::DescriptorPool descriptor_pool = {};
+            std::pmr::vector<vk::DescriptorSet> descriptor_sets;
+            vk::AllocationCallbacks const* allocation_callbacks = {};
+        };
+
         vk::PhysicalDeviceRayTracingPipelinePropertiesKHR get_physical_device_ray_tracing_properties(vk::PhysicalDevice const physical_device) noexcept
         {
             vk::PhysicalDeviceRayTracingPipelinePropertiesKHR ray_tracing_properties = {};
@@ -575,6 +650,23 @@ namespace Mythology::SDL
             return {};
         }
 
+        std::pmr::vector<vk::AccelerationStructureKHR> const scene_top_level_acceleration_structures = get_acceleration_structure_handles(
+            scene_resources->top_level_acceleration_structures,
+            {}
+        );
+
+        Frame_shared_resources const frame_shared_resources
+        {
+            render_pipeline_device,
+            (render_pipeline_json.contains("frame_resources") && render_pipeline_json.at("frame_resources").contains("descriptor_sets")) ? render_pipeline_json.at("frame_resources").at("descriptor_sets").at("shared") : nlohmann::json{},
+            render_pipeline_json.contains("descriptor_set_layouts") ? render_pipeline_json.at("descriptor_set_layouts") : nlohmann::json{},
+            render_pipeline_resources.descriptor_set_layouts,
+            scene_top_level_acceleration_structures,
+            nullptr,
+            {},
+            {}
+        };
+
         Maia::Renderer::Vulkan::Frame_descriptor_sets_map const frame_descriptor_sets_map = Maia::Renderer::Vulkan::create_frame_descriptor_sets_map(
             (render_pipeline_json.contains("frame_resources") && render_pipeline_json.at("frame_resources").contains("descriptor_sets")) ? render_pipeline_json.at("frame_resources").at("descriptor_sets").at("descriptor_sets") : nlohmann::json{},
             {}
@@ -668,7 +760,7 @@ namespace Mythology::SDL
 
                             std::pmr::vector<vk::DescriptorSet> const frame_descriptor_sets = Maia::Renderer::Vulkan::get_frame_descriptor_sets(
                                 pipeline_input_resources.descriptor_sets[frame_index],
-                                {}, // TODO
+                                frame_shared_resources.descriptor_sets,
                                 frame_descriptor_sets_map,
                                 {}
                             );
