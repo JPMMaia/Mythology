@@ -462,6 +462,44 @@ def depends_on_frame_node(node: bpy.types.Node) -> bool:
     return False
 
 
+def get_dependent_begin_frame_node_output_sockets(
+    node: bpy.types.Node,
+) -> typing.List[bpy.types.NodeSocket]:
+
+    outputs = []
+
+    for input in node.inputs:
+        for link in input.links:
+            if link.from_node.bl_idname == "BeginFrameNode":
+                outputs.append(link.from_socket)
+            else:
+                outputs += get_dependent_begin_frame_node_output_sockets(link.from_node)
+
+    return outputs
+
+
+def depends_on_per_frame_frame_resource(node: bpy.types.Node) -> bool:
+
+    outputs = get_dependent_begin_frame_node_output_sockets(node)
+
+    for output in outputs:
+        if output.name == "Output Image" or output.name == "Output Image View":
+            return True
+
+    return False
+
+
+def depends_on_shared_frame_resource(node: bpy.types.Node) -> bool:
+
+    outputs = get_dependent_begin_frame_node_output_sockets(node)
+
+    for output in outputs:
+        if output.name == "Input Acceleration Structure":
+            return True
+
+    return False
+
+
 def create_descriptor_sets(
     descriptor_set_nodes: typing.List[bpy.types.Node],
     descriptor_set_layouts: typing.List[DescriptorSetLayoutNode],
@@ -520,15 +558,58 @@ def create_frame_descriptor_sets(
     samplers: typing.List[bpy.types.Node],
 ) -> typing.Tuple[typing.List[DescriptorSetNode], typing.Any]:
 
-    descriptor_set_nodes = [
+    per_frame_descriptor_set_nodes = [
         node
         for node in nodes
-        if node.bl_idname == "DescriptorSetNode" and depends_on_frame_node(node)
+        if node.bl_idname == "DescriptorSetNode"
+        and depends_on_per_frame_frame_resource(node)
+        and not depends_on_shared_frame_resource(node)
     ]
 
-    return create_descriptor_sets(
-        descriptor_set_nodes, descriptor_set_layouts, buffers, image_views, samplers
-    )
+    per_frame_descriptor_sets_json = create_descriptor_sets(
+        per_frame_descriptor_set_nodes,
+        descriptor_set_layouts,
+        buffers,
+        image_views,
+        samplers,
+    )[1]
+
+    shared_descriptor_set_nodes = [
+        node
+        for node in nodes
+        if node.bl_idname == "DescriptorSetNode"
+        and depends_on_shared_frame_resource(node)
+        and not depends_on_per_frame_frame_resource(node)
+    ]
+
+    shared_descriptor_sets_json = create_descriptor_sets(
+        shared_descriptor_set_nodes,
+        descriptor_set_layouts,
+        buffers,
+        image_views,
+        samplers,
+    )[1]
+
+    descriptor_set_nodes = []
+    descriptor_sets_json = []
+
+    for per_frame_index, descriptor_set_node in enumerate(
+        per_frame_descriptor_set_nodes
+    ):
+        descriptor_set_nodes.append(descriptor_set_node)
+        descriptor_sets_json.append({"type": "per_frame", "index": per_frame_index})
+
+    for shared_index, descriptor_set_node in enumerate(shared_descriptor_set_nodes):
+        descriptor_set_nodes.append(descriptor_set_node)
+        descriptor_sets_json.append({"type": "shared", "index": shared_index})
+
+    json = {
+        "per_frame": per_frame_descriptor_sets_json,
+        "shared": shared_descriptor_sets_json,
+        "descriptor_sets": descriptor_sets_json,
+    }
+
+    return [descriptor_set_nodes, json]
 
 
 class DescriptorsNodeCategory(nodeitems_utils.NodeCategory):
