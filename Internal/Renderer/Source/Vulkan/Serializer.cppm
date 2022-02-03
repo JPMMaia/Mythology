@@ -184,6 +184,10 @@ namespace Maia::Renderer::Vulkan
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     ) noexcept;
 
+    export std::pmr::vector<vk::Image> get_images(
+        std::span<Maia::Renderer::Vulkan::Image_memory_view const> const image_memory_views,
+        std::pmr::polymorphic_allocator<> const& output_allocator
+    );
     
     export struct Pipeline_resources
     {
@@ -244,6 +248,8 @@ namespace Maia::Renderer::Vulkan
         std::span<vk::Pipeline const> pipelines,
         std::span<vk::PipelineLayout const> const pipeline_layouts,
         std::span<vk::RenderPass const> render_passes,
+        std::span<Maia::Renderer::Vulkan::Buffer_view const> const pipeline_buffer_memory_views,
+        std::span<vk::Image const> const pipeline_images,
         std::span<vk::StridedDeviceAddressRegionKHR const> shader_binding_tables,
         std::pmr::polymorphic_allocator<std::byte> const& output_allocator,
         std::pmr::polymorphic_allocator<std::byte> const& temporaries_allocator
@@ -251,7 +257,7 @@ namespace Maia::Renderer::Vulkan
 
     export void draw(
         vk::CommandBuffer command_buffer,
-        std::span<vk::Buffer const> output_buffers,
+        std::span<Maia::Renderer::Vulkan::Buffer_view const> output_buffers,
         std::span<vk::Image const> output_images,
         std::span<vk::ImageView const> output_image_views,
         std::span<vk::ImageSubresourceRange const> output_image_subresource_ranges,

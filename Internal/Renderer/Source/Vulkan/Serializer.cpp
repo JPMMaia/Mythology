@@ -2800,6 +2800,24 @@ namespace Maia::Renderer::Vulkan
         return shader_binding_tables;
     }
 
+    std::pmr::vector<vk::Image> get_images(
+        std::span<Maia::Renderer::Vulkan::Image_memory_view const> const image_memory_views,
+        std::pmr::polymorphic_allocator<> const& output_allocator
+    )
+    {
+        std::pmr::vector<vk::Image> images{ output_allocator };
+        images.resize(image_memory_views.size());
+
+        std::transform(
+            image_memory_views.begin(),
+            image_memory_views.end(),
+            images.begin(),
+            [](Maia::Renderer::Vulkan::Image_memory_view const& image_memory_view) -> vk::Image { return image_memory_view.image; }
+        );
+
+        return images;
+    }
+
     Pipeline_resources::Pipeline_resources(
         vk::PhysicalDevice const physical_device,
         vk::PhysicalDeviceType const physical_device_type,
@@ -3385,89 +3403,261 @@ namespace Maia::Renderer::Vulkan
             return data;
         }
 
-        namespace Image_memory_barrier
+        struct Memory_barrier
         {
+            vk::PipelineStageFlags2KHR source_stage_mask = {};
+            vk::AccessFlags2KHR source_access_mask = {};
+            vk::PipelineStageFlags2KHR destination_stage_mask = {};
+            vk::AccessFlags2KHR destination_access_mask = {};
+        };
+
+        struct Buffer_memory_barrier
+        {
+            vk::PipelineStageFlags2KHR source_stage_mask = {};
+            vk::AccessFlags2KHR source_access_mask = {};
+            vk::PipelineStageFlags2KHR destination_stage_mask = {};
+            vk::AccessFlags2KHR destination_access_mask = {};
+
             enum class Type : std::uint8_t
             {
-                Dependent
+                Frame_resource,
+                Pipeline_resource,
             };
 
-            struct Dependent
+            struct Frame_resource
             {
-                vk::AccessFlags source_access_mask;
-                vk::AccessFlags destination_access_mask;
-                vk::ImageLayout old_layout;
-                vk::ImageLayout new_layout;
+                std::uint32_t buffer_index = {};
+                vk::DeviceSize offset = {};
+                vk::DeviceSize size = {};
             };
-        }
+
+            struct Pipeline_resource
+            {
+                vk::Buffer buffer = {};
+                vk::DeviceSize offset = {};
+                vk::DeviceSize size = {};
+            };
+        };
+
+        struct Image_memory_barrier
+        {
+            vk::PipelineStageFlags2KHR source_stage_mask = {};
+            vk::AccessFlags2KHR source_access_mask = {};
+            vk::PipelineStageFlags2KHR destination_stage_mask = {};
+            vk::AccessFlags2KHR destination_access_mask = {};
+            vk::ImageLayout old_layout = {};
+            vk::ImageLayout new_layout = {};
+
+            enum class Type : std::uint8_t
+            {
+                Frame_resource,
+                Pipeline_resource,
+            };
+
+            struct Frame_resource
+            {
+                std::uint32_t image_index = {};
+            };
+
+            struct Pipeline_resource
+            {
+                vk::Image image = {};
+                vk::ImageSubresourceRange subresource_range = {};
+            };
+        };
 
         struct Pipeline_barrier
         {
-            vk::PipelineStageFlagBits source_stage_mask;
-            vk::PipelineStageFlagBits destination_stage_mask;
-            vk::DependencyFlagBits dependency_flags;
-            std::uint8_t memory_barrier_count;
-            std::uint8_t buffer_barrier_count;
-            std::uint8_t image_barrier_count;
+            vk::DependencyFlagBits dependency_flags = {};
+            std::uint8_t memory_barrier_count = {};
+            std::uint8_t buffer_memory_barrier_count = {};
+            std::uint8_t image_memory_barrier_count = {};
         };
 
-        std::pmr::vector<std::byte> create_image_memory_barrier(
-            nlohmann::json const& image_barrier_json,
+        std::pmr::vector<std::byte> create_memory_barrier(
+            nlohmann::json const& memory_barrier_json,
             std::pmr::polymorphic_allocator<std::byte> const& output_allocator
         ) noexcept
         {
-            std::string const& type = image_barrier_json.at("type").get<std::string>();
-            assert(type == "Dependent");
-
-            Image_memory_barrier::Dependent const dependent
+            Memory_barrier const barrier
             {
-                .source_access_mask = image_barrier_json.at("source_access_mask").get<vk::AccessFlags>(),
-                .destination_access_mask = image_barrier_json.at("destination_access_mask").get<vk::AccessFlags>(),
-                .old_layout = image_barrier_json.at("old_layout").get<vk::ImageLayout>(),
-                .new_layout = image_barrier_json.at("new_layout").get<vk::ImageLayout>(),
+                .source_stage_mask = memory_barrier_json.at("source_stage_mask").get<vk::PipelineStageFlags2KHR>(),
+                .source_access_mask = memory_barrier_json.at("source_access_mask").get<vk::AccessFlags2KHR>(),
+                .destination_stage_mask = memory_barrier_json.at("destination_stage_mask").get<vk::PipelineStageFlags2KHR>(),
+                .destination_access_mask = memory_barrier_json.at("destination_access_mask").get<vk::AccessFlags2KHR>(),
             };
 
-            Image_memory_barrier::Type constexpr barrier_type = Image_memory_barrier::Type::Dependent;
+            return write_command_data(
+                output_allocator,
+                barrier
+            );
+        }
 
-            std::pmr::vector<std::byte> data{ output_allocator };
-            data.resize(sizeof(Image_memory_barrier::Type) + sizeof(Image_memory_barrier::Dependent));
-            std::memcpy(data.data(), &barrier_type, sizeof(barrier_type));
-            std::memcpy(data.data() + sizeof(Image_memory_barrier::Type), &dependent, sizeof(dependent));
-            return data;
+        std::pmr::vector<std::byte> create_buffer_memory_barrier(
+            nlohmann::json const& buffer_memory_barrier_json,
+            std::span<Maia::Renderer::Vulkan::Buffer_view const> const pipeline_buffer_memory_views,
+            std::pmr::polymorphic_allocator<std::byte> const& output_allocator
+        ) noexcept
+        {
+            Buffer_memory_barrier const barrier
+            {
+                .source_stage_mask = buffer_memory_barrier_json.at("source_stage_mask").get<vk::PipelineStageFlags2KHR>(),
+                .source_access_mask = buffer_memory_barrier_json.at("source_access_mask").get<vk::AccessFlags2KHR>(),
+                .destination_stage_mask = buffer_memory_barrier_json.at("destination_stage_mask").get<vk::PipelineStageFlags2KHR>(),
+                .destination_access_mask = buffer_memory_barrier_json.at("destination_access_mask").get<vk::AccessFlags2KHR>(),
+            };
+
+            nlohmann::json const& resource_json = buffer_memory_barrier_json.at("resource");
+
+            std::string const& type = resource_json.at("type").get<std::string>();
+
+            if (type == "frame_resource")
+            {
+                Buffer_memory_barrier::Frame_resource const frame_resource
+                {
+                    .buffer_index = resource_json.at("index").get<std::uint32_t>(),
+                    .offset = resource_json.at("offset").get<vk::DeviceSize>(),
+                    .size = resource_json.at("size").get<vk::DeviceSize>(),
+                };
+
+                return write_command_data(
+                    output_allocator,
+                    barrier,
+                    Buffer_memory_barrier::Type::Frame_resource,
+                    frame_resource
+                );
+            }
+            else
+            {
+                assert(type == "pipeline_resource");
+
+                Maia::Renderer::Vulkan::Buffer_view const& buffer_memory_view =
+                    pipeline_buffer_memory_views[resource_json.at("index").get<std::uint32_t>()];
+
+                vk::DeviceSize const offset = resource_json.at("offset").get<vk::DeviceSize>();
+                vk::DeviceSize const size = resource_json.at("size").get<vk::DeviceSize>();
+                assert((offset + size) <= buffer_memory_view.size);
+
+                Buffer_memory_barrier::Pipeline_resource const pipeline_resource
+                {
+                    .buffer = buffer_memory_view.buffer,
+                    .offset = buffer_memory_view.offset + offset,
+                    .size = size,
+                };
+
+                return write_command_data(
+                    output_allocator,
+                    barrier,
+                    Buffer_memory_barrier::Type::Pipeline_resource,
+                    pipeline_resource
+                );
+            }
+        }
+
+        std::pmr::vector<std::byte> create_image_memory_barrier(
+            nlohmann::json const& image_memory_barrier_json,
+            std::span<vk::Image const> const pipeline_images,
+            std::pmr::polymorphic_allocator<std::byte> const& output_allocator
+        ) noexcept
+        {
+            Image_memory_barrier const barrier
+            {
+                .source_stage_mask = image_memory_barrier_json.at("source_stage_mask").get<vk::PipelineStageFlags2KHR>(),
+                .source_access_mask = image_memory_barrier_json.at("source_access_mask").get<vk::AccessFlags2KHR>(),
+                .destination_stage_mask = image_memory_barrier_json.at("destination_stage_mask").get<vk::PipelineStageFlags2KHR>(),
+                .destination_access_mask = image_memory_barrier_json.at("destination_access_mask").get<vk::AccessFlags2KHR>(),
+                .old_layout = image_memory_barrier_json.at("old_layout").get<vk::ImageLayout>(),
+                .new_layout = image_memory_barrier_json.at("new_layout").get<vk::ImageLayout>(),
+            };
+
+            nlohmann::json const& resource_json = image_memory_barrier_json.at("resource");
+
+            std::string const& type = resource_json.at("type").get<std::string>();
+
+            if (type == "frame_resource")
+            {
+                Image_memory_barrier::Frame_resource const frame_resource
+                {
+                    .image_index = resource_json.at("index").get<std::uint32_t>(),
+                };
+
+                return write_command_data(
+                    output_allocator,
+                    barrier,
+                    Image_memory_barrier::Type::Frame_resource,
+                    frame_resource
+                );
+            }
+            else
+            {
+                assert(type == "pipeline_resource");
+
+                Image_memory_barrier::Pipeline_resource const pipeline_resource
+                {
+                    .image = pipeline_images[resource_json.at("index").get<std::uint32_t>()],
+                    .subresource_range = resource_json.at("subresource_range").get<vk::ImageSubresourceRange>(),
+                };
+
+                return write_command_data(
+                    output_allocator,
+                    barrier,
+                    Image_memory_barrier::Type::Pipeline_resource,
+                    pipeline_resource
+                );
+            }
         }
 
         std::pmr::vector<std::byte> create_pipeline_barrier(
             nlohmann::json const& command_json,
+            std::span<Maia::Renderer::Vulkan::Buffer_view const> const pipeline_buffer_memory_views,
+            std::span<vk::Image const> const pipeline_images,
             std::pmr::polymorphic_allocator<std::byte> const& output_allocator,
             std::pmr::polymorphic_allocator<std::byte> const& temporaries_allocator
         ) noexcept
         {
             Pipeline_barrier const pipeline_barrier
             {
-                .source_stage_mask = command_json.at("source_stage_mask").get<vk::PipelineStageFlagBits>(),
-                .destination_stage_mask = command_json.at("destination_stage_mask").get<vk::PipelineStageFlagBits>(),
                 .dependency_flags = command_json.at("dependency_flags").get<vk::DependencyFlagBits>(),
                 .memory_barrier_count = static_cast<std::uint8_t>(command_json.at("memory_barriers").size()),
-                .buffer_barrier_count = static_cast<std::uint8_t>(command_json.at("buffer_barriers").size()),
-                .image_barrier_count = static_cast<std::uint8_t>(command_json.at("image_barriers").size())
+                .buffer_memory_barrier_count = static_cast<std::uint8_t>(command_json.at("buffer_memory_barriers").size()),
+                .image_memory_barrier_count = static_cast<std::uint8_t>(command_json.at("image_memory_barriers").size())
             };
 
             Command_type constexpr command_type = Command_type::Pipeline_barrier;
 
-            std::pmr::vector<std::byte> data{ output_allocator };
-            data.resize(sizeof(Command_type) + sizeof(Pipeline_barrier));
-            std::memcpy(data.data(), &command_type, sizeof(command_type));
-            std::memcpy(data.data() + sizeof(Command_type), &pipeline_barrier, sizeof(pipeline_barrier));
+            std::pmr::vector<std::byte> data = write_command_data(
+                temporaries_allocator,
+                command_type,
+                pipeline_barrier
+            );
 
-            for (nlohmann::json const& image_barrier_json : command_json.at("image_barriers"))
+            for (nlohmann::json const& barrier_json : command_json.at("memory_barriers"))
             {
-                std::pmr::vector<std::byte> const image_memory_barrier_data =
-                    create_image_memory_barrier(image_barrier_json, temporaries_allocator);
+                std::pmr::vector<std::byte> const barrier_data =
+                    create_memory_barrier(barrier_json, temporaries_allocator);
 
-                data.insert(data.end(), image_memory_barrier_data.begin(), image_memory_barrier_data.end());
+                data.insert(data.end(), barrier_data.begin(), barrier_data.end());
             }
 
-            return data;
+            for (nlohmann::json const& barrier_json : command_json.at("buffer_memory_barriers"))
+            {
+                std::pmr::vector<std::byte> const barrier_data =
+                    create_buffer_memory_barrier(barrier_json, pipeline_buffer_memory_views, temporaries_allocator);
+
+                data.insert(data.end(), barrier_data.begin(), barrier_data.end());
+            }
+
+            for (nlohmann::json const& barrier_json : command_json.at("image_memory_barriers"))
+            {
+                std::pmr::vector<std::byte> const barrier_data =
+                    create_image_memory_barrier(barrier_json, pipeline_images, temporaries_allocator);
+
+                data.insert(data.end(), barrier_data.begin(), barrier_data.end());
+            }
+
+            std::pmr::vector<std::byte> output{ output_allocator };
+            output.assign(data.begin(), data.end());
+            return output;
         }
 
         std::pmr::vector<std::byte> create_set_screen_viewport_and_scissors_data(
@@ -3535,6 +3725,8 @@ namespace Maia::Renderer::Vulkan
             std::span<vk::Pipeline const> const pipelines,
             std::span<vk::PipelineLayout const> const pipeline_layouts,
             std::span<vk::RenderPass const> const render_passes,
+            std::span<Maia::Renderer::Vulkan::Buffer_view const> const pipeline_buffer_memory_views,
+            std::span<vk::Image const> const pipeline_images,
             std::span<vk::StridedDeviceAddressRegionKHR const> const shader_binding_tables,
             std::pmr::polymorphic_allocator<std::byte> const& output_allocator,
             std::pmr::polymorphic_allocator<std::byte> const& temporaries_allocator
@@ -3569,7 +3761,7 @@ namespace Maia::Renderer::Vulkan
             }
             else if (type == "Pipeline_barrier")
             {
-                return create_pipeline_barrier(command_json, output_allocator, temporaries_allocator);
+                return create_pipeline_barrier(command_json, pipeline_buffer_memory_views, pipeline_images, output_allocator, temporaries_allocator);
             }
             else if (type == "Trace_rays")
             {
@@ -3602,6 +3794,8 @@ namespace Maia::Renderer::Vulkan
         std::span<vk::Pipeline const> const pipelines,
         std::span<vk::PipelineLayout const> const pipeline_layouts,
         std::span<vk::RenderPass const> const render_passes,
+        std::span<Maia::Renderer::Vulkan::Buffer_view const> const pipeline_buffer_memory_views,
+        std::span<vk::Image const> const pipeline_images,
         std::span<vk::StridedDeviceAddressRegionKHR const> const shader_binding_tables,
         std::pmr::polymorphic_allocator<std::byte> const& output_allocator,
         std::pmr::polymorphic_allocator<std::byte> const& temporaries_allocator
@@ -3611,7 +3805,7 @@ namespace Maia::Renderer::Vulkan
 
         for (nlohmann::json const& command_json : commands_json)
         {
-            std::pmr::vector<std::byte> const command_data = create_command_data(command_json, descriptor_sets, pipelines, pipeline_layouts, render_passes, shader_binding_tables, temporaries_allocator, temporaries_allocator);
+            std::pmr::vector<std::byte> const command_data = create_command_data(command_json, descriptor_sets, pipelines, pipeline_layouts, render_passes, pipeline_buffer_memory_views, pipeline_images, shader_binding_tables, temporaries_allocator, temporaries_allocator);
 
             commands_data.insert(commands_data.end(), command_data.begin(), command_data.end());
         }
@@ -3864,88 +4058,234 @@ namespace Maia::Renderer::Vulkan
             return 0;
         }
 
-        std::pair<Commands_data_offset, std::pmr::vector<vk::ImageMemoryBarrier>> create_image_memory_barriers(
+        std::pair<Commands_data_offset, std::pmr::vector<vk::MemoryBarrier2KHR>> create_memory_barriers(
             std::span<std::byte const> const bytes,
             std::uint8_t const barrier_count,
-            std::span<vk::Image const> const images,
-            std::span<vk::ImageSubresourceRange const> const image_subresource_ranges,
             std::pmr::polymorphic_allocator<> const& output_allocator
-        ) noexcept
+        )
         {
             Commands_data_offset commands_data_offset = 0;
 
-            vk::Image const image = images[0]; // TODO
-            vk::ImageSubresourceRange const& image_subresource_range = image_subresource_ranges[0]; // TODO
-
-            std::pmr::vector<vk::ImageMemoryBarrier> barriers{ output_allocator };
+            std::pmr::vector<vk::MemoryBarrier2KHR> barriers{ output_allocator };
             barriers.reserve(barrier_count);
 
             for (std::uint8_t barrier_index = 0; barrier_index < barrier_count; ++barrier_index)
             {
+                Memory_barrier const barrier = read<Memory_barrier>(bytes.data() + commands_data_offset);
+                commands_data_offset += sizeof(Memory_barrier);
+
+                barriers.push_back(
+                    vk::MemoryBarrier2KHR
+                    {
+                        .srcStageMask = barrier.source_stage_mask,
+                        .srcAccessMask = barrier.source_access_mask,
+                        .dstStageMask = barrier.destination_stage_mask,
+                        .dstAccessMask = barrier.destination_access_mask,
+                    }
+                );
+            }
+
+            return { commands_data_offset, std::move(barriers) };
+        }
+
+        std::pair<Commands_data_offset, std::pmr::vector<vk::BufferMemoryBarrier2KHR>> create_buffer_memory_barriers(
+            std::span<std::byte const> const bytes,
+            std::uint8_t const barrier_count,
+            std::span<Maia::Renderer::Vulkan::Buffer_view const> const frame_buffer_memory_views,
+            std::pmr::polymorphic_allocator<> const& output_allocator
+        )
+        {
+            Commands_data_offset commands_data_offset = 0;
+
+            std::pmr::vector<vk::BufferMemoryBarrier2KHR> barriers{ output_allocator };
+            barriers.reserve(barrier_count);
+
+            for (std::uint8_t barrier_index = 0; barrier_index < barrier_count; ++barrier_index)
+            {
+                Buffer_memory_barrier const barrier = read<Buffer_memory_barrier>(bytes.data() + commands_data_offset);
+                commands_data_offset += sizeof(Buffer_memory_barrier);
+
+                Buffer_memory_barrier::Type const type = read<Buffer_memory_barrier::Type>(bytes.data() + commands_data_offset);
+                commands_data_offset += sizeof(Buffer_memory_barrier::Type);
+
+                if (type == Buffer_memory_barrier::Type::Frame_resource)
+                {
+                    Buffer_memory_barrier::Frame_resource const frame_resource = read<Buffer_memory_barrier::Frame_resource>(bytes.data() + commands_data_offset);
+                    commands_data_offset += sizeof(Buffer_memory_barrier::Frame_resource);
+
+                    Maia::Renderer::Vulkan::Buffer_view const buffer_memory_view = frame_buffer_memory_views[frame_resource.buffer_index];
+                    assert((frame_resource.offset + frame_resource.size) <= buffer_memory_view.size);
+
+                    barriers.push_back(
+                        vk::BufferMemoryBarrier2KHR
+                        {
+                            .srcStageMask = barrier.source_stage_mask,
+                            .srcAccessMask = barrier.source_access_mask,
+                            .dstStageMask = barrier.destination_stage_mask,
+                            .dstAccessMask = barrier.destination_access_mask,
+                            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                            .buffer = buffer_memory_view.buffer,
+                            .offset = buffer_memory_view.offset + frame_resource.offset,
+                            .size = frame_resource.size,
+                        }
+                    );
+                }
+                else
+                {
+                    assert(type == Buffer_memory_barrier::Type::Pipeline_resource);
+
+                    Buffer_memory_barrier::Pipeline_resource const pipeline_resource = read<Buffer_memory_barrier::Pipeline_resource>(bytes.data() + commands_data_offset);
+                    commands_data_offset += sizeof(Buffer_memory_barrier::Pipeline_resource);
+
+                    barriers.push_back(
+                        vk::BufferMemoryBarrier2KHR
+                        {
+                            .srcStageMask = barrier.source_stage_mask,
+                            .srcAccessMask = barrier.source_access_mask,
+                            .dstStageMask = barrier.destination_stage_mask,
+                            .dstAccessMask = barrier.destination_access_mask,
+                            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                            .buffer = pipeline_resource.buffer,
+                            .offset = pipeline_resource.offset,
+                            .size = pipeline_resource.size,
+                        }
+                    );
+                }
+            }
+
+            return { commands_data_offset, std::move(barriers) };
+        }
+
+        std::pair<Commands_data_offset, std::pmr::vector<vk::ImageMemoryBarrier2KHR>> create_image_memory_barriers(
+            std::span<std::byte const> const bytes,
+            std::uint8_t const barrier_count,
+            std::span<vk::Image const> const frame_images,
+            std::span<vk::ImageSubresourceRange const> const frame_image_subresource_ranges,
+            std::pmr::polymorphic_allocator<> const& output_allocator
+        )
+        {
+            Commands_data_offset commands_data_offset = 0;
+
+            std::pmr::vector<vk::ImageMemoryBarrier2KHR> barriers{ output_allocator };
+            barriers.reserve(barrier_count);
+
+            for (std::uint8_t barrier_index = 0; barrier_index < barrier_count; ++barrier_index)
+            {
+                Image_memory_barrier const barrier = read<Image_memory_barrier>(bytes.data() + commands_data_offset);
+                commands_data_offset += sizeof(Image_memory_barrier);
+
                 Image_memory_barrier::Type const type = read<Image_memory_barrier::Type>(bytes.data() + commands_data_offset);
                 commands_data_offset += sizeof(Image_memory_barrier::Type);
 
-                assert(type == Image_memory_barrier::Type::Dependent);
+                if (type == Image_memory_barrier::Type::Frame_resource)
+                {
+                    Image_memory_barrier::Frame_resource const frame_resource = read<Image_memory_barrier::Frame_resource>(bytes.data() + commands_data_offset);
+                    commands_data_offset += sizeof(Image_memory_barrier::Frame_resource);
 
-                Image_memory_barrier::Dependent const command = read<Image_memory_barrier::Dependent>(bytes.data() + commands_data_offset);
-                commands_data_offset += sizeof(Image_memory_barrier::Dependent);
+                    vk::Image const image = frame_images[frame_resource.image_index];
+                    vk::ImageSubresourceRange const& subresource_range = frame_image_subresource_ranges[frame_resource.image_index];
 
-                barriers.push_back({
-                    .srcAccessMask = command.source_access_mask,
-                    .dstAccessMask = command.destination_access_mask,
-                    .oldLayout = command.old_layout,
-                    .newLayout = command.new_layout,
-                    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                    .image = image,
-                    .subresourceRange = image_subresource_range,
-                    });
+                    barriers.push_back(
+                        vk::ImageMemoryBarrier2KHR
+                        {
+                            .srcStageMask = barrier.source_stage_mask,
+                            .srcAccessMask = barrier.source_access_mask,
+                            .dstStageMask = barrier.destination_stage_mask,
+                            .dstAccessMask = barrier.destination_access_mask,
+                            .oldLayout = barrier.old_layout,
+                            .newLayout = barrier.new_layout,
+                            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                            .image = image,
+                            .subresourceRange = subresource_range,
+                        }
+                    );
+                }
+                else
+                {
+                    assert(type == Image_memory_barrier::Type::Pipeline_resource);
+
+                    Image_memory_barrier::Pipeline_resource const pipeline_resource = read<Image_memory_barrier::Pipeline_resource>(bytes.data() + commands_data_offset);
+                    commands_data_offset += sizeof(Image_memory_barrier::Pipeline_resource);
+
+                    barriers.push_back(
+                        vk::ImageMemoryBarrier2KHR
+                        {
+                            .srcStageMask = barrier.source_stage_mask,
+                            .srcAccessMask = barrier.source_access_mask,
+                            .dstStageMask = barrier.destination_stage_mask,
+                            .dstAccessMask = barrier.destination_access_mask,
+                            .oldLayout = barrier.old_layout,
+                            .newLayout = barrier.new_layout,
+                            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                            .image = pipeline_resource.image,
+                            .subresourceRange = pipeline_resource.subresource_range,
+                        }
+                    );
+                }
             }
 
-            return { commands_data_offset, barriers };
+            return { commands_data_offset, std::move(barriers) };
         }
 
         Commands_data_offset add_pipeline_barrier_command(
             vk::CommandBuffer const command_buffer,
-            std::span<vk::Image const> const images,
-            std::span<vk::ImageSubresourceRange const> const image_subresource_ranges,
+            std::span<Maia::Renderer::Vulkan::Buffer_view const> const frame_buffer_memory_views,
+            std::span<vk::Image const> const frame_images,
+            std::span<vk::ImageSubresourceRange const> const frame_image_subresource_ranges,
             std::span<std::byte const> const bytes,
             std::pmr::polymorphic_allocator<> const& temporaries_allocator
         ) noexcept
         {
             Commands_data_offset commands_data_offset = 0;
 
-            vk::Image const image = images[0]; // TODO
-            vk::ImageSubresourceRange const& image_subresource_range = image_subresource_ranges[0]; // TODO
-
             Pipeline_barrier const command = read<Pipeline_barrier>(bytes.data() + commands_data_offset);
             commands_data_offset += sizeof(Pipeline_barrier);
 
-            assert(command.memory_barrier_count == 0);
-            assert(command.buffer_barrier_count == 0);
-
-            std::pair<Commands_data_offset, std::pmr::vector<vk::ImageMemoryBarrier>> const image_barriers =
-                create_image_memory_barriers(
+            std::pair<Commands_data_offset, std::pmr::vector<vk::MemoryBarrier2KHR>> const memory_barriers =
+                create_memory_barriers(
                     { bytes.data() + commands_data_offset, bytes.size() - commands_data_offset },
-                    command.image_barrier_count,
-                    images,
-                    image_subresource_ranges,
+                    command.buffer_memory_barrier_count,
                     temporaries_allocator
                 );
-            commands_data_offset += image_barriers.first;
+            commands_data_offset += memory_barriers.first;
 
-            command_buffer.pipelineBarrier(
-                command.source_stage_mask,
-                command.destination_stage_mask,
-                command.dependency_flags,
-                0,
-                nullptr,
-                0,
-                nullptr,
-                static_cast<std::uint32_t>(image_barriers.second.size()),
-                image_barriers.second.data()
+            std::pair<Commands_data_offset, std::pmr::vector<vk::BufferMemoryBarrier2KHR>> const buffer_memory_barriers =
+                create_buffer_memory_barriers(
+                    { bytes.data() + commands_data_offset, bytes.size() - commands_data_offset },
+                    command.buffer_memory_barrier_count,
+                    frame_buffer_memory_views,
+                    temporaries_allocator
+                );
+            commands_data_offset += buffer_memory_barriers.first;
+
+            std::pair<Commands_data_offset, std::pmr::vector<vk::ImageMemoryBarrier2KHR>> const image_memory_barriers =
+                create_image_memory_barriers(
+                    { bytes.data() + commands_data_offset, bytes.size() - commands_data_offset },
+                    command.image_memory_barrier_count,
+                    frame_images,
+                    frame_image_subresource_ranges,
+                    temporaries_allocator
+                );
+            commands_data_offset += image_memory_barriers.first;
+
+            vk::DependencyInfoKHR const dependency_info
+            {
+                .dependencyFlags = command.dependency_flags,
+                .memoryBarrierCount = command.memory_barrier_count,
+                .pMemoryBarriers = memory_barriers.second.data(),
+                .bufferMemoryBarrierCount = command.buffer_memory_barrier_count,
+                .pBufferMemoryBarriers = buffer_memory_barriers.second.data(),
+                .imageMemoryBarrierCount = command.image_memory_barrier_count,
+                .pImageMemoryBarriers = image_memory_barriers.second.data(),
+            };
+
+            command_buffer.pipelineBarrier2KHR(
+                dependency_info
             );
-            // TODO use synchronization_2
 
             return commands_data_offset;
         }
@@ -4016,7 +4356,7 @@ namespace Maia::Renderer::Vulkan
 
     void draw(
         vk::CommandBuffer const command_buffer,
-        std::span<vk::Buffer const> const output_buffers,
+        std::span<Maia::Renderer::Vulkan::Buffer_view const> const output_buffer_memory_views,
         std::span<vk::Image const> const output_images,
         std::span<vk::ImageView const> const output_image_views,
         std::span<vk::ImageSubresourceRange const> const output_image_subresource_ranges,
@@ -4065,7 +4405,7 @@ namespace Maia::Renderer::Vulkan
                 break;
 
             case Command_type::Pipeline_barrier:
-                offset_in_bytes += add_pipeline_barrier_command(command_buffer, output_images, output_image_subresource_ranges, next_command_bytes, temporaries_allocator);
+                offset_in_bytes += add_pipeline_barrier_command(command_buffer, output_buffer_memory_views, output_images, output_image_subresource_ranges, next_command_bytes, temporaries_allocator);
                 break;
 
             case Command_type::Trace_rays:
