@@ -628,6 +628,8 @@ namespace Mythology::SDL
                 render_pipeline_resources.pipeline_states,
                 render_pipeline_resources.pipeline_layouts,
                 render_pipeline_resources.render_passes,
+                render_pipeline_resources.buffer_memory_views,
+                Maia::Renderer::Vulkan::get_images(render_pipeline_resources.image_memory_views, {}),
                 render_pipeline_resources.shader_binding_tables,
                 {},
                 {}
@@ -716,7 +718,7 @@ namespace Mythology::SDL
                         }
 
                         {
-                            std::span<vk::Buffer const> const output_buffers; // TODO
+                            std::span<Maia::Renderer::Vulkan::Buffer_view const> const output_buffer_memory_views; // TODO
 
                             std::array<std::uint32_t, 1> const swapchain_image_indices = { swapchain_image_index };
                             std::pmr::vector<vk::Image> const output_images =
@@ -767,7 +769,7 @@ namespace Mythology::SDL
 
                             Maia::Renderer::Vulkan::draw(
                                 command_buffer,
-                                output_buffers,
+                                output_buffer_memory_views,
                                 output_images,
                                 output_image_views,
                                 output_image_subresource_ranges,
