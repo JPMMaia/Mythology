@@ -1391,7 +1391,7 @@ namespace Maia::Renderer::Vulkan
                         .binding = binding_json.at("binding").get<std::uint32_t>(),
                         .descriptorType = binding_json.at("descriptor_type").get<vk::DescriptorType>(),
                         .descriptorCount = binding_json.at("descriptor_count").get<std::uint32_t>(),
-                        .stageFlags = binding_json.at("stage_flags_property").get<vk::ShaderStageFlags>(),
+                        .stageFlags = binding_json.at("stage_flags").get<vk::ShaderStageFlags>(),
                         .pImmutableSamplers =
                             !immutable_samplers_json.empty() ?
                             immutable_samplers_per_descriptor_set_binding.data() + start_sampler_index :
@@ -2560,11 +2560,23 @@ namespace Maia::Renderer::Vulkan
                         temporaries_allocator
                     );
 
-                vk::PipelineLibraryCreateInfoKHR const library_info
+                std::optional<vk::PipelineLibraryCreateInfoKHR> const library_info = [&]() -> std::optional<vk::PipelineLibraryCreateInfoKHR>
                 {
-                    .libraryCount = static_cast<std::uint32_t>(pipeline_libraries.size()),
-                    .pLibraries = !pipeline_libraries.empty() ? pipeline_libraries.data() : nullptr
-                };
+                    if (!pipeline_libraries.empty())
+                    {
+                        vk::PipelineLibraryCreateInfoKHR const library_info
+                        {
+                            .libraryCount = static_cast<std::uint32_t>(pipeline_libraries.size()),
+                            .pLibraries = pipeline_libraries.data(),
+                        };
+
+                        return library_info;
+                    }
+                    else
+                    {
+                        return {};
+                    }
+                }();
 
                 std::array<vk::RayTracingPipelineCreateInfoKHR, 1> const create_info
                 {
@@ -2576,7 +2588,7 @@ namespace Maia::Renderer::Vulkan
                         .groupCount = group_count,
                         .pGroups = groups.data() + start_group_index,
                         .maxPipelineRayRecursionDepth = pipeline_state_json.at("max_pipeline_ray_recursion_depth").get<std::uint32_t>(),
-                        .pLibraryInfo = &library_info,
+                        .pLibraryInfo = library_info.has_value() ? &library_info.value() : nullptr,
                         .pLibraryInterface = library_interfaces[index].has_value() ? &library_interfaces[index].value() : nullptr,
                         .pDynamicState = &pipeline_dynamic_states[index],
                         .layout = pipeline_layouts[pipeline_state_json.at("layout").get<std::size_t>()],
@@ -2992,7 +3004,7 @@ namespace Maia::Renderer::Vulkan
             }
         }
 
-        if (pipeline_json.contains("descriptor_sets"))
+        if (pipeline_json.contains("descriptor_sets") && !pipeline_json.at("descriptor_sets").empty())
         {
             nlohmann::json const& descriptor_sets_json = pipeline_json.at("descriptor_sets");
 
@@ -3082,6 +3094,7 @@ namespace Maia::Renderer::Vulkan
             Begin_render_pass,
             Bind_descriptor_sets,
             Bind_pipeline,
+            Blit_image,
             Clear_color_image,
             Draw,
             End_render_pass,
@@ -3615,12 +3628,14 @@ namespace Maia::Renderer::Vulkan
             std::pmr::polymorphic_allocator<std::byte> const& temporaries_allocator
         ) noexcept
         {
+            nlohmann::json const& dependency_info_json = command_json.at("dependency_info");
+
             Pipeline_barrier const pipeline_barrier
             {
-                .dependency_flags = command_json.at("dependency_flags").get<vk::DependencyFlagBits>(),
-                .memory_barrier_count = static_cast<std::uint8_t>(command_json.at("memory_barriers").size()),
-                .buffer_memory_barrier_count = static_cast<std::uint8_t>(command_json.at("buffer_memory_barriers").size()),
-                .image_memory_barrier_count = static_cast<std::uint8_t>(command_json.at("image_memory_barriers").size())
+                .dependency_flags = dependency_info_json.at("dependency_flags").get<vk::DependencyFlagBits>(),
+                .memory_barrier_count = static_cast<std::uint8_t>(dependency_info_json.at("memory_barriers").size()),
+                .buffer_memory_barrier_count = static_cast<std::uint8_t>(dependency_info_json.at("buffer_memory_barriers").size()),
+                .image_memory_barrier_count = static_cast<std::uint8_t>(dependency_info_json.at("image_memory_barriers").size())
             };
 
             Command_type constexpr command_type = Command_type::Pipeline_barrier;
@@ -3631,7 +3646,7 @@ namespace Maia::Renderer::Vulkan
                 pipeline_barrier
             );
 
-            for (nlohmann::json const& barrier_json : command_json.at("memory_barriers"))
+            for (nlohmann::json const& barrier_json : dependency_info_json.at("memory_barriers"))
             {
                 std::pmr::vector<std::byte> const barrier_data =
                     create_memory_barrier(barrier_json, temporaries_allocator);
@@ -3639,7 +3654,7 @@ namespace Maia::Renderer::Vulkan
                 data.insert(data.end(), barrier_data.begin(), barrier_data.end());
             }
 
-            for (nlohmann::json const& barrier_json : command_json.at("buffer_memory_barriers"))
+            for (nlohmann::json const& barrier_json : dependency_info_json.at("buffer_memory_barriers"))
             {
                 std::pmr::vector<std::byte> const barrier_data =
                     create_buffer_memory_barrier(barrier_json, pipeline_buffer_memory_views, temporaries_allocator);
@@ -3647,7 +3662,7 @@ namespace Maia::Renderer::Vulkan
                 data.insert(data.end(), barrier_data.begin(), barrier_data.end());
             }
 
-            for (nlohmann::json const& barrier_json : command_json.at("image_memory_barriers"))
+            for (nlohmann::json const& barrier_json : dependency_info_json.at("image_memory_barriers"))
             {
                 std::pmr::vector<std::byte> const barrier_data =
                     create_image_memory_barrier(barrier_json, pipeline_images, temporaries_allocator);
@@ -3994,6 +4009,35 @@ namespace Maia::Renderer::Vulkan
                 command.bind_point,
                 command.pipeline
             );
+
+            return commands_data_offset;
+        }
+
+        Commands_data_offset add_blit_image_command(
+            vk::CommandBuffer const command_buffer,
+            std::span<vk::Image const> const frame_images,
+            std::span<std::byte const> const bytes
+        ) noexcept
+        {
+            Commands_data_offset commands_data_offset = 0;
+
+            Blit_image const command = read<Blit_image>(bytes.data() + commands_data_offset);
+            commands_data_offset += sizeof(command);
+
+            std::pmr::vector<vk::ImageBlit> const regions{}; // TODO
+
+            vk::BlitImageInfo2 const blit_image_info // TODO
+            {
+                .srcImage = {},
+                .srcImageLayout = {},
+                .dstImage = {},
+                .dstImageLayout = {},
+                .regionCount = {},
+                .pRegions = {},
+                .filte = {},
+            };
+
+            command_buffer.blitImage2(blit_image_info);
 
             return commands_data_offset;
         }
@@ -4390,6 +4434,10 @@ namespace Maia::Renderer::Vulkan
 
             case Command_type::Bind_pipeline:
                 offset_in_bytes += add_bind_pipeline_command(command_buffer, next_command_bytes);
+                break;
+
+            case Command_type::Blit_image:
+                offset_in_bytes += add_blit_image_command(command_buffer, output_images, next_command_bytes);
                 break;
 
             case Command_type::Draw:
