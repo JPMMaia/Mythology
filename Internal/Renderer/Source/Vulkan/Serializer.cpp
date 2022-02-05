@@ -89,6 +89,26 @@ namespace nlohmann
     };
 
     template <>
+    struct adl_serializer<vk::ImageSubresourceLayers>
+    {
+        static void to_json(json& j, vk::ImageSubresourceLayers const& value)
+        {
+            assert(false);
+        }
+
+        static void from_json(const json& j, vk::ImageSubresourceLayers& value)
+        {
+            value = vk::ImageSubresourceLayers
+            {
+                .aspectMask = j.at("aspect_mask").get<vk::ImageAspectFlags>(),
+                .mipLevel = j.at("mip_level").get<std::uint32_t>(),
+                .baseArrayLayer = j.at("base_array_layer").get<std::uint32_t>(),
+                .layerCount = j.at("layer_count").get<std::uint32_t>(),
+            };
+        }
+    };
+
+    template <>
     struct adl_serializer<vk::ImageSubresourceRange>
     {
         static void to_json(json& j, vk::ImageSubresourceRange const& value)
@@ -105,6 +125,25 @@ namespace nlohmann
                 .levelCount = j.at("level_count").get<std::uint32_t>(),
                 .baseArrayLayer = j.at("base_array_layer").get<std::uint32_t>(),
                 .layerCount = j.at("layer_count").get<std::uint32_t>(),
+            };
+        }
+    };
+
+    template <>
+    struct adl_serializer<vk::Offset3D>
+    {
+        static void to_json(json& j, vk::Offset3D const& value)
+        {
+            assert(false);
+        }
+
+        static void from_json(const json& j, vk::Offset3D& value)
+        {
+            value = vk::Offset3D
+            {
+                .x = j.at("x").get<std::int32_t>(),
+                .y = j.at("y").get<std::int32_t>(),
+                .z = j.at("z").get<std::int32_t>(),
             };
         }
     };
@@ -3283,6 +3322,116 @@ namespace Maia::Renderer::Vulkan
             return data;
         }
 
+        struct Blit_image
+        {
+            struct Resource
+            {
+                enum class Type
+                {
+                    Frame_resource,
+                    Pipeline_resource,
+                };
+
+                Type type = {};
+                union
+                {
+                    std::uint32_t image_index = {};
+                    vk::Image image;
+                };
+            };
+
+            Resource source_image = {};
+            vk::ImageLayout source_image_layout = {};
+            Resource destination_image = {};
+            vk::ImageLayout destination_image_layout = {};
+            std::uint32_t region_count = {};
+            vk::Filter filter = {};
+        };
+
+        struct Image_blit
+        {
+            vk::ImageSubresourceLayers source_subresource = {};
+            std::array<vk::Offset3D, 2> source_offsets = {};
+            vk::ImageSubresourceLayers destination_subresource = {};
+            std::array<vk::Offset3D, 2> destination_offsets = {};
+        };
+
+        std::pmr::vector<std::byte> create_blit_image_data(
+            nlohmann::json const& blit_image_json,
+            std::span<vk::Image const> const pipeline_images,
+            std::pmr::polymorphic_allocator<std::byte> const& output_allocator,
+            std::pmr::polymorphic_allocator<std::byte> const& temporaries_allocator
+        )
+        {
+            auto const parse_resource = [&](nlohmann::json const& resource_json) -> Blit_image::Resource
+            {
+                std::string const& type = resource_json.at("type").get<std::string>();
+                if (type == "frame_resource")
+                {
+                    return Blit_image::Resource
+                    {
+                        .type = Blit_image::Resource::Type::Frame_resource,
+                        .image_index = resource_json.at("index").get<std::uint32_t>(),
+                    };
+                }
+                else
+                {
+                    return Blit_image::Resource
+                    {
+                        .type = Blit_image::Resource::Type::Pipeline_resource,
+                        .image = pipeline_images[resource_json.at("index").get<std::uint32_t>()],
+                    };
+                }
+            };
+
+            nlohmann::json const& regions_json = blit_image_json.at("regions");
+
+            Blit_image const blit_image
+            {
+                .source_image = parse_resource(blit_image_json.at("source_image")),
+                .source_image_layout = blit_image_json.at("source_image_layout").get<vk::ImageLayout>(),
+                .destination_image = parse_resource(blit_image_json.at("destination_image")),
+                .destination_image_layout = blit_image_json.at("destination_image_layout").get<vk::ImageLayout>(),
+                .region_count = static_cast<std::uint32_t>(regions_json.size()),
+                .filter = blit_image_json.at("filter").get<vk::Filter>(),
+            };
+
+            std::pmr::vector<std::byte> data = write_command_data(
+                temporaries_allocator,
+                Command_type::Blit_image,
+                blit_image
+            );
+
+            for (nlohmann::json const& region_json : regions_json)
+            {
+                Image_blit const region
+                {
+                    .source_subresource = region_json.at("source_subresource").get<vk::ImageSubresourceLayers>(),
+                    .source_offsets =
+                    {
+                        region_json.at("source_offsets")[0].get<vk::Offset3D>(),
+                        region_json.at("source_offsets")[1].get<vk::Offset3D>()
+                    },
+                    .destination_subresource = region_json.at("destination_subresource").get<vk::ImageSubresourceLayers>(),
+                    .destination_offsets =
+                    {
+                        region_json.at("destination_offsets")[0].get<vk::Offset3D>(),
+                        region_json.at("destination_offsets")[1].get<vk::Offset3D>()
+                    },
+                };
+
+                std::pmr::vector<std::byte> const region_data = write_command_data(
+                    temporaries_allocator,
+                    region
+                );
+                data.insert(data.end(), region_data.begin(), region_data.end());
+            }
+
+            std::pmr::vector<std::byte> output{ output_allocator };
+            output.assign(data.begin(), data.end());
+            return data;
+        }
+
         namespace Clear_color_image
         {
             enum class Type : std::uint8_t
@@ -3762,6 +3911,10 @@ namespace Maia::Renderer::Vulkan
             {
                 return create_bind_pipeline_data(command_json, pipelines, output_allocator);
             }
+            else if (type == "Blit_image")
+            {
+                return create_blit_image_data(command_json, pipeline_images, output_allocator, temporaries_allocator);
+            }
             else if (type == "Clear_color_image")
             {
                 return create_color_image_data(command_json, output_allocator);
@@ -4013,31 +4166,92 @@ namespace Maia::Renderer::Vulkan
             return commands_data_offset;
         }
 
-        Commands_data_offset add_blit_image_command(
-            vk::CommandBuffer const command_buffer,
-            std::span<vk::Image const> const frame_images,
-            std::span<std::byte const> const bytes
-        ) noexcept
+        std::pair<std::pmr::vector<vk::ImageBlit2KHR>, Commands_data_offset> create_image_blit_regions(
+            std::span<std::byte const> const bytes,
+            std::uint32_t const region_count,
+            std::pmr::polymorphic_allocator<> const& output_allocator
+        )
         {
             Commands_data_offset commands_data_offset = 0;
 
-            Blit_image const command = read<Blit_image>(bytes.data() + commands_data_offset);
-            commands_data_offset += sizeof(command);
+            std::pmr::vector<vk::ImageBlit2KHR> output{ output_allocator };
+            output.reserve(region_count);
 
-            std::pmr::vector<vk::ImageBlit> const regions{}; // TODO
-
-            vk::BlitImageInfo2 const blit_image_info // TODO
+            for (std::uint32_t region_index = 0; region_index < region_count; ++region_index)
             {
-                .srcImage = {},
-                .srcImageLayout = {},
-                .dstImage = {},
-                .dstImageLayout = {},
-                .regionCount = {},
-                .pRegions = {},
-                .filte = {},
+                Image_blit const image_blit = read<Image_blit>(bytes.data() + commands_data_offset);
+                commands_data_offset += sizeof(image_blit);
+
+                vk::ImageBlit2KHR const value
+                {
+                    .srcSubresource = image_blit.source_subresource,
+                    .srcOffsets = {
+                        {
+                            image_blit.source_offsets[0],
+                            image_blit.source_offsets[1]
+                        }
+                    },
+                    .dstSubresource = image_blit.destination_subresource,
+                    .dstOffsets = {
+                        {
+                            image_blit.destination_offsets[0],
+                            image_blit.destination_offsets[1]
+                        }
+                    },
+                };
+
+                output.push_back(
+                    value
+                );
+            }
+
+            assert(output.size() == region_count);
+            return std::make_pair(std::move(output), commands_data_offset);
+        }
+
+        Commands_data_offset add_blit_image_command(
+            vk::CommandBuffer const command_buffer,
+            std::span<vk::Image const> const frame_images,
+            std::span<std::byte const> const bytes,
+            std::pmr::polymorphic_allocator<> const& temporaries_allocator
+        )
+        {
+            Commands_data_offset commands_data_offset = 0;
+
+            Blit_image const blit_image = read<Blit_image>(bytes.data() + commands_data_offset);
+            commands_data_offset += sizeof(blit_image);
+
+            std::pair<std::pmr::vector<vk::ImageBlit2KHR>, Commands_data_offset> const regions = create_image_blit_regions(
+                std::span<std::byte const>{bytes.data() + commands_data_offset, bytes.size() - commands_data_offset},
+                blit_image.region_count,
+                temporaries_allocator
+            );
+            commands_data_offset += regions.second;
+
+            auto const find_image = [&](Blit_image::Resource const& resource) -> vk::Image
+            {
+                if (resource.type == Blit_image::Resource::Type::Frame_resource)
+                {
+                    return frame_images[resource.image_index];
+                }
+                else
+                {
+                    return resource.image;
+                }
             };
 
-            command_buffer.blitImage2(blit_image_info);
+            vk::BlitImageInfo2KHR const blit_image_info
+            {
+                .srcImage = find_image(blit_image.source_image),
+                .srcImageLayout = blit_image.source_image_layout,
+                .dstImage = find_image(blit_image.destination_image),
+                .dstImageLayout = blit_image.destination_image_layout,
+                .regionCount = blit_image.region_count,
+                .pRegions = regions.first.data(),
+                .filter = blit_image.filter,
+            };
+
+            command_buffer.blitImage2KHR(blit_image_info);
 
             return commands_data_offset;
         }
@@ -4437,7 +4651,7 @@ namespace Maia::Renderer::Vulkan
                 break;
 
             case Command_type::Blit_image:
-                offset_in_bytes += add_blit_image_command(command_buffer, output_images, next_command_bytes);
+                offset_in_bytes += add_blit_image_command(command_buffer, output_images, next_command_bytes, temporaries_allocator);
                 break;
 
             case Command_type::Draw:
