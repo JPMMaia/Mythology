@@ -498,29 +498,80 @@ def get_pipeline_bind_point_value(value):
 
 
 pipeline_stage_flag_values = (
-    ("TOP_OF_PIPE", "Top_of_pipe", "", 0x00000001),
-    ("DRAW_INDIRECT", "Draw_indirect", "", 0x00000002),
-    ("VERTEX_INPUT", "Vertex_input", "", 0x00000004),
-    ("VERTEX_SHADER", "Vertex_shader", "", 0x00000008),
-    ("TESSELLATION_CONTROL_SHADER", "Tessellation_control_shader", "", 0x00000010),
+    ("TOP_OF_PIPE", "top_of_pipe", "", 0x00000001),
+    ("DRAW_INDIRECT", "draw_indirect", "", 0x00000002),
+    ("VERTEX_INPUT", "vertex_input", "", 0x00000004),
+    ("VERTEX_SHADER", "vertex_shader", "", 0x00000008),
+    (
+        "TESSELLATION_CONTROL_SHADER",
+        "tessellation_control_shader",
+        "",
+        0x00000010,
+    ),
     (
         "TESSELLATION_EVALUATION_SHADER",
-        "Tessellation_evaluation_shader",
+        "tessellation_evaluation_shader",
         "",
         0x00000020,
     ),
-    ("GEOMETRY_SHADER", "Geometry_shader", "", 0x00000040),
-    ("FRAGMENT_SHADER", "Fragment_shader", "", 0x00000080),
-    ("EARLY_FRAGMENT_TESTS", "Early_fragment_tests", "", 0x00000100),
-    ("LATE_FRAGMENT_TESTS", "Late_fragment_tests", "", 0x00000200),
-    ("COLOR_ATTACHMENT_OUTPUT", "Color_attachment_output", "", 0x00000400),
-    ("COMPUTE_SHADER", "Compute_shader", "", 0x00000800),
-    ("TRANSFER", "Transfer", "", 0x00001000),
-    ("BOTTOM_OF_PIPE", "Bottom_of_pipe", "", 0x00002000),
-    ("HOST", "Host", "", 0x00004000),
-    ("ALL_GRAPHICS", "All_graphics", "", 0x00008000),
-    ("ALL_COMMANDS", "All_commands", "", 0x00010000),
+    ("GEOMETRY_SHADER", "geometry_shader", "", 0x00000040),
+    ("FRAGMENT_SHADER", "fragment_shader", "", 0x00000080),
+    ("EARLY_FRAGMENT_TESTS", "early_fragment_tests", "", 0x00000100),
+    ("LATE_FRAGMENT_TESTS", "late_fragment_tests", "", 0x00000200),
+    ("COLOR_ATTACHMENT_OUTPUT", "color_attachment_output", "", 0x00000400),
+    ("COMPUTE_SHADER", "compute_shader", "", 0x00000800),
+    ("TRANSFER", "transfer", "", 0x00001000),
+    ("BOTTOM_OF_PIPE", "bottom_of_pipe", "", 0x00002000),
+    ("HOST", "host", "", 0x00004000),
+    ("ALL_GRAPHICS", "all_graphics", "", 0x00008000),
+    ("ALL_COMMANDS", "all_commands", "", 0x00010000),
+    ("VIDEO_DECODE_KHR", "video_decode_khr", "", 0x04000000),
+    ("VIDEO_ENCODE_KHR", "video_encode_khr", "", 0x08000000),
+    ("TRANSFORM_FEEDBACK_EXT", "transform_feedback_ext", "", 0x01000000),
+    ("CONDITIONAL_RENDERING_EXT", "conditional_rendering_ext", "", 0x00040000),
+    ("COMMAND_PREPROCESS_NV", "command_preprocess_nv", "", 0x00020000),
+    (
+        "FRAGMENT_SHADING_RATE_ATTACHMENT_KHR",
+        "fragment_shading_rate_attachment_khr",
+        "",
+        0x00400000,
+    ),
+    (
+        "ACCELERATION_STRUCTURE_BUILD_KHR",
+        "acceleration_structure_build_khr",
+        "",
+        0x02000000,
+    ),
+    ("RAY_TRACING_SHADER_KHR", "ray_tracing_shader_khr", "", 0x00200000),
+    (
+        "FRAGMENT_DENSITY_PROCESS_EXT",
+        "fragment_density_process_ext",
+        "",
+        0x00800000,
+    ),
+    ("TASK_SHADER_NV", "task_shader_nv", "", 0x00080000),
+    ("MESH_SHADER_NV", "mesh_shader_nv", "", 0x00100000),
 )
+
+pipeline_stage_flag_values_2 = (
+    ("COPY", "copy", "", 0x1),
+    ("RESOLVE", "resolve", "", 0x2),
+    ("BLIT", "blit", "", 0x4),
+    ("CLEAR", "clear", "", 0x8),
+    ("INDEX_INPUT", "index_input", "", 0x10),
+    ("VERTEX_ATTRIBUTE_INPUT", "vertex_attribute_input", "", 0x20),
+    (
+        "PRE_RASTERIZATION_SHADERS",
+        "pre_rasterization_shaders",
+        "",
+        0x40,
+    ),
+)
+
+
+def get_pipeline_stage_flags_value(stages_1, stages_2) -> int:
+    return stages_1 + (stages_2 << 32)
+
 
 polygon_modes = (
     ("FILL", "Fill", "", 0),

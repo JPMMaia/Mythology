@@ -71,6 +71,17 @@ class Offset2DNodeSocket(bpy.types.NodeSocket):
         return (0.25, 0.25, 0.25, 1.0)
 
 
+class Offset3DNodeSocket(bpy.types.NodeSocket):
+
+    bl_label = "Offset 3D node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.75, 0.75, 0.75, 1.0)
+
+
 class Rect2DNodeSocket(bpy.types.NodeSocket):
 
     bl_label = "Rect 2D node socket"
@@ -116,6 +127,25 @@ class Offset2DNode(bpy.types.Node, RenderTreeNode):
         layout.prop(self, "y_property")
 
 
+class Offset3DNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Offset 3D node"
+
+    x_property: bpy.props.IntProperty(name="X", default=0)
+    y_property: bpy.props.IntProperty(name="Y", default=0)
+    z_property: bpy.props.IntProperty(name="Z", default=0)
+
+    def init(self, context):
+
+        self.outputs.new("Offset3DNodeSocket", "Offset 3D")
+
+    def draw_buttons(self, context, layout):
+
+        layout.prop(self, "x_property")
+        layout.prop(self, "y_property")
+        layout.prop(self, "z_property")
+
+
 class Rect2DNode(bpy.types.Node, RenderTreeNode):
 
     bl_label = "Rect 2D node"
@@ -143,6 +173,7 @@ common_node_categories = [
         items=[
             nodeitems_utils.NodeItem("Extent2DNode"),
             nodeitems_utils.NodeItem("Offset2DNode"),
+            nodeitems_utils.NodeItem("Offset3DNode"),
             nodeitems_utils.NodeItem("Rect2DNode"),
         ],
     ),
@@ -160,6 +191,15 @@ def create_offset_2d_json(node: Offset2DNode) -> JSONType:
     return {
         "x": node.get("x_property", 0),
         "y": node.get("y_property", 0),
+    }
+
+
+def create_offset_3d_json(node: Offset3DNode) -> JSONType:
+
+    return {
+        "x": node.get("x_property", 0),
+        "y": node.get("y_property", 0),
+        "z": node.get("z_property", 0),
     }
 
 

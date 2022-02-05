@@ -1,7 +1,12 @@
 import bpy
 
 from .array_inputs import recreate_dynamic_inputs, update_dynamic_inputs
-from .common import create_index_json, find_index, Rect2DNodeSocket
+from .common import (
+    create_index_json,
+    find_index,
+    Rect2DNodeSocket,
+    create_offset_3d_json,
+)
 from .descriptors import DescriptorSetNode
 from .pipeline_state import (
     GraphicsPipelineStateNode,
@@ -16,16 +21,37 @@ from .render_pass import (
     SubpassNodeSocket,
 )
 from .ray_tracing import ShaderBindingTableNode
-from .resources import ImageNodeSocket, ImageSubresourceRangeNodeSocket
+from .resources import (
+    BufferNode,
+    ImageNode,
+    ImageNodeSocket,
+    ImageSubresourceRangeNodeSocket,
+    image_subresource_layers_to_json,
+    image_subresource_range_to_json,
+)
 from .vulkan_enums import (
     access_flag_values,
     dependency_flag_values,
+    filter_values,
     image_layout_values,
     image_layout_values_to_int,
     pipeline_bind_point_values,
     get_pipeline_bind_point_value,
     pipeline_stage_flag_values,
+    pipeline_stage_flag_values_2,
+    get_pipeline_stage_flags_value,
 )
+
+
+class BufferMemoryBarrierNodeSocket(bpy.types.NodeSocket):
+
+    bl_label = "Buffer Memory Barrier node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.0, 1.0, 0.0, 1.0)
 
 
 class ClearColorValueNodeSocket(bpy.types.NodeSocket):
@@ -64,6 +90,17 @@ class ClearSubpassNodeSocket(bpy.types.NodeSocket):
 class ClearValueNodeSocket(bpy.types.NodeSocket):
 
     bl_label = "Clear Value node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (1.0, 1.0, 1.0, 1.0)
+
+
+class DependencyInfoNodeSocket(bpy.types.NodeSocket):
+
+    bl_label = "Dependency Info node socket"
 
     def draw(self, context, layout, node, text):
         layout.label(text=text)
@@ -116,6 +153,17 @@ class FramebufferNodeSocket(bpy.types.NodeSocket):
         return (0.5, 0.5, 0.5, 1.0)
 
 
+class ImageBlitNodeSocket(bpy.types.NodeSocket):
+
+    bl_label = "Image Blit node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.1, 0.3, 0.6, 1.0)
+
+
 class ImageMemoryBarrierNodeSocket(bpy.types.NodeSocket):
 
     bl_label = "Image Memory Barrier node socket"
@@ -124,7 +172,18 @@ class ImageMemoryBarrierNodeSocket(bpy.types.NodeSocket):
         layout.label(text=text)
 
     def draw_color(self, context, node):
-        return (0.0, 1.0, 0.0, 1.0)
+        return (0.0, 0.0, 1.0, 1.0)
+
+
+class MemoryBarrierNodeSocket(bpy.types.NodeSocket):
+
+    bl_label = "Memory Barrier node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (1.0, 0.0, 0.0, 1.0)
 
 
 class BeginFrameNode(bpy.types.Node, RenderTreeNode):
@@ -196,6 +255,88 @@ class BindPipelineNode(bpy.types.Node, RenderTreeNode):
 
     def draw_buttons(self, context, layout):
         layout.prop(self, "pipeline_bind_point_property")
+
+
+class BlitImageNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Blit Image"
+
+    source_image_layout_property: bpy.props.EnumProperty(
+        name="Source image layout", items=image_layout_values
+    )
+    destination_image_layout_property: bpy.props.EnumProperty(
+        name="Destination image layout", items=image_layout_values
+    )
+    filter_property: bpy.props.EnumProperty(name="Filter", items=filter_values)
+
+    def init(self, context):
+        self.inputs.new("ExecutionNodeSocket", "Execution")
+        self.inputs.new("ImageNodeSocket", "Source Image")
+        self.inputs.new("ImageNodeSocket", "Destination Image")
+        self.inputs.new("ImageBlitNodeSocket", "Regions")
+        self.inputs["Regions"].link_limit = 0
+
+        self.outputs.new("ExecutionNodeSocket", "Execution")
+
+    def draw_buttons(self, context, layout):
+
+        layout.prop(self, "source_image_layout_property")
+        layout.prop(self, "destination_image_layout_property")
+        layout.prop(self, "filter_property")
+
+
+class BufferMemoryBarrierNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Buffer Memory Barrier"
+
+    source_stage_mask_property: bpy.props.EnumProperty(
+        name="Source stage mask",
+        items=pipeline_stage_flag_values,
+        options={"ENUM_FLAG"},
+    )
+    source_stage_mask_property_2: bpy.props.EnumProperty(
+        name="Source stage mask 2",
+        items=pipeline_stage_flag_values_2,
+        options={"ENUM_FLAG"},
+    )
+    source_access_mask_property: bpy.props.EnumProperty(
+        name="Source access mask", items=access_flag_values, options={"ENUM_FLAG"}
+    )
+    destination_stage_mask_property: bpy.props.EnumProperty(
+        name="Destination stage mask",
+        items=pipeline_stage_flag_values,
+        options={"ENUM_FLAG"},
+    )
+    destination_stage_mask_property_2: bpy.props.EnumProperty(
+        name="Destination stage mask 2",
+        items=pipeline_stage_flag_values_2,
+        options={"ENUM_FLAG"},
+    )
+    destination_access_mask_property: bpy.props.EnumProperty(
+        name="Destination access mask", items=access_flag_values, options={"ENUM_FLAG"}
+    )
+    offset_property: bpy.props.IntProperty(name="Offset", default=0, min=0)
+    size_property: bpy.props.IntProperty(name="Size", default=1, min=1)
+
+    def init(self, context):
+        self.inputs.new("BufferNodeSocket", "Buffer")
+
+        self.outputs.new("BufferMemoryBarrierNodeSocket", "Buffer Memory Barrier")
+
+    def draw_buttons(self, context, layout):
+
+        layout.label(text="Source Stage Mask")
+        layout.prop(self, "source_stage_mask_property")
+        layout.prop(self, "source_stage_mask_property_2")
+        layout.label(text="Source Access Mask")
+        layout.prop(self, "source_access_mask_property")
+        layout.label(text="Destination Stage Mask")
+        layout.prop(self, "destination_stage_mask_property")
+        layout.prop(self, "destination_stage_mask_property_2")
+        layout.label(text="Destination Access Mask")
+        layout.prop(self, "destination_access_mask_property")
+        layout.prop(self, "offset_property")
+        layout.prop(self, "size_property")
 
 
 class ClearColorValueNode(bpy.types.Node, RenderTreeNode):
@@ -285,6 +426,30 @@ class ClearValueNode(bpy.types.Node, RenderTreeNode):
         self.outputs.new("ClearValueNodeSocket", "Clear Value")
 
 
+class DependencyInfoNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Dependency Info"
+
+    dependency_flags_property: bpy.props.EnumProperty(
+        name="Dependency flags", items=dependency_flag_values, options={"ENUM_FLAG"}
+    )
+
+    def init(self, context):
+        self.inputs.new("MemoryBarrierNodeSocket", "Memory Barriers")
+        self.inputs["Memory Barriers"].link_limit = 0
+        self.inputs.new("BufferMemoryBarrierNodeSocket", "Buffer Memory Barriers")
+        self.inputs["Buffer Memory Barriers"].link_limit = 0
+        self.inputs.new("ImageMemoryBarrierNodeSocket", "Image Memory Barriers")
+        self.inputs["Image Memory Barriers"].link_limit = 0
+
+        self.outputs.new("DependencyInfoNodeSocket", "Dependency Info")
+
+    def draw_buttons(self, context, layout):
+
+        layout.label(text="Dependency Flags")
+        layout.prop(self, "dependency_flags_property")
+
+
 class DynamicOffsetNode(bpy.types.Node, RenderTreeNode):
 
     bl_label = "Dynamic Offset"
@@ -356,12 +521,47 @@ class EndRenderPassNode(bpy.types.Node, RenderTreeNode):
         self.outputs.new("ExecutionNodeSocket", "Execution")
 
 
+class ImageBlitNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Image Blit"
+
+    def init(self, context):
+        self.inputs.new("ImageSubresourceLayersNodeSocket", "Source subresource")
+        self.inputs.new("Offset3DNodeSocket", "Source offset 3D 0")
+        self.inputs.new("Offset3DNodeSocket", "Source offset 3D 1")
+        self.inputs.new("ImageSubresourceLayersNodeSocket", "Destination subresource")
+        self.inputs.new("Offset3DNodeSocket", "Destination offset 3D 0")
+        self.inputs.new("Offset3DNodeSocket", "Destination offset 3D 1")
+
+        self.outputs.new("ImageBlitNodeSocket", "Image Blit")
+
+
 class ImageMemoryBarrierNode(bpy.types.Node, RenderTreeNode):
 
-    bl_label = "Image Memory Barrier node"
+    bl_label = "Image Memory Barrier"
 
+    source_stage_mask_property: bpy.props.EnumProperty(
+        name="Source stage mask",
+        items=pipeline_stage_flag_values,
+        options={"ENUM_FLAG"},
+    )
+    source_stage_mask_property_2: bpy.props.EnumProperty(
+        name="Source stage mask 2",
+        items=pipeline_stage_flag_values_2,
+        options={"ENUM_FLAG"},
+    )
     source_access_mask_property: bpy.props.EnumProperty(
         name="Source access mask", items=access_flag_values, options={"ENUM_FLAG"}
+    )
+    destination_stage_mask_property: bpy.props.EnumProperty(
+        name="Destination stage mask",
+        items=pipeline_stage_flag_values,
+        options={"ENUM_FLAG"},
+    )
+    destination_stage_mask_property_2: bpy.props.EnumProperty(
+        name="Destination stage mask 2",
+        items=pipeline_stage_flag_values_2,
+        options={"ENUM_FLAG"},
     )
     destination_access_mask_property: bpy.props.EnumProperty(
         name="Destination access mask", items=access_flag_values, options={"ENUM_FLAG"}
@@ -381,49 +581,77 @@ class ImageMemoryBarrierNode(bpy.types.Node, RenderTreeNode):
 
     def draw_buttons(self, context, layout):
 
+        layout.label(text="Source Stage Mask")
+        layout.prop(self, "source_stage_mask_property")
+        layout.prop(self, "source_stage_mask_property_2")
         layout.label(text="Source Access Mask")
         layout.prop(self, "source_access_mask_property")
+        layout.label(text="Destination Stage Mask")
+        layout.prop(self, "destination_stage_mask_property")
+        layout.prop(self, "destination_stage_mask_property_2")
         layout.label(text="Destination Access Mask")
         layout.prop(self, "destination_access_mask_property")
         layout.prop(self, "old_layout_property")
         layout.prop(self, "new_layout_property")
 
 
-class PipelineBarrierNode(bpy.types.Node, RenderTreeNode):
+class MemoryBarrierNode(bpy.types.Node, RenderTreeNode):
 
-    bl_label = "Pipeline Barrier node"
+    bl_label = "Memory Barrier"
 
     source_stage_mask_property: bpy.props.EnumProperty(
         name="Source stage mask",
         items=pipeline_stage_flag_values,
         options={"ENUM_FLAG"},
     )
+    source_stage_mask_property_2: bpy.props.EnumProperty(
+        name="Source stage mask 2",
+        items=pipeline_stage_flag_values_2,
+        options={"ENUM_FLAG"},
+    )
+    source_access_mask_property: bpy.props.EnumProperty(
+        name="Source access mask", items=access_flag_values, options={"ENUM_FLAG"}
+    )
     destination_stage_mask_property: bpy.props.EnumProperty(
         name="Destination stage mask",
         items=pipeline_stage_flag_values,
         options={"ENUM_FLAG"},
     )
-    dependency_flags_property: bpy.props.EnumProperty(
-        name="Dependency flags", items=dependency_flag_values, options={"ENUM_FLAG"}
+    destination_stage_mask_property_2: bpy.props.EnumProperty(
+        name="Destination stage mask 2",
+        items=pipeline_stage_flag_values_2,
+        options={"ENUM_FLAG"},
+    )
+    destination_access_mask_property: bpy.props.EnumProperty(
+        name="Destination access mask", items=access_flag_values, options={"ENUM_FLAG"}
     )
 
     def init(self, context):
-        self.inputs.new("ExecutionNodeSocket", "Execution")
-        # TODO memory barriers
-        # TODO buffer barriers
-        self.inputs.new("ImageMemoryBarrierNodeSocket", "Image Barriers")
-        self.inputs["Image Barriers"].link_limit = 0
-
-        self.outputs.new("ExecutionNodeSocket", "Execution")
+        self.outputs.new("MemoryBarrierNodeSocket", "Memory Barrier")
 
     def draw_buttons(self, context, layout):
 
         layout.label(text="Source Stage Mask")
         layout.prop(self, "source_stage_mask_property")
+        layout.prop(self, "source_stage_mask_property_2")
+        layout.label(text="Source Access Mask")
+        layout.prop(self, "source_access_mask_property")
         layout.label(text="Destination Stage Mask")
         layout.prop(self, "destination_stage_mask_property")
-        layout.label(text="Dependency Flags")
-        layout.prop(self, "dependency_flags_property")
+        layout.prop(self, "destination_stage_mask_property_2")
+        layout.label(text="Destination Access Mask")
+        layout.prop(self, "destination_access_mask_property")
+
+
+class PipelineBarrierNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Pipeline Barrier"
+
+    def init(self, context):
+        self.inputs.new("ExecutionNodeSocket", "Execution")
+        self.inputs.new("DependencyInfoNodeSocket", "Dependency Info")
+
+        self.outputs.new("ExecutionNodeSocket", "Execution")
 
 
 class SetScreenViewportAndScissorsNode(bpy.types.Node, RenderTreeNode):
@@ -477,6 +705,9 @@ draw_node_categories = [
             nodeitems_utils.NodeItem("BeginRenderPassNode"),
             nodeitems_utils.NodeItem("BindDescriptorSetNode"),
             nodeitems_utils.NodeItem("BindPipelineNode"),
+            nodeitems_utils.NodeItem("BlitImageNode"),
+            nodeitems_utils.NodeItem("BufferMemoryBarrierNode"),
+            nodeitems_utils.NodeItem("DependencyInfoNode"),
             nodeitems_utils.NodeItem("DynamicOffsetNode"),
             nodeitems_utils.NodeItem("DynamicOffsetArrayNode"),
             nodeitems_utils.NodeItem("ClearColorValueNode"),
@@ -487,7 +718,9 @@ draw_node_categories = [
             nodeitems_utils.NodeItem("DrawNode"),
             nodeitems_utils.NodeItem("EndFrameNode"),
             nodeitems_utils.NodeItem("EndRenderPassNode"),
+            nodeitems_utils.NodeItem("ImageBlitNode"),
             nodeitems_utils.NodeItem("ImageMemoryBarrierNode"),
+            nodeitems_utils.NodeItem("MemoryBarrierNode"),
             nodeitems_utils.NodeItem("PipelineBarrierNode"),
             nodeitems_utils.NodeItem("SetScreenViewportAndScissorsNode"),
             nodeitems_utils.NodeItem("TraceRaysNode"),
@@ -536,7 +769,7 @@ def bind_descriptor_set_to_json(
 ) -> JSONType:
 
     json = {
-        "type": "Bind_descriptor_set",
+        "type": "Bind_descriptor_sets",
         "pipeline_bind_point": node.get("pipeline_bind_point_property", 0),
         "first_set": node.get("first_set_property", 0),
         "pipeline_layout": find_index(
@@ -637,41 +870,199 @@ def image_layout_to_int(value: str) -> int:
     return image_layout_values_to_int[value]
 
 
-def image_memory_barrier_node_to_json(node: ImageMemoryBarrierNode) -> JSONType:
+def get_input_image_json(link, pipeline_images: typing.List[ImageNode]) -> JSONType:
 
-    assert (
-        ignore_reroutes(node.inputs["Image"].links[0].from_node).bl_idname
-        == "BeginFrameNode"
-    )
-    assert (
-        ignore_reroutes(
-            node.inputs["Image Subresource Range"].links[0].from_node
-        ).bl_idname
-        == "BeginFrameNode"
-    )
+    if link.from_node.bl_idname == "BeginFrameNode":
+        return {"type": "frame_resource", "index": 0}
+    else:
+        return {
+            "type": "pipeline_resource",
+            "index": pipeline_images.index(link.from_node),
+        }
+
+
+def image_blit_node_to_json(node: ImageBlitNode) -> JSONType:
 
     return {
-        "type": "Dependent",
+        "source_subresource": image_subresource_layers_to_json(
+            node.inputs["Source subresource"].links[0].from_node
+        ),
+        "source_offsets": [
+            create_offset_3d_json(node.inputs["Source offset 3D 0"].links[0].from_node),
+            create_offset_3d_json(node.inputs["Source offset 3D 1"].links[0].from_node),
+        ],
+        "destination_subresource": image_subresource_layers_to_json(
+            node.inputs["Destination subresource"].links[0].from_node
+        ),
+        "destination_offsets": [
+            create_offset_3d_json(
+                node.inputs["Destination offset 3D 0"].links[0].from_node
+            ),
+            create_offset_3d_json(
+                node.inputs["Destination offset 3D 1"].links[0].from_node
+            ),
+        ],
+    }
+
+
+def blit_image_node_to_json(
+    node: BlitImageNode, pipeline_images: typing.List[ImageNode]
+) -> JSONType:
+
+    return {
+        "source_image": get_input_image_json(
+            node.inputs["Source Image"].links[0], pipeline_images
+        ),
+        "destination_image": get_input_image_json(
+            node.inputs["Destination Image"].links[0], pipeline_images
+        ),
+        "filter": node.get("filter_property", 0),
+        "regions": [
+            image_blit_node_to_json(link.from_node)
+            for link in node.inputs["Regions"].links
+        ],
+    }
+
+
+def buffer_memory_barrier_node_to_json(
+    node: BufferMemoryBarrierNode, pipeline_buffers: typing.List[BufferNode]
+) -> JSONType:
+
+    json = {
+        "source_stage_mask": get_pipeline_stage_flags_value(
+            node.get("source_stage_mask_property", 0),
+            node.get("source_stage_mask_property_2", 0),
+        ),
         "source_access_mask": node.get("source_access_mask_property", 0),
+        "destination_stage_mask": get_pipeline_stage_flags_value(
+            node.get("destination_stage_mask_property", 0),
+            node.get("destination_stage_mask_property_2", 0),
+        ),
+        "destination_access_mask": node.get("destination_access_mask_property", 0),
+    }
+
+    if (
+        ignore_reroutes(node.inputs["Buffer"].links[0].from_node).bl_idname
+        == "BeginFrameNode"
+    ):
+
+        json["resource"] = {
+            "type": "frame_resource",
+            "index": 0,  # TODO
+            "offset": 0,  # TODO
+            "size": 0,  # TODO
+        }
+
+    else:
+        json["resource"] = {
+            "type": "pipeline_resource",
+            "index": pipeline_buffers.index(node.inputs["Buffer"].links[0].from_node),
+            "offset": node.get("offset_property", 0),
+            "size": node.get("size_property", 1),
+        }
+
+    return json
+
+
+def image_memory_barrier_node_to_json(
+    node: ImageMemoryBarrierNode, pipeline_images: typing.List[ImageNode]
+) -> JSONType:
+
+    json = {
+        "source_stage_mask": get_pipeline_stage_flags_value(
+            node.get("source_stage_mask_property", 0),
+            node.get("source_stage_mask_property_2", 0),
+        ),
+        "source_access_mask": node.get("source_access_mask_property", 0),
+        "destination_stage_mask": get_pipeline_stage_flags_value(
+            node.get("destination_stage_mask_property", 0),
+            node.get("destination_stage_mask_property_2", 0),
+        ),
         "destination_access_mask": node.get("destination_access_mask_property", 0),
         "old_layout": image_layout_to_int(node.old_layout_property),
         "new_layout": image_layout_to_int(node.new_layout_property),
     }
 
+    if (
+        ignore_reroutes(node.inputs["Image"].links[0].from_node).bl_idname
+        == "BeginFrameNode"
+    ):
+        assert (
+            ignore_reroutes(
+                node.inputs["Image Subresource Range"].links[0].from_node
+            ).bl_idname
+            == "BeginFrameNode"
+        )
 
-def pipeline_barrier_node_to_json(node: PipelineBarrierNode) -> JSONType:
+        json["resource"] = {
+            "type": "frame_resource",
+            "index": 0,
+        }
+
+    else:
+        json["resource"] = {
+            "type": "pipeline_resource",
+            "index": pipeline_images.index(node.inputs["Image"].links[0].from_node),
+            "subresource_range": image_subresource_range_to_json(
+                node.inputs["Image Subresource Range"].links[0].from_node
+            ),
+        }
+
+    return json
+
+
+def memory_barrier_node_to_json(node: MemoryBarrierNode) -> JSONType:
+
+    return {
+        "source_stage_mask": get_pipeline_stage_flags_value(
+            node.get("source_stage_mask_property", 0),
+            node.get("source_stage_mask_property_2", 0),
+        ),
+        "source_access_mask": node.get("source_access_mask_property", 0),
+        "destination_stage_mask": get_pipeline_stage_flags_value(
+            node.get("destination_stage_mask_property", 0),
+            node.get("destination_stage_mask_property_2", 0),
+        ),
+        "destination_access_mask": node.get("destination_access_mask_property", 0),
+    }
+
+
+def dependency_info_node_to_json(
+    node: DependencyInfoNode,
+    pipeline_buffers: typing.List[BufferNode],
+    pipeline_images: typing.List[ImageNode],
+) -> JSONType:
+
+    return {
+        "dependency_flags": node.get("dependency_flags_property", 0),
+        "buffer_memory_barriers": [
+            buffer_memory_barrier_node_to_json(link.from_node, pipeline_buffers)
+            for link in node.inputs["Buffer Memory Barriers"].links
+        ],
+        "image_memory_barriers": [
+            image_memory_barrier_node_to_json(link.from_node, pipeline_images)
+            for link in node.inputs["Image Memory Barriers"].links
+        ],
+        "memory_barriers": [
+            memory_barrier_node_to_json(link.from_node)
+            for link in node.inputs["Memory Barriers"].links
+        ],
+    }
+
+
+def pipeline_barrier_node_to_json(
+    node: PipelineBarrierNode,
+    pipeline_buffers: typing.List[BufferNode],
+    pipeline_images: typing.List[ImageNode],
+) -> JSONType:
 
     return {
         "type": "Pipeline_barrier",
-        "source_stage_mask": node.get("source_stage_mask_property", 0),
-        "destination_stage_mask": node.get("destination_stage_mask_property", 0),
-        "dependency_flags": node.get("dependency_flags_property", 0),
-        "memory_barriers": [],  # TODO
-        "buffer_barriers": [],  # TODO
-        "image_barriers": [
-            image_memory_barrier_node_to_json(link.from_node)
-            for link in node.inputs["Image Barriers"].links
-        ],
+        "dependency_info": dependency_info_node_to_json(
+            node.inputs["Dependency Info"].links[0].from_node,
+            pipeline_buffers,
+            pipeline_images,
+        ),
     }
 
 
@@ -729,6 +1120,8 @@ def frame_command_node_to_json(
     render_passes: typing.Tuple[
         typing.List[RenderPassNode], typing.List[typing.List[SubpassNode]], JSONType
     ],
+    pipeline_buffers: typing.List[BufferNode],
+    pipeline_images: typing.List[ImageNode],
     shader_binding_tables: typing.List[ShaderBindingTableNode],
 ) -> JSONType:
 
@@ -740,6 +1133,8 @@ def frame_command_node_to_json(
         )
     elif node.bl_idname == "BindPipelineNode":
         return bind_pipeline_node_to_json(node, pipeline_states)
+    elif node.bl_idname == "BlitImageNode":
+        return blit_image_node_to_json(node, pipeline_images)
     elif node.bl_idname == "ClearColorImageNode":
         return clear_color_image_node_to_json(node)
     elif node.bl_idname == "DrawNode":
@@ -747,7 +1142,7 @@ def frame_command_node_to_json(
     elif node.bl_idname == "EndRenderPassNode":
         return end_render_pass_node_to_json(node)
     elif node.bl_idname == "PipelineBarrierNode":
-        return pipeline_barrier_node_to_json(node)
+        return pipeline_barrier_node_to_json(node, pipeline_buffers, pipeline_images)
     elif node.bl_idname == "SetScreenViewportAndScissorsNode":
         return set_screen_viewport_and_scissors_node_to_json(node)
     elif node.bl_idname == "TraceRaysNode":
@@ -784,6 +1179,8 @@ def frame_commands_to_json(
     render_passes: typing.Tuple[
         typing.List[RenderPassNode], typing.List[typing.List[SubpassNode]], JSONType
     ],
+    pipeline_buffers: typing.List[BufferNode],
+    pipeline_images: typing.List[ImageNode],
     shader_binding_tables: typing.List[ShaderBindingTableNode],
 ) -> JSONType:
 
@@ -802,6 +1199,8 @@ def frame_commands_to_json(
                 pipeline_layouts,
                 pipeline_states,
                 render_passes,
+                pipeline_buffers,
+                pipeline_images,
                 shader_binding_tables,
             )
             for command_node in frame_command_nodes_per_begin_frame_node[

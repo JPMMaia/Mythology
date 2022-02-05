@@ -64,6 +64,17 @@ class ImageNodeSocket(bpy.types.NodeSocket):
         return (0.0, 0.0, 1.0, 1.0)
 
 
+class ImageSubresourceLayersNodeSocket(bpy.types.NodeSocket):
+
+    bl_label = "Image Subresource Layers node socket"
+
+    def draw(self, context, layout, node, text):
+        layout.label(text=text)
+
+    def draw_color(self, context, node):
+        return (0.1, 0.8, 0.2, 1.0)
+
+
 class ImageSubresourceRangeNodeSocket(bpy.types.NodeSocket):
 
     bl_label = "Image Subresource Range node socket"
@@ -205,6 +216,36 @@ class ImageNode(bpy.types.Node, RenderTreeNode):
         layout.prop(self, "initial_layout_property")
 
 
+class ImageSubresourceLayersNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Image Subresource Layers"
+
+    aspect_mask_property: bpy.props.EnumProperty(
+        name="Aspect Mask",
+        items=image_aspect_flag_bits,
+        options={"ANIMATABLE", "ENUM_FLAG"},
+    )
+    mip_level_property: bpy.props.IntProperty(name="Mip Level", min=0, default=0)
+    base_array_layer_property: bpy.props.IntProperty(
+        name="Base Array Layer", min=0, default=0
+    )
+    array_layer_count_property: bpy.props.IntProperty(
+        name="Array Layer Count", min=1, default=1
+    )
+
+    def init(self, context):
+
+        self.outputs.new("ImageSubresourceLayersNodeSocket", "Image Subresource Layers")
+
+    def draw_buttons(self, context, layout):
+
+        layout.label(text="Aspect Mask")
+        layout.prop(self, "aspect_mask_property")
+        layout.prop(self, "mip_level_property")
+        layout.prop(self, "base_array_layer_property")
+        layout.prop(self, "array_layer_count_property")
+
+
 class ImageSubresourceRangeNode(bpy.types.Node, RenderTreeNode):
 
     bl_label = "Image Subresource Range"
@@ -279,6 +320,7 @@ resources_node_categories = [
             nodeitems_utils.NodeItem("BufferViewNode"),
             nodeitems_utils.NodeItem("ComponentMappingNode"),
             nodeitems_utils.NodeItem("ImageNode"),
+            nodeitems_utils.NodeItem("ImageSubresourceLayersNode"),
             nodeitems_utils.NodeItem("ImageSubresourceRangeNode"),
             nodeitems_utils.NodeItem("ImageViewNode"),
         ],
@@ -293,6 +335,16 @@ def component_mapping_to_json(node: bpy.types.Node) -> typing.Any:
         "g": node.get("g_property", 0),
         "b": node.get("b_property", 0),
         "a": node.get("a_property", 0),
+    }
+
+
+def image_subresource_layers_to_json(node: bpy.types.Node) -> typing.Any:
+
+    return {
+        "aspect_mask": node.get("aspect_mask_property", 0),
+        "mip_level": node.get("mip_level_property", 0),
+        "base_array_layer": node.get("base_array_layer_property", 0),
+        "array_layer_count": node.get("array_layer_count_property", 1),
     }
 
 

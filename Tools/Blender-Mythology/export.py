@@ -142,6 +142,8 @@ class MythologyExportOperator(bpy.types.Operator):
             pipeline_layouts[0],
             pipeline_states[0],
             render_passes,
+            buffers[0],
+            images[0],
             shader_binding_tables[0],
         )
 

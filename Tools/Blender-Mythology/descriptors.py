@@ -359,9 +359,7 @@ def create_descriptor_set_layouts_json(
                     "descriptor_count": link.from_node.get(
                         "descriptor_count_property", 1
                     ),
-                    "stage_flags_property": link.from_node.get(
-                        "stage_flags_property_property", 0
-                    ),
+                    "stage_flags": link.from_node.get("stage_flags_property", 0),
                     "immutable_samplers": [
                         samplers.index(sampler_link.from_node)
                         for sampler_link in link.from_node.inputs[
