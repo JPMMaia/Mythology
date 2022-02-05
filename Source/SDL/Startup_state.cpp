@@ -10,6 +10,7 @@ module;
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <memory>
 #include <memory_resource>
 #include <optional>
@@ -61,6 +62,33 @@ namespace Mythology::SDL
             return json;
         }
 
+        void check_ray_tracing_support(std::span<vk::PhysicalDevice const> const physical_devices)
+        {
+            auto const supports_ray_tracing = [](vk::PhysicalDevice const physical_device) -> bool
+            {
+                vk::PhysicalDeviceRayTracingPipelineFeaturesKHR ray_tracing_features{};
+
+                vk::PhysicalDeviceFeatures2 features
+                {
+                    .pNext = &ray_tracing_features,
+                };
+
+                physical_device.getFeatures2(&features);
+
+                return ray_tracing_features.rayTracingPipeline;
+            };
+
+            for (vk::PhysicalDevice const physical_device : physical_devices)
+            {
+                vk::PhysicalDeviceProperties const properties = physical_device.getProperties();
+
+                if (supports_ray_tracing(physical_device))
+                {
+                    std::cout << std::format("Physical device {} supports ray tracing.\n", properties.deviceName.data());
+                }
+            }
+        }
+
         struct Scene_resources
         {
             Maia::Scene::World world;
@@ -92,9 +120,9 @@ namespace Mythology::SDL
                     physical_device,
                     device,
                     physical_device_type,
-                    {},
+                    vk::MemoryAllocateFlagBits::eDeviceAddress,
                     4 * 1024,
-                    vk::BufferUsageFlagBits::eShaderBindingTableKHR,
+                    vk::BufferUsageFlagBits::eShaderBindingTableKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eTransferDst,
                     {},
                     {},
                     nullptr,
@@ -118,9 +146,9 @@ namespace Mythology::SDL
                     physical_device,
                     device,
                     physical_device_type,
-                    {},
+                    vk::MemoryAllocateFlagBits::eDeviceAddress,
                     64 * 1024 * 1024,
-                    vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddressKHR,
+                    vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddressKHR | vk::BufferUsageFlagBits::eTransferDst,
                     {},
                     {},
                     nullptr,
@@ -131,9 +159,9 @@ namespace Mythology::SDL
                     physical_device,
                     device,
                     physical_device_type,
-                    {},
+                    vk::MemoryAllocateFlagBits::eDeviceAddress,
                     64 * 1024 * 1024,
-                    vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddressKHR,
+                    vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddressKHR | vk::BufferUsageFlagBits::eTransferDst,
                     {},
                     {},
                     nullptr,
@@ -157,7 +185,7 @@ namespace Mythology::SDL
                     physical_device,
                     device,
                     physical_device_type,
-                    {},
+                    vk::MemoryAllocateFlagBits::eDeviceAddress,
                     64 * 1024 * 1024,
                     vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddressKHR,
                     {},
@@ -170,10 +198,10 @@ namespace Mythology::SDL
 
         std::optional<Scene_resources> load_scene(
             std::filesystem::path const& gltf_path,
-            vk::PhysicalDeviceType physical_device_type,
             vk::Device device,
             vk::Queue queue,
             vk::CommandPool command_pool,
+            Maia::Renderer::Vulkan::Upload_buffer const* upload_buffer,
             Buffer_resources& buffer_resources,
             vk::AllocationCallbacks const* allocation_callbacks,
             std::pmr::polymorphic_allocator<> const& output_allocator,
@@ -192,14 +220,13 @@ namespace Mythology::SDL
             std::pmr::vector<std::pmr::vector<std::byte>> buffers_data = Maia::Scene::read_buffers_data(world, gltf_path.parent_path(), output_allocator);
 
             std::pmr::vector<Mythology::Acceleration_structure> bottom_level_acceleration_structures = create_bottom_level_acceleration_structures(
-                physical_device_type,
                 device,
                 queue,
                 command_pool,
                 buffer_resources.acceleration_structure_storage,
                 buffer_resources.geometry,
-                buffer_resources.upload,
                 buffer_resources.scratch,
+                upload_buffer,
                 world,
                 buffers_data,
                 allocation_callbacks,
@@ -208,15 +235,14 @@ namespace Mythology::SDL
             );
 
             std::pmr::vector<Mythology::Acceleration_structure> top_level_acceleration_structures = create_top_level_acceleration_structures(
-                physical_device_type,
                 device,
                 queue,
                 command_pool,
                 bottom_level_acceleration_structures,
                 buffer_resources.acceleration_structure_storage,
                 buffer_resources.instance,
-                buffer_resources.upload,
                 buffer_resources.scratch,
+                upload_buffer,
                 world,
                 scene,
                 allocation_callbacks,
@@ -325,6 +351,15 @@ namespace Mythology::SDL
     {
         std::size_t const number_of_frames_in_flight = 3;
 
+        Instance_configuration const instance_configuration
+        {
+            .vulkan_version = Vulkan_version(1, 2, 0),
+            .enabled_extensions =
+            {
+                VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
+            }
+        };
+
         std::array<Window_configuration, 1> const window_configurations
         {
             Window_configuration
@@ -379,9 +414,26 @@ namespace Mythology::SDL
                     "VK_KHR_buffer_device_address",
                     "VK_KHR_deferred_host_operations",
                     "VK_KHR_ray_tracing_pipeline",
+                    VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
                     "VK_KHR_swapchain",
                 },
                 .upload_queue_index = 0,
+                .vulkan_12_features = Physical_device_vulkan_12_features
+                {
+                    .buffer_device_address = true,
+                },
+                .acceleration_structure_features = Physical_device_acceleration_structure_features
+                {
+                    .acceleration_structure = true,
+                },
+                .ray_tracing_features = Ray_tracing_features_configuration
+                {
+                    .ray_tracing_pipeline = true,
+                    .ray_tracing_pipeline_shader_group_handle_capture_replay = false,
+                    .ray_tracing_pipeline_shader_group_handle_capture_replay_mixed = false,
+                    .ray_tracing_pipeline_trace_rays_indirect = false,
+                    .ray_traversal_primitive_culling = true,
+                }
             }
         };
 
@@ -400,6 +452,7 @@ namespace Mythology::SDL
             Swapchain_configuration
             {
                 .image_format = vk::Format::eB8G8R8A8Srgb,
+                .image_usage = vk::ImageUsageFlagBits::eColorAttachment,
             }
         };
 
@@ -424,8 +477,12 @@ namespace Mythology::SDL
 
         std::pmr::vector<SDL_window> const windows = create_windows(sdl, window_configurations);
 
-        std::pmr::vector<char const*> const required_instance_extensions =
-            Mythology::SDL::Vulkan::get_sdl_required_instance_extensions({});
+        std::pmr::vector<char const*> const required_instance_extensions = [&]
+        {
+            std::pmr::vector<char const*> instance_extensions = Mythology::SDL::Vulkan::get_sdl_required_instance_extensions({});
+            instance_extensions.insert(instance_extensions.end(), instance_configuration.enabled_extensions.begin(), instance_configuration.enabled_extensions.end());
+            return instance_extensions;
+        }();
 
         vk::DynamicLoader dynamic_loader;
         PFN_vkGetInstanceProcAddr const get_instance_proccess_address = Mythology::SDL::Vulkan::get_instance_process_address();
@@ -433,7 +490,7 @@ namespace Mythology::SDL
 
         Mythology::Render::Instance_resources instance_resources
         {
-            VK_MAKE_VERSION(1, 2, 0),
+            VK_MAKE_VERSION(instance_configuration.vulkan_version.major, instance_configuration.vulkan_version.minor, instance_configuration.vulkan_version.patch),
             required_instance_extensions
         };
         VULKAN_HPP_DEFAULT_DISPATCHER.init(instance_resources.instance);
@@ -454,6 +511,8 @@ namespace Mythology::SDL
             {},
             {}
         );
+
+        check_ray_tracing_support(physical_devices);
 
         Mythology::SDL::Device_resources device_resources
         {
@@ -637,10 +696,10 @@ namespace Mythology::SDL
 
         std::optional<Scene_resources> const scene_resources = load_scene(
             m_gltf_path,
-            render_pipeline_physical_device_type,
             render_pipeline_device,
             render_pipeline_upload_queue,
             render_pipeline_command_pool,
+            render_pipeline_upload_buffer.get(),
             buffer_resources,
             nullptr,
             {},

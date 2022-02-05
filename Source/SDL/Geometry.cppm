@@ -9,6 +9,7 @@ module;
 export module mythology.geometry;
 
 import maia.renderer.vulkan.buffer_resources;
+import maia.renderer.vulkan.upload;
 import maia.scene;
 
 namespace Mythology
@@ -21,14 +22,13 @@ namespace Mythology
     };
 
     export std::pmr::vector<Acceleration_structure> create_bottom_level_acceleration_structures(
-        vk::PhysicalDeviceType physical_device_type,
         vk::Device device,
         vk::Queue queue,
         vk::CommandPool command_pool,
         Maia::Renderer::Vulkan::Buffer_resources& acceleration_structure_storage_buffer_resources,
         Maia::Renderer::Vulkan::Buffer_resources& geometry_buffer_resources,
-        Maia::Renderer::Vulkan::Buffer_resources& upload_buffer_resources,
         Maia::Renderer::Vulkan::Buffer_resources& scratch_buffer_resources,
+        Maia::Renderer::Vulkan::Upload_buffer const* upload_buffer,
         Maia::Scene::World const& world,
         std::span<std::pmr::vector<std::byte> const> buffers_data,
         vk::AllocationCallbacks const* allocation_callbacks,
@@ -37,15 +37,14 @@ namespace Mythology
     );
 
     export std::pmr::vector<Acceleration_structure> create_top_level_acceleration_structures(
-        vk::PhysicalDeviceType physical_device_type,
         vk::Device device,
         vk::Queue queue,
         vk::CommandPool command_pool,
         std::span<Acceleration_structure const> bottom_level_acceleration_structures,
         Maia::Renderer::Vulkan::Buffer_resources& acceleration_structure_storage_buffer_resources, // vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR
         Maia::Renderer::Vulkan::Buffer_resources& instance_buffer_resources, // vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddressKHR
-        Maia::Renderer::Vulkan::Buffer_resources& upload_buffer_resources,
         Maia::Renderer::Vulkan::Buffer_resources& scratch_buffer_resources, // vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddressKHR
+        Maia::Renderer::Vulkan::Upload_buffer const* upload_buffer,
         Maia::Scene::World const& world,
         Maia::Scene::Scene const& scene,
         vk::AllocationCallbacks const* allocation_callbacks,

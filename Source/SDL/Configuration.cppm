@@ -20,6 +20,19 @@ import mythology.sdl.sdl;
 
 namespace Mythology::SDL
 {
+    export struct Vulkan_version
+    {
+        std::uint32_t major = {};
+        std::uint32_t minor = {};
+        std::uint32_t patch = {};
+    };
+
+    export struct Instance_configuration
+    {
+        Vulkan_version vulkan_version = {};
+        std::pmr::vector<char const*> enabled_extensions;
+    };
+
     export struct Window_offset
     {
         int x = 0;
@@ -86,12 +99,84 @@ namespace Mythology::SDL
         std::uint32_t count() const noexcept;
     };
 
+    export struct Physical_device_vulkan_12_features
+    {
+        bool sampler_mirror_clamp_to_edge = {};
+        bool draw_indirect_count = {};
+        bool storage_buffer8_bit_access = {};
+        bool uniform_and_storage_buffer8_bit_access = {};
+        bool storage_push_constant8 = {};
+        bool shader_buffer_int64_atomics = {};
+        bool shader_shared_int64_atomics = {};
+        bool shader_float16 = {};
+        bool shader_int8 = {};
+        bool descriptor_indexing = {};
+        bool shader_input_attachment_array_dynamic_indexing = {};
+        bool shader_uniform_texel_buffer_array_dynamic_indexing = {};
+        bool shader_storage_texel_buffer_array_dynamic_indexing = {};
+        bool shader_uniform_buffer_array_non_uniform_indexing = {};
+        bool shader_sampled_image_array_non_uniform_indexing = {};
+        bool shader_storage_buffer_array_non_uniform_indexing = {};
+        bool shader_storage_image_array_non_uniform_indexing = {};
+        bool shader_input_attachment_array_non_uniform_indexing = {};
+        bool shader_uniform_texel_buffer_array_non_uniform_indexing = {};
+        bool shader_storage_texel_buffer_array_non_uniform_indexing = {};
+        bool descriptor_binding_uniform_buffer_update_after_bind = {};
+        bool descriptor_binding_sampled_image_update_after_bind = {};
+        bool descriptor_binding_storage_image_update_after_bind = {};
+        bool descriptor_binding_storage_buffer_update_after_bind = {};
+        bool descriptor_binding_uniform_texel_buffer_update_after_bind = {};
+        bool descriptor_binding_storage_texel_buffer_update_after_bind = {};
+        bool descriptor_binding_update_unused_while_pending = {};
+        bool descriptor_binding_partially_bound = {};
+        bool descriptor_binding_variable_descriptor_count = {};
+        bool runtime_descriptor_array = {};
+        bool sampler_filter_minmax = {};
+        bool scalar_block_layout = {};
+        bool imageless_framebuffer = {};
+        bool uniform_buffer_standard_layout = {};
+        bool shader_subgroup_extended_types = {};
+        bool separate_depth_stencil_layouts = {};
+        bool host_query_reset = {};
+        bool timeline_semaphore = {};
+        bool buffer_device_address = {};
+        bool buffer_device_address_capture_replay = {};
+        bool buffer_device_address_multi_device = {};
+        bool vulkan_memory_model = {};
+        bool vulkan_memory_model_device_scope = {};
+        bool vulkan_memory_model_availability_visibility_chains = {};
+        bool shader_output_viewport_index = {};
+        bool shader_output_layer = {};
+        bool subgroup_broadcast_dynamic_id = {};
+    };
+
+    export struct Physical_device_acceleration_structure_features
+    {
+        bool acceleration_structure = {};
+        bool acceleration_structure_capture_replay = {};
+        bool acceleration_structure_indirect_build = {};
+        bool acceleration_structure_host_commands = {};
+        bool descriptor_binding_acceleration_structure_update_after_bind = {};
+    };
+
+    export struct Ray_tracing_features_configuration
+    {
+        bool ray_tracing_pipeline = {};
+        bool ray_tracing_pipeline_shader_group_handle_capture_replay = {};
+        bool ray_tracing_pipeline_shader_group_handle_capture_replay_mixed = {};
+        bool ray_tracing_pipeline_trace_rays_indirect = {};
+        bool ray_traversal_primitive_culling = {};
+    };
+
     export struct Device_configuration
     {
         std::uint32_t physical_device_index = 0;
         std::pmr::vector<Queue_create_info_configuration> queues;
         std::pmr::vector<char const*> enabled_extensions;
         std::uint32_t upload_queue_index = 0;
+        Physical_device_vulkan_12_features vulkan_12_features = {};
+        Physical_device_acceleration_structure_features acceleration_structure_features = {};
+        Ray_tracing_features_configuration ray_tracing_features = {};
     };
 
     export struct Device_resources

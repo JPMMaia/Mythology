@@ -216,11 +216,83 @@ namespace Mythology::SDL
         {
             vk::PhysicalDevice const physical_device = physical_devices[configuration.physical_device_index];
 
+            vk::PhysicalDeviceVulkan12Features vulkan_12_features
+            {
+                .samplerMirrorClampToEdge = configuration.vulkan_12_features.sampler_mirror_clamp_to_edge,
+                .drawIndirectCount = configuration.vulkan_12_features.draw_indirect_count,
+                .storageBuffer8BitAccess = configuration.vulkan_12_features.storage_buffer8_bit_access,
+                .uniformAndStorageBuffer8BitAccess = configuration.vulkan_12_features.uniform_and_storage_buffer8_bit_access,
+                .storagePushConstant8 = configuration.vulkan_12_features.storage_push_constant8,
+                .shaderBufferInt64Atomics = configuration.vulkan_12_features.shader_buffer_int64_atomics,
+                .shaderSharedInt64Atomics = configuration.vulkan_12_features.shader_shared_int64_atomics,
+                .shaderFloat16 = configuration.vulkan_12_features.shader_float16,
+                .shaderInt8 = configuration.vulkan_12_features.shader_int8,
+                .descriptorIndexing = configuration.vulkan_12_features.descriptor_indexing,
+                .shaderInputAttachmentArrayDynamicIndexing = configuration.vulkan_12_features.shader_input_attachment_array_dynamic_indexing,
+                .shaderUniformTexelBufferArrayDynamicIndexing = configuration.vulkan_12_features.shader_uniform_texel_buffer_array_dynamic_indexing,
+                .shaderStorageTexelBufferArrayDynamicIndexing = configuration.vulkan_12_features.shader_storage_texel_buffer_array_dynamic_indexing,
+                .shaderUniformBufferArrayNonUniformIndexing = configuration.vulkan_12_features.shader_uniform_buffer_array_non_uniform_indexing,
+                .shaderSampledImageArrayNonUniformIndexing = configuration.vulkan_12_features.shader_sampled_image_array_non_uniform_indexing,
+                .shaderStorageBufferArrayNonUniformIndexing = configuration.vulkan_12_features.shader_storage_buffer_array_non_uniform_indexing,
+                .shaderStorageImageArrayNonUniformIndexing = configuration.vulkan_12_features.shader_storage_image_array_non_uniform_indexing,
+                .shaderInputAttachmentArrayNonUniformIndexing = configuration.vulkan_12_features.shader_input_attachment_array_non_uniform_indexing,
+                .shaderUniformTexelBufferArrayNonUniformIndexing = configuration.vulkan_12_features.shader_uniform_texel_buffer_array_non_uniform_indexing,
+                .shaderStorageTexelBufferArrayNonUniformIndexing = configuration.vulkan_12_features.shader_storage_texel_buffer_array_non_uniform_indexing,
+                .descriptorBindingUniformBufferUpdateAfterBind = configuration.vulkan_12_features.descriptor_binding_uniform_buffer_update_after_bind,
+                .descriptorBindingSampledImageUpdateAfterBind = configuration.vulkan_12_features.descriptor_binding_sampled_image_update_after_bind,
+                .descriptorBindingStorageImageUpdateAfterBind = configuration.vulkan_12_features.descriptor_binding_storage_image_update_after_bind,
+                .descriptorBindingStorageBufferUpdateAfterBind = configuration.vulkan_12_features.descriptor_binding_storage_buffer_update_after_bind,
+                .descriptorBindingUniformTexelBufferUpdateAfterBind = configuration.vulkan_12_features.descriptor_binding_uniform_texel_buffer_update_after_bind,
+                .descriptorBindingStorageTexelBufferUpdateAfterBind = configuration.vulkan_12_features.descriptor_binding_storage_texel_buffer_update_after_bind,
+                .descriptorBindingUpdateUnusedWhilePending = configuration.vulkan_12_features.descriptor_binding_update_unused_while_pending,
+                .descriptorBindingPartiallyBound = configuration.vulkan_12_features.descriptor_binding_partially_bound,
+                .descriptorBindingVariableDescriptorCount = configuration.vulkan_12_features.descriptor_binding_variable_descriptor_count,
+                .runtimeDescriptorArray = configuration.vulkan_12_features.runtime_descriptor_array,
+                .samplerFilterMinmax = configuration.vulkan_12_features.sampler_filter_minmax,
+                .scalarBlockLayout = configuration.vulkan_12_features.scalar_block_layout,
+                .imagelessFramebuffer = configuration.vulkan_12_features.imageless_framebuffer,
+                .uniformBufferStandardLayout = configuration.vulkan_12_features.uniform_buffer_standard_layout,
+                .shaderSubgroupExtendedTypes = configuration.vulkan_12_features.shader_subgroup_extended_types,
+                .separateDepthStencilLayouts = configuration.vulkan_12_features.separate_depth_stencil_layouts,
+                .hostQueryReset = configuration.vulkan_12_features.host_query_reset,
+                .timelineSemaphore = configuration.vulkan_12_features.timeline_semaphore,
+                .bufferDeviceAddress = configuration.vulkan_12_features.buffer_device_address,
+                .bufferDeviceAddressCaptureReplay = configuration.vulkan_12_features.buffer_device_address_capture_replay,
+                .bufferDeviceAddressMultiDevice = configuration.vulkan_12_features.buffer_device_address_multi_device,
+                .vulkanMemoryModel = configuration.vulkan_12_features.vulkan_memory_model,
+                .vulkanMemoryModelDeviceScope = configuration.vulkan_12_features.vulkan_memory_model_device_scope,
+                .vulkanMemoryModelAvailabilityVisibilityChains = configuration.vulkan_12_features.vulkan_memory_model_availability_visibility_chains,
+                .shaderOutputViewportIndex = configuration.vulkan_12_features.shader_output_viewport_index,
+                .shaderOutputLayer = configuration.vulkan_12_features.shader_output_layer,
+                .subgroupBroadcastDynamicId = configuration.vulkan_12_features.subgroup_broadcast_dynamic_id,
+            };
+
+            vk::PhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure_features =
+            {
+                .pNext = &vulkan_12_features,
+                .accelerationStructure = configuration.acceleration_structure_features.acceleration_structure,
+                .accelerationStructureCaptureReplay = configuration.acceleration_structure_features.acceleration_structure_capture_replay,
+                .accelerationStructureIndirectBuild = configuration.acceleration_structure_features.acceleration_structure_indirect_build,
+                .accelerationStructureHostCommands = configuration.acceleration_structure_features.acceleration_structure_host_commands,
+                .descriptorBindingAccelerationStructureUpdateAfterBind = configuration.acceleration_structure_features.descriptor_binding_acceleration_structure_update_after_bind,
+            };
+
+            vk::PhysicalDeviceRayTracingPipelineFeaturesKHR ray_tracing_features =
+            {
+                .pNext = &acceleration_structure_features,
+                .rayTracingPipeline = configuration.ray_tracing_features.ray_tracing_pipeline,
+                .rayTracingPipelineShaderGroupHandleCaptureReplay = configuration.ray_tracing_features.ray_tracing_pipeline_shader_group_handle_capture_replay,
+                .rayTracingPipelineShaderGroupHandleCaptureReplayMixed = configuration.ray_tracing_features.ray_tracing_pipeline_shader_group_handle_capture_replay_mixed,
+                .rayTracingPipelineTraceRaysIndirect = configuration.ray_tracing_features.ray_tracing_pipeline_trace_rays_indirect,
+                .rayTraversalPrimitiveCulling = configuration.ray_tracing_features.ray_traversal_primitive_culling,
+            };
+
             std::pmr::vector<vk::DeviceQueueCreateInfo> const queue_create_infos =
                 create_device_queue_create_infos(configuration.queues, temporaries_allocator);
 
             vk::DeviceCreateInfo const create_info
             {
+                .pNext = &ray_tracing_features,
                 .flags = {},
                 .queueCreateInfoCount = static_cast<std::uint32_t>(queue_create_infos.size()),
                 .pQueueCreateInfos = queue_create_infos.data(),
@@ -856,7 +928,7 @@ namespace Mythology::SDL
             std::pmr::polymorphic_allocator<> const& allocator
         )
         {
-            if(render_pipeline_render_passes.empty())
+            if (render_pipeline_render_passes.empty())
             {
                 return std::pmr::vector<std::pmr::vector<vk::Framebuffer>>{allocator};
             }

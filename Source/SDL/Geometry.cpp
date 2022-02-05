@@ -50,6 +50,65 @@ namespace Mythology
         return to_vector(view);
     }
 
+    namespace
+    {
+        vk::CommandBuffer create_one_time_submit_command_buffer(
+            vk::Device const device,
+            vk::CommandPool const command_pool
+        ) noexcept
+        {
+            vk::CommandBufferAllocateInfo const allocate_info
+            {
+                .commandPool = command_pool,
+                .level = vk::CommandBufferLevel::ePrimary,
+                .commandBufferCount = 1,
+            };
+
+            std::array<std::byte, sizeof(vk::CommandBuffer)> local_storage;
+            std::pmr::monotonic_buffer_resource local_storage_buffer_resource{ &local_storage, local_storage.size() };
+            std::pmr::polymorphic_allocator<vk::CommandBuffer> local_storage_allocator{ &local_storage_buffer_resource };
+            std::pmr::vector<vk::CommandBuffer> const command_buffers = device.allocateCommandBuffers(allocate_info, local_storage_allocator);
+            vk::CommandBuffer const command_buffer = command_buffers[0];
+
+            {
+                vk::CommandBufferBeginInfo const begin_info
+                {
+                };
+
+                command_buffer.begin(begin_info);
+            }
+
+            return command_buffer;
+        }
+
+        void submit_and_wait(
+            vk::Device const device,
+            vk::Queue const queue,
+            vk::CommandPool const command_pool,
+            vk::CommandBuffer const command_buffer,
+            vk::AllocationCallbacks const* const allocation_callbacks
+        ) noexcept
+        {
+            command_buffer.end();
+
+            vk::Fence const fence = device.createFence({}, allocation_callbacks);
+
+            vk::SubmitInfo const submit_info
+            {
+                .commandBufferCount = 1,
+                .pCommandBuffers = &command_buffer,
+            };
+
+            queue.submit(1, &submit_info, fence);
+
+            device.waitForFences(1, &fence, true, std::numeric_limits<std::uint64_t>::max());
+
+            device.destroy(fence, allocation_callbacks);
+
+            device.freeCommandBuffers(command_pool, 1, &command_buffer);
+        }
+    }
+
     struct Geometry_buffer_views
     {
         Maia::Renderer::Vulkan::Buffer_view position = {};
@@ -185,151 +244,11 @@ namespace Mythology
         return geometry_buffer_views;
     }
 
-    namespace
-    {
-        template <typename Data_type>
-        void map_memory_and_copy_data(
-            vk::Device const device,
-            Maia::Renderer::Vulkan::Buffer_view const& destination,
-            std::span<Data_type const> const data
-        ) noexcept
-        {
-            void* const mapped_data = device.mapMemory(
-                destination.memory,
-                destination.offset,
-                destination.size,
-                vk::MemoryMapFlags{}
-            );
-
-            std::memcpy(
-                mapped_data,
-                data.data(),
-                data.size_bytes()
-            );
-
-            device.unmapMemory(
-                destination.memory
-            );
-        }
-
-        template <typename Data_type>
-        void map_memory_and_copy_data(
-            vk::Device const device,
-            Maia::Renderer::Vulkan::Buffer_view const& destination,
-            std::pmr::vector<Data_type> const& data
-        ) noexcept
-        {
-            std::span<Data_type const> const span = { data.data(), data.size() };
-            map_memory_and_copy_data(device, destination, span);
-        }
-
-        vk::CommandBuffer create_one_time_submit_command_buffer(
-            vk::Device const device,
-            vk::CommandPool const command_pool
-        ) noexcept
-        {
-            vk::CommandBufferAllocateInfo const allocate_info
-            {
-                .commandPool = command_pool,
-                .level = vk::CommandBufferLevel::ePrimary,
-                .commandBufferCount = 1,
-            };
-
-            std::array<std::byte, sizeof(vk::CommandBuffer)> local_storage;
-            std::pmr::monotonic_buffer_resource local_storage_buffer_resource{ &local_storage, local_storage.size() };
-            std::pmr::polymorphic_allocator<vk::CommandBuffer> local_storage_allocator{ &local_storage_buffer_resource };
-            std::pmr::vector<vk::CommandBuffer> const command_buffers = device.allocateCommandBuffers(allocate_info, local_storage_allocator);
-            vk::CommandBuffer const command_buffer = command_buffers[0];
-
-            {
-                vk::CommandBufferBeginInfo const begin_info
-                {
-                };
-
-                command_buffer.begin(begin_info);
-            }
-
-            return command_buffer;
-        }
-
-        void submit_and_wait(
-            vk::Device const device,
-            vk::Queue const queue,
-            vk::CommandPool const command_pool,
-            vk::CommandBuffer const command_buffer,
-            vk::AllocationCallbacks const* const allocation_callbacks
-        ) noexcept
-        {
-            command_buffer.end();
-
-            vk::Fence const fence = device.createFence({}, allocation_callbacks);
-
-            vk::SubmitInfo const submit_info
-            {
-                .commandBufferCount = 1,
-                .pCommandBuffers = &command_buffer,
-            };
-
-            queue.submit(1, &submit_info, fence);
-
-            device.waitForFences(1, &fence, true, std::numeric_limits<std::uint64_t>::max());
-
-            device.destroy(fence, allocation_callbacks);
-
-            device.freeCommandBuffers(command_pool, 1, &command_buffer);
-        }
-    }
-
-    template <typename Data_type>
-    void upload_data_through_upload_buffer(
-        vk::Device const device,
-        vk::Queue const queue,
-        vk::CommandPool const command_pool,
-        Maia::Renderer::Vulkan::Buffer_view const& destination_buffer_view,
-        std::span<Data_type const> const data_to_upload,
-        Maia::Renderer::Vulkan::Upload_buffer const& upload_buffer,
-        vk::AllocationCallbacks const* const allocation_callbacks
-    ) noexcept
-    {
-        assert(data_to_upload.size() <= upload_buffer.buffer_view().size);
-
-        std::memcpy(
-            upload_buffer.mapped_data(),
-            data_to_upload.data(),
-            data_to_upload.size_bytes()
-        );
-
-        {
-            vk::CommandBuffer const command_buffer = create_one_time_submit_command_buffer(device, command_pool);
-
-            {
-                Maia::Renderer::Vulkan::Buffer_view const upload_buffer_view = upload_buffer.buffer_view();
-
-                vk::BufferCopy const buffer_copy
-                {
-                    .srcOffset = upload_buffer_view.offset,
-                    .dstOffset = destination_buffer_view.offset,
-                    .size = data_to_upload.size_bytes(),
-                };
-
-                command_buffer.copyBuffer(
-                    upload_buffer_view.buffer,
-                    destination_buffer_view.buffer,
-                    1,
-                    &buffer_copy
-                );
-            }
-
-            submit_and_wait(device, queue, command_pool, command_buffer, allocation_callbacks);
-        }
-    }
-
     void upload_geometry_data(
-        vk::PhysicalDeviceType const physical_device_type,
         vk::Device const device,
         vk::Queue const queue,
         vk::CommandPool const command_pool,
-        Maia::Renderer::Vulkan::Buffer_resources& upload_buffer_resources,
+        Maia::Renderer::Vulkan::Upload_buffer const* upload_buffer,
         World const& world,
         std::span<std::pmr::vector<std::byte> const> const buffers_data,
         std::span<std::pmr::vector<Geometry_buffer_views> const> const geometry_buffer_views,
@@ -337,174 +256,105 @@ namespace Mythology
         std::pmr::polymorphic_allocator<> const& temporaries_allocator
     )
     {
-        if (physical_device_type == vk::PhysicalDeviceType::eIntegratedGpu)
+        for (std::size_t mesh_index = 0; mesh_index < world.meshes.size(); ++mesh_index)
         {
-            for (std::size_t mesh_index = 0; mesh_index < world.meshes.size(); ++mesh_index)
+            Mesh const& mesh = world.meshes[mesh_index];
+
+            for (std::size_t primitive_index = 0; primitive_index < world.meshes.size(); ++primitive_index)
             {
-                Mesh const& mesh = world.meshes[mesh_index];
+                Primitive const& primitive = mesh.primitives[primitive_index];
 
-                for (std::size_t primitive_index = 0; primitive_index < world.meshes.size(); ++primitive_index)
+                Geometry_buffer_views const& geometry_buffer_view =
+                    geometry_buffer_views[mesh_index][primitive_index];
+
                 {
-                    Primitive const& primitive = mesh.primitives[primitive_index];
+                    Accessor const& position_accessor = get_position_accessor(world, primitive);
 
-                    Geometry_buffer_views const& geometry_buffer_view =
-                        geometry_buffer_views[mesh_index][primitive_index];
-
-                    {
-                        Accessor const& position_accessor = get_position_accessor(world, primitive);
-
-                        std::pmr::vector<Maia::Scene::Vector3f> const position_data =
-                            read_position_accessor_data(
-                                position_accessor,
-                                world.buffer_views,
-                                buffers_data,
-                                temporaries_allocator,
-                                temporaries_allocator
-                            );
-
-                        map_memory_and_copy_data(
-                            device,
-                            geometry_buffer_view.position,
-                            position_data
+                    std::pmr::vector<Maia::Scene::Vector3f> const position_data =
+                        read_position_accessor_data(
+                            position_accessor,
+                            world.buffer_views,
+                            buffers_data,
+                            temporaries_allocator,
+                            temporaries_allocator
                         );
-                    }
 
+                    std::span<std::byte const> const position_byte_data
                     {
-                        Accessor const& index_accessor = get_index_accessor(world, primitive);
-                        Component_type const index_accessor_component_type = convert_index_accessor_component_type(index_accessor.component_type);
+                        reinterpret_cast<std::byte const*>(position_data.data()),
+                        position_data.size() * sizeof(Maia::Scene::Vector3f)
+                    };
 
-                        if (index_accessor_component_type == Component_type::Unsigned_short)
-                        {
-                            std::pmr::vector<std::uint16_t> const index_data =
-                                read_indices_16_accessor_data(
-                                    index_accessor,
-                                    world.buffer_views,
-                                    buffers_data,
-                                    temporaries_allocator,
-                                    temporaries_allocator
-                                );
-
-                            map_memory_and_copy_data(
-                                device,
-                                geometry_buffer_view.index,
-                                index_data
-                            );
-                        }
-                        else
-                        {
-                            assert(index_accessor_component_type == Component_type::Unsigned_int);
-
-                            std::pmr::vector<std::uint32_t> const index_data =
-                                read_indices_32_accessor_data(
-                                    index_accessor,
-                                    world.buffer_views,
-                                    buffers_data,
-                                    temporaries_allocator,
-                                    temporaries_allocator
-                                );
-
-                            map_memory_and_copy_data(
-                                device,
-                                geometry_buffer_view.index,
-                                index_data
-                            );
-                        }
-                    }
+                    Maia::Renderer::Vulkan::upload_data(
+                        device,
+                        queue,
+                        command_pool,
+                        geometry_buffer_view.position,
+                        position_byte_data,
+                        upload_buffer,
+                        allocation_callbacks
+                    );
                 }
-            }
-        }
-        else
-        {
-            Maia::Renderer::Vulkan::Upload_buffer const upload_buffer
-            {
-                device,
-                upload_buffer_resources,
-                256 * 1024 * 1024 // TODO get maximum size from data to upload
-            };
 
-            for (std::size_t mesh_index = 0; mesh_index < world.meshes.size(); ++mesh_index)
-            {
-                Mesh const& mesh = world.meshes[mesh_index];
-
-                for (std::size_t primitive_index = 0; primitive_index < world.meshes.size(); ++primitive_index)
                 {
-                    Primitive const& primitive = mesh.primitives[primitive_index];
+                    Accessor const& index_accessor = get_index_accessor(world, primitive);
+                    Component_type const index_accessor_component_type = convert_index_accessor_component_type(index_accessor.component_type);
 
-                    Geometry_buffer_views const& geometry_buffer_view =
-                        geometry_buffer_views[mesh_index][primitive_index];
-
+                    if (index_accessor_component_type == Component_type::Unsigned_short)
                     {
-                        Accessor const& position_accessor = get_position_accessor(world, primitive);
-
-                        std::pmr::vector<Maia::Scene::Vector3f> const position_data =
-                            read_position_accessor_data(
-                                position_accessor,
+                        std::pmr::vector<std::uint16_t> const index_data =
+                            read_indices_16_accessor_data(
+                                index_accessor,
                                 world.buffer_views,
                                 buffers_data,
                                 temporaries_allocator,
                                 temporaries_allocator
                             );
 
+                        std::span<std::byte const> const index_byte_data
+                        {
+                            reinterpret_cast<std::byte const*>(index_data.data()),
+                            index_data.size() * sizeof(std::uint16_t)
+                        };
 
-                        upload_data_through_upload_buffer<Maia::Scene::Vector3f>(
+                        Maia::Renderer::Vulkan::upload_data(
                             device,
                             queue,
                             command_pool,
-                            geometry_buffer_view.position,
-                            position_data,
+                            geometry_buffer_view.index,
+                            index_byte_data,
                             upload_buffer,
                             allocation_callbacks
-                            );
+                        );
                     }
-
+                    else
                     {
-                        Accessor const& index_accessor = get_index_accessor(world, primitive);
-                        Component_type const index_accessor_component_type = convert_index_accessor_component_type(index_accessor.component_type);
+                        assert(index_accessor_component_type == Component_type::Unsigned_int);
 
-                        if (index_accessor_component_type == Component_type::Unsigned_short)
+                        std::pmr::vector<std::uint32_t> const index_data =
+                            read_indices_32_accessor_data(
+                                index_accessor,
+                                world.buffer_views,
+                                buffers_data,
+                                temporaries_allocator,
+                                temporaries_allocator
+                            );
+
+                        std::span<std::byte const> const index_byte_data
                         {
-                            std::pmr::vector<std::uint16_t> const index_data =
-                                read_indices_16_accessor_data(
-                                    index_accessor,
-                                    world.buffer_views,
-                                    buffers_data,
-                                    temporaries_allocator,
-                                    temporaries_allocator
-                                );
+                            reinterpret_cast<std::byte const*>(index_data.data()),
+                            index_data.size() * sizeof(std::uint32_t)
+                        };
 
-                            upload_data_through_upload_buffer<std::uint16_t>(
-                                device,
-                                queue,
-                                command_pool,
-                                geometry_buffer_view.index,
-                                index_data,
-                                upload_buffer,
-                                allocation_callbacks
-                                );
-                        }
-                        else
-                        {
-                            assert(index_accessor_component_type == Component_type::Unsigned_int);
-
-                            std::pmr::vector<std::uint32_t> const index_data =
-                                read_indices_32_accessor_data(
-                                    index_accessor,
-                                    world.buffer_views,
-                                    buffers_data,
-                                    temporaries_allocator,
-                                    temporaries_allocator
-                                );
-
-                            upload_data_through_upload_buffer<std::uint32_t>(
-                                device,
-                                queue,
-                                command_pool,
-                                geometry_buffer_view.index,
-                                index_data,
-                                upload_buffer,
-                                allocation_callbacks
-                                );
-                        }
+                        Maia::Renderer::Vulkan::upload_data(
+                            device,
+                            queue,
+                            command_pool,
+                            geometry_buffer_view.index,
+                            index_byte_data,
+                            upload_buffer,
+                            allocation_callbacks
+                        );
                     }
                 }
             }
@@ -665,7 +515,7 @@ namespace Mythology
         Maia::Renderer::Vulkan::Buffer_view const acceleration_structure_buffer_view =
             acceleration_structure_storage_buffer_resources.allocate_buffer(
                 acceleration_structure_build_sizes_info.accelerationStructureSize,
-                1,
+                256,
                 vk::MemoryPropertyFlagBits::eDeviceLocal
             );
 
@@ -794,14 +644,13 @@ namespace Mythology
     }
 
     std::pmr::vector<Acceleration_structure> create_bottom_level_acceleration_structures(
-        vk::PhysicalDeviceType const physical_device_type,
         vk::Device const device,
         vk::Queue const queue,
         vk::CommandPool const command_pool,
         Maia::Renderer::Vulkan::Buffer_resources& acceleration_structure_storage_buffer_resources,
         Maia::Renderer::Vulkan::Buffer_resources& geometry_buffer_resources,
-        Maia::Renderer::Vulkan::Buffer_resources& upload_buffer_resources,
         Maia::Renderer::Vulkan::Buffer_resources& scratch_buffer_resources,
+        Maia::Renderer::Vulkan::Upload_buffer const* upload_buffer,
         World const& world,
         std::span<std::pmr::vector<std::byte> const> const buffers_data,
         vk::AllocationCallbacks const* const allocation_callbacks,
@@ -817,11 +666,10 @@ namespace Mythology
             );
 
         upload_geometry_data(
-            physical_device_type,
             device,
             queue,
             command_pool,
-            upload_buffer_resources,
+            upload_buffer,
             world,
             buffers_data,
             geometry_buffer_views,
@@ -874,47 +722,6 @@ namespace Mythology
         submit_and_wait(device, queue, command_pool, command_buffer, allocation_callbacks);
 
         return acceleration_structures;
-    }
-
-    template<typename Data_type>
-    void upload_data(
-        vk::PhysicalDeviceType const physical_device_type,
-        vk::Device const device,
-        vk::Queue const queue,
-        vk::CommandPool const command_pool,
-        Maia::Renderer::Vulkan::Buffer_resources& upload_buffer_resources,
-        Maia::Renderer::Vulkan::Buffer_view const buffer_view,
-        std::span<Data_type const> const buffer_data_to_upload,
-        vk::AllocationCallbacks const* const allocation_callbacks
-    )
-    {
-        if (physical_device_type == vk::PhysicalDeviceType::eIntegratedGpu)
-        {
-            map_memory_and_copy_data(
-                device,
-                buffer_view,
-                buffer_data_to_upload
-            );
-        }
-        else
-        {
-            Maia::Renderer::Vulkan::Upload_buffer const upload_buffer
-            {
-                device,
-                upload_buffer_resources,
-                buffer_data_to_upload.size_bytes()
-            };
-
-            upload_data_through_upload_buffer<Data_type>(
-                device,
-                queue,
-                command_pool,
-                buffer_view,
-                buffer_data_to_upload,
-                upload_buffer,
-                allocation_callbacks
-                );
-        }
     }
 
     kln::translator to_translation(Vector3f const& vector) noexcept
@@ -1172,15 +979,14 @@ namespace Mythology
     }
 
     std::pmr::vector<Acceleration_structure> create_top_level_acceleration_structures(
-        vk::PhysicalDeviceType const physical_device_type,
         vk::Device const device,
         vk::Queue const queue,
         vk::CommandPool const command_pool,
         std::span<Acceleration_structure const> const bottom_level_acceleration_structures,
         Maia::Renderer::Vulkan::Buffer_resources& acceleration_structure_storage_buffer_resources,
         Maia::Renderer::Vulkan::Buffer_resources& instance_buffer_resources,
-        Maia::Renderer::Vulkan::Buffer_resources& upload_buffer_resources,
         Maia::Renderer::Vulkan::Buffer_resources& scratch_buffer_resources,
+        Maia::Renderer::Vulkan::Upload_buffer const* upload_buffer,
         Maia::Scene::World const& world,
         Maia::Scene::Scene const& scene,
         vk::AllocationCallbacks const* const allocation_callbacks,
@@ -1238,16 +1044,21 @@ namespace Mythology
                     vk::MemoryPropertyFlagBits::eDeviceLocal
                 );
 
-            upload_data<vk::AccelerationStructureInstanceKHR>(
-                physical_device_type,
+            std::span<std::byte const> const acceleration_structure_instance_byte_data
+            {
+                reinterpret_cast<std::byte const*>(&acceleration_structure_instance),
+                sizeof(vk::AccelerationStructureInstanceKHR)
+            };
+
+            upload_data(
                 device,
                 queue,
                 command_pool,
-                upload_buffer_resources,
                 instance_buffer_view,
-                { &acceleration_structure_instance , 1 },
+                acceleration_structure_instance_byte_data,
+                upload_buffer,
                 allocation_callbacks
-                );
+            );
 
             return instance_buffer_view;
         };
