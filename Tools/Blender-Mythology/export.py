@@ -25,6 +25,7 @@ class MythologyAddonPreferences(bpy.types.AddonPreferences):
         layout.prop(self, "directx_shader_compiler")
 
 
+from .common import create_data_arrays_json
 from .compile_shader import compile_shaders
 from .descriptors import (
     create_descriptor_set_layouts_json,
@@ -103,6 +104,7 @@ class MythologyExportOperator(bpy.types.Operator):
         if not compile_shaders(shader_compiler, output_json_directory, nodes):
             return {"FINISHED"}
 
+        data_arrays = create_data_arrays_json(nodes)
         render_passes = render_pass_to_json(nodes)
         shader_modules = shader_module_to_json(nodes)
         buffers = create_buffers_json(nodes)
@@ -137,6 +139,7 @@ class MythologyExportOperator(bpy.types.Operator):
         )
         frame_commands = frame_commands_to_json(
             nodes,
+            data_arrays[0],
             descriptor_sets[0],
             frame_descriptor_sets[0],
             pipeline_layouts[0],
@@ -148,6 +151,7 @@ class MythologyExportOperator(bpy.types.Operator):
         )
 
         output_json = {
+            "data_arrays": data_arrays[1],
             "render_passes": render_passes[2],
             "shader_modules": shader_modules[1],
             "buffers": buffers[1],

@@ -432,13 +432,13 @@ image_layout_values_to_int = {
 }
 
 image_view_type_values = (
-    ("1D", "1d", "", 0),
-    ("2D", "2d", "", 1),
-    ("3D", "3d", "", 2),
-    ("CUBE", "cube", "", 3),
-    ("1D_ARRAY", "1d_array", "", 4),
-    ("2D_ARRAY", "2d_array", "", 5),
-    ("CUBE_ARRAY", "cube_array", "", 6),
+    ("1D", "1D", "", 0),
+    ("2D", "2D", "", 1),
+    ("3D", "3D", "", 2),
+    ("CUBE", "Cube", "", 3),
+    ("1D_ARRAY", "1D array", "", 4),
+    ("2D_ARRAY", "2D array", "", 5),
+    ("CUBE_ARRAY", "Cube array", "", 6),
 )
 
 image_usage_flag_bits = (

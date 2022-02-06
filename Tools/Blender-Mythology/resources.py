@@ -178,12 +178,12 @@ class ImageNode(bpy.types.Node, RenderTreeNode):
         options={"ANIMATABLE", "ENUM_FLAG"},
     )
     type_property: bpy.props.EnumProperty(
-        name="Type", items=image_type_values, default="2D"
+        name="Type", items=image_type_values, default=1
     )
     format_property: bpy.props.EnumProperty(name="Format", items=format_values)
     mip_levels_property: bpy.props.IntProperty(name="Mip Levels", min=1, default=1)
     array_layers_property: bpy.props.IntProperty(name="Array Layers", min=1, default=1)
-    sample_count_flags_property: bpy.props.EnumProperty(
+    sample_count_property: bpy.props.EnumProperty(
         name="Sample Count", items=sample_count_flag_bits
     )
     tiling_property: bpy.props.EnumProperty(name="Tiling", items=tiling_values)
@@ -210,7 +210,7 @@ class ImageNode(bpy.types.Node, RenderTreeNode):
         layout.prop(self, "format_property")
         layout.prop(self, "mip_levels_property")
         layout.prop(self, "array_layers_property")
-        layout.prop(self, "sample_count_flags_property")
+        layout.prop(self, "sample_count_property")
         layout.prop(self, "tiling_property")
         layout.prop(self, "image_usage_flags_property")
         layout.prop(self, "initial_layout_property")
@@ -287,7 +287,7 @@ class ImageViewNode(bpy.types.Node, RenderTreeNode):
     bl_label = "Image View"
 
     view_type_property: bpy.props.EnumProperty(
-        name="View Type", items=image_view_type_values, default="2D"
+        name="View Type", items=image_view_type_values, default=1
     )
     format_property: bpy.props.EnumProperty(name="Format", items=format_values)
 
@@ -417,7 +417,7 @@ def create_images_json(
             "format": node.get("format_property", 0),
             "mip_levels": node.get("mip_levels_property", 1),
             "array_layers": node.get("array_layers_property", 1),
-            "sample_count": node.get("sample_count_flags_property", 0),
+            "sample_count": node.get("sample_count_property", 0),
             "tiling": node.get("tiling_property", 0),
             "usage": node.get("image_usage_flags_property", 0),
             "initial_layout": node.get("initial_layout_property", 0),

@@ -247,6 +247,10 @@ class DescriptorImageInfoNode(bpy.types.Node, RenderTreeNode):
 
         self.outputs.new("DescriptorImageInfoNodeSocket", "Descriptor Image Info")
 
+    def draw_buttons(self, context, layout):
+
+        layout.prop(self, "image_layout_property")
+
 
 class DescriptorImageInfoArrayNode(bpy.types.Node, RenderTreeNode):
 

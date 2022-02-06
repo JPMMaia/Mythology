@@ -2,6 +2,7 @@ import bpy
 
 from .array_inputs import recreate_dynamic_inputs, update_dynamic_inputs
 from .common import (
+    DataArrayNode,
     create_index_json,
     find_index,
     Rect2DNodeSocket,
@@ -40,6 +41,7 @@ from .vulkan_enums import (
     pipeline_stage_flag_values,
     pipeline_stage_flag_values_2,
     get_pipeline_stage_flags_value,
+    shader_stage_flag_values,
 )
 
 
@@ -654,6 +656,31 @@ class PipelineBarrierNode(bpy.types.Node, RenderTreeNode):
         self.outputs.new("ExecutionNodeSocket", "Execution")
 
 
+class PushConstantsNode(bpy.types.Node, RenderTreeNode):
+
+    bl_label = "Push Constants"
+
+    stage_flags_property: bpy.props.EnumProperty(
+        name="Stage Flags",
+        items=shader_stage_flag_values,
+        options={"ANIMATABLE", "ENUM_FLAG"},
+    )
+    offset_property: bpy.props.IntProperty(name="Offset", default=0, min=0)
+
+    def init(self, context):
+        self.inputs.new("ExecutionNodeSocket", "Execution")
+        self.inputs.new("PipelineLayoutNodeSocket", "Pipeline Layout")
+        self.inputs.new("DataArrayNodeSocket", "Data Array")
+
+        self.outputs.new("ExecutionNodeSocket", "Execution")
+
+    def draw_buttons(self, context, layout):
+
+        layout.label(text="Shader Stage Flags")
+        layout.prop(self, "stage_flags_property")
+        layout.prop(self, "offset_property")
+
+
 class SetScreenViewportAndScissorsNode(bpy.types.Node, RenderTreeNode):
 
     bl_label = "Set Screen Viewport And Scissors node"
@@ -722,6 +749,7 @@ draw_node_categories = [
             nodeitems_utils.NodeItem("ImageMemoryBarrierNode"),
             nodeitems_utils.NodeItem("MemoryBarrierNode"),
             nodeitems_utils.NodeItem("PipelineBarrierNode"),
+            nodeitems_utils.NodeItem("PushConstantsNode"),
             nodeitems_utils.NodeItem("SetScreenViewportAndScissorsNode"),
             nodeitems_utils.NodeItem("TraceRaysNode"),
         ],
@@ -770,7 +798,9 @@ def bind_descriptor_set_to_json(
 
     json = {
         "type": "Bind_descriptor_sets",
-        "pipeline_bind_point": node.get("pipeline_bind_point_property", 0),
+        "pipeline_bind_point": get_pipeline_bind_point_value(
+            node.get("pipeline_bind_point_property", 0)
+        ),
         "first_set": node.get("first_set_property", 0),
         "pipeline_layout": find_index(
             pipeline_layouts, node.inputs["Pipeline Layout"].links[0].from_node
@@ -804,7 +834,7 @@ def bind_pipeline_node_to_json(
     return {
         "type": "Bind_pipeline",
         "pipeline_bind_point": get_pipeline_bind_point_value(
-            node.get("pipeline_bind_point_property", 0)
+            get_pipeline_bind_point_value(node.get("pipeline_bind_point_property", 0))
         ),
         "pipeline": pipeline_states.index(
             ignore_reroutes(node.inputs["Pipeline"].links[0].from_node)
@@ -910,12 +940,15 @@ def blit_image_node_to_json(
 ) -> JSONType:
 
     return {
+        "type": "Blit_image",
         "source_image": get_input_image_json(
             node.inputs["Source Image"].links[0], pipeline_images
         ),
+        "source_image_layout": node.get("source_image_layout_property", 0),
         "destination_image": get_input_image_json(
             node.inputs["Destination Image"].links[0], pipeline_images
         ),
+        "destination_image_layout": node.get("destination_image_layout_property", 0),
         "filter": node.get("filter_property", 0),
         "regions": [
             image_blit_node_to_json(link.from_node)
@@ -1066,6 +1099,25 @@ def pipeline_barrier_node_to_json(
     }
 
 
+def push_constants_node_to_json(
+    node: PushConstantsNode,
+    data_arrays: typing.List[DataArrayNode],
+    pipeline_layouts: typing.List[PipelineLayoutNode],
+) -> JSONType:
+
+    return {
+        "type": "Push_constants",
+        "pipeline_layout": pipeline_layouts.index(
+            node.inputs["Pipeline Layout"].links[0].from_node
+        ),
+        "stage_flags": node.get("stage_flags_property", 0),
+        "offset": node.offset_property,
+        "data_array_index": data_arrays.index(
+            node.inputs["Data Array"].links[0].from_node
+        ),
+    }
+
+
 def set_screen_viewport_and_scissors_node_to_json(
     node: SetScreenViewportAndScissorsNode,
 ) -> JSONType:
@@ -1113,6 +1165,7 @@ def trace_rays_node_to_json(
 
 def frame_command_node_to_json(
     node: bpy.types.Node,
+    data_arrays: typing.List[DataArrayNode],
     global_descriptor_sets: typing.List[DescriptorSetNode],
     frame_descriptor_sets: typing.List[DescriptorSetNode],
     pipeline_layouts: typing.List[PipelineLayoutNode],
@@ -1143,6 +1196,8 @@ def frame_command_node_to_json(
         return end_render_pass_node_to_json(node)
     elif node.bl_idname == "PipelineBarrierNode":
         return pipeline_barrier_node_to_json(node, pipeline_buffers, pipeline_images)
+    elif node.bl_idname == "PushConstantsNode":
+        return push_constants_node_to_json(node, data_arrays, pipeline_layouts)
     elif node.bl_idname == "SetScreenViewportAndScissorsNode":
         return set_screen_viewport_and_scissors_node_to_json(node)
     elif node.bl_idname == "TraceRaysNode":
@@ -1172,6 +1227,7 @@ def get_frame_command_nodes(
 
 def frame_commands_to_json(
     nodes: typing.List[bpy.types.Node],
+    data_arrays: typing.List[DataArrayNode],
     global_descriptor_sets: typing.List[DescriptorSetNode],
     frame_descriptor_sets: typing.List[DescriptorSetNode],
     pipeline_layouts: typing.List[PipelineLayoutNode],
@@ -1194,6 +1250,7 @@ def frame_commands_to_json(
         [
             frame_command_node_to_json(
                 command_node,
+                data_arrays,
                 global_descriptor_sets,
                 frame_descriptor_sets,
                 pipeline_layouts,
