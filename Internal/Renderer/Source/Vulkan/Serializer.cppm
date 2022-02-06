@@ -19,6 +19,11 @@ import maia.renderer.vulkan.upload;
 
 namespace Maia::Renderer::Vulkan
 {
+    export std::pmr::vector<std::pmr::vector<std::byte>> create_data_arrays(
+        nlohmann::json const& data_arrays_json,
+        std::pmr::polymorphic_allocator<> const& output_allocator
+    );
+
     export vk::DescriptorPool create_descriptor_pool(
         nlohmann::json const& descriptor_sets_json,
         nlohmann::json const& descriptor_set_layouts_json,
@@ -257,6 +262,7 @@ namespace Maia::Renderer::Vulkan
 
     export void draw(
         vk::CommandBuffer command_buffer,
+        std::span<std::pmr::vector<std::byte> const> const data_arrays,
         std::span<Maia::Renderer::Vulkan::Buffer_view const> output_buffers,
         std::span<vk::Image const> output_images,
         std::span<vk::ImageView const> output_image_views,

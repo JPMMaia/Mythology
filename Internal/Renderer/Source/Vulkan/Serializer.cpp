@@ -15,6 +15,7 @@ module;
 module maia.renderer.vulkan.serializer;
 
 import maia.renderer.vulkan.buffer_resources;
+import maia.renderer.vulkan.command_buffer;
 import maia.renderer.vulkan.image_resources;
 import maia.renderer.vulkan.upload;
 
@@ -82,8 +83,8 @@ namespace nlohmann
             value = vk::Extent3D
             {
                 .width = j.at("width").get<std::uint32_t>(),
-                .height = j.at("height").get<std::uint32_t>(),
-                .depth = j.at("depth").get<std::uint32_t>(),
+                .height = j.contains("height") ? j.at("height").get<std::uint32_t>() : 1,
+                .depth = j.contains("depth") ? j.at("depth").get<std::uint32_t>() : 1,
             };
         }
     };
@@ -103,7 +104,7 @@ namespace nlohmann
                 .aspectMask = j.at("aspect_mask").get<vk::ImageAspectFlags>(),
                 .mipLevel = j.at("mip_level").get<std::uint32_t>(),
                 .baseArrayLayer = j.at("base_array_layer").get<std::uint32_t>(),
-                .layerCount = j.at("layer_count").get<std::uint32_t>(),
+                .layerCount = j.at("array_layer_count").get<std::uint32_t>(),
             };
         }
     };
@@ -122,9 +123,9 @@ namespace nlohmann
             {
                 .aspectMask = j.at("aspect_mask").get<vk::ImageAspectFlags>(),
                 .baseMipLevel = j.at("base_mip_level").get<std::uint32_t>(),
-                .levelCount = j.at("level_count").get<std::uint32_t>(),
+                .levelCount = j.at("mip_level_count").get<std::uint32_t>(),
                 .baseArrayLayer = j.at("base_array_layer").get<std::uint32_t>(),
-                .layerCount = j.at("layer_count").get<std::uint32_t>(),
+                .layerCount = j.at("array_layer_count").get<std::uint32_t>(),
             };
         }
     };
@@ -151,6 +152,70 @@ namespace nlohmann
 
 namespace Maia::Renderer::Vulkan
 {
+    namespace
+    {
+        template <class Type>
+        std::size_t read_and_write_values(
+            std::span<std::byte> const destination,
+            std::size_t const offset,
+            nlohmann::json const& data_json
+        )
+        {
+            nlohmann::json const& values_json = data_json.at("values");
+
+            std::size_t local_offset = 0;
+
+            for (std::size_t index = 0; index < values_json.size(); ++index)
+            {
+                Type const value = values_json[index].get<Type>();
+                std::memcpy(destination.data() + offset + local_offset, &value, sizeof(value));
+                local_offset += sizeof(value);
+            }
+
+            return local_offset;
+        }
+    }
+
+    std::pmr::vector<std::pmr::vector<std::byte>> create_data_arrays(
+        nlohmann::json const& data_arrays_json,
+        std::pmr::polymorphic_allocator<> const& output_allocator
+    )
+    {
+        std::pmr::vector<std::pmr::vector<std::byte>> data_arrays{ output_allocator };
+        data_arrays.reserve(data_arrays_json.size());
+
+        for (nlohmann::json const& data_array_json : data_arrays_json)
+        {
+            std::size_t const size_in_bytes = data_array_json.at("size_in_bytes").get<std::size_t>();
+
+            std::pmr::vector<std::byte> data_array{ output_allocator };
+            data_array.resize(size_in_bytes);
+
+            std::size_t offset = 0;
+
+            for (nlohmann::json const& data_json : data_array_json.at("data"))
+            {
+                std::string const& type = data_json.at("type");
+                if (type == "float32")
+                {
+                    offset += read_and_write_values<float>(data_array, offset, data_json);
+                }
+                else if (type == "int32")
+                {
+                    offset += read_and_write_values<std::int32_t>(data_array, offset, data_json);
+                }
+                else
+                {
+                    assert(false);
+                }
+            }
+
+            data_arrays.push_back(std::move(data_array));
+        }
+
+        return data_arrays;
+    }
+
     namespace
     {
         Maia::Renderer::Vulkan::Buffer_resources create_buffer_resources(
@@ -257,21 +322,24 @@ namespace Maia::Renderer::Vulkan
 
             for (nlohmann::json const& image_json : images_json)
             {
+                vk::ImageLayout const initial_layout_after_creation = image_json.at("initial_layout").get<vk::ImageLayout>();
+                vk::ImageLayout const initial_layout = initial_layout_after_creation != vk::ImageLayout::ePreinitialized ? vk::ImageLayout::eUndefined : vk::ImageLayout::ePreinitialized;
+
                 vk::ImageCreateInfo const create_info
                 {
                     .flags = image_json.at("flags").get<vk::ImageCreateFlags>(),
                     .imageType = image_json.at("type").get<vk::ImageType>(),
                     .format = image_json.at("format").get<vk::Format>(),
                     .extent = image_json.at("extent").get<vk::Extent3D>(),
-                    .mipLevels = image_json.at("mipLevels").get<std::uint32_t>(),
-                    .arrayLayers = image_json.at("arrayLayers").get<std::uint32_t>(),
-                    .samples = image_json.at("samples").get<vk::SampleCountFlagBits>(),
+                    .mipLevels = image_json.at("mip_levels").get<std::uint32_t>(),
+                    .arrayLayers = image_json.at("array_layers").get<std::uint32_t>(),
+                    .samples = image_json.at("sample_count").get<vk::SampleCountFlagBits>(),
                     .tiling = image_json.at("tiling").get<vk::ImageTiling>(),
                     .usage = image_json.at("usage").get<vk::ImageUsageFlags>(),
                     .sharingMode = vk::SharingMode::eExclusive,
                     .queueFamilyIndexCount = 0,
                     .pQueueFamilyIndices = nullptr,
-                    .initialLayout = image_json.at("initial_layout").get<vk::ImageLayout>(),
+                    .initialLayout = initial_layout,
                 };
 
                 Maia::Renderer::Vulkan::Image_memory_view const image_memory_view =
@@ -281,6 +349,125 @@ namespace Maia::Renderer::Vulkan
             }
 
             return images;
+        }
+
+        bool is_depth_format(vk::Format const format) noexcept
+        {
+            switch (format)
+            {
+            case vk::Format::eD16Unorm:
+            case vk::Format::eX8D24UnormPack32:
+            case vk::Format::eD32Sfloat:
+            case vk::Format::eD16UnormS8Uint:
+            case vk::Format::eD24UnormS8Uint:
+            case vk::Format::eD32SfloatS8Uint:
+                return true;
+            default:
+                return false;
+            }
+        }
+
+        bool is_stencil_format(vk::Format const format) noexcept
+        {
+            switch (format)
+            {
+            case vk::Format::eS8Uint:
+            case vk::Format::eD16UnormS8Uint:
+            case vk::Format::eD24UnormS8Uint:
+            case vk::Format::eD32SfloatS8Uint:
+                return true;
+            default:
+                return false;
+            }
+        }
+
+        vk::ImageAspectFlags guess_aspect_mask(vk::Format const format) noexcept
+        {
+            if (is_depth_format(format) || is_stencil_format(format))
+            {
+                vk::ImageAspectFlags aspect_mask = {};
+
+                if (is_depth_format(format))
+                {
+                    aspect_mask |= vk::ImageAspectFlagBits::eDepth;
+                }
+
+                if (is_stencil_format(format))
+                {
+                    aspect_mask |= vk::ImageAspectFlagBits::eStencil;
+                }
+
+                return aspect_mask;
+            }
+            else
+            {
+                return vk::ImageAspectFlagBits::eColor;
+            }
+        }
+
+        void perform_image_initial_layout_transitions(
+            vk::Device const device,
+            vk::Queue const queue,
+            vk::CommandPool const command_pool,
+            nlohmann::json const& images_json,
+            std::span<vk::Image const> const images,
+            vk::AllocationCallbacks const* const allocation_callbacks,
+            std::pmr::polymorphic_allocator<> const& temporaries_allocator
+        )
+        {
+            assert(images_json.size() == images.size());
+
+            std::pmr::vector<vk::ImageMemoryBarrier2KHR> image_memory_barriers{ temporaries_allocator };
+            image_memory_barriers.reserve(images.size());
+
+            for (std::size_t image_index = 0; image_index < images.size(); ++image_index)
+            {
+                nlohmann::json const& image_json = images_json[image_index];
+
+                vk::ImageLayout const initial_layout = image_json.at("initial_layout").get<vk::ImageLayout>();
+
+                if (initial_layout != vk::ImageLayout::eUndefined && initial_layout != vk::ImageLayout::ePreinitialized)
+                {
+                    vk::Image const image = images[image_index];
+                    vk::ImageAspectFlags const aspect_mask = guess_aspect_mask(image_json.at("format").get<vk::Format>());
+
+                    image_memory_barriers.push_back(
+                        vk::ImageMemoryBarrier2KHR
+                        {
+                            .srcStageMask = vk::PipelineStageFlagBits2KHR::eTopOfPipe,
+                            .dstStageMask = vk::PipelineStageFlagBits2KHR::eBottomOfPipe,
+                            .oldLayout = vk::ImageLayout::eUndefined,
+                            .newLayout = initial_layout,
+                            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                            .image = image,
+                            .subresourceRange = {
+                                .aspectMask = aspect_mask,
+                                .baseMipLevel = 0,
+                                .levelCount = VK_REMAINING_MIP_LEVELS,
+                                .baseArrayLayer = 0,
+                                .layerCount = VK_REMAINING_ARRAY_LAYERS,
+                            },
+                        }
+                    );
+                }
+            }
+
+            if (!image_memory_barriers.empty())
+            {
+                vk::CommandBuffer const command_buffer = create_one_time_submit_command_buffer(device, command_pool);
+
+                vk::DependencyInfoKHR const dependency_info
+                {
+                    .dependencyFlags = {},
+                    .imageMemoryBarrierCount = static_cast<std::uint32_t>(image_memory_barriers.size()),
+                    .pImageMemoryBarriers = image_memory_barriers.data(),
+                };
+
+                command_buffer.pipelineBarrier2KHR(dependency_info);
+
+                submit(device, queue, command_pool, command_buffer, allocation_callbacks);
+            }
         }
 
         std::pmr::vector<vk::ImageView> create_image_views(
@@ -1883,7 +2070,7 @@ namespace Maia::Renderer::Vulkan
             return
             {
                 .width = json.at("width").get<std::uint32_t>(),
-                .height = json.at("height").get<std::uint32_t>(),
+                .height = json.contains("height") ? json.at("height").get<std::uint32_t>() : 1,
             };
         }
 
@@ -3035,12 +3222,29 @@ namespace Maia::Renderer::Vulkan
 
         if (pipeline_json.contains("images"))
         {
-            this->image_memory_views = create_images(pipeline_json.at("images"), this->image_resources, output_allocator);
+            nlohmann::json const& images_json = pipeline_json.at("images");
+
+            this->image_memory_views = create_images(images_json, this->image_resources, output_allocator);
 
             if (pipeline_json.contains("image_views"))
             {
                 this->image_views = create_image_views(pipeline_json.at("image_views"), device, this->image_memory_views, allocation_callbacks, output_allocator);
             }
+
+            std::pmr::vector<vk::Image> const images = get_images(
+                this->image_memory_views,
+                temporaries_allocator
+            );
+
+            perform_image_initial_layout_transitions(
+                device,
+                upload_queue,
+                command_pool,
+                images_json,
+                images,
+                allocation_callbacks,
+                temporaries_allocator
+            );
         }
 
         if (pipeline_json.contains("descriptor_sets") && !pipeline_json.at("descriptor_sets").empty())
@@ -3138,6 +3342,7 @@ namespace Maia::Renderer::Vulkan
             Draw,
             End_render_pass,
             Pipeline_barrier,
+            Push_constants,
             Trace_rays,
             Set_screen_viewport_and_scissors
         };
@@ -3824,6 +4029,37 @@ namespace Maia::Renderer::Vulkan
             return output;
         }
 
+        struct Push_constants
+        {
+            vk::PipelineLayout layout = {};
+            vk::ShaderStageFlags stage_flags = {};
+            std::uint32_t offset = {};
+            std::uint32_t data_array_index = {};
+        };
+
+        std::pmr::vector<std::byte> create_push_constants_data(
+            nlohmann::json const& json,
+            std::span<vk::PipelineLayout const> const pipeline_layouts,
+            std::pmr::polymorphic_allocator<> const& output_allocator
+        ) noexcept
+        {
+            assert(json.at("type").get<std::string>() == "Push_constants");
+
+            Push_constants const command
+            {
+                .layout = pipeline_layouts[json.at("pipeline_layout").get<std::uint32_t>()],
+                .stage_flags = json.at("stage_flags").get<vk::ShaderStageFlags>(),
+                .offset = json.at("offset").get<std::uint32_t>(),
+                .data_array_index = json.at("data_array_index").get<std::uint32_t>(),
+            };
+
+            return write_command_data(
+                output_allocator,
+                Command_type::Push_constants,
+                command
+            );
+        }
+
         std::pmr::vector<std::byte> create_set_screen_viewport_and_scissors_data(
             nlohmann::json const& json,
             std::pmr::polymorphic_allocator<> const& output_allocator
@@ -3930,6 +4166,10 @@ namespace Maia::Renderer::Vulkan
             else if (type == "Pipeline_barrier")
             {
                 return create_pipeline_barrier(command_json, pipeline_buffer_memory_views, pipeline_images, output_allocator, temporaries_allocator);
+            }
+            else if (type == "Push_constants")
+            {
+                return create_push_constants_data(command_json, pipeline_layouts, output_allocator);
             }
             else if (type == "Trace_rays")
             {
@@ -4506,7 +4746,7 @@ namespace Maia::Renderer::Vulkan
             std::pair<Commands_data_offset, std::pmr::vector<vk::MemoryBarrier2KHR>> const memory_barriers =
                 create_memory_barriers(
                     { bytes.data() + commands_data_offset, bytes.size() - commands_data_offset },
-                    command.buffer_memory_barrier_count,
+                    command.memory_barrier_count,
                     temporaries_allocator
                 );
             commands_data_offset += memory_barriers.first;
@@ -4543,6 +4783,31 @@ namespace Maia::Renderer::Vulkan
 
             command_buffer.pipelineBarrier2KHR(
                 dependency_info
+            );
+
+            return commands_data_offset;
+        }
+
+        Commands_data_offset add_push_constants_command(
+            vk::CommandBuffer const command_buffer,
+            std::span<std::pmr::vector<std::byte> const> const data_arrays,
+            std::span<std::byte const> const bytes,
+            std::pmr::polymorphic_allocator<> const& temporaries_allocator
+        ) noexcept
+        {
+            Commands_data_offset commands_data_offset = 0;
+
+            Push_constants const command = read<Push_constants>(bytes.data() + commands_data_offset);
+            commands_data_offset += sizeof(command);
+
+            std::span<std::byte const> const data_array = data_arrays[command.data_array_index];
+
+            command_buffer.pushConstants(
+                command.layout,
+                command.stage_flags,
+                command.offset,
+                static_cast<std::uint32_t>(data_array.size()),
+                data_array.data()
             );
 
             return commands_data_offset;
@@ -4614,6 +4879,7 @@ namespace Maia::Renderer::Vulkan
 
     void draw(
         vk::CommandBuffer const command_buffer,
+        std::span<std::pmr::vector<std::byte> const> const data_arrays,
         std::span<Maia::Renderer::Vulkan::Buffer_view const> const output_buffer_memory_views,
         std::span<vk::Image const> const output_images,
         std::span<vk::ImageView const> const output_image_views,
@@ -4668,6 +4934,10 @@ namespace Maia::Renderer::Vulkan
 
             case Command_type::Pipeline_barrier:
                 offset_in_bytes += add_pipeline_barrier_command(command_buffer, output_buffer_memory_views, output_images, output_image_subresource_ranges, next_command_bytes, temporaries_allocator);
+                break;
+
+            case Command_type::Push_constants:
+                offset_in_bytes += add_push_constants_command(command_buffer, data_arrays, next_command_bytes, temporaries_allocator);
                 break;
 
             case Command_type::Trace_rays:
