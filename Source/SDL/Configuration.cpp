@@ -41,7 +41,7 @@ namespace Mythology::SDL
             {
                 Fullscreen_mode const& fullscreen_mode = std::get<Fullscreen_mode>(configuration.mode);
 
-                if (fullscreen_mode.display_index < number_of_displays)
+                if (static_cast<int>(fullscreen_mode.display_index) < number_of_displays)
                 {
                     SDL_Rect bounds = {};
                     SDL_GetDisplayBounds(fullscreen_mode.display_index, &bounds);
@@ -1020,7 +1020,7 @@ namespace Mythology::SDL
         {
             nlohmann::json const& descriptor_sets_json = frame_resources_json.at("descriptor_sets");
 
-            if (descriptor_sets_json.contains("per_frame"))
+            if (descriptor_sets_json.contains("per_frame") && !descriptor_sets_json.at("per_frame").empty())
             {
                 nlohmann::json const& per_frame_descriptor_sets_json = descriptor_sets_json.at("per_frame");
 

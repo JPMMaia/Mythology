@@ -412,6 +412,7 @@ namespace Mythology::SDL
                 {
                     "VK_KHR_acceleration_structure",
                     "VK_KHR_buffer_device_address",
+                    VK_KHR_COPY_COMMANDS_2_EXTENSION_NAME,
                     "VK_KHR_deferred_host_operations",
                     "VK_KHR_ray_tracing_pipeline",
                     VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
@@ -452,7 +453,7 @@ namespace Mythology::SDL
             Swapchain_configuration
             {
                 .image_format = vk::Format::eB8G8R8A8Srgb,
-                .image_usage = vk::ImageUsageFlagBits::eColorAttachment,
+                .image_usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferDst,
             }
         };
 
@@ -677,6 +678,11 @@ namespace Mythology::SDL
             {}
         };
 
+        std::pmr::vector<std::pmr::vector<std::byte>> const data_arrays = Maia::Renderer::Vulkan::create_data_arrays(
+            render_pipeline_json.contains("data_arrays") ? render_pipeline_json.at("data_arrays") : nlohmann::json{},
+            {}
+        );
+
         nlohmann::json const& command_lists_json = render_pipeline_json.at("frame_commands");
         nlohmann::json const& command_list_json = command_lists_json[render_pipeline_configuration.command_list_index];
 
@@ -809,25 +815,36 @@ namespace Mythology::SDL
 
                             std::span<vk::Rect2D const> const output_render_areas = swapchain_render_areas;
 
-                            Maia::Renderer::Vulkan::update_frame_descriptor_sets(
-                                render_pipeline_device,
-                                pipeline_input_resources.descriptor_sets[frame_index],
-                                pipeline_input_resources.descriptor_sets_image_indices,
-                                pipeline_input_resources.descriptor_sets_image_layouts,
-                                output_image_views,
-                                pipeline_input_resources.descriptor_sets_bindings,
-                                {}
-                            );
+                            if (!pipeline_input_resources.descriptor_sets.empty() && !pipeline_input_resources.descriptor_sets[frame_index].empty())
+                            {
+                                Maia::Renderer::Vulkan::update_frame_descriptor_sets(
+                                    render_pipeline_device,
+                                    pipeline_input_resources.descriptor_sets[frame_index],
+                                    pipeline_input_resources.descriptor_sets_image_indices,
+                                    pipeline_input_resources.descriptor_sets_image_layouts,
+                                    output_image_views,
+                                    pipeline_input_resources.descriptor_sets_bindings,
+                                    {}
+                                );
+                            }
 
-                            std::pmr::vector<vk::DescriptorSet> const frame_descriptor_sets = Maia::Renderer::Vulkan::get_frame_descriptor_sets(
-                                pipeline_input_resources.descriptor_sets[frame_index],
-                                frame_shared_resources.descriptor_sets,
-                                frame_descriptor_sets_map,
-                                {}
+                            std::span<vk::DescriptorSet const> const per_frame_descriptor_sets
+                            {
+                                !pipeline_input_resources.descriptor_sets.empty() ? pipeline_input_resources.descriptor_sets[frame_index].data() : nullptr,
+                                !pipeline_input_resources.descriptor_sets.empty() ? pipeline_input_resources.descriptor_sets[frame_index].size() : 0
+                            };
+
+                            std::pmr::vector<vk::DescriptorSet> const frame_descriptor_sets =
+                                Maia::Renderer::Vulkan::get_frame_descriptor_sets(
+                                    per_frame_descriptor_sets,
+                                    frame_shared_resources.descriptor_sets,
+                                    frame_descriptor_sets_map,
+                                    {}
                             );
 
                             Maia::Renderer::Vulkan::draw(
                                 command_buffer,
+                                data_arrays,
                                 output_buffer_memory_views,
                                 output_images,
                                 output_image_views,
