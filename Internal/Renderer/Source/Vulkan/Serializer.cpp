@@ -818,6 +818,7 @@ namespace Maia::Renderer::Vulkan
                             .dstSet = descriptor_set,
                             .dstBinding = binding_json.at("binding").get<std::uint32_t>(),
                             .dstArrayElement = binding_json.at("first_array_element").get<std::uint32_t>(),
+                            .descriptorCount = 1,
                             .descriptorType = descriptor_type,
                         }
                     );
