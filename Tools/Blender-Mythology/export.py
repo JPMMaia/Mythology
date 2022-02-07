@@ -102,7 +102,7 @@ class MythologyExportOperator(bpy.types.Operator):
         ]
 
         if not compile_shaders(shader_compiler, output_json_directory, nodes):
-            return {"FINISHED"}
+            return {"CANCELLED"}
 
         data_arrays = create_data_arrays_json(nodes)
         render_passes = render_pass_to_json(nodes)

@@ -1131,9 +1131,9 @@ def trace_rays_node_to_json(
 
     json = {
         "type": "Trace_rays",
-        "width": node.get("width_property", 1),
-        "height": node.get("height_property", 1),
-        "depth": node.get("depth_property", 1),
+        "width": node.width_property,
+        "height": node.height_property,
+        "depth": node.depth_property,
     }
 
     if len(node.inputs["Raygen Shader Binding Table"].links) == 1:

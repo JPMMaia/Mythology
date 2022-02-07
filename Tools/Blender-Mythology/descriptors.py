@@ -358,7 +358,9 @@ def create_descriptor_set_layouts_json(
                 {
                     "binding": link.from_node.get("binding_property", 0),
                     "descriptor_type": get_descriptor_type_value(
-                        link.from_node.get("descriptor_type_property", 0)
+                        get_descriptor_type_value(
+                            link.from_node.get("descriptor_type_property", 0)
+                        )
                     ),
                     "descriptor_count": link.from_node.get(
                         "descriptor_count_property", 1
@@ -415,7 +417,9 @@ def descriptor_set_binding_to_json(
 
     json = {
         "binding": node.get("binding_property", 0),
-        "descriptor_type": node.get("descriptor_type_property", 0),
+        "descriptor_type": get_descriptor_type_value(
+            node.get("descriptor_type_property", 0)
+        ),
         "first_array_element": node.get("first_array_element_property", 0),
     }
 

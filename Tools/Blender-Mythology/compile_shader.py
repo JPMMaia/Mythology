@@ -51,9 +51,12 @@ def compile_shaders(
 
         if process.returncode != 0:
             print(
-                "Shader compilation failed with exit code %d: %s %s %s"
-                % (process.returncode, command, output, error)
+                "Shader compilation failed with exit code %d: %s"
+                % (process.returncode, command)
             )
+            print(output.decode("UTF-8"))
+            print(error.decode("UTF-8"))
+            raise Exception("Shader compilation. Check console!")
             return False
 
     return True
