@@ -11,6 +11,14 @@ target_link_libraries (MaiaRendererVulkan PUBLIC nlohmann_json::nlohmann_json)
 target_module (
     MaiaRendererVulkan
     PUBLIC
+    "maia.renderer.vulkan.command_buffer"
+    INTERFACE "Command_buffer.cppm"
+    IMPLEMENTATION "Command_buffer.cpp"
+)
+
+target_module (
+    MaiaRendererVulkan
+    PUBLIC
     "maia.renderer.vulkan.buffer_resources"
     INTERFACE "Buffer_resources.cppm"
     IMPLEMENTATION "Buffer_resources.cpp"
@@ -31,7 +39,7 @@ target_module (
     INTERFACE "Upload.cppm"
     INTERFACE_DEPENDS "maia.renderer.vulkan.buffer_resources"
     IMPLEMENTATION "Upload.cpp"
-    IMPLEMENTATION_DEPENDS "maia.renderer.vulkan.buffer_resources"
+    IMPLEMENTATION_DEPENDS "maia.renderer.vulkan.buffer_resources" "maia.renderer.vulkan.command_buffer"
 )
 
 target_module (
@@ -41,5 +49,9 @@ target_module (
     INTERFACE "Serializer.cppm"
     INTERFACE_DEPENDS "maia.renderer.vulkan.buffer_resources" "maia.renderer.vulkan.image_resources"
     IMPLEMENTATION "Serializer.cpp"
-    IMPLEMENTATION_DEPENDS "maia.renderer.vulkan.buffer_resources" "maia.renderer.vulkan.image_resources" "maia.renderer.vulkan.upload"
+    IMPLEMENTATION_DEPENDS
+        "maia.renderer.vulkan.buffer_resources"
+        "maia.renderer.vulkan.command_buffer"
+        "maia.renderer.vulkan.image_resources"
+        "maia.renderer.vulkan.upload"
 )
