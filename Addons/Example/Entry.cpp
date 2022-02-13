@@ -12,13 +12,22 @@ namespace Mythology::Addons
     {
     public:
 
-        Example_addon_interface() { std::cout << "hello from dll!" << std::endl; }
+        Example_addon_interface() {}
         ~Example_addon_interface() {}
 
-        void fixed_update(
-            Maia::Input::Input_state const& previous_input_state,
-            Maia::Input::Input_state const& current_input_state
-        ) final {}
+        void process_input(
+            std::optional<Maia::Input::Keyboard_state> const current_keyboard_state,
+            std::optional<Maia::Input::Mouse_state> const current_mouse_state,
+            std::span<Maia::Input::Game_controller_state const> const current_game_controllers_state
+        ) final
+        {
+
+        }
+
+        void fixed_update() final
+        {
+
+        }
     };
 }
 

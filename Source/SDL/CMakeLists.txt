@@ -59,6 +59,14 @@ target_module (
 target_module(
     MaiaMythologySDL
     PUBLIC
+    "mythology.sdl.input"
+    INTERFACE "SDL_input.cppm"
+    IMPLEMENTATION "SDL_input.cpp"
+)
+
+target_module(
+    MaiaMythologySDL
+    PUBLIC
     "mythology.geometry"
     INTERFACE "Geometry.cppm"
     IMPLEMENTATION "Geometry.cpp"
@@ -119,6 +127,7 @@ target_module(
     IMPLEMENTATION "Startup_state.cpp"
     IMPLEMENTATION_DEPENDS
         "mythology.sdl.configuration"
+        "mythology.sdl.input"
         "mythology.sdl.render_resources"
         "mythology.sdl.sdl"
         "mythology.sdl.state"

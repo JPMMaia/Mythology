@@ -85,6 +85,30 @@ namespace
             return {};
         }
     }
+
+    std::pmr::vector<std::filesystem::path> parse_addon_paths(
+        std::map<std::string, docopt::value> const& arguments
+    )
+    {
+        if (arguments.contains("--addon"))
+        {
+            std::vector<std::string> const string_list = arguments.at("--addon").asStringList();
+
+            std::pmr::vector<std::filesystem::path> addon_paths;
+            addon_paths.reserve(string_list.size());
+
+            for (std::string const& string : string_list)
+            {
+                addon_paths.push_back(std::filesystem::path{ string });
+            }
+
+            return addon_paths;
+        }
+        else
+        {
+            return {};
+        }
+    }
 }
 
 constexpr const char* c_usage =
@@ -92,7 +116,7 @@ R"(Mythology.
 
     Usage:
         mythology render --pipeline=<pipeline_name>=<pipeline_json_file>... [--gltf=<gltf_json_file>] --output=<output_file>
-        mythology window --pipeline=<pipeline_name>=<pipeline_json_file>... [--gltf=<gltf_json_file>]
+        mythology window --pipeline=<pipeline_name>=<pipeline_json_file>... [--gltf=<gltf_json_file>] [--addon=<addon_file>]...
         mythology [--help]
         mythology --version
 
@@ -121,7 +145,8 @@ int main(int const argc, const char* const* const argv) noexcept
     else if (arguments.at("window").asBool())
     {
         std::filesystem::path const gltf_path = parse_gltf_argument(arguments);
-        Mythology::SDL::run(render_pipelines, gltf_path);
+        std::pmr::vector<std::filesystem::path> const addon_paths = parse_addon_paths(arguments);
+        Mythology::SDL::run(render_pipelines, gltf_path, addon_paths);
     }
 
     return 0;

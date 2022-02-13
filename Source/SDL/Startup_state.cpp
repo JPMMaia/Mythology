@@ -7,6 +7,7 @@ module;
 
 #include <array>
 #include <cassert>
+#include <chrono>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -27,8 +28,11 @@ import maia.renderer.vulkan.serializer;
 import maia.renderer.vulkan.upload;
 import maia.scene;
 
+import mythology.addon_interface;
+import mythology.load_addon;
 import mythology.geometry;
 import mythology.sdl.configuration;
+import mythology.sdl.input;
 import mythology.sdl.render_resources;
 import mythology.sdl.sdl;
 import mythology.sdl.state;
@@ -38,10 +42,12 @@ namespace Mythology::SDL
 {
     Startup_state::Startup_state(
         std::pmr::unordered_map<std::pmr::string, std::filesystem::path> render_pipelines,
-        std::filesystem::path gltf_path
+        std::filesystem::path gltf_path,
+        std::span<std::filesystem::path const> const addon_paths
     ) noexcept :
         m_render_pipelines{ std::move(render_pipelines) },
-        m_gltf_path{ std::move(gltf_path) }
+        m_gltf_path{ std::move(gltf_path) },
+        m_addon_paths{ addon_paths }
     {
     }
 
@@ -344,6 +350,325 @@ namespace Mythology::SDL
             physical_device.getProperties2(&properties);
 
             return ray_tracing_properties;
+        }
+
+        bool is_fence_signaled(
+            Mythology::Render::Synchronization_resources const& synchronization_resources,
+            std::size_t const frame_index,
+            std::size_t const swapchain_index
+        )
+        {
+            vk::Device const swapchain_device = synchronization_resources.devices[swapchain_index];
+
+            std::span<vk::Fence const> const available_frame_fences = synchronization_resources.frames[frame_index].available_frame_fences;
+            vk::Fence const available_frame_fence = available_frame_fences[swapchain_index];
+
+            vk::Result const fence_status = swapchain_device.getFenceStatus(available_frame_fence);
+
+            return fence_status == vk::Result::eSuccess;
+        }
+
+        std::optional<std::uint32_t> acquire_next_image(
+            Mythology::Render::Synchronization_resources const& synchronization_resources,
+            std::size_t const frame_index,
+            Mythology::SDL::Swapchain_resources const& swapchain_resources,
+            std::size_t const swapchain_index
+        )
+        {
+            vk::Device const swapchain_device = synchronization_resources.devices[swapchain_index];
+            vk::SwapchainKHR const swapchain = swapchain_resources.swapchains[swapchain_index];
+
+            std::span<vk::Semaphore const> const available_frame_semaphores = synchronization_resources.frames[frame_index].available_frame_semaphores;
+            vk::Semaphore const available_frame_semaphore = available_frame_semaphores[swapchain_index];
+
+            vk::ResultValue<std::uint32_t> const acquire_next_image_result =
+                swapchain_device.acquireNextImageKHR(swapchain, 0, available_frame_semaphore, {});
+
+            if (acquire_next_image_result.result == vk::Result::eSuccess)
+            {
+                return acquire_next_image_result.value;
+            }
+            else
+            {
+                return std::nullopt;
+            }
+        }
+
+        void render_frame(
+            vk::Device const render_pipeline_device,
+            std::span<Render_pipeline_input_configuration const> const render_pipeline_inputs,
+            Mythology::SDL::Render_pipeline_input_resources const& render_pipeline_input_resources,
+            std::span<vk::Queue const> const queues,
+            Frame_shared_resources const& frame_shared_resources,
+            std::size_t frame_index,
+            std::span<vk::CommandBuffer const> const frame_command_buffers,
+            Maia::Renderer::Vulkan::Frame_descriptor_sets_map const& frame_descriptor_sets_map,
+            Mythology::Render::Synchronization_resources const& synchronization_resources,
+            std::span<Swapchain_configuration const> const swapchain_configurations,
+            Mythology::SDL::Swapchain_resources const& swapchain_resources,
+            std::span<vk::Rect2D const> const swapchain_render_areas,
+            std::span<vk::ImageSubresourceRange const> const swapchain_image_subresource_ranges,
+            std::size_t const swapchain_index,
+            std::uint32_t const swapchain_image_index,
+            std::span<std::pmr::vector<std::byte> const> const data_arrays,
+            Maia::Renderer::Vulkan::Commands_data const& commands_data
+        )
+        {
+            vk::CommandBuffer const command_buffer = frame_command_buffers[0];
+            command_buffer.reset({});
+            {
+                vk::CommandBufferBeginInfo const begin_info
+                {
+                    .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
+                    .pInheritanceInfo = nullptr,
+                };
+
+                command_buffer.begin(begin_info);
+            }
+
+            {
+                std::span<Maia::Renderer::Vulkan::Buffer_view const> const output_buffer_memory_views; // TODO
+
+                std::array<std::uint32_t, 1> const swapchain_image_indices = { swapchain_image_index };
+                std::pmr::vector<vk::Image> const output_images =
+                    get_input_images(
+                        render_pipeline_inputs,
+                        swapchain_resources.images,
+                        swapchain_image_indices,
+                        {}
+                );
+
+                std::pmr::vector<vk::ImageView> const output_image_views =
+                    get_input_image_views(
+                        render_pipeline_inputs,
+                        render_pipeline_input_resources.image_views,
+                        swapchain_image_indices,
+                        {}
+                );
+
+                std::span<vk::ImageSubresourceRange const> const output_image_subresource_ranges =
+                    swapchain_image_subresource_ranges;
+
+                std::pmr::vector<vk::Framebuffer> const output_framebuffers =
+                    get_input_framebuffers(
+                        render_pipeline_inputs,
+                        render_pipeline_input_resources.framebuffers,
+                        swapchain_image_indices,
+                        {}
+                );
+
+                std::span<vk::Rect2D const> const output_render_areas = swapchain_render_areas;
+
+                if (!render_pipeline_input_resources.descriptor_sets.empty() && !render_pipeline_input_resources.descriptor_sets[frame_index].empty())
+                {
+                    Maia::Renderer::Vulkan::update_frame_descriptor_sets(
+                        render_pipeline_device,
+                        render_pipeline_input_resources.descriptor_sets[frame_index],
+                        render_pipeline_input_resources.descriptor_sets_image_indices,
+                        render_pipeline_input_resources.descriptor_sets_image_layouts,
+                        output_image_views,
+                        render_pipeline_input_resources.descriptor_sets_bindings,
+                        {}
+                    );
+                }
+
+                std::span<vk::DescriptorSet const> const per_frame_descriptor_sets
+                {
+                    !render_pipeline_input_resources.descriptor_sets.empty() ? render_pipeline_input_resources.descriptor_sets[frame_index].data() : nullptr,
+                    !render_pipeline_input_resources.descriptor_sets.empty() ? render_pipeline_input_resources.descriptor_sets[frame_index].size() : 0
+                };
+
+                std::pmr::vector<vk::DescriptorSet> const frame_descriptor_sets =
+                    Maia::Renderer::Vulkan::get_frame_descriptor_sets(
+                        per_frame_descriptor_sets,
+                        frame_shared_resources.descriptor_sets,
+                        frame_descriptor_sets_map,
+                        {}
+                );
+
+                Maia::Renderer::Vulkan::draw(
+                    command_buffer,
+                    data_arrays,
+                    output_buffer_memory_views,
+                    output_images,
+                    output_image_views,
+                    output_image_subresource_ranges,
+                    frame_descriptor_sets,
+                    output_framebuffers,
+                    output_render_areas,
+                    commands_data,
+                    {}
+                );
+            }
+            command_buffer.end();
+
+            vk::Queue const queue = queues[swapchain_configurations[swapchain_index].queue_to_present_index];
+
+            std::span<vk::Semaphore const> const finished_frame_semaphores = synchronization_resources.frames[frame_index].finished_frame_semaphores;
+            vk::Semaphore const finished_frame_semaphore = finished_frame_semaphores[swapchain_index];
+            {
+                std::span<vk::Fence const> const available_frame_fences = synchronization_resources.frames[frame_index].available_frame_fences;
+                vk::Fence const available_frame_fence = available_frame_fences[swapchain_index];
+
+                std::span<vk::Semaphore const> const available_frame_semaphores = synchronization_resources.frames[frame_index].available_frame_semaphores;
+                vk::Semaphore const available_frame_semaphore = available_frame_semaphores[swapchain_index];
+
+                vk::Device const swapchain_device = synchronization_resources.devices[swapchain_index];
+
+                std::array<vk::PipelineStageFlags, 1> constexpr wait_destination_stage_masks = { vk::PipelineStageFlagBits::eColorAttachmentOutput };
+                std::array<vk::Fence, 1> const fences_to_reset = { available_frame_fence };
+                swapchain_device.resetFences(fences_to_reset);
+
+                std::array<vk::SubmitInfo, 1> const submit_infos
+                {
+                    vk::SubmitInfo
+                    {
+                        .waitSemaphoreCount = 1,
+                        .pWaitSemaphores = &available_frame_semaphore,
+                        .pWaitDstStageMask = wait_destination_stage_masks.data(),
+                        .commandBufferCount = static_cast<std::uint32_t>(frame_command_buffers.size()),
+                        .pCommandBuffers = frame_command_buffers.data(),
+                        .signalSemaphoreCount = 1,
+                        .pSignalSemaphores = &finished_frame_semaphore,
+                    }
+                };
+
+                queue.submit(submit_infos, available_frame_fence);
+            }
+
+            {
+                vk::SwapchainKHR const swapchain = swapchain_resources.swapchains[swapchain_index];
+
+                std::array<std::uint32_t, 1> const swapchain_image_indices = { swapchain_image_index };
+
+                vk::PresentInfoKHR const present_info
+                {
+                    .waitSemaphoreCount = 1,
+                    .pWaitSemaphores = &finished_frame_semaphore,
+                    .swapchainCount = 1,
+                    .pSwapchains = &swapchain,
+                    .pImageIndices = swapchain_image_indices.data(),
+                    .pResults = nullptr,
+                };
+
+                vk::Result const result = queue.presentKHR(present_info);
+
+                if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
+                {
+                    // TODO recreate swapchain
+                }
+            }
+        }
+
+        bool process_window_events(
+            std::function<void()> recreate_swapchain,
+            std::pmr::vector<Game_controller>& game_controllers,
+            std::function<void(Sint32, std::pmr::vector<Game_controller>&)> add_game_controller,
+            std::function<void(Sint32, std::pmr::vector<Game_controller>&)> remove_game_controller
+        )
+        {
+            SDL_Event event = {};
+            while (SDL_PollEvent(&event))
+            {
+                if (event.type == SDL_QUIT)
+                {
+                    return false;
+                }
+                else if (event.type == SDL_WINDOWEVENT)
+                {
+                    if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED || event.window.event == SDL_WINDOWEVENT_RESIZED)
+                    {
+                        recreate_swapchain();
+                    }
+                }
+                else if (event.type == SDL_CONTROLLERDEVICEADDED)
+                {
+                    Sint32 const added_instance_id = event.cdevice.which;
+                    add_game_controller(added_instance_id, game_controllers);
+                }
+                else if (event.type == SDL_CONTROLLERDEVICEREMOVED)
+                {
+                    Sint32 const removed_instance_id = event.cdevice.which;
+                    remove_game_controller(removed_instance_id, game_controllers);
+                }
+            }
+
+            return true;
+        }
+
+        void process_input(
+            std::span<Addon_interface* const> const addons,
+            std::span<Game_controller const> const game_controllers,
+            std::pmr::polymorphic_allocator<> const& temporaries_allocator
+        )
+        {
+            Maia::Input::Keyboard_state const current_keyboard_state = get_keyboard_state();
+            Maia::Input::Mouse_state const current_mouse_state = get_mouse_state();
+            std::pmr::vector<Maia::Input::Game_controller_state> const current_game_controllers_state =
+                get_game_controllers_state(game_controllers, temporaries_allocator);
+
+            for (Addon_interface* const addon : addons)
+            {
+                addon->process_input(
+                    current_keyboard_state,
+                    current_mouse_state,
+                    current_game_controllers_state
+                );
+            }
+        }
+
+        void fixed_update(
+            std::span<Addon_interface* const> const addons
+        )
+        {
+            for (Addon_interface* const addon : addons)
+            {
+                addon->fixed_update();
+            }
+        }
+
+        std::pmr::vector<std::pair<Addon, Addon_interface_pointer>> load_addons(
+            std::span<std::filesystem::path const> const addon_paths,
+            std::pmr::polymorphic_allocator<> const& output_allocator
+        )
+        {
+            std::pmr::vector<std::pair<Addon, Addon_interface_pointer>> addons{ output_allocator };
+            addons.reserve(addon_paths.size());
+
+            for (std::filesystem::path const& addon_path : addon_paths)
+            {
+                std::optional<Addon> addon = Mythology::load_addon(addon_path);
+
+                if (addon)
+                {
+                    Addon_interface_pointer addon_interface_pointer = Mythology::create_addon_interface(
+                        addon->create_addon_interface,
+                        addon->destroy_addon_interface
+                    );
+
+                    addons.push_back(std::make_pair(std::move(*addon), std::move(addon_interface_pointer)));
+                }
+            }
+
+            return addons;
+        }
+
+        std::pmr::vector<Addon_interface*> get_addon_interfaces(
+            std::span<std::pair<Addon, Addon_interface_pointer> const> const addons,
+            std::pmr::polymorphic_allocator<> const& output_allocator
+        )
+        {
+            std::pmr::vector<Addon_interface*> output{ output_allocator };
+            output.resize(addons.size());
+
+            std::transform(
+                addons.begin(),
+                addons.end(),
+                output.begin(),
+                [](std::pair<Addon, Addon_interface_pointer> const& addon) -> Addon_interface* { return addon.second.get(); }
+            );
+
+            return output;
         }
     }
 
@@ -739,183 +1064,85 @@ namespace Mythology::SDL
             {}
         );
 
+        std::size_t const swapchain_index = render_pipeline_configuration.inputs[0].swapchain_index;
+        std::function<void()> recreate_swapchain = {}; // TODO
+
+        std::pmr::vector<Game_controller> game_controllers;
+        game_controllers.reserve(2);
+
         std::uint8_t frame_index = 0;
+
+        auto previous_time_point = std::chrono::high_resolution_clock::now();
+        std::chrono::milliseconds const fixed_time_step = std::chrono::milliseconds{ 20 };
+        std::chrono::high_resolution_clock::duration lag = {};
+
+        std::pmr::vector<std::pair<Addon, Addon_interface_pointer>> const addons = load_addons(
+            m_addon_paths,
+            {}
+        );
+
+        std::pmr::vector<Addon_interface*> const addon_interfaces = get_addon_interfaces(
+            addons,
+            {}
+        );
 
         while (true)
         {
-            std::span<vk::Fence const> const available_frame_fences = synchronization_resources.frames[frame_index].available_frame_fences;
-            std::span<vk::Semaphore const> const available_frame_semaphores = synchronization_resources.frames[frame_index].available_frame_semaphores;
-            std::span<vk::Semaphore const> const finished_frame_semaphores = synchronization_resources.frames[frame_index].finished_frame_semaphores;
-            std::span<vk::CommandBuffer const> const frame_command_buffers = frames_command_buffers[frame_index];
+            auto const current_time_point = std::chrono::high_resolution_clock::now();
+            auto const elapsed_duration = current_time_point - previous_time_point;
+            previous_time_point = current_time_point;
+            lag += elapsed_duration;
 
+            process_window_events(
+                recreate_swapchain,
+                game_controllers,
+                Mythology::SDL::add_game_controller,
+                Mythology::SDL::remove_game_controller
+            );
+
+            process_input(
+                addon_interfaces,
+                game_controllers,
+                {}
+            );
+
+            while (lag >= fixed_time_step)
             {
-                Render_pipeline_configuration const& render_pipeline_configuration = render_pipeline_configurations[render_pipeline_index];
-                std::size_t const swapchain_index = render_pipeline_configuration.inputs[0].swapchain_index; // TODO
+                fixed_update(addon_interfaces);
+                lag -= fixed_time_step;
+            }
 
-                vk::Device const swapchain_device = synchronization_resources.devices[swapchain_index];
-                vk::Fence const available_frame_fence = available_frame_fences[swapchain_index];
+            if (is_fence_signaled(synchronization_resources, frame_index, swapchain_index))
+            {
+                std::optional<std::uint32_t> const next_swapchain_image_index = acquire_next_image(synchronization_resources, frame_index, swapchain_resources, swapchain_index);
 
-                bool const is_fence_signaled = swapchain_device.getFenceStatus(available_frame_fence) == vk::Result::eSuccess;
-
-                if (is_fence_signaled)
+                if (next_swapchain_image_index.has_value())
                 {
-                    vk::SwapchainKHR const swapchain = swapchain_resources.swapchains[swapchain_index];
-
-                    vk::Semaphore const available_frame_semaphore = available_frame_semaphores[swapchain_index];
-
-                    vk::ResultValue<std::uint32_t> const acquire_next_image_result =
-                        swapchain_device.acquireNextImageKHR(swapchain, 0, available_frame_semaphore, {});
-
-                    if (acquire_next_image_result.result == vk::Result::eSuccess)
-                    {
-                        std::uint32_t const swapchain_image_index = acquire_next_image_result.value;
-
-                        vk::CommandBuffer const command_buffer = frame_command_buffers[0];
-                        command_buffer.reset({});
-                        {
-                            vk::CommandBufferBeginInfo const begin_info
-                            {
-                                .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
-                                .pInheritanceInfo = nullptr,
-                            };
-
-                            command_buffer.begin(begin_info);
-                        }
-
-                        {
-                            std::span<Maia::Renderer::Vulkan::Buffer_view const> const output_buffer_memory_views; // TODO
-
-                            std::array<std::uint32_t, 1> const swapchain_image_indices = { swapchain_image_index };
-                            std::pmr::vector<vk::Image> const output_images =
-                                get_input_images(
-                                    render_pipeline_configuration.inputs,
-                                    swapchain_resources.images,
-                                    swapchain_image_indices,
-                                    {}
-                            );
-
-                            std::pmr::vector<vk::ImageView> const output_image_views =
-                                get_input_image_views(
-                                    render_pipeline_configuration.inputs,
-                                    pipeline_input_resources.image_views,
-                                    swapchain_image_indices,
-                                    {}
-                            );
-
-                            std::span<vk::ImageSubresourceRange const> const output_image_subresource_ranges =
-                                swapchain_image_subresource_ranges;
-
-                            std::pmr::vector<vk::Framebuffer> const output_framebuffers =
-                                get_input_framebuffers(
-                                    render_pipeline_configuration.inputs,
-                                    pipeline_input_resources.framebuffers,
-                                    swapchain_image_indices,
-                                    {}
-                            );
-
-                            std::span<vk::Rect2D const> const output_render_areas = swapchain_render_areas;
-
-                            if (!pipeline_input_resources.descriptor_sets.empty() && !pipeline_input_resources.descriptor_sets[frame_index].empty())
-                            {
-                                Maia::Renderer::Vulkan::update_frame_descriptor_sets(
-                                    render_pipeline_device,
-                                    pipeline_input_resources.descriptor_sets[frame_index],
-                                    pipeline_input_resources.descriptor_sets_image_indices,
-                                    pipeline_input_resources.descriptor_sets_image_layouts,
-                                    output_image_views,
-                                    pipeline_input_resources.descriptor_sets_bindings,
-                                    {}
-                                );
-                            }
-
-                            std::span<vk::DescriptorSet const> const per_frame_descriptor_sets
-                            {
-                                !pipeline_input_resources.descriptor_sets.empty() ? pipeline_input_resources.descriptor_sets[frame_index].data() : nullptr,
-                                !pipeline_input_resources.descriptor_sets.empty() ? pipeline_input_resources.descriptor_sets[frame_index].size() : 0
-                            };
-
-                            std::pmr::vector<vk::DescriptorSet> const frame_descriptor_sets =
-                                Maia::Renderer::Vulkan::get_frame_descriptor_sets(
-                                    per_frame_descriptor_sets,
-                                    frame_shared_resources.descriptor_sets,
-                                    frame_descriptor_sets_map,
-                                    {}
-                            );
-
-                            Maia::Renderer::Vulkan::draw(
-                                command_buffer,
-                                data_arrays,
-                                output_buffer_memory_views,
-                                output_images,
-                                output_image_views,
-                                output_image_subresource_ranges,
-                                frame_descriptor_sets,
-                                output_framebuffers,
-                                output_render_areas,
-                                commands_data,
-                                {}
-                            );
-                        }
-                        command_buffer.end();
-
-                        vk::Queue const queue = queues[swapchain_configurations[swapchain_index].queue_to_present_index];
-
-                        vk::Semaphore const finished_frame_semaphore = finished_frame_semaphores[swapchain_index];
-                        {
-                            std::array<vk::PipelineStageFlags, 1> constexpr wait_destination_stage_masks = { vk::PipelineStageFlagBits::eColorAttachmentOutput };
-                            std::array<vk::Fence, 1> const fences_to_reset = { available_frame_fence };
-                            swapchain_device.resetFences(fences_to_reset);
-
-                            std::array<vk::SubmitInfo, 1> const submit_infos
-                            {
-                                vk::SubmitInfo
-                                {
-                                    .waitSemaphoreCount = 1,
-                                    .pWaitSemaphores = &available_frame_semaphore,
-                                    .pWaitDstStageMask = wait_destination_stage_masks.data(),
-                                    .commandBufferCount = static_cast<std::uint32_t>(frame_command_buffers.size()),
-                                    .pCommandBuffers = frame_command_buffers.data(),
-                                    .signalSemaphoreCount = 1,
-                                    .pSignalSemaphores = &finished_frame_semaphore,
-                                }
-                            };
-
-                            queue.submit(submit_infos, available_frame_fence);
-                        }
-
-                        {
-                            std::array<std::uint32_t, 1> const swapchain_image_indices = { swapchain_image_index };
-
-                            vk::PresentInfoKHR const present_info
-                            {
-                                .waitSemaphoreCount = 1,
-                                .pWaitSemaphores = &finished_frame_semaphore,
-                                .swapchainCount = 1,
-                                .pSwapchains = &swapchain,
-                                .pImageIndices = swapchain_image_indices.data(),
-                                .pResults = nullptr,
-                            };
-
-                            vk::Result const result = queue.presentKHR(present_info);
-
-                            if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
-                            {
-                                // TODO recreate swapchain
-                            }
-                        }
-                    }
-                    else if (acquire_next_image_result.result == vk::Result::eErrorOutOfDateKHR
-                        || acquire_next_image_result.result == vk::Result::eSuboptimalKHR)
-                    {
-                        // TODO recreate swapchain
-                    }
+                    render_frame(
+                        render_pipeline_device,
+                        render_pipeline_configuration.inputs,
+                        pipeline_input_resources,
+                        queues,
+                        frame_shared_resources,
+                        frame_index,
+                        frames_command_buffers[frame_index],
+                        frame_descriptor_sets_map,
+                        synchronization_resources,
+                        swapchain_configurations,
+                        swapchain_resources,
+                        swapchain_render_areas,
+                        swapchain_image_subresource_ranges,
+                        swapchain_index,
+                        *next_swapchain_image_index,
+                        data_arrays,
+                        commands_data
+                    );
+                }
+                else
+                {
+                    // TODO may need to recreate swapchain
                 }
             }
-        }
-
-        {
-            using namespace std::chrono_literals;
-            std::this_thread::sleep_for(5s);
         }
 
         for (vk::Device const device : device_resources.devices)

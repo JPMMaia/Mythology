@@ -17,10 +17,11 @@ namespace Mythology::SDL
 {
     void run(
         std::pmr::unordered_map<std::pmr::string, std::filesystem::path> const& render_pipelines_configurations,
-        std::filesystem::path const& gltf_file_path
+        std::filesystem::path const& gltf_file_path,
+        std::span<std::filesystem::path const> const addon_paths
     )
     {
-        std::unique_ptr<State> state{ std::make_unique<Startup_state>(render_pipelines_configurations, gltf_file_path) };
+        std::unique_ptr<State> state{ std::make_unique<Startup_state>(render_pipelines_configurations, gltf_file_path, addon_paths) };
 
         while (state != nullptr)
         {

@@ -3,6 +3,7 @@ module;
 #include <filesystem>
 #include <memory>
 #include <memory_resource>
+#include <span>
 #include <string>
 #include <unordered_map>
 
@@ -18,7 +19,8 @@ namespace Mythology::SDL
 
         explicit Startup_state(
             std::pmr::unordered_map<std::pmr::string, std::filesystem::path> render_pipelines,
-            std::filesystem::path gltf_path
+            std::filesystem::path gltf_path,
+            std::span<std::filesystem::path const> const addon_paths
         ) noexcept;
         ~Startup_state() noexcept final;
 
@@ -29,5 +31,6 @@ namespace Mythology::SDL
 
         std::pmr::unordered_map<std::pmr::string, std::filesystem::path> m_render_pipelines;
         std::filesystem::path m_gltf_path;
+        std::span<std::filesystem::path const> const m_addon_paths;
     };
 }

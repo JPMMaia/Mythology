@@ -132,6 +132,7 @@ namespace Mythology
         }
         else
         {
+            std::cerr << "Could not load " << addon_path << '\n';
             return {};
         }
     }

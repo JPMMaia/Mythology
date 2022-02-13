@@ -53,7 +53,7 @@ namespace Mythology
 
     export std::optional<Addon> load_addon(std::filesystem::path const& addon_path);
 
-    using Addon_interface_pointer = std::unique_ptr<Addon_interface, Destroy_addon_interface_function_pointer>;
+    export using Addon_interface_pointer = std::unique_ptr<Addon_interface, Destroy_addon_interface_function_pointer>;
 
     export Addon_interface_pointer create_addon_interface(
         Create_addon_interface_function_pointer create_addon_interface,
