@@ -55,6 +55,8 @@ add_subdirectory ("Windowless")
 
 add_subdirectory ("Image")
 
+add_subdirectory ("Addon")
+
 if (MaiaMythology_use_SDL)
 
 	add_subdirectory ("SDL")

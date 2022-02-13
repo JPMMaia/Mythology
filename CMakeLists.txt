@@ -9,7 +9,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/Binaries")
 include("Internal/Utilities/CMake/Scripts/modules.cmake")
 
 if (MSVC)
-    add_compile_options("/std:c++latest" "/Zc:preprocessor" "/EHsc")
+if (WIN32)
+    add_compile_definitions("NOMINMAX")
 endif ()
 
 
@@ -27,3 +28,5 @@ add_subdirectory("Internal/glTF")
 #add_subdirectory("Internal/Resources")
 add_subdirectory("Source")
 add_subdirectory("Test")
+
+add_subdirectory("Addons/Example")

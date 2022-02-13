@@ -10,11 +10,14 @@ target_link_libraries(MaiaMythologySDL PRIVATE SDL2::SDL2)
 target_link_libraries(MaiaMythologySDL PRIVATE Vulkan Maia::glTF)
 target_link_libraries(MaiaMythologySDL PRIVATE Vulkan Maia::Renderer::Vulkan)
 target_link_libraries(MaiaMythologySDL PRIVATE Vulkan Maia::Scene)
+target_link_libraries(MaiaMythologySDL PRIVATE Vulkan Maia::Mythology::Addon)
 
 find_package(klein 2.3.0 REQUIRED)
 target_link_libraries(MaiaMythologySDL PRIVATE klein::klein_sse42)
 
-#target_link_libraries (MaiaMythologySDL PRIVATE Maia::Input)
+target_compile_features(MaiaMythologySDL PUBLIC cxx_std_23)
+
+target_link_libraries (MaiaMythologySDL PRIVATE Maia::Input)
 #target_link_libraries (MaiaMythologySDL PRIVATE Maia::Renderer::Vulkan::Serialization)
 #target_link_libraries (MaiaMythologySDL PRIVATE Maia::Shaders)
 #target_link_libraries (MaiaMythologySDL PRIVATE Maia::Utilities::GLTF)
